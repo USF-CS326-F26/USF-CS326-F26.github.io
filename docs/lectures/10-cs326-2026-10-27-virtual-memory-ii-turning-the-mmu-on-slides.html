@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Memory II: Turning the MMU On - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Virtual Memory II: Turning the MMU On
+
+## CS 326 Operating Systems
+
+---
+
+## Learning Objectives
+
+- Explain the bootstrap paradox of enabling address translation
+- Justify **identity mapping** as its resolution — and what it does *not* change
+- Enumerate the regions `kvmmake` maps, and justify each permission bit
+- Encode and decode `satp`: MODE, ASID, and the root PPN
+- Explain what a TLB caches and when `sfence.vma` is mandatory
+- Diagnose a failed MMU switch from silence, `pc = 0`, or a `scause` value
+
+---
+
+## Where We Are
+
+- **`03_paging`** — you built a page table. The MMU was **off**. The tree was inert data.
+- **`09_virtual_memory`** — today. You hand the tree to the hardware.
+
+<div class="highlight-box">
+Two instructions do the work. They are the most dangerous two instructions in the course.
+</div>
+
+---
+
+## The Scariest Twenty Lines
+
+```rust
+// vm.rs:177-181
+pub unsafe fn kvminithart(root: *mut Pte) {
+    let satp = make_satp(root);
+    asm!("csrw satp, {}", in(reg) satp);
+    asm!("sfence.vma zero, zero");
+}
+```
+
+Think about what happens **between** those two instructions.
+
+---
+
+## The Paradox
+
+```text
+   cycle N          cycle N+1                     cycle N+2
+  ┌──────────────┐ ┌───────────────────────────┐ ┌───────────────┐
+  │ csrw satp    │ │ fetch pc+4                │ │ execute       │
+  │ (physical)   │ │  -> pc+4 is a VIRTUAL     │ │ sfence.vma    │
+  │              │ │     address now           │ │               │
+  │ MMU: OFF     │ │  -> walk root[VPN2],      │ │               │
+  │              │ │     L1[VPN1], L0[VPN0]    │ │               │
+  │              │ │  -> need V=1 and X=1      │ │               │
+  └──────────────┘ └───────────────────────────┘ └───────────────┘
+```
+
+<div class="info-box">
+<strong>Nothing moved.</strong> Not one byte of RAM changed. What changed is the <em>interpretation</em> of every number the CPU treats as an address.
+</div>
+
+---
+
+## There Is No One to Catch You
+
+<div class="mermaid">
+flowchart TD
+    A["csrw satp\ntranslation ON"] --> B{"is pc+4 mapped,\nvalid, executable?"}
+    B -->|yes| C["kernel continues\nexactly as before"]
+    B -->|no| D["instruction page fault\nscause = 12"]
+    D --> E{"is stvec set?"}
+    E -->|"no — still 0"| F["jump to address 0"]
+    F --> G["address 0 unmapped:\nfault again"]
+    G --> F
+    G -.-> I["TOTAL SILENCE"]
+</div>
+
+`trap::init` runs **after** `kvminithart`. There is no handler yet.
+
+---
+
+## Identity Mapping
+
+Build the table so that **`va == pa`** for everything the kernel touches.
+
+- `pc + 4` translates to `pc + 4` — the fetch succeeds
+- `sp` still points into `STACK0` — the next `sd` works
+- `root` still names the page table — the kernel can still edit it
+
+Every pointer in every register survives, because each translates to itself.
+
+---
+
+## The Same Number, Twice
+
+```rust
+// vm.rs:132
+mappages(root, UART0, PGSIZE, UART0, PTE_R | PTE_W)
+//             ^^^^^         ^^^^^
+//             va             pa      — the same number
+```
+
+- `mappages` does not know it is building an identity map
+- Only the **arguments** make it one
+- The PTE is completely ordinary: its PPN just happens to equal the VPN
+
+---
+
+## What Identity Mapping Is *Not*
+
+- **Not "translation off."** The MMU still walks three levels and still enforces `V R W X U`. An identity-mapped kernel can absolutely fault.
+- **Not for user processes.** Every user table maps virtual `0` to an arbitrary physical page (`USER_CODE = 0x0`, `memlayout.rs:61`) — that is the whole point of VM.
+- **Not free.** Kernel virtual space can never exceed physical memory. On 32-bit machines that became Linux's "highmem" decade.
+
+---
+
+## The Rule for `kvmmake`
+
+<div class="highlight-box">
+After the switch, an address the kernel touches that is not in the kernel page table <strong>does not exist</strong>.<br/>
+So: if the kernel will touch it after the switch, map it now.
+</div>
+
+- It prints → the UART
+- It exits QEMU → the test finisher
+- It runs, uses a stack, allocates, edits page tables → all of RAM
+- Later, interrupts → the PLIC
+
+---
+
+## The Device Pages
+
+```rust
+mappages(root, UART0,         PGSIZE,    UART0,         PTE_R | PTE_W)?; // vm.rs:132
+mappages(root, TEST_FINISHER, PGSIZE,    TEST_FINISHER, PTE_R | PTE_W)?; // vm.rs:135
+mappages(root, PLIC,          PLIC_SIZE, PLIC,          PTE_R | PTE_W)?; // vm.rs:138
+```
+
+- **`R` and `W`** because MMIO registers are read *and* written (`putc` stores; the console driver loads the line-status register)
+- **No `X`, deliberately** — no instructions live there. A wild jump becomes a clean fault instead of executing register contents
+- **Sizes come from the device**: PLIC is 4 MiB = 1024 pages = two whole level-0 tables
+
+---
+
+## RAM, in One Call
+
+```rust
+// vm.rs:141-151
+mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, PTE_R | PTE_W | PTE_X)?;
+```
+
+| What | Where | Why it is covered |
+|---|---|---|
+| kernel text | `0x8000_0000` up, `kernel.ld:16-23` | the fetch after `csrw satp` |
+| rodata / data / bss | `kernel.ld:25-41` | statics, the free-list head |
+| the boot stack | `STACK0`, `entry.rs:14` | `sp` must keep working |
+| everything `kalloc` gives out | `end`..`PHYSTOP`, `kalloc.rs:23` | **the page tables themselves** |
+
+The third argument is a **size**, not an end address.
+
+---
+
+## The Permissions Each Region Deserves
+
+| Region | Deserves | Why |
+|---|---|---|
+| `.text` | `R X` | fetchable; **not** writable |
+| `.rodata` | `R` | never written, never executed |
+| `.data` / `.bss` | `R W` | written constantly; **not** executable |
+| free pages | `R W` | data, never kernel instructions |
+| MMIO | `R W` | device registers |
+
+That is **W^X** — *write xor execute*. No page is both.
+
+---
+
+## rv6's Compromise
+
+rv6 maps **all** of RAM `R | W | X` in one call.
+
+- The split needs the `etext` boundary — provided at `kernel.ld:22`, referenced by nobody
+- Two calls instead of one; stop a page short and the kernel dies on a fetch it cannot report
+
+<div class="highlight-box">
+This is a <strong>pedagogical</strong> choice, not a design claim — a table you can get right on the first try, at the cost of the most valuable protection a kernel map provides.
+</div>
+
+W^X *is* enforced where an attacker lives: user code `R X U` (`vm.rs:228`), user stack `R W U` (`vm.rs:245`).
+
+---
+
+## What You Do *Not* Have to Map
+
+- **The page tables, for the walk's sake.** The hardware walker uses *physical* addresses throughout — `satp` holds a PPN, every branch PTE holds a PPN. Translation would work with the tables unmapped.
+  - But the **kernel** reaches them through `*mut Pte` pointers, which are virtual after the switch. So map them anyway.
+- **The CLINT** (`0x0200_0000`). Machine-mode only — and machine-mode accesses bypass `satp`.
+- **Anything above `PHYSTOP`.** Unmapped means a runaway pointer faults.
+
+---
+
+## The Kernel Map, and What It Costs
+
+```text
+  virtual                              physical         perms   tables
+  ──────────────────────────────────────────────────────────────────────
+  0x0010_0000  (1 page)      ───────►  same             R W     1 root
+  0x1000_0000  (1 page)      ───────►  same             R W     2 level-1
+  0x8000_0000 .. 0x8800_0000 ───────►  same, 128 MiB    R W X   66 level-0
+                                                                = 69 pages
+  (later: PLIC 4 MiB R W, TRAMPOLINE 1 page R X)          = 276 KiB
+```
+
+- Device gigabyte is `VPN[2] = 0`; RAM gigabyte is `VPN[2] = 2` (`KERNBASE` is exactly 2 GiB)
+- 276 KiB of tables for 128 MiB of space — about **0.2%**
+
+---
+
+## `satp`: The Encoding
+
+```text
+  63    60 59              44 43                                    0
+ ┌────────┬──────────────────┬────────────────────────────────────────┐
+ │  MODE  │       ASID       │        PPN of the ROOT table           │
+ │ 4 bits │     16 bits      │               44 bits                  │
+ └────────┴──────────────────┴────────────────────────────────────────┘
+```
+
+| Field | rv6 | Meaning |
+|---|---|---|
+| MODE | `8` | `0` = Bare, `8` = Sv39, `9` = Sv48, `10` = Sv57 |
+| ASID | `0` | tags TLB entries so a switch need not flush |
+| PPN | `root >> 12` | the root's **physical page number**, not its address |
+
+---
+
+## `make_satp`, Worked
+
+```rust
+// vm.rs:104-108
+pub const SATP_SV39: usize = 8 << 60;
+pub fn make_satp(root: *mut Pte) -> usize {
+    SATP_SV39 | ((root as usize) >> 12)
+}
+```
+
+```text
+  root      = 0x0000_0000_87FF_F000
+  root >> 12= 0x0000_0000_0008_7FFF
+  SATP_SV39 = 0x8000_0000_0000_0000
+  satp      = 0x8000_0000_0008_7FFF   <- memorize this one
+```
+
+`satp` names a **physical** address, necessarily — it is what gives virtual addresses meaning.
+
+---
+
+## What the `csrw` Actually Does
+
+It writes 64 bits into one register. Everything else is a consequence:
+
+1. From the next instruction, translation is in Sv39 mode for S and U accesses
+2. The next fetch is resolved by walking the tree rooted at `PPN << 12`
+3. Anything the TLB cached under the old `satp` may now be wrong — hence `sfence.vma`
+
+Writing MODE `0` turns translation back off. Nobody does: by then every pointer in flight is virtual.
+
+---
+
+## The Confusing Part: Machine Mode
+
+Translation applies to **supervisor and user** accesses. **Machine-mode accesses are never translated**, whatever `satp` says.
+
+- Exercise 09: `entry.rs:17` is `call kmain` — no `start.rs`. The hart is in **machine mode**. The `csrw` lands, and translation does not take effect.
+- Exercise 13: `entry.rs:23` is `call start`; `start.rs` clears `satp`, sets `MPP = S`, and `mret`s into `kmain`. Now the switch is real.
+
+<div class="highlight-box">
+Ex 09 asks for a <em>correct</em> table. Ex 13 is where a wrong one kills the machine. Same table — the privilege mode is what makes it load-bearing.
+</div>
+
+---
+
+## The TLB
+
+<div class="mermaid">
+flowchart LR
+    A["virtual address"] --> B{"TLB hit?"}
+    B -->|"yes (~99%)"| C["physical address\n+ cached R/W/X/U"]
+    B -->|"no"| D["page-table walker:\n3 memory reads"]
+    D --> E["install entry"]
+    E --> C
+    C --> F["access memory"]
+</div>
+
+A small cache of virtual-page → physical-page results, **plus the permission bits**. High-nineties hit rates are why a three-read walk is nearly free.
+
+---
+
+## `sfence.vma`: Invalidate *and* Order
+
+The TLB is **not coherent with memory**. Store a new PTE and the TLB is not listening.
+
+| Job | Meaning |
+|---|---|
+| **Invalidate** | discard cached translations; re-walk on next access |
+| **Order** | page-table stores before the fence are visible to walks after it |
+
+```asm
+sfence.vma zero, zero    # everything
+sfence.vma rs1,  zero    # one virtual address
+sfence.vma zero, rs2     # one ASID
+```
+
+---
+
+## When You Must Flush
+
+- After writing `satp` — `vm.rs:180`
+- After changing any PTE in a **live** table
+- After making an **invalid** PTE **valid** — RISC-V permits caching the *absence* of a mapping. Stricter than x86.
+
+```asm
+sfence.vma zero, zero    # usermode.rs:133-135 / :140-142
+csrw satp, t1            # the bracket: make new table visible,
+sfence.vma zero, zero    # then drop the old address space
+```
+
+<div class="highlight-box">
+QEMU flushes more aggressively than real silicon. A missing fence is exactly the bug that passes here and fails on hardware.
+</div>
+
+---
+
+## Why Silence Is the Default Answer
+
+Printing requires:
+
+- executing an instruction → kernel text mapped **executable**
+- using the stack → `.bss` mapped **read-write**
+- storing to `0x1000_0000` → the UART page mapped **read-write**
+
+A broken kernel table breaks at least one, usually the first. There is no panic message, because a panic message is a print.
+
+<div class="info-box">
+This is why last Friday was the QEMU/GDB workshop. When the machine cannot tell you anything, ask the hardware.
+</div>
+
+---
+
+## The Failure Catalogue
+
+| Mistake | What you see |
+|---|---|
+| RAM unmapped, or no `X` | `pc = 0`, `scause = 0xc`, `stval` in kernel text |
+| `PHYSTOP` passed as the **size** | *nothing* — 2.1 GiB mapped, 1091 table pages burned |
+| UART page missing | survives the switch, dies on the first `putc` |
+| test finisher missing | prints `PASS`, then hangs; harness times out |
+| `make_satp` forgets `>> 12` | `scause = 1` — the *walk* could not read a PTE |
+| `make_satp` omits `SATP_SV39` | MODE 0 = Bare. Silent no-op |
+| `PTE_R` on a **branch** | hardware reads it as a mis-aligned superpage |
+| Live PTE changed, no fence | rare, non-deterministic, unreproducible on QEMU |
+
+---
+
+## Page Fault vs. Access Fault
+
+| `scause` | Name | Means |
+|---|---|---|
+| 1 | instruction access fault | the hardware could not *read memory it needed* — including a PTE |
+| 5 / 7 | load / store access fault | same, for data |
+| 12 | instruction page fault | the table said no: invalid, or `X` clear |
+| 13 / 15 | load / store page fault | the table said no: invalid, or `R`/`W` clear |
+
+<div class="highlight-box">
+A <strong>page</strong> fault means your table refused. An <strong>access</strong> fault means your table could not even be read. <code>scause = 1</code> right after <code>csrw satp</code> ⇒ suspect <code>satp</code>, not the mappings.
+</div>
+
+---
+
+## Reading the Silence
+
+```text
+  1. Did the switch happen?
+       p/x $satp  -> 0x0                 : make_satp or the csrw is wrong
+                  -> 0x8000...0008_7FFF  : paging on, root in RAM
+                  -> does not start w/ 8 : MODE field missing (Bare)
+
+  2. Where did it die?
+       info registers pc sepc scause stval
+       pc == 0              : trapped with stvec unset — boot-time
+       scause == 12         : could not FETCH; stval = the address
+       scause == 15         : could not STORE; stval = the address
+       stval == 0x1000_0000 : the UART. You forgot the UART page.
+
+  3. What does the hardware think is mapped?
+       monitor info mem     : one line per contiguous mapping, with perms
+```
+
+---
+
+## Verify Before You Switch
+
+The exercise harness (`main.rs:76-124`) proves the table correct **with the MMU still off**:
+
+- `walk` each region; check the leaf exists, is identity (`pa == va & !0xFFF`), and has the needed bits — `:85` UART, `:89` finisher, `:94` RAM, `:99-104` the current stack page
+- Check `satp`: MODE is 8 (`:108`), PPN is `root >> 12` (`:112`)
+- Only then, `:118`, call `kvminithart`
+
+<div class="highlight-box">
+When the failure mode is silence, add a check that runs <em>before</em> the dangerous step and <em>speaks</em>.
+</div>
+
+---
+
+## xv6 and Linux
+
+```text
+  rv6 / xv6                          Linux
+  ─────────────────────────          ─────────────────────────────────────
+  build identity map                 build a table mapping text TWICE:
+  csrw satp                            identity, AND at the link address
+  next fetch maps to itself          csrw satp
+  (kernel never moves)               next fetch maps to itself (identity)
+                                     jump to the high virtual address
+                                     drop the identity half
+```
+
+- **xv6** splits `KERNBASE..etext` `R X` from `etext..PHYSTOP` `R W` — real kernel W^X, two lines
+- Both are the same trick: **make the currently executing code valid under the new mapping**
+
+---
+
+## Summary
+
+1. **The instruction after the switch is fetched through the switch.** No handler exists yet, so a bad table means silence.
+2. **Identity mapping (`va == pa`) is the resolution** — translation on, fully enforced, and transparent to every live pointer.
+3. **Map what the kernel will touch**: UART, test finisher, PLIC, and all of RAM — which covers text, data, stacks, *and the page tables*.
+4. **Permissions**: devices `R W` no `X`; RAM deserves W^X and rv6 gives it `R W X` for one-shot correctness.
+5. **`satp` = MODE 8 | ASID 0 | `root >> 12`** — `0x8000_0000_0008_7FFF`. Forget the shift → `scause = 1`; forget MODE → silent no-op.
+6. **Machine mode ignores `satp`** — which is why ex09 is survivable and ex13 is not.
+7. **The TLB is not coherent**; fence after `satp`, after any live PTE change, and after invalid → valid.
+8. **When the failure mode is silence, verify before you commit.** `pc`, `satp`, `scause`, `stval`, in that order.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering: read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaving std: no_std and Bare-Metal Rust - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Leaving `std`: `no_std` and Bare-Metal Rust
+
+## CS 326 Operating Systems
+
+L09 &middot; Raw pointers, `unsafe`, volatile MMIO, and the cliff
+
+---
+
+## Learning Objectives
+
+- Distinguish a raw pointer from a reference by the guarantees each carries
+- Enumerate the five operations `unsafe` unlocks — and what it does **not** change
+- Explain why making a pointer is safe but dereferencing (and `.add`) is not
+- Predict the machine code emitted for volatile vs non-volatile device access
+- Describe the `core` / `alloc` / `std` layering and the `no_std` skeleton
+- Decode `riscv64gc-unknown-none-elf` field by field
+
+---
+
+## The Transition
+
+Everything so far ran **as a process**: something loaded it, gave it a stack, called `main`, and caught its mistakes.
+
+| Before | After |
+|--------|-------|
+| a red test with a diff | a machine that prints nothing and never stops |
+| `panic!` prints a backtrace | `panic!` prints what *your* handler prints |
+| the debugger is `println!` | the debugger is GDB attached to QEMU |
+| the OS catches your bad pointer | your bad pointer **is** the OS |
+
+Today's exercises: **r09_unsafe_bridge**, then **00_rust_kernel_basics**.
+
+---
+
+## What Rust Actually Promises
+
+Not "Rust programs cannot crash". It is:
+
+<div class="info-box">
+A program containing no <code>unsafe</code> cannot exhibit undefined behavior — <strong>provided the unsafe code beneath it is correct</strong>.
+</div>
+
+- Safe Rust is a proof; every proof rests on axioms
+- The axioms are `unsafe` blocks somewhere underneath
+- `Vec` = raw pointer + len + cap, held together by `unsafe`
+- A kernel is the same shape — except the unsafe core is large, and **you** write it
+
+---
+
+## Some Memory Is Not Yours to Name
+
+```text
+      a store instruction:  sb  a1, 0(a0)
+                                   |
+                              address bus
+                                   |
+                    +--------------+--------------+
+                    |              |              |
+              0x0200_0000     0x1000_0000    0x8000_0000
+                 CLINT           UART           RAM
+              (timer regs)   (serial port)   (128 MiB)
+                    |              |              |
+              a knob on a     a knob on a     a byte that
+              timer chip      serial chip     remembers
+```
+
+Same instruction. Only the **number** differs. That is memory-mapped I/O.
+
+---
+
+## Why a Reference Cannot Name the UART
+
+A `&mut u8` is a compile-time claim that the compiler *knows*:
+
+- non-null, aligned, points at a live initialized `u8`
+- **no other reference to that byte exists** while this one lives
+
+The compiler can only claim that about memory it can account for — a `let`, a field, an allocation it can see.
+
+<div class="highlight-box">
+It cannot account for a chip. So Rust offers a second, humbler pointer that promises nothing.
+</div>
+
+---
+
+## Raw Pointers
+
+```rust
+const UART0: usize = 0x1000_0000;       // memlayout.rs:17
+let p = UART0 as *mut u8;               // safe: nothing happened
+let n: *mut Run = ptr::null_mut();      // kalloc.rs:11 — safe
+```
+
+- `*mut u8` is **one type name**: "raw pointer to a `u8` I may write through"
+- The `*` is spelling, not an operation
+- `ptr::null_mut()` is a `const fn` → works in `static` initializers
+- Test with `.is_null()` (`kalloc.rs:42`, `vm.rs:63`)
+
+---
+
+## Reference vs Raw Pointer
+
+| | `&T` / `&mut T` | `*const T` / `*mut T` |
+|---|---|---|
+| Guaranteed non-null | yes | no |
+| Guaranteed aligned | yes | no |
+| Points at live data | yes | no |
+| Aliasing restricted | yes | no |
+| Carries a lifetime | yes | no |
+| Borrow checker sees it | yes | never |
+| Creating one is safe | yes | **yes** |
+| Dereferencing is safe | yes | **no** |
+
+Memorize the last two rows.
+
+---
+
+## `.add(n)` Scales by the Pointee
+
+```rust
+const fn px(level: usize, va: usize) -> usize {  // vm.rs:44
+    (va >> (12 + level * 9)) & 0x1ff             // an index, 0..=511
+}
+let pte = table.add(px(level, va));              // vm.rs:55
+```
+
+- `Pte` is `#[repr(transparent)]` over `usize` → one element = **8 bytes**
+- `table.add(511)` → byte offset 4088, the last entry of a 4 KiB page table
+- `(table as *mut u8).add(511)` → 4081 bytes too early, mid-entry, silent corruption
+
+---
+
+## `.add` Is Itself Unsafe: Provenance
+
+<div class="highlight-box">
+The result must stay inside the <strong>same allocated object</strong> as the input. Computing an out-of-object address is UB even if you never load or store through it.
+</div>
+
+- A pointer carries an invisible tag naming the allocation it came from
+- For the kernel: "same object" usually means "same page" or "same register block"
+- Dereferencing: `(*p).field` — Rust has no `->`, and auto-deref does not apply
+
+---
+
+## `unsafe` Unlocks Exactly Five Operations
+
+1. Dereference a raw pointer
+2. Call an `unsafe fn` or an `extern` function
+3. Read or write a `static mut`
+4. Implement an `unsafe` trait
+5. Read a `union` field
+
+In rv6: #1 and #2 constantly (`vm.rs:56`, `swtch.rs:35`), #3 in the allocator and console (`kalloc.rs:37`, `console.rs:20-24`), #4 twice (`spinlock.rs:12`, `kheap.rs:22`), #5 never.
+
+---
+
+## What `unsafe` Does **Not** Do
+
+| It does NOT | Consequence |
+|---|---|
+| Disable the borrow checker | `E0499` still fires inside `unsafe { }` |
+| Disable lifetimes | outliving data is still a compile error |
+| Disable type checking | you still need `as` casts |
+| Turn off bounds checks | `v[i]` still panics |
+| Make UB legal | it makes UB *possible* |
+| Mean "dangerous code" | it means "I checked what the compiler cannot" |
+
+---
+
+## Proof: Two Errors, One Block
+
+```rust
+let p = base.add(5);                   // (1)
+unsafe {
+    *p = 0x20;
+    let a = &mut regs[0];
+    let b = &mut regs[1];              // (2)
+    *a = 1; *b = 2;
+}
+```
+
+- **(1)** `error[E0133]: call to unsafe function ...add is unsafe` — nothing was dereferenced
+- **(2)** `error[E0499]: cannot borrow regs[_] as mutable more than once` — *inside* `unsafe`
+
+---
+
+## `unsafe` Is a Promise, Not a Switch
+
+- `unsafe fn f(..)` — *"calling me has a precondition; you must satisfy it"*
+  - `kalloc::kfree` (`kalloc.rs:34`), `vm::walk` (`vm.rs:52`)
+- `unsafe { ... }` — *"I have satisfied it"*
+
+<div class="info-box">
+If you cannot state the promise in one sentence, you do not know whether it is true. Keep the block as small as the operation.
+</div>
+
+---
+
+## C Has All of This — Invisibly
+
+```c
+void kfree(void *pa) {
+    struct run *r = (struct run*)pa;
+    r->next = kmem.freelist;
+    kmem.freelist = r;
+}
+```
+
+Every line is *exactly* as unsafe as rv6's `kfree`. C has no way to say so.
+
+<div class="highlight-box">
+Rust does not make kernel programming safe. It makes the unsafe parts <strong>greppable</strong>: "show me every place that could corrupt memory" has a finite answer.
+</div>
+
+---
+
+## The Shape: Safe Wrapper, Unsafe Core
+
+<div class="mermaid">
+flowchart TD
+  A["Safe caller code\nconsole.rs, shell.rs, fs.rs"] --> B["Safe wrapper\nuart::putc (uart.rs:48)"]
+  B --> C["Unsafe core\nreg_write (uart.rs:22)"]
+  C --> D["write_volatile to 0x1000_0000"]
+  D --> E["NS16550A UART"]
+</div>
+
+**Sound** = no legal call from safe code can cause UB.
+
+---
+
+## Evidence 1: The Deleted Store
+
+<div class="highlight-box">
+The optimizer's one assumption: memory changes only when your program changes it. True of RAM. <strong>False of a device.</strong>
+</div>
+
+```rust
+pub unsafe fn plain_hi()    { *THR = b'h'; *THR = b'i'; }
+pub unsafe fn volatile_hi() { write_volatile(THR, b'h'); write_volatile(THR, b'i'); }
+```
+
+```asm
+plain_hi:                    volatile_hi:
+    lui  a0, 65536               lui  a0, 65536
+    li   a1, 105                 li   a1, 104        # 'h'
+    sb   a1, 0(a0)               sb   a1, 0(a0)
+    ret                          li   a1, 105        # 'i'
+                                 sb   a1, 0(a0)
+                                 ret
+```
+
+One store survives. The `'h'` is a dead store — deleted, and gone off the wire.
+
+---
+
+## Evidence 2: The Hoisted Load
+
+```asm
+plain_wait:                  volatile_wait:
+    lui  a0, 65536               lui  a0, 65536
+    lbu  a1, 5(a0)           .LBB3_1:
+    andi a1, a1, 32              lbu  a1, 5(a0)
+    bnez a1, .LBB1_2             andi a1, a1, 32
+.LBB1_1:                         beqz a1, .LBB3_1
+    j    .LBB1_1                 li   a1, 120
+.LBB1_2:                         sb   a1, 0(a0)
+    ...                          ret
+```
+
+<div class="highlight-box">
+<code>j .LBB1_1</code> — a branch to itself. Loop-invariant code motion turned "wait until ready" into "if not ready now, hang forever". No panic. No fault.
+</div>
+
+---
+
+## What `volatile` Means
+
+`read_volatile` / `write_volatile` declare an access **observable**:
+
+- perform it exactly once, exactly where written
+- do not delete, duplicate, merge, or reorder past another volatile access
+
+Some reads *do something*: the PLIC claim register returns the pending IRQ **and marks it claimed** (`plic.rs:33`).
+
+The rule is mechanical: **device register → volatile; ordinary memory → plain `*p`.** Every MMIO touch in rv6 obeys it — `uart.rs:19`, `plic.rs:24-28`, `start.rs:61-62`, `testdev.rs:19`.
+
+<div class="info-box">
+Not atomicity. Not ordering against normal memory. Not synchronization between harts — that is <code>core::sync::atomic</code> and exercise 07's locks.
+</div>
+
+---
+
+## The Cliff: `#![no_std]`
+
+- Removes the standard library and every assumption of an OS underneath
+- `main.rs:1` in rv6 — the first line of the kernel
+- You keep `core`; you lose files, threads, time, `println!`, `HashMap`
+- The kernel **is** the operating system; there is nothing below it to ask
+
+---
+
+## `core` / `alloc` / `std`
+
+<div class="mermaid">
+flowchart TD
+  S["std — requires an OS\nprintln!, HashMap, std::fs, std::thread"]
+  A["alloc — requires a global allocator\nBox, Vec, String, Arc, BTreeMap"]
+  C["core — requires nothing\nOption, Result, slices, iterators, ptr, asm, atomics"]
+  S --> A --> C
+  C --> H["the bare machine"]
+</div>
+
+`std::ptr::write_volatile` **is** `core::ptr::write_volatile`.
+
+---
+
+## Getting `alloc` Back
+
+```rust
+unsafe impl GlobalAlloc for KernelHeap { ... }  // kheap.rs:22
+#[global_allocator]
+static ALLOCATOR: KernelHeap = KernelHeap;      // kheap.rs:40
+extern crate alloc;                             // main.rs:26
+```
+
+- `no_std` does not forbid a heap — it refuses to invent one for you
+- rv6's heap is built on the page allocator you write in exercise 02
+- `HashMap` still never returns: it seeds its hasher from OS entropy
+
+---
+
+## The Skeleton
+
+```rust
+#![no_std]                       // main.rs:1  — drop std, keep core
+#![no_main]                      // main.rs:2  — drop the C-runtime entry shim
+
+#[panic_handler]                 // main.rs:281 — exactly one, returns !
+fn panic(_info: &PanicInfo) -> ! {
+    uart::puts("OSLINGS:FAIL (panic)\n");
+    testdev::exit_failure(1);
+}
+
+#[no_mangle]                     // keep the symbol name verbatim
+pub extern "C" fn kmain() -> ! { ... }   // main.rs:96 — RISC-V C ABI
+```
+
+Entry point comes from the linker script: `ENTRY(_entry)` (`kernel.ld:12`).
+
+---
+
+## Learn the Errors, Not the Incantations
+
+| Omission | What `rustc` says |
+|---|---|
+| no `#![no_std]` | `error[E0463]: can't find crate for std` |
+| no panic handler | `#[panic_handler] function required, but not found` |
+| no `#![no_main]`, has `main` | `using fn main requires the standard library` |
+| no `#![no_main]`, no `main` | `error[E0601]: main function not found in crate` |
+| unwinding enabled | `language item required, but not found: eh_personality` |
+
+---
+
+## Reading the Target Triple
+
+```text
+     riscv64  gc      -unknown  -none    -elf
+        |     |          |        |        |
+        |     |          |        |        +-- bare ELF objects, no libc
+        |     |          |        +----------- OPERATING SYSTEM: none.
+        |     |          |                     You are about to be it.
+        |     |          +-------------------- vendor: unspecified
+        |     +------------------------------- ISA extensions: G and C
+        +-------------------------------------- base ISA: 64-bit RISC-V
+```
+
+Set once in `rv6/.cargo/config.toml:4`.
+
+---
+
+## Decoding `gc`
+
+| Letter | Extension | What it gives you |
+|---|---|---|
+| `I` | base integer | loads, stores, branches, ALU |
+| `M` | mul/div | `mul`, `div`, `rem` |
+| `A` | atomics | `lr`/`sc`, `amoswap` — exercise 07 |
+| `F`, `D` | float/double | plus the `lp64d` ABI |
+| `C` | compressed | 16-bit encodings |
+| `Zicsr` | CSR access | `csrr`/`csrw` — `satp`, `mstatus`, `mepc` |
+| `Zifencei` | `fence.i` | after writing code into memory |
+
+Without **Zicsr** there is no paging, no traps, no privilege transitions.
+
+---
+
+## Ask the Compiler
+
+```bash
+$ rustc --print cfg --target riscv64gc-unknown-none-elf
+panic="abort"
+target_arch="riscv64"
+target_env=""
+target_os="none"
+target_pointer_width="64"
+target_vendor="unknown"
+```
+
+<div class="highlight-box">
+<code>target_os="none"</code> — and no <code>target_family="unix"</code> line at all. No family, no libc, and the target metadata records <code>"std": false</code>.
+</div>
+
+`rustup target add` installs `core` and `alloc`. It cannot install `std`.
+
+---
+
+## Two QEMUs — Only One Works
+
+<div class="info-box">
+<strong>qemu-system-riscv64</strong> emulates a <em>machine</em>: CPU, RAM, UART, timer, PLIC. Your kernel is the only software on it.
+</div>
+
+- `qemu-riscv64` (user mode) emulates a **process** and translates Linux syscalls
+- A `-none-` binary makes no syscalls — nothing to translate
+- It also does not exist on macOS
+- We use `qemu-system-riscv64 ... -bios none -kernel` — *we* are the firmware
+
+---
+
+## Today's Exercises
+
+**r09_unsafe_bridge** — raw pointers, `unsafe`, `.add`, volatile register access, and a safe wrapper. Still `cargo test` on your laptop.
+
+**00_rust_kernel_basics** — two inner attributes and a panic handler; the reward is a binary that compiles for `riscv64gc-unknown-none-elf`. No QEMU yet — booting is L10, on Thursday.
+
+<div class="info-box">
+rv6's <code>unsafe</code> stays concentrated in the allocator, page-table walk, drivers, context switch, and trap path. Before you write it: <strong>name the promise in one sentence.</strong>
+</div>
+
+---
+
+## Summary
+
+1. **Safe Rust is a proof resting on unsafe axioms** — and you write the axioms now
+2. **A raw pointer is an address**; a reference is an address plus enforced claims
+3. **Making one is safe; deref and `.add` are not** — `.add(n)` scales by `size_of::<T>()`
+4. **`unsafe` permits five operations and changes nothing else** — `E0499` still fires
+5. **MMIO without `volatile` is meaningless** — deleted stores, `j` to itself
+6. **`#![no_std]`, `#![no_main]`, `#[panic_handler]`** — and the OS field is `none` because you are about to be it
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

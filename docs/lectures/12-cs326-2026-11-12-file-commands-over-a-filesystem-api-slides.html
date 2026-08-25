@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Commands over a Filesystem API - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 520px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# File Commands over a Filesystem API
+
+## CS 326 Operating Systems
+
+L21 &middot; Week 12 &middot; exercise `17_file_commands`
+
+---
+
+## Learning Objectives
+
+- **Decompose** `touch`, `cat`, `echo >`, `rm`, `rmdir` into filesystem calls
+- **Distinguish** name, directory entry, inode number, inode
+- **Explain** why the call is `unlink`, not `delete` — and derive hard links
+- **Predict** what an open fd sees after its name is removed
+- **Contrast** `>` truncation with `>>` append at the `open`-flag level
+- **Enumerate** what a buffer cache, a journal, and a disk driver each add
+
+---
+
+## Where We Are
+
+- Exercise `10_filesystem`: you built inodes, directory entries, `dirlookup`, `dircreate`, `read`, `write`
+- Exercise `16_shell`: a REPL that moves around — `pwd`, `ls`, `cd`, `mkdir`
+- Today: the shell learns to work on the *contents* of that namespace
+
+<div class="info-box">
+Every command in this session is 3&ndash;5 lines over an API you already wrote. The thinness is the point.
+</div>
+
+---
+
+## The File Life Cycle
+
+<div class="mermaid">
+flowchart LR
+    N["does not exist"] -->|"touch\ndircreate"| E["exists, empty"]
+    E -->|"echo &gt; f\nwrite"| C["exists, has bytes"]
+    C -->|"echo &gt; f again\nwrite (truncating)"| C
+    C -->|"cat f\nread"| C
+    C -->|"rm f\nunlink"| N
+    E -->|"rm f\nunlink"| N
+</div>
+
+**"Open" is not a state.** It creates a per-process handle with its own lifetime.
+
+---
+
+## Each Command Is a Recipe
+
+| Command | Filesystem calls |
+|---|---|
+| `touch f` | `dircreate(dir, f, File)` |
+| `mkdir d` | `dircreate(dir, d, Dir)` |
+| `cat f` | `dirlookup` &rarr; `read` &rarr; `from_utf8` |
+| `echo t > f` | `dirlookup` or `dircreate` &rarr; `write` |
+| `rm f` | `dirlookup` &rarr; `is_dir` &rarr; `unlink` |
+| `rmdir d` | `dirlookup` &rarr; `is_dir` &rarr; `dir_is_empty` &rarr; `unlink` |
+
+`cat` is the only one that cannot change the filesystem — the only handler taking `&self`.
+
+---
+
+## The Whole of `cmd_touch`
+
+```rust
+let dir = self.cwd();
+let mut fsg = FS.lock();
+match fsg.dircreate(dir, name.as_bytes(), InodeKind::File) {
+    Ok(_) => {}
+    Err(FsError::AlreadyExists) => {}   // already there: fine
+    Err(_) => out.puts("touch: cannot create file\n"),
+}
+```
+
+- `shell.rs:131`&ndash;`shell.rs:137`
+- Swallowing `AlreadyExists` is **policy**; `dircreate` only reports the fact
+- Real `touch(1)` also bumps a timestamp — rv6 inodes have none
+
+<div class="highlight-box">
+When client code is this thin, the API underneath is carrying the design. An API whose clients are full of loops and special cases has pushed its complexity outward onto <em>every</em> caller.
+</div>
+
+---
+
+## Names Are Not Files
+
+```text
+  directory inode 1  ("/")          inode table
+                                    +------+------+------+--------------+
+  +-----------------+------+        | inum | kind | size |   contents   |
+  | name            | inum |        +------+------+------+--------------+
+  +-----------------+------+        |  1   | Dir  |  -   | entries[16]  |
+  | "notes.txt"     |  2   |------->|  2   | File |  6   | "hello\n"    |
+  | "docs"          |  3   |------->|  3   | Dir  |  -   | entries[16]  |
+  | (free slot)     |  -   |        |  4   | Free |  -   |              |
+  +-----------------+------+        +------+------+------+--------------+
+
+  the NAME lives here               EVERYTHING ELSE lives here
+```
+
+`fs.rs:30` (`DirEnt`) &middot; `fs.rs:49` (`Inode`) &middot; `fs.rs:113` (`dirlookup`)
+
+---
+
+## What the Split Buys
+
+1. **Renaming is cheap** — sixteen bytes in one directory; the file's bytes never move
+2. **One file, several names** — nothing says an `inum` may appear in only one entry &rarr; **hard links**
+3. **Lookup is a directory's job** — a file does not know where it lives
+
+<div class="info-box">
+This is why <code>mv</code> within a filesystem is instantaneous and <code>mv</code> across filesystems is a copy.
+</div>
+
+---
+
+## The 14-Byte Name Is a Fossil
+
+- `NAMELEN = 14` (`fs.rs:7`) — not arbitrary
+- **V7 Unix**: a directory entry was exactly 16 bytes — 2-byte inum + 14-char name
+- A directory was literally an array you could `read()` like any file
+- xv6 keeps `DIRSIZ = 14`; rv6 inherits it
+- BSD FFS (1984) introduced variable-length entries; ext4/XFS use hashed B-trees
+- rv6's `dirlookup` is O(entries), capped at 16 (`fs.rs:6`)
+
+---
+
+## `rm` Passes the Name, Not the Inum
+
+```rust
+let inum = match fsg.dirlookup(dir, name.as_bytes()) { ... };
+if fsg.is_dir(inum) { out.puts("rm: is a directory\n"); return; }
+let _ = fsg.unlink(dir, name.as_bytes());   // re-scans for the same entry
+```
+
+- Two scans where one would do — a small inefficiency
+- But faithful: **POSIX has no call that removes a file by inode number**
+- The name is where *permission* lives: you need write on the **directory**, not on the file
+
+---
+
+## Why the Call Is `unlink`
+
+`unlink(path)` removes **one directory entry**. That is all it is defined to do.
+
+| Counter | Counts | Lives |
+|---|---|---|
+| `nlink` | directory entries pointing at this inode | on disk, in the inode |
+| ref / `i_count` | open descriptors and in-kernel references | in memory only |
+
+The file is destroyed only when **both** reach zero. xv6: `sys_unlink` decrements `nlink`; `iput` frees the blocks.
+
+---
+
+## rv6 Collapses Both to "Always One"
+
+```rust
+if e.used && e.len == name.len() && &e.name[..e.len] == name {
+    self.inodes[e.inum] = Inode::new();        // free the inode
+    self.inodes[dir].entries[i].used = false;  // free the directory slot
+    return Ok(());
+}
+```
+
+`fs.rs:190`&ndash;`fs.rs:203`
+
+<div class="highlight-box">
+rv6's <code>unlink</code> does what <code>unlink</code> <em>plus</em> <code>iput</code> do together. It assumes one name, zero open references — enforced only by the absence of the features that would break it.
+</div>
+
+---
+
+## Hard Links
+
+`link(old, new)` = add an entry pointing at the existing inum, increment `nlink`.
+
+- **Atomic replace** — pre-`rename(2)`: `link(tmp, target)` then `unlink(tmp)`
+- **Deduplicated trees** — `cp -al` costs entries, not bytes
+- **Directories are forbidden** (except `.` and `..`)
+
+<div class="info-box">
+Why forbid them? Multiply-linked directories make the namespace a <em>cyclic graph</em>: <code>find</code> loops forever and reference counting can never reclaim a cycle. Forbidding them keeps the structure a tree.
+</div>
+
+---
+
+## `cat`: Lookup, Read, Decode, Print
+
+<div class="mermaid">
+sequenceDiagram
+    participant R as shell::run
+    participant E as Shell::exec
+    participant C as cmd_cat
+    participant F as FS spinlock
+    R->>E: exec("cat notes.txt")
+    E->>C: cmd = cat, arg = notes.txt
+    C->>F: lock()
+    C->>F: dirlookup(cwd, notes.txt)
+    F-->>C: Ok(2)
+    C->>F: read(2, buf[0..128])
+    F-->>C: Ok(6)
+    C->>C: str::from_utf8(buf[..6])
+</div>
+
+---
+
+## Three Details in `cat`
+
+- **The buffer is the largest possible file** — `[0u8; fs::FILESIZE]` on the kernel stack (`shell.rs:151`). Only works because `FILESIZE` is a compile-time cap.
+- **The count is the truth** — `n = min(size, buf.len())` (`fs.rs:104`). The buffer's *length* tells you nothing.
+- **Bytes are not text** — `from_utf8` returns a `Result` (`shell.rs:154`). Unix stores byte strings and imposes no encoding.
+
+A real `cat` loops until `read` returns 0 — which is why `read_at` exists (`fs.rs:231`).
+
+---
+
+## `>` Truncates, and Truncates *Early*
+
+- In rv6, truncation is built into `write`: it sets `size = data.len()`, so the old tail is unreachable (`fs.rs:163`&ndash;`fs.rs:164`)
+- On a real system `echo hi > f` is `open("f", O_WRONLY|O_CREAT|O_TRUNC)` — and the shell does that `open` **before it forks the command**
+
+```bash
+sort file.txt > file.txt    # file.txt is now empty
+```
+
+<div class="highlight-box">
+The data was gone before <code>sort</code> ever opened it. No cleverness inside <code>sort</code> can recover it. <code>&gt;&gt;</code> is safe here for the same reason it is safe everywhere.
+</div>
+
+---
+
+## `>>` Is Not "Seek to End, Then Write"
+
+```text
+  A: off = size(f)   -> 100
+  B: off = size(f)   -> 100
+  B: write_at(f, 100, "line from B\n")
+  A: write_at(f, 100, "line from A\n")   <-- B's line is overwritten
+```
+
+- In rv6, `write_at(inum, size(inum), text)` is safe **only** because the `FS` guard spans both calls on one hart
+- `O_APPEND` is an *open flag* so the kernel computes the offset and writes **indivisibly**
+- Same reason `O_APPEND` over NFS is unreliable: atomicity must be enforced where the file lives
+
+---
+
+## `rmdir` Refuses; It Does Not Recurse
+
+1. **Atomicity has to mean something** — deleting 10,000 files cannot be atomic; removing one entry can
+2. **Kernel recursion is unbounded** — depth is attacker-controlled, the stack is 1&ndash;2 pages
+3. **Mechanism, not policy** — symlinks? mount points? prompt? `rm -rf` answers those with flags, in userspace
+4. **The destructive case stays explicit** — `rmdir` cannot destroy data you did not know about
+
+`rm -rf` = a loop over `openat` / `readdir` / `unlinkat` with `AT_REMOVEDIR`.
+
+---
+
+## `dir_is_empty` Means Two Different Things
+
+<div class="info-box">
+<strong>rv6:</strong> no used entries at all (<code>fs.rs:207</code>).<br>
+<strong>xv6 / Linux:</strong> no entries <em>besides</em> <code>.</code> and <code>..</code> — xv6's <code>isdirempty</code> starts its scan at offset <code>2 * sizeof(struct dirent)</code>.
+</div>
+
+- A fresh Unix directory is never "empty" on disk — it has two entries from birth
+- Its `nlink` is 2: its name in the parent, plus its own `.`
+- The parent's `nlink` rises by one for the new `..`
+
+---
+
+## Removing a Name From an Open File
+
+In Linux the name goes immediately; the **data lives until the last descriptor closes**.
+
+- **Private temp files** — `open` then `unlink` at once: storage nobody can name, reclaimed even on a crash (later: `O_TMPFILE`)
+- **`df` vs `du`** — a deleted-but-open log eats disk no path can reach; `lsof +L1` lists them
+- **Safe live upgrades** — replace a running binary; the process keeps the old inode
+
+---
+
+## The rv6 Reallocation Hazard
+
+```text
+  fd 3 = File { inum: 5, off: 0 }        program has /log open
+
+  shell: rm log       -> inodes[5] = Free     fd 3 points at a free inode
+  shell: touch other  -> alloc picks 5 again  fd 3 points at SOMEONE ELSE
+
+  program: read(3, buf) -> returns bytes of "other", silently
+```
+
+- `unlink` frees the inode (`fs.rs:197`); `alloc` is first-fit from `ROOT` (`fs.rs:87`)
+- The first read errors. The read **after reallocation succeeds and is wrong.**
+- With permissions, that is a privilege-escalation vector
+
+<div class="info-box">
+<strong>The fifteen-line fix:</strong> add <code>refs: usize</code> to <code>Inode</code>, bump on open and drop on close, and have <code>unlink</code> free the inode only when <code>refs == 0</code> — otherwise mark it "pending free" so <code>alloc</code> skips it. What every Unix has done since 1973.
+</div>
+
+---
+
+## `.` and `..` in rv6: Syntax
+
+```rust
+".." => { self.stack.pop(); }        // shell.rs:94
+```
+
+- The cwd is a `Vec<(String, usize)>` (`shell.rs:24`)
+- There is **no `..` anywhere in `fs.rs`** — the parent link exists only in the shell's memory
+- Works only because the shell is rv6's sole path walker
+
+---
+
+## `.` and `..` in Unix: Real Entries
+
+- **Path resolution needs no special case** — one loop: split on `/`, `dirlookup` each component
+- **It works from anywhere** — `open("../config")` inside a program that never had a shell
+- **The root's `..` is the root** — makes `cd /../..` terminate, and makes `chroot` a cage
+- **Mount points need it** — Linux's VFS intercepts `..` in `follow_dotdot`
+
+<div class="highlight-box">
+You can intercept a <em>lookup</em>. You cannot intercept <em>syntax</em>.
+</div>
+
+Because `..` is a real link, `cd ..` is ambiguous under symlinks: if `/a/b` &rarr; `/x/y`, the lexical parent is `/a` (bash's `cd -L`) and the physical parent is `/x` (`cd -P`, and every kernel call). rv6 has no symlinks, so its stack agrees with both.
+
+---
+
+## What rv6's Filesystem Does Not Do
+
+```text
+   Linux                    xv6                     rv6
+   ----------------------   ---------------------   ---------------------
+   syscalls                 syscalls                shell command handler
+   VFS + dentry cache       namei / path walk       (shell's cwd stack)
+   ext4 / xfs / btrfs       fs.c inodes+dirents     fs.rs inodes+dirents
+   journal (jbd2)           log.c transactions      -- nothing --
+   page cache               bio.c buffer cache      -- nothing --
+   block layer + elevator   virtio_disk.c           -- nothing --
+   the disk                 the disk                a static array in RAM
+```
+
+`FS` is a `SpinLock<FileSystem>` in `.bss` (`fs.rs:277`): 64 inodes, 128 bytes each, 16 entries each.
+
+---
+
+## No Persistence, No Buffer Cache
+
+**Persistence** would add a block driver, an on-disk superblock, and a serialization of `Inode` into fixed-size records.
+
+**Buffer cache**: rv6 reads inode 2 with one load. On a disk you must read the 1024-byte block containing it — once per lookup is fatal.
+
+- xv6 `bio.c`: 30 buffers, LRU, `bread` / `bwrite` / `brelse`, a sleep-lock each
+- Linux: the unified page cache — why the second read is fast, and why `free` says "buff/cache"
+- And why `fsync(2)` exists: a successful `write` may live only in RAM
+
+<div class="info-box">
+Note what changes about the <em>interface</em> when you add all of this: <strong>nothing</strong>.
+</div>
+
+---
+
+## No Journal: The Two-Store Problem
+
+`unlink` mutates two things — free the inode, clear the entry (`fs.rs:197`&ndash;`fs.rs:198`). On one hart under a spinlock, nothing can interrupt. On a **disk** they are two block writes.
+
+- Crash between them, order A: entry gone, inode still allocated &rarr; **leaked inode**
+- Crash between them, order B: inode freed, entry still points at it &rarr; **dangling entry, corruption**
+- Historical answer: pick the leak, then run `fsck` for an hour
+- Journal: log the intended writes, commit, then perform; replay on reboot
+- xv6 `log.c` wraps each syscall in `begin_op` / `end_op`; ext4 offers `journal` / `ordered` / `writeback`
+
+---
+
+## One Global Lock
+
+- `cmd_cat` takes `FS.lock()` at `shell.rs:143` and holds it across `out.puts` (`shell.rs:155`)
+- Printing a file blocks **all** filesystem activity for the length of a UART transfer
+- Any path from `puts` back into `FS` deadlocks — a spinlock is not reentrant
+- `cmd_cd` drops the guard before `stack.push` (`shell.rs:102`): `push` may take the **heap** lock
+
+<div class="highlight-box">
+Never call out of your subsystem while holding its lock.
+</div>
+
+---
+
+## Key Concepts
+
+| Concept | One line |
+|---|---|
+| Inode | Kind, size, contents. Holds no name. |
+| `inum` | Index into the inode table; the file's identity |
+| Directory entry | (name &rarr; inum) pair inside a directory inode |
+| Hard link | A second entry pointing at an existing inode |
+| `nlink` | Names pointing at an inode; on disk |
+| Reference count | Open descriptors referring to an inode; in memory |
+| Truncating write | Sets size to exactly the bytes written (`>`, `O_TRUNC`) |
+| Append | A write at the current end, computed atomically (`>>`, `O_APPEND`) |
+| Buffer cache | In-RAM copies of recent disk blocks |
+| Journal | On-disk log making a multi-block update crash-atomic |
+
+---
+
+## Summary
+
+1. **Four verbs, one call each.** `dircreate`, `write`, `read`, `unlink` — every command is a 2&ndash;4 line composition
+2. **Thin clients mean a good API.** If your handlers were full of loops, the design error would be in `fs.rs`
+3. **Names and files live in different places.** Cheap renames and multiple names follow from that split
+4. **`unlink` removes a name, not a file.** Real kernels wait for `nlink` *and* the reference count to hit zero
+5. **`>` vs `>>` is one `open` flag**, and append must be atomic in the kernel
+6. **`rmdir` refuses rather than recurses**; `rm -rf` is userspace
+7. **`.` and `..` are entries in Unix, syntax in rv6** — entries are what make `chroot` and mounts work
+8. **Three missing layers** — driver, cache, journal — change the storage and *none* of the interface
+
+---
+
+## Next
+
+- **Friday lab**: `touch`, `cat`, `echo >`, `rm`, `rmdir` &mdash; exercise `17_file_commands`
+- Then: `cd rv6 && cargo run` and use your own shell on your own filesystem
+- **Week 13**: user mode — the trampoline, the trapframe, and the wall between kernel and user
+- **Exercise 20** brings this material back as file *descriptors*, where the reference-count question stops being hypothetical
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering: read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

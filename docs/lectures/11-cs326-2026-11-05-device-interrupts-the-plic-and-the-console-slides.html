@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Interrupts, the PLIC, and the Console - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Device Interrupts, the PLIC, and the Console
+
+## CS 326 Operating Systems
+
+L19 · November 5, 2026 · unlocks `15_console`
+
+---
+
+## Learning Objectives
+
+- **Quantify** polling vs. interrupts for a given device rate
+- **Describe** the PLIC's four register families and compute their addresses
+- **Trace** claim → service → complete, and the failure each omission causes
+- **Explain** why a device interrupt cannot be cleared with a CSR write
+- **Derive** why the console ring buffer needs no lock — and when that breaks
+- **Distinguish** cooked from raw input; locate the line discipline
+
+---
+
+## Two Ways to Find Out Something Happened
+
+Either the CPU **asks** the device, or the device **tells** the CPU.
+
+- That is the whole design space
+- The choice is *quantitative*, not aesthetic
+- Exercise 11 polled the UART; today the UART interrupts us
+- Same pattern for a disk, a NIC, anything memory-mapped
+
+<div class="info-box">
+The timer (ex 14) lives <em>inside</em> the CPU. A keypress does not — it has to be routed.
+</div>
+
+---
+
+## What a Polling Loop Costs
+
+```rust
+loop {
+    if let Some(b) = uart::getc() { handle(b); }   // uart.rs:53
+}
+```
+
+```text
+  bytes to read:      9 per second (90 wpm)
+  time per byte:      ~110 ms
+  poll iterations:    ~1,100,000 per byte received
+  CPU consumed:       100% — the loop is the only thing running
+```
+
+---
+
+## The Same Byte, by Interrupt
+
+- `kernelvec` prologue: 16 stores (`trap.rs:91`–`trap.rs:107`)
+- handler + 3 MMIO accesses (claim, `RBR`, complete)
+- 16 restores, `sret`
+- Round up hard: **1 µs per byte** → 9 µs/s → **0.0009% CPU**
+
+<div class="highlight-box">
+~10<sup>5</sup> cheaper — and the real win is that the CPU can run something else, or halt in <code>wfi</code>.
+</div>
+
+---
+
+## So Why Does rv6 Still Poll to Print?
+
+`uart::putc` spins on `THRE` (`uart.rs:49`) — deliberately.
+
+- Kernel is the *producer*; the device is fast
+- 16-byte TX FIFO (`uart.rs:30`); under QEMU `THRE` is always set
+- Interrupt-driven TX needs a queue + a lock + a TX handler
+- None of that works inside a **panic handler**
+
+xv6 keeps both: buffered `uartputc` **and** polled `uartputc_sync` for `printf`.
+
+---
+
+## The Modern Inversion
+
+| Device rate | Interrupt per event | Polling |
+|---|---|---|
+| 9 bytes/s (you) | 0.0009% CPU | 100% CPU → **interrupt** |
+| 115200 baud TX | queue + lock needed | first test hits → **poll** |
+| 14.88 Mpps NIC | **livelock** | saturates → **poll (NAPI)** |
+
+Both extremes poll. The middle interrupts.
+
+---
+
+## The PLIC
+
+**Platform-Level Interrupt Controller** — descendant of the 8259A PIC, of every APIC and GIC.
+
+- The CLINT is *core-local*: one timer per hart, no routing needed
+- Devices are not: dozens of lines, several harts that could take them
+- The PLIC answers two questions:
+  - **which** pending interrupt is most urgent?
+  - **who** handles it?
+
+---
+
+## Sources and Contexts
+
+- **Source** — a numbered device line, 1..1023 (0 = none). UART = **10** (`plic.rs:14`)
+- **Context** — a (hart, privilege) pair. On `virt`: hart *i* owns `2i` (M) and `2i+1` (S)
+- rv6 is single-hart, supervisor mode → **context 1**
+
+Priority is *global per source*. Enable, threshold, and claim are *per context*.
+
+---
+
+## The Register Map
+
+```text
+  PLIC base = 0x0c00_0000              offset                what rv6 writes
+  ------------------------------------------------------------------------
+  priority[src]        base + 4*src              +0x000028  1     plic.rs:24
+  pending[src/32]      base + 0x1000 + ...       (rv6 never reads it)
+  enable[ctx][src/32]  base + 0x2000 + 0x80*ctx  +0x002080  1<<10 plic.rs:26
+  threshold[ctx]       base + 0x200000 + 0x1000*ctx +0x201000  0  plic.rs:28
+  claim/complete[ctx]  base + 0x200004 + 0x1000*ctx +0x201004     plic.rs:19
+```
+
+`PLIC_SIZE` = 4 MiB (`memlayout.rs:27`); mapped `R|W` at `vm.rs:138`.
+
+---
+
+## Four Registers, Four Different Jobs
+
+| Register | Question it answers | rv6 |
+|---|---|---|
+| `priority[src]` | How urgent is this device? `0` = never | `1` |
+| `enable[ctx]` | May this context *see* the source? | bit 10 |
+| `threshold[ctx]` | How urgent to reach me right now? | `0` |
+| `claim/complete` | Which fired? / I am done. | — |
+
+Delivery needs **all three**: priority > 0, enabled, priority > threshold.
+
+- **Threshold** is the runtime mask; **priority** is the arbitration knob (ties break by *lowest source number*)
+- `priority = 0` silences the source for **every** context; a cleared enable bit, for **one**
+
+<div class="highlight-box">
+They look like three on/off switches. They are three different questions.
+</div>
+
+---
+
+## A Source's Four States
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Inactive
+    Inactive --> Pending: device asserts its line
+    Pending --> Claimed: handler reads claim/complete
+    Claimed --> Inactive: handler writes irq back
+    Claimed --> Claimed: line still asserted — no new delivery
+</div>
+
+---
+
+## The Handler
+
+```rust
+pub fn intr() {
+    let irq = plic::claim();                 // console.rs:70 — which device?
+    if irq == plic::UART0_IRQ {              // console.rs:71
+        while let Some(b) = uart::getc() {   // console.rs:73 — drain the FIFO
+            push(b);                         // console.rs:74 — into the ring
+        }
+    }
+    if irq != 0 {                            // console.rs:78
+        plic::complete(irq);                 // console.rs:79
+    }
+}
+```
+
+Claim → service → complete. Every driver's handler has this shape.
+
+---
+
+## Three Obligations, Three Different Failures
+
+| Omission | Symptom |
+|---|---|
+| never read `RBR` | **interrupt storm** — kernel hangs at 100% CPU |
+| never `complete` | **silent death** — 1st keypress works, then nothing, no error |
+| `complete` first | works, at double the interrupt rate (correct by luck) |
+| `if let` not `while let` | works — *only* because the line is level-triggered |
+
+The first two both give a dead console: one burns all the CPU, one burns none.
+
+---
+
+## You Cannot CSR Your Way Out
+
+- Timer tick: clear `sip.SSIP` yourself (`trap.rs:62`–`trap.rs:63`)
+- Device interrupt: **`sip.SEIP` is read-only** to S-mode
+
+<div class="info-box">
+<code>SEIP</code> is a wire from the PLIC. The only way to make it go low is to satisfy the PLIC — read the device, then complete.
+</div>
+
+Also: `claim()` can return `0`. A handler must survive being called for no reason (`console.rs:78`).
+
+---
+
+## Nine Gates Between a Keypress and Your Code
+
+<div class="mermaid">
+flowchart LR
+    K["keypress"] --> G1["1 · IER bit 0\nuart.rs:37"]
+    G1 --> G2["2 · priority>0\nplic.rs:24"]
+    G2 --> G3["3 · enable bit 10\nplic.rs:26"]
+    G3 --> G4["4 · > threshold\nplic.rs:28"]
+    G4 --> G5["5 · mideleg bit 9\nstart.rs:40"]
+    G5 --> G6["6 · sie.SEIE\nconsole.rs:63"]
+    G6 --> G7["7 · sstatus.SIE\ntrap.rs:41"]
+    G7 --> G8["8 · stvec\ntrap.rs:35"]
+    G8 --> G9["9 · PLIC mapped\nvm.rs:138"]
+    G9 --> H["console::intr"]
+</div>
+
+---
+
+## Which Gate Is Closed?
+
+Symptom: prints fine, ticks climb, typing does nothing, no panic.
+
+- Ruled out: **7, 8** (ticks arrive), **5** (`mideleg` is one write), **9** (would page-fault)
+- Suspect: **1** (`IER` still `0x00`), **2–4** (`plic::init` not run), **6** (`sie.SEIE`)
+- All three are set by `console::init` (`console.rs:58`)
+
+<div class="highlight-box">
+Order your hypotheses by how much they explain: check that <code>console::init</code> ran at all.
+</div>
+
+---
+
+## Top Half, Bottom Half
+
+`console::intr` does not parse, echo, or block. It moves bytes and gets out.
+
+- With a trap in progress, `sstatus.SIE` is **clear** — every other device waits
+- Do the minimum the hardware demands; think later, at normal priority
+- Linux: hardirq vs. softirq / threaded IRQ. rv6: `intr` pushes, the shell pops
+
+---
+
+## The Ring Buffer
+
+```rust
+static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];  // console.rs:13
+static mut HEAD: usize = 0;  // next index the consumer reads
+static mut TAIL: usize = 0;  // next index the producer writes
+```
+
+- Counters, **not** offsets — `% BUF_LEN` at the point of use
+- Full test: `tail.wrapping_sub(head) < BUF_LEN` (`console.rs:22`)
+- `HEAD == TAIL` is the *only* empty condition — no full/empty ambiguity
+
+---
+
+## Ring Trace (BUF_LEN = 4)
+
+```text
+  action        BUF                HEAD  TAIL   note
+  ------------------------------------------------------------
+  push 'a'..'d' [ a  b  c  d ]      0     4     full
+  push 'e'      [ a  b  c  d ]      0     4     DROPPED
+  getc -> 'a'   [ a  b  c  d ]      1     4
+  getc -> 'b'   [ a  b  c  d ]      2     4
+  push 'f'      [ f  b  c  d ]      2     5     4 % 4 == 0, wraps
+  getc -> 'c','d','f'               5     5     empty again
+```
+
+Overflow drops the **newest** byte — it preserves the line already in flight.
+
+---
+
+## Why There Is No Lock
+
+- One producer (the handler), one consumer (the shell), **one hart**
+- Consumer writes only `HEAD`, after copying the byte out
+- Producer writes only `TAIL`, after storing the byte
+- A stale read errs safely: "empty, wait" or "full, drop"
+
+<div class="highlight-box">
+On two harts it collapses: store ordering is no longer guaranteed, and handler and reader run <em>concurrently</em>. xv6 uses a spinlock.
+</div>
+
+---
+
+## `wfi` Is Not a Busy-Wait
+
+```rust
+pub fn getc() -> u8 {              // console.rs:47
+    loop {
+        if let Some(b) = try_getc() { return b; }
+        unsafe { asm!("wfi") };    // halt until an interrupt
+    }
+}
+```
+
+- One pass per interrupt, not a million per second — an idle prompt costs nothing
+- With processes, this becomes `sleep` (xv6's `consoleread`)
+- Trap: `wfi` with interrupts **off** halts a hart nothing will wake (`syscall.rs:488`)
+
+---
+
+## The Terminal Is a Dumb Pipe
+
+```bash
+stty -echo      # type: nothing appears — the shell is still running
+stty echo
+```
+
+- Your emulator does **not** echo; it sends bytes and displays what comes back
+- The loop closes inside the kernel — which is why ssh typing lags on a bad link
+
+<div class="highlight-box">
+Cooked input is a <strong>kernel service</strong>, not a terminal feature.
+</div>
+
+---
+
+## The Line Discipline: Four Jobs
+
+```text
+  you type:   l   s   DEL   a   Enter(0x0d)
+
+  echo      → "l" "s" "\x08 \x08" "a" "\n"    shell.rs:352, 360, 367
+  erase     → line.pop() removes the 's'      shell.rs:359
+  translate → 0x0d and 0x0a both end a line   shell.rs:351
+  delimit   → release the line to exec()      shell.rs:353
+
+  the reader gets:  "la"
+```
+
+Erase takes three bytes: backspace, space, backspace.
+
+---
+
+## Fossils in the Byte Stream
+
+- Enter sends **`\r` (0x0d)**, not `\n` — carriage return and line feed were two
+  physical motions on a teletype
+- Backspace is **`0x7f` (DEL)** on VT100-family terminals, **`0x08` (BS)** elsewhere —
+  `shell.rs:357` accepts both
+- `ESC [ A` is the Up arrow: three bytes, and rv6 reassembles none of them
+
+---
+
+## Cooked vs. Raw
+
+| Job | Canonical ("cooked") | Raw |
+|---|---|---|
+| echo | kernel (`ECHO`) | program |
+| erase / kill | kernel (`VERASE`, `VKILL`) | program |
+| `read` returns | at a newline | at one byte |
+| `^C`, `^D` | signal / EOF (`ISIG`) | bytes `0x03`, `0x04` |
+| `\r` → `\n` | kernel (`ICRNL`) | untouched |
+
+`vi`, `less`, and every game clear `ICANON` + `ECHO` and do all four jobs themselves.
+
+---
+
+## Where Does It Live?
+
+| System | Location |
+|---|---|
+| rv6 | in the **reader** — `shell.rs:349`–`shell.rs:371`, no tty layer |
+| xv6 | in the **interrupt handler** — `consoleintr`, with an edit index `cons.e` |
+| Linux | a **pluggable** line discipline — `drivers/tty/n_tty.c` |
+
+xv6's ring holds *edited* text, so every program gets cooked input free.
+rv6's holds raw bytes — Module 3's `read(0, ...)` returns **one byte**.
+
+---
+
+## The Whole Path
+
+<div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant You
+    participant U as UART
+    participant P as PLIC
+    participant C as kernelvec
+    participant I as console::intr
+    participant S as shell
+
+    S->>C: wfi — buffer empty
+    You->>U: 'l' arrives, LSR.DR = 1
+    U->>P: assert IRQ 10
+    P->>C: sip.SEIP → scause 9
+    C->>I: kerneltrap (trap.rs:69)
+    I->>P: claim() → 10
+    I->>U: read RBR, DR clears
+    I->>I: push into ring (TAIL+1)
+    I->>P: complete(10)
+    C->>S: sret; wfi returns
+    S->>U: try_getc + echo putc('l')
+    U->>You: 'l' on screen
+</div>
+
+---
+
+## Module 2 Is Finished
+
+Seven weeks, one missing function at a time:
+
+boot → allocator → page tables → processes → context switch → scheduler → locks →
+filesystem → devices → traps → interrupts → **console**
+
+- From here you *receive* the finished kernel and **extend** it
+- Nobody starts a kernel; everybody reads one
+- Next: shell, user mode, syscalls, `exec`, fds, `fork`/`wait`
+
+---
+
+## Today's Exercise: `15_console`
+
+One function — `console::intr` — in the shape you have now seen three times.
+
+1. `plic::claim()` — which device?
+2. drain the UART into the ring buffer
+3. `plic::complete(irq)` — release the gateway
+
+```bash
+oslings run 15_console
+cd rv6 && cargo run      # then type. Ctrl-A X to quit.
+```
+
+Read `plic.rs` and the ring buffer in `console.rs` first.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            // Render Mermaid diagrams after Reveal is ready
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // CS 326: robust mermaid rendering — read decoded textContent (undo any
+        // HTML-entity escaping from the markdown pipeline) and wait for web fonts
+        // so text measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

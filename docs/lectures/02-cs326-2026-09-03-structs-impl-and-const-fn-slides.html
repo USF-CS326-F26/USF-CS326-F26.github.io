@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structs, impl, and const fn - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 520px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# Building Your Own Types
+
+## CS 326 Operating Systems
+
+Structs, `impl`, `const fn`, and Enums &middot; L04
+
+---
+
+## Learning Objectives
+
+- Define a struct and give it behaviour in an `impl` block
+- Distinguish a method from an associated function; `&self` vs `&mut self` vs `self`
+- Explain why the **newtype** pattern catches bugs a `typedef` cannot
+- Evaluate a `const fn` by hand and name the contexts that force it
+- Predict layout under `repr(Rust)`, `#[repr(C)]`, `#[repr(transparent)]`
+- Argue that `match` exhaustiveness is a **safety property**, not syntax
+
+---
+
+## A Kernel Written in Integers
+
+From the rv6 reference kernel, `vm.rs:73`:
+
+```rust
+pub unsafe fn mappages(table: *mut Pte, va: usize, size: usize,
+                       pa: usize, perm: usize) -> Result<(), ()>
+```
+
+- Four of five parameters are `usize`
+- A virtual address, a byte count, a physical address, permission bits — all 64 bits
+- Swap `va` and `pa`: compiles, links, boots, **maps the wrong page**
+
+<div class="highlight-box">
+The symptom surfaces far from the transposed argument that caused it.
+</div>
+
+---
+
+## `typedef` Is Not a Type
+
+```c
+typedef uint64 pte_t;          /* xv6: an entry   */
+typedef uint64 *pagetable_t;   /* 512 of them     */
+```
+
+- `pte_t` and `uint64` are interchangeable in **every** expression
+- Rust's `type Pte = u64;` is equally powerless — also an alias
+
+<div class="info-box">
+An <strong>alias</strong> renames a type and changes nothing the compiler checks.
+A <strong>newtype</strong> is a one-field struct: a different type, the same bits.
+</div>
+
+Linux goes further: `phys_addr_t`, `pfn_t`, `pgprot_t`, `pid_t`.
+
+---
+
+## Structs: Naming a Bundle
+
+```rust
+pub struct MemRegion { pub start: usize, pub end: usize }
+
+let ram = MemRegion { start: 0x8000_0000, end: 0x8800_0000 };
+```
+
+- `pub` on the struct exports the type; `pub` on a field exports access
+- Private fields are how a module stops the rest of the kernel corrupting its data
+- A **product type**: a `MemRegion` is a `start` *and* an `end`
+- In memory: a contiguous block. No header, no vtable, no allocation
+
+`size_of::<Pte>() == 8`, so `size_of::<[Pte; 512]>() == 4096` — one page.
+
+---
+
+## The Process Control Block
+
+`Proc` (`proc.rs:27`) — everything the kernel knows about one process
+
+| Field | Type | What it is |
+|---|---|---|
+| `state` | `ProcState` | Unused / Runnable / Running / Sleeping / Zombie |
+| `pid` | `usize` | The id user code sees |
+| `pagetable` | `*mut Pte` | Root of its Sv39 page table |
+| `context` | `Context` | 14 saved registers, **by value** |
+| `ofile` | `[File; 16]` | fd *n* is `ofile[n]` |
+
+`static mut PROCS: [Proc; 64]` — no `malloc`, no free list. Allocating a process
+means finding a slot whose `state` is `Unused`.
+
+---
+
+## `impl`: Methods and Associated Functions
+
+```rust
+impl MemRegion {
+    pub fn contains(&self, addr: usize) -> bool {          // method
+        addr >= self.start && addr < self.end
+    }
+    pub fn of_pages(start: usize, pages: usize) -> Self {  // associated fn
+        MemRegion { start, end: start + pages * PAGE_SIZE }
+    }
+}
+```
+
+- `self` receiver &rarr; **method**, called with `.`
+- No receiver &rarr; **associated function**, called with `::`
+- No `constructor` keyword: `Proc::new()`, `Context::zero()`, `File::console()`
+
+---
+
+## The Three Selves
+
+| Receiver | Means | Caller keeps it? | Use when |
+|---|---|---|---|
+| `&self` | Shared borrow | Yes | Reading; many may coexist |
+| `&mut self` | Unique borrow | Yes | Mutating; excludes all other access |
+| `self` | By value | Only if `Copy` | Consuming, or a small `Copy` type |
+
+<div class="info-box">
+While a <code>&amp;mut self</code> method runs, the borrow checker guarantees
+<strong>no other reference to that value exists anywhere</strong>.
+</div>
+
+---
+
+## Why `flags(self)` Needs `Copy`
+
+```rust
+#[derive(Clone, Copy)]                       // vm.rs:26
+pub struct Pte(pub usize);
+
+pub const fn flags(self) -> usize { self.0 & 0x3ff }     // vm.rs:36
+pub const fn is_valid(self) -> bool { self.flags() & PTE_V != 0 }
+```
+
+- By-value `self` is a **move** unless the type is `Copy`
+- Without `Copy`, `entry.flags()` consumes `entry` &rarr; **E0382**
+- `Copy` does not make copying cheap; it makes assignment stop *moving*
+
+Derive it on `Pte`, `File`, `Context`, `ProcState`. Never on anything owning a resource.
+
+---
+
+## The Newtype Pattern
+
+```rust
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct Pte(pub usize);          // vm.rs:25
+```
+
+- A one-field tuple struct; reach the value by position, `self.0`
+- At runtime a `Pte` **is** its `usize`: same size, alignment, register, instructions
+- Everything you buy is at compile time
+
+The cost: `pte + 1` is a type error until you write a method. That is the point.
+
+---
+
+## What the Newtype Catches
+
+The Sv39 walk, `vm.rs:52`:
+
+```rust
+if (*pte).is_valid() {
+    table = (*pte).pa() as *mut Pte;   // the entry's PPN *is* the next table
+}
+```
+
+- The value changes meaning mid-line: entry in, address out
+- Every paging bug lives near a line like this one
+- With a distinct type, the one deliberate reinterpretation is an explicit cast you can grep for
+
+---
+
+## The Sv39 Entry
+
+```text
+ 63      54 53                                            10 9         0
++----------+------------------------------------------------+-----------+
+| reserved |      PPN - physical page number (44 bits)       |   flags   |
++----------+------------------------------------------------+-----------+
+                                                              9 8 7 6 5 4 3 2 1 0
+                                                              RSW  D A G U X W R V
+
+  V valid  R readable  W writable  X executable  U user-mode
+  G global  A accessed  D dirty    RSW software-defined
+```
+
+The PPN is the address with its low 12 bits removed — a page is 2^12 bytes, so a
+page's base address always ends in twelve zero bits. Building an entry is
+`Pte(((pa >> 12) << 10) | flags)` (`vm.rs:31`): for `0x8000_0000` with `V|R|W`,
+`>> 12` gives `0x8_0000`, `<< 10` gives `0x2000_0000`, `| 0b111` gives
+**`0x2000_0007`**. Reading back is the same shifts reversed; flags are `word & 0x3ff`.
+
+---
+
+## `#[repr(transparent)]`
+
+- Promises the wrapper has the **exact** layout and ABI of the field inside
+- 512 entries &times; 8 bytes = **4096 bytes**: no tag, no padding
+- That is what makes `[Pte; 512]` a genuine hardware page table
+
+<div class="highlight-box">
+A RISC-V page table is <em>defined</em> as one 4096-byte page of 512 eight-byte
+entries. Any other size and the array is not a page table.
+</div>
+
+Add a `bool` field: struct pads to 16 bytes, array becomes two pages, MMU reads
+every second slot as garbage.
+
+---
+
+## `const fn`
+
+```rust
+const ROOT: Pte = Pte::new(0x8000_5000, PTE_V);
+```
+
+- The compiler runs `Pte::new` itself: `>> 12` &rarr; `0x8_0005`, `<< 10` &rarr; `0x2000_1400`, `| 1`
+- The literal `0x2000_1401` is baked into the image; no shift instruction exists
+- `const` only **adds** an ability — `vm.rs:66` calls the same function at run time
+
+---
+
+## Compile Time or Run Time
+
+<div class="mermaid">
+flowchart LR
+    A["Pte::new(0x8000_5000, PTE_V)"] --> B{"const context?"}
+    B -- "yes: const / static / array len" --> C["const-eval in the compiler"]
+    C --> D["literal 0x2000_1401 in the image"]
+    B -- "no" --> E["code generation"]
+    E --> F["srli / slli / or at run time"]
+</div>
+
+---
+
+## Why a Kernel Needs It
+
+```rust
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65
+```
+
+- 64 PCBs, each with a 14-field `Context` and a 16-entry file table — fully initialised
+- At the kernel's first Rust function: no heap, no allocator, nothing to run a loop
+- C has static initializers, but they cannot call a function &rarr; a pile of `xxx_init()`
+- C++ answered with `constexpr` (2011); Rust's `const fn` stabilised in 2018
+
+`[const { ... }; N]` because the plain repeat form needs `Copy`, and `Proc` is not.
+
+---
+
+## Const Contexts and Limits
+
+| Context | Example |
+|---|---|
+| `const` / `static` item | `static mut PROCS: [Proc; 64] = ...;` |
+| Array length | `[u8; PGSIZE]` |
+| Array repeat | `[const { File::none() }; NOFILE]` |
+| Enum discriminant | `Valid = 1 << 0` |
+
+**Allowed inside:** arithmetic, comparisons, `if`, `match`, `loop`, other `const fn`s
+
+**Not allowed:** allocation, non-`const` calls, raw-pointer deref (stable) — which
+is why `walk` and `mappages` are ordinary functions
+
+---
+
+## `repr(Rust)` Promises Nothing
+
+```rust
+#[repr(C)] struct A { flags: u8, addr: u64, count: u16 }   // 24 bytes
+           struct B { flags: u8, addr: u64, count: u16 }   // may be 16
+```
+
+- Not field order, not padding, not that two identical declarations agree
+- The compiler may sort fields to minimise padding, and does
+- For pure Rust data, that reordering is a free win
+
+`#[repr(C)]` gives it up: source order, C alignment rules. Needed when something
+that is **not the Rust compiler** reads the bytes.
+
+---
+
+## `Context` and the Assembly That Indexes It
+
+```text
+        Context  (Rust, #[repr(C)])     swtch  (asm; a0=old, a1=new)
+offset  +--------------------------+
+   0    | ra   return address      | <-->  sd ra,  0(a0)   /  ld ra,  0(a1)
+   8    | sp   stack pointer       | <-->  sd sp,  8(a0)   /  ld sp,  8(a1)
+  16    | s0                       | <-->  sd s0,  16(a0)  /  ld s0,  16(a1)
+  ...   |  ...                     |
+ 104    | s11                      | <-->  sd s11, 104(a0) /  ld s11, 104(a1)
+        +--------------------------+       112 bytes = 14 x 8
+```
+
+`swtch.rs:5` declares it; `swtch.rs:51` reads it. The contract is field *i* at offset 8*i*.
+
+---
+
+## The Silent Failure
+
+<div class="highlight-box">
+Delete <code>#[repr(C)]</code> from <code>Context</code> and <strong>nothing breaks in the build</strong>.
+The assembly is still valid; it may store the return address into whatever field
+now sits at offset 0.
+</div>
+
+- First symptom: a jump to a garbage address on the next context switch
+- Worse: all 14 fields are `usize`, so today's compiler probably keeps the order
+- The bug is not that it breaks — it is that nothing **promises** it will not
+
+Same argument for `Trapframe` (`usermode.rs:33`): `sd sp, 48(a0)` matches `pub sp: u64, // 48`.
+
+---
+
+## The Representations
+
+| Attribute | Guarantee | rv6 uses it for |
+|---|---|---|
+| `repr(Rust)` | None; optimise freely | Everything internal |
+| `#[repr(C)]` | Source order, C alignment | `Context`, `Trapframe`, `Run` |
+| `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs:25`) |
+| `#[repr(packed)]` | No padding at all | Nothing — refs to unaligned fields are UB |
+| `#[repr(u8)]` | Fixed discriminant width | Enums crossing an ABI boundary |
+
+---
+
+## Enums: Exactly One of These
+
+```rust
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ProcState { Unused, Runnable, Running, Sleeping, Zombie }   // proc.rs:19
+```
+
+- A **sum type**: five values in total, not five valid values out of four billion
+- There is no `ProcState` equal to 47
+
+xv6 writes it as a C `enum` — an `int` in a costume. `p->state = 47;` compiles,
+runs, means nothing. And nothing tells you which `switch` needs revisiting when a
+sixth state arrives. Both have shipped as real kernel bugs.
+
+---
+
+## The Type, Drawn
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Unused
+    Unused --> Runnable: allocproc claims a slot
+    Runnable --> Running: scheduler picks it
+    Running --> Runnable: timer preempts
+    Running --> Sleeping: blocks on a channel
+    Sleeping --> Runnable: wakeup on that channel
+    Running --> Zombie: exit(status)
+    Zombie --> Unused: parent wait() reaps it
+</div>
+
+Every arrow a legal transition; every missing arrow a move the kernel must refuse.
+
+---
+
+## Variants That Carry Data
+
+```rust
+pub enum RunOutcome {          // usermode.rs:193
+    Exited(isize),             // the root process finished, with this status
+    Faulted(usize),            // something illegal happened; scause says what
+    TimedOut,                  // a watchdog gave up
+}
+```
+
+- One value answers two questions: how the run ended, and with what
+- A C API needs an `int`, an out-parameter, and a convention about which is valid
+- Here the pairing is enforced: a `Faulted` has no exit status to reach
+- In memory: a discriminant plus the largest payload (`RunOutcome` is 16 bytes)
+
+---
+
+## `Option<T>`: No Null
+
+```rust
+enum Option<T> { Some(T), None }        // just a library enum
+```
+
+- Hoare put null in ALGOL W in 1965; in 2009 he called it his billion-dollar mistake
+- The problem is not absence — it is that an absent value has the **same type** as a present one
+- `Option<File>` and `File` are different types, so the compiler can insist
+
+`getfile -> Option<File>` (`syscall.rs:312`); `pick_next -> Option<usize>`
+(`sched.rs:6`), where `None` means "nothing is runnable". Below the safe layer,
+`kalloc()` still hands back a raw pointer that may be null.
+
+---
+
+## `match` and Exhaustiveness
+
+```rust
+let ticks = match state {
+    ProcState::Unused                        => 0,
+    ProcState::Runnable | ProcState::Running => 1,
+    ProcState::Sleeping { .. }               => 2,
+    ProcState::Zombie { exit_status }        => exit_status,
+};
+```
+
+Delete an arm: `error[E0004]: non-exhaustive patterns`.
+
+<div class="info-box">
+Read backwards, that error is the point: add a variant and the compiler lists
+<strong>every place in the kernel that now needs a decision</strong>, by file and
+line, before the kernel boots.
+</div>
+
+---
+
+## The `_` Trap
+
+- `_` switches the check off **forever** — a catch-all covers variants that do not exist yet
+- rv6 uses it twice, and both are right:
+
+```rust
+match num { SYS_FORK => sys_fork(), /* ... */ _ => -1 }   // syscall.rs:44
+match scause & 0xff { 1 => tick(), 9 => intr(), _ => {} } // trap.rs:71
+```
+
+Both match a raw integer from **outside** the kernel — a user program's syscall
+number, hardware's interrupt cause. The domain is genuinely open.
+
+<div class="highlight-box">
+The rule: <code>_</code> for open domains, never for closed ones you defined yourself.
+</div>
+
+---
+
+## Match Guards
+
+```rust
+let file = match getfile(p, fd) {          // syscall.rs:472
+    Some(f) if f.readable => f,
+    _ => return -1,
+};
+```
+
+- "There is an open file here **and** it is readable"
+- When the guard fails, matching **continues with the next arm**
+- A write-only fd falls through to `_` and the read returns -1 — Unix semantics
+- Guarded arms **do not count** toward exhaustiveness: you still need a fallback
+
+Guards compose with tuple patterns: `match (state, event)`.
+
+---
+
+## Summary
+
+1. **A kernel written only in integers cannot be checked** — give the compiler types
+2. **Structs are product types with zero overhead** — contiguous fields, nothing else
+3. **The receiver is an ownership decision** — `&self`, `&mut self`, `self` (+ `Copy`)
+4. **The newtype is free at run time, load-bearing at compile time**
+5. **`const fn` moves arithmetic into the compiler** — statics that exist before any code runs
+6. **`#[repr(C)]` turns layout into a contract** — silent at build time, fatal at run time
+7. **Exhaustive `match` makes the compiler review your changes** — unless you wrote `_`
+
+---
+
+## Today's Exercises
+
+- **`r04_structs_impl`** — `MemRegion`, and a working `Pte` with `new` / `pa` / `flags`
+- **`r05_enums_match`** — a process state machine from an enum, a `match`, and an `Option`
+
+```sh
+oslings run r04_structs_impl
+oslings watch          # re-runs on every save
+oslings hint           # when stuck
+```
+
+Both run under `cargo test` on your laptop — no QEMU, no kernel. **Read the tests
+at the bottom of `warmup/src/lib.rs` first: they are the contract.**
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does not
+        // yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>exec, File Descriptors, and fork - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# `exec`, File Descriptors, and `fork`
+
+## CS 326 Operating Systems
+
+L24 · December 1, 2026 · exercises `19_exec`, `20_file_descriptors`
+
+---
+
+## Learning Objectives
+
+- Explain why `exec` **replaces** the caller instead of creating a process
+- Draw the `argv` layout `exec` builds, and compute its addresses
+- Trace the four products of `exec`: page table, image, stack, entry state
+- Describe a file descriptor as an **unforgeable capability**
+- Distinguish the per-process fd table from the system-wide open-file table
+- Explain why `fork` returns twice, and why that one difference is the API
+
+---
+
+## Where We Left Off
+
+rv6 today can boot, allocate pages, build Sv39 page tables, keep a process
+table, switch contexts, take traps, and **service one `ecall`**. Three facts
+from that path do all of today's work:
+
+- **The trapframe is a writable description of where a process resumes** —
+  change `epc`, `sp`, or `a0` (`usermode.rs:34`)
+- **The kernel reaches user memory only via `copyin`/`copyout`**, which refuse
+  any page without `PTE_U` (`vm.rs:257`)
+- **A never-run process can still be scheduled** — `ready` forges a context
+  landing at `forkret` (`usermode.rs:245`)
+
+<div class="highlight-box">
+What is missing is <strong>plurality</strong>: one program, no arguments, no files, no second process.
+</div>
+
+---
+
+## The `ecall` Round Trip (recap)
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as User program
+    participant T as Trampoline
+    participant K as usertrap
+    U->>T: ecall  (a7 = number, a0..a2 = args)
+    T->>T: save 31 regs to TRAPFRAME, switch satp
+    T->>K: jump to usertrap
+    K->>K: epc += 4, then dispatch(a7, a0, a1, a2)
+    K->>T: usertrapret: restore satp and regs
+    T->>U: sret  (a0 = return value)
+</div>
+
+---
+
+## `exec`: A Call That Never Returns
+
+- On success there is nothing to return *to* — the caller's program is gone;
+  the C prototype's `int` is meaningful only on failure
+
+```c
+execv("/bin/cat", argv);
+perror("exec");        /* reached only if exec failed — no `if` needed */
+```
+
+- Unix splits "start a program" in two: **`fork`** makes the process, **`exec`**
+  replaces the program inside one
+- In the gap the child is an ordinary process with the parent's privileges, and
+  everything it arranges — redirection, closing descriptors, `chdir`, dropping
+  privileges — is **inherited** by the program `exec` loads
+
+<div class="info-box">
+<strong>Key distinction:</strong> <code>fork</code> answers "who runs it", <code>exec</code> answers "what runs". "In what environment" becomes ordinary code written between them.
+</div>
+
+---
+
+## The Alternative: One Big Spawn Call
+
+| API | What it takes |
+|---|---|
+| Windows `CreateProcess` | 10 parameters + `STARTUPINFO` (~18 fields) |
+| POSIX `posix_spawn` | a *file-actions object* + an *attributes object* |
+| Unix `fork` + `exec` | two calls and ordinary code in between |
+
+<div class="highlight-box">
+A spawn call must enumerate every adjustment in advance; the window needs zero parameters, because it is not an API — it is a place to run code. <strong>Thursday: the counting argument in full.</strong>
+</div>
+
+---
+
+## Four Things `exec` Must Produce
+
+| Product | Reference kernel |
+|---|---|
+| A fresh address space (trampoline + trapframe only) | `exec.rs:648`–`exec.rs:682` |
+| The loaded image, `R+X+U`, any number of pages | `vm::load_segment` (`vm.rs:196`) |
+| A stack: one page, `R+W+U`, fixed address | `vm::map_user_stack` (`vm.rs:239`) |
+| Entry state: `epc`, `sp`, `a0`, `a1` | `exec.rs:703`–`exec.rs:706` |
+
+Everything else — pid, kernel stack, parent, **open files** — is untouched.
+Descriptors survive `exec` by never being mentioned.
+
+---
+
+## The World `exec` Builds
+
+```text
+ 0x3F_FFFF_F000  TRAMPOLINE  uservec / userret     R X    (no U!)
+ 0x3F_FFFF_E000  TRAPFRAME   31 saved registers    R W    (no U!)
+                 ... unmapped ...
+ 0x0001_1000     <- initial sp
+ 0x0001_0000     stack page  argv strings + array  R W U
+                 ... unmapped guard gap ...
+ 0x0000_1000     image page 1                      R X U
+ 0x0000_0000     image page 0  <- epc starts here  R X U
+```
+
+- Fixed stack address above the largest image: the gap is a **feature**
+- No `PTE_U` on trampoline/trapframe: the wall holds
+
+---
+
+## Loading: Three Details Worth Knowing
+
+- **Loop, don't assume one page.** `load_segment` allocates, zeroes, copies,
+  maps — once per page (`vm.rs:196`)
+- **Zero the tail.** ELF's `p_memsz > p_filesz` gap is `.bss`; a loader that
+  skips it ships globals full of the previous owner's bytes (`vm.rs:220`)
+- **`fence.i`.** You just wrote *instructions* through the data path; RISC-V
+  does not promise the fetch stream sees your stores (`vm.rs:232`)
+
+<div class="highlight-box">
+x86 makes that last one automatic. RISC-V does not. Every loader and JIT needs the fence.
+</div>
+
+---
+
+## `argv` on the Stack: `run echo hello world`
+
+`a0 = argc`, `a1 = argv` — exactly `int main(int argc, char **argv)`. It must
+live in memory the *program* can read, so `exec` writes it out with `copyout`
+before the program runs (`exec.rs:781`).
+
+```text
+ 0x11000  ---- top of the stack page ----
+ 0x10FF8  "echo\0"                  <- uargv[0]
+ 0x10FF0  "hello\0"                 <- uargv[1]
+ 0x10FE8  "world\0"                 <- uargv[2]
+ 0x10FD8  0x0000000000000000        <- argv[3] = NULL
+ 0x10FD0  0x0000000000010FE8        <- argv[2] -> "world"
+ 0x10FC8  0x0000000000010FF0        <- argv[1] -> "hello"
+ 0x10FC0  0x0000000000010FF8        <- argv[0] -> "echo"
+          ^ sp on entry, and a1 = argv.   a0 = argc = 3.
+```
+
+---
+
+## Five Things About That Picture
+
+1. **Strings first, array second** — push order follows data dependency
+2. **Every stored pointer is a user virtual address**, not a kernel one
+3. **`argv[argc]` is NULL** — C carries no lengths, so a sentinel ends the list
+4. **Alignment is required**: strings on 8, the array and `sp` on 16
+   (RISC-V ABI)
+5. **`argv[0]` is a convention nobody checks** — busybox picks its applet from
+   it; login shells get `-sh`
+
+Real Unix pushes more: `envp`, then Linux's ELF auxiliary vector
+(`AT_RANDOM`, the vDSO, ...).
+
+---
+
+## Pointing the Trapframe
+
+```rust
+let tf = (*p).trapframe;
+(*tf).epc = USER_CODE as u64;   // start at the first instruction
+(*tf).sp  = built.sp as u64;    // on the new stack
+(*tf).a0  = built.argc as u64;  // argc
+(*tf).a1  = built.argv as u64;  // argv
+```
+
+<div class="info-box">
+The kernel never "jumps to" user code. It <strong>manufactures a return</strong>: paperwork for a trap that never happened, then the return path. Same trick as the forged context in L14, one level up.
+</div>
+
+---
+
+## Failure Atomicity
+
+A failed `exec` must leave the caller running.
+
+1. build the **whole** new address space
+2. swap the page-table pointer
+3. only now free the old one (`exec.rs:754`–`exec.rs:762`)
+
+- Safe to free user memory mid-syscall **because the kernel runs on the kernel
+  page table** — you never free the ground you stand on
+- Real Unix: past `flush_old_exec` there is no caller left to fail to, so every
+  resource must be committed before that line
+
+---
+
+## File Descriptors: A Small Integer
+
+- The entire representation is a small non-negative integer
+- Cheap in a register, cheap to inherit, and **meaningless outside the process
+  holding it**
+- fd `n` is `(*p).ofile[n]` — an index into a table the kernel owns
+  (`proc.rs:39`)
+- `open` grants one, `close` returns one, `read`/`write` use one
+
+<div class="highlight-box">
+Think <strong>capability</strong>: an unforgeable token that names a resource <em>and</em> confers the right to use it.
+</div>
+
+---
+
+## Why "Unforgeable" Holds
+
+Every use is revalidated:
+
+| Check | Where |
+|---|---|
+| `fd < NOFILE` | `getfile` (`syscall.rs:312`) |
+| slot is actually open (`kind != None`) | `getfile` (`syscall.rs:312`) |
+| `f.readable` / `f.writable` | `sys_read` / `sys_write` (`syscall.rs:472`, `:521`) |
+| the user's buffer pointer has `PTE_U` | `walkaddr` (`vm.rs:257`) |
+
+Authority is **granted** (by `open`) or **inherited** (by `fork`/`exec`) —
+never manufactured. Contrast **ambient authority**: pass a path and let the
+kernel re-derive permission from your identity.
+
+<div class="info-box">
+Path-based access is where TOCTOU races live. Descriptor-based access is why <code>openat</code>, Capsicum, and Linux's <code>pidfd</code> exist: replace "name it again" with "hold a handle to it". And unforgeable is not untransferable — <code>SCM_RIGHTS</code> passes a descriptor over a socket, through the kernel.
+</div>
+
+---
+
+## Two Tables, Not One
+
+<div class="mermaid">
+flowchart LR
+    subgraph A["Process A fd table"]
+      A1["1"]; A3["3"]
+    end
+    subgraph B["Process B fd table (child)"]
+      B1["1"]; B3["3"]
+    end
+    subgraph OFT["System-wide open-file table"]
+      F1["description 1\noff, mode, ref=2"]
+      F2["description 2\noff, mode, ref=2"]
+    end
+    subgraph I["Inode table"]
+      N1["console"]; N2["notes.txt"]
+    end
+    A1 --> F1
+    B1 --> F1
+    A3 --> F2
+    B3 --> F2
+    F1 --> N1
+    F2 --> N2
+</div>
+
+---
+
+## The Offset Lives in the Middle Table
+
+- **Two `open`s of one file** get two descriptions, so two offsets
+- **`dup(fd)`** copies the fd-table *pointer*: both share one offset — this is
+  how `dup2` implements redirection
+- **`fork`** copies the fd table, so parent and child **share** offsets
+
+```bash
+( echo a; echo b ) > f     # two lines, not one overwriting the other
+```
+
+<div class="highlight-box">
+Put the offset in the per-process table and every one of those breaks — quietly, and only under concurrency.
+</div>
+
+---
+
+## What rv6 Collapses
+
+| | rv6 | xv6 / Linux |
+|---|---|---|
+| fd table entry | a `File` **by value** (`proc.rs:39`) | pointer to a shared description |
+| where `off` lives | per process (`file.rs:45`) | in the shared description |
+| `fork` | copies the `File`s — offsets diverge | copies pointers — offsets shared |
+| `dup` | not implemented | shares the offset |
+| `close` | zeroes the slot (`syscall.rs:573`) | drops a reference |
+
+You should be able to state the resulting bug: a forked child *overwrites*
+where Unix would *append*.
+
+---
+
+## Reference Counting: When Is a File Closed?
+
+- A file is really closed when its **last** descriptor closes, not its first
+- `unlink` removes a **name**, not a file: with a descriptor still open the
+  data survives with no path to it
+
+```bash
+rm huge.log          # server still holds it open
+df                   # ...and the space is still gone
+lsof +L1             # there it is: deleted, still open
+```
+
+rv6 has no counter because it has no sharing — add `dup` and the counter must
+land in the same commit.
+
+---
+
+## fds 0, 1, 2: Convention, Not Rule
+
+- `allocproc` opens all three on the console (`proc.rs:128`–`proc.rs:130`)
+- There is no `if fd == 1` anywhere in the kernel
+
+```text
+close(1);                 /* fd 1 is now the lowest free slot */
+open("out", O_WRONLY);    /* therefore this returns 1         */
+exec("cat", argv);        /* cat writes to fd 1 = the file    */
+```
+
+"Lowest available descriptor" is a POSIX **guarantee**, not an optimisation —
+`fdalloc` scans from 0 (`syscall.rs:295`).
+
+---
+
+## Everything Is a File
+
+- `sys_read`/`sys_write` branch on `file.kind`; console bytes to the UART,
+  inode bytes through `read_at`/`write_at` at the offset
+- **The branch is in the kernel. The caller never branches.**
+- `cat` (`exec.rs:188`) works over a file, a console, a pipe, a socket
+
+The seams: `ioctl` (the escape hatch), seeking on a pipe, `select`/`poll`/
+`epoll`. Plan 9 pushed harder; Linux drifted back with `signalfd`, `timerfd`,
+`eventfd`, `pidfd`, `memfd`.
+
+---
+
+## `fork`: The Call That Returns Twice
+
+<div class="mermaid">
+flowchart TD
+    P["parent calls fork()"] --> K["kernel: allocproc, uvmcopy,\ncopy trapframe, child a0 = 0"]
+    K --> R1["parent returns a0 = child pid"]
+    K --> R2["child returns a0 = 0"]
+    R1 --> B1["takes the else branch"]
+    R2 --> B2["same code, takes the if branch"]
+</div>
+
+---
+
+## The One Line That Matters
+
+```rust
+*(*child).trapframe = core::ptr::read((*parent).trapframe);
+(*(*child).trapframe).a0 = 0;   // the child's fork() returns 0
+```
+
+- Copying the trapframe copies the entire **resumption point**: pc, sp, all 31
+  registers — the child starts mid-syscall and returns from it
+- `usertrap` did `epc += 4` **before** dispatch (`usermode.rs:401`)
+
+<div class="highlight-box">
+Increment after dispatch instead and the child resumes <em>on</em> the <code>ecall</code> and forks again, and again. A fork bomb from four bytes of arithmetic in the wrong order.
+</div>
+
+---
+
+## Copied, Shared, or New?
+
+| Aspect | rv6 | Unix |
+|---|---|---|
+| Address space contents | copied eagerly (`vm.rs:403`) | copy-on-write |
+| fd table | copied **by value** (`syscall.rs:107`) | table copied, **descriptions shared** |
+| Working directory | n/a (all paths in `ROOT`) | copied |
+| Kernel stack, trapframe page | new | new |
+| pid, parent | new | new |
+
+Memory copied so the child cannot corrupt the parent; descriptions shared so
+redirection composes. Swap them and both break.
+
+---
+
+## Why the Return Value *Is* the API
+
+- Two processes, identical code, identical instruction, identical memory
+- The difference must live in something they do **not** share: the return
+  register
+- Parent needs the pid anyway (to `wait`); child needs *some* value, and 0 is
+  never a valid pid
+
+<div class="info-box">
+One register, two facts, no extra call. The alternatives — compare <code>getpid()</code>, or write a flag to memory — need a second syscall or memory that is no longer shared.
+</div>
+
+---
+
+## The Cost of a Copy
+
+`uvmcopy` copies every user page eagerly — and `exec` usually throws it all
+away moments later.
+
+1. **`vfork`** (1979): copy nothing, borrow the parent's address space, suspend
+   the parent. Fast, and a loaded gun.
+2. **Copy-on-write**: map read-only into both, share frames, copy on the first
+   write fault. `fork` becomes O(PTEs), not O(memory).
+3. **`posix_spawn`**: skip the round trip entirely.
+
+`fork` + threads is worse: only the calling thread survives, so another
+thread's mutex stays locked forever. (Baumann et al., *A fork() in the Road*,
+HotOS 2019.)
+
+---
+
+## `fork` + `exec` + `wait` = a Shell
+
+<div class="mermaid">
+sequenceDiagram
+    participant S as sh (user mode)
+    participant K as kernel
+    participant C as child
+    S->>K: read(0, buf, 1) x N
+    S->>K: fork()
+    K-->>S: child pid
+    K-->>C: 0
+    C->>K: exec("cat", argv)
+    Note over C: same pid, same fds,<br/>different program
+    C->>K: exit(0)
+    S->>K: wait(and status)
+    K-->>S: pid, status
+</div>
+
+---
+
+## Summary
+
+1. **`exec` replaces, `fork` creates** — and the gap between them is the design
+2. **`exec` produces four things**: page table, image, stack, entry state
+3. **`argv` is a layout**: strings high, NULL-terminated pointer array below,
+   `sp` = `a1`, 16-byte aligned
+4. **Build, swap, then free** — a failed `exec` must leave the caller running
+5. **An fd is an unforgeable capability**, revalidated on every use
+6. **The offset lives in the shared open-file description** — that is what
+   `dup` and inherited descriptors are for
+7. **fds 0/1/2 are convention**; redirection is arranging the table first
+8. **`fork` returns twice**, and that one difference is the whole API
+
+---
+
+## rv6's Shell, and Today's Work
+
+- `exec.rs:354` is that loop in assembly: prompt, read fd 0 to newline, split
+  into `argv`, `fork` (`:439`), `exec` in the child (`:444`), `wait` (`:454`) —
+  unprivileged, user mode, nothing but system calls. That is `22_userland`.
+- **`19_exec`** — `load_segment`, then `build_process`
+- **`20_file_descriptors`** — `fdalloc`, `sys_open`, `sys_read`
+
+```bash
+oslings run 19_exec
+oslings watch
+cd rv6 && cargo run     # then: run echo hello world
+```
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

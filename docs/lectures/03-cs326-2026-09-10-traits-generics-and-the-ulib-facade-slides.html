@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traits, Generics, and the ulib Façade - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Traits, Generics, and the `ulib` Façade
+
+## CS 326 Operating Systems
+
+L06 &middot; Thursday, September 10, 2026 &middot; unlocks `r07_traits`, `r08_errors`
+
+---
+
+## Learning Objectives
+
+- Explain why a `no_std` kernel cannot rely on a language runtime
+- Define a trait and implement one for several unrelated types
+- Write generic functions with trait bounds; choose `impl Trait` vs `dyn Trait`
+- Describe **monomorphization** and predict how many copies are emitted
+- Distinguish `Option` (absence) from `Result` (failure), and use `?` and `From`
+- Derive why `#[cfg(target_os = "none")]` beats a Cargo feature
+
+---
+
+## Abstraction Without a Runtime
+
+A **runtime** is code shipped with your program that does work you never wrote &mdash; Java's collector and interface dispatch tables, Go's goroutine scheduler, C's `crt0` and dynamic loader. A kernel has **none** of it, because a kernel *is* what everything else runs on.
+
+C has no interfaces, so every serious project hand-builds one:
+
+```c
+struct file_operations {          /* Linux, ~30 function pointers */
+    ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+    int     (*open) (struct inode *, struct file *);
+    /* ... every filesystem fills this in ... */
+};
+```
+
+It checks **nothing**: a null slot, the wrong slot, a pointer to the wrong struct &mdash; compile-time-detectable mistakes that C detects at 3 a.m.
+
+---
+
+## Two Problems, One Shape
+
+<div class="mermaid">
+flowchart LR
+    subgraph callers["Written once"]
+        L1["scheduler loop\nsched.pick_next(states)"]
+        L2["shell command\nout.puts(text)"]
+    end
+    subgraph impls["Chosen later"]
+        R1["RoundRobin"]
+        P1["Priority"]
+        C1["ConsoleOut to UART"]
+        B1["BufOut to test buffer"]
+    end
+    L1 -->|"Scheduler"| R1
+    L1 -->|"Scheduler"| P1
+    L2 -->|"Out"| C1
+    L2 -->|"Out"| B1
+</div>
+
+*Code that must call a method without knowing the type it is calling it on.*
+
+---
+
+## A Trait Is a Contract
+
+```rust
+pub trait Out {
+    fn puts(&mut self, s: &str);      // required method
+}
+```
+
+- Signature + semicolon = **required**: no `impl` is complete without it
+- A trait holds **no data**; you can never build a value of one
+- It is a statement *about* types, not a type
+
+Real code: `shell.rs:17` in the reference kernel.
+
+---
+
+## Implementing It &mdash; and What It Is Not
+
+```rust
+struct ConsoleOut;                    // unit struct: zero bytes
+
+impl Out for ConsoleOut {
+    fn puts(&mut self, s: &str) { uart::puts(s); }
+}
+```
+
+- A *different* block from plain `impl Type`; all required methods or the compiler names the one you missed
+- **Not a base class**: no inheritance, no shared fields, no constructor
+- `ConsoleOut` and a test buffer are related only by having answered the same question
+
+<div class="highlight-box">
+Nothing in <code>Out</code> says "buffer" or "device". It says: <strong>can be handed a <code>&amp;str</code></strong>.
+</div>
+
+---
+
+## Default Methods
+
+```rust
+pub trait Out {
+    fn write_str(&mut self, s: &str);          // required
+
+    fn write_line(&mut self, s: &str) {        // default
+        self.write_str(s);
+        self.write_str("\n");
+    }
+}
+```
+
+`write_line` calls `write_str` on a `self` whose type is **not yet known** &mdash; implementers that do not exist yet also get this body.
+
+A fifth output sink costs zero lines of newline handling.
+
+---
+
+## Generics, and the Bound That Saves Them
+
+Inside `fn shout<T>(v: T)` you can do **nothing** with `v` &mdash; not print it, compare it, or call a method on it. `T` could be a `u8`, a `[Proc; 64]`, or a closure, and one body must be correct for all of them.
+
+```rust
+pub fn log_all<O: Out>(out: &mut O, lines: &[&str]) {
+    for line in lines {
+        out.write_line(line);          // legal: the bound proves it exists
+    }
+}
+```
+
+<div class="highlight-box">
+The bound is a contract in <strong>both</strong> directions: to the body, exactly what it may assume; to the caller, exactly what it must prove. "No method named <code>write_line</code> found for type parameter <code>O</code>" means you forgot it.
+</div>
+
+---
+
+## Four Spellings, Three Meanings
+
+```rust
+fn log_all<O: Out>(out: &mut O, lines: &[&str]);          // inline bound
+fn log_all<O>(out: &mut O, lines: &[&str]) where O: Out;  // where clause
+fn log_all(out: &mut impl Out, lines: &[&str]);           // impl Trait
+fn log_all(out: &mut dyn Out, lines: &[&str]);            // dyn Trait
+```
+
+- 1, 2, 3 compile to **identical code**
+- `where` when the bound list crowds out the signature
+- `impl Trait` when the parameter is needed once and never named
+- 4 is a different thing entirely
+
+---
+
+## Monomorphization
+
+```text
+ one source function       what the compiler emits
+ ───────────────────       ───────────────────────
+ fn trace<S: Scheduler,  ┌──> trace::<RoundRobin, StringOut>
+          O: Out>        │      RoundRobin::pick_next  (direct)
+                         │      StringOut::write_str   (inlined)
+ used with               ├──> trace::<Priority, StringOut>
+  (RoundRobin,StringOut) │      Priority::pick_next    (direct)
+  (Priority,  StringOut) │      StringOut::write_str   (inlined)
+  (Priority,  CountingOut)──>  trace::<Priority, CountingOut>
+ 3 combinations used,           Priority::pick_next    (direct)
+ so 3 copies, not 2 x 2 = 4.    CountingOut::write_str (inlined)
+```
+
+**Static dispatch**: no trait, no lookup, no pointer chasing &mdash; only the combinations actually used are instantiated.
+
+<div class="info-box">
+The abstraction is not cheap, it is <em>gone</em> &mdash; which is what makes a trait usable on a kernel's scheduling path. The price is paid in <strong>code size</strong>.
+</div>
+
+---
+
+## `dyn Trait` and the Vtable
+
+```text
+ let out: &mut dyn Out = &mut ConsoleOut;   // FAT POINTER: 2 words
+
+  ┌───────────────┬────────────────┐
+  │ data pointer  │ vtable pointer │
+  └──────┬────────┴───────┬────────┘
+         v                v
+  ┌──────────────┐  ┌──────────────────────────────┐
+  │ ConsoleOut   │  │ [0] drop_in_place -> no-op   │
+  │ (zero bytes) │  │ [1] size = 0  [2] align = 1  │
+  └──────────────┘  │ [3] puts -> ConsoleOut::puts │
+                    └──────────────────────────────┘
+
+  out.puts("hi")  =>  ld t0, 8(a0)   # vtable pointer
+                      ld t0, 24(t0)  # puts slot
+                      jalr t0        # indirect: nothing inlines
+```
+
+---
+
+## Choosing Between Them
+
+| | `impl Trait` / `<T: Trait>` | `dyn Trait` |
+|---|---|---|
+| Dispatch | compile time | one indirect call |
+| Inlining | yes | no |
+| Code size | one copy per type used | one copy total |
+| Pointer | one word | two words (fat) |
+| Mixed storage | impossible | `Vec<Box<dyn Trait>>` |
+
+The last row decides most cases. Neither is the "advanced" one.
+
+---
+
+## rv6 #1: the `Scheduler` Trait
+
+```rust
+// sched.rs:5 — exercise 06
+pub trait Scheduler {
+    fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
+}
+```
+
+*Policy* (which process runs) is separated from *mechanism* (how the CPU is handed over &mdash; hand-written assembly you touch once).
+
+`RoundRobin` at `sched.rs:20` keeps a rotation cursor; a `Priority` policy keeps a table. The loop never changes.
+
+---
+
+## Three Decisions, and the Lineage
+
+- **`&mut self`** &mdash; a policy may remember something between calls (the rotation cursor); a stateless one ignores it
+- **`&[ProcState]`, not `&mut [Proc]`** &mdash; the policy cannot mark a process running, free one, or touch a page table
+- **`Option<usize>`** &mdash; "nothing is runnable" is an ordinary answer, so it gets a *value*, not an error and not a panic
+
+| System | How policy is expressed |
+|---|---|
+| **xv6** | round-robin scan hardcoded inline in `scheduler()` |
+| **Linux** | `struct sched_class` &mdash; function pointers per scheduler |
+| **rv6** | `trait Scheduler` &mdash; the same design, checked by the compiler |
+
+---
+
+## rv6 #2: the `Out` Trait
+
+```rust
+// shell.rs:17 / :334 / :345
+pub trait Out { fn puts(&mut self, s: &str); }
+
+struct ConsoleOut;
+impl Out for ConsoleOut { fn puts(&mut self, s: &str) { uart::puts(s) } }
+
+let mut out = ConsoleOut;        // the test substitutes a buffer here
+sh.exec(&line, &mut out);        // exec takes &mut dyn Out
+```
+
+Not a mock, not a test-only path: the commands were **always** written against `Out`, so the test runs the same instructions the real machine will.
+
+---
+
+## Errors: a Kernel Cannot Throw
+
+- **Nothing to unwind into** &mdash; mid-trap, privilege level and stack have already switched; the "caller" is a program in another address space that never heard of Rust
+- **Nobody to catch** &mdash; unwinding needs a personality routine and DWARF tables; `no_std` has neither, and rv6 sets `panic = "abort"`
+- **Stopping is not an option** &mdash; an unhandled exception kills a process; in an OS it kills the machine
+
+<div class="highlight-box">
+So failure travels the way every other answer travels: <strong>as a return value</strong>.
+</div>
+
+---
+
+## `Option` for Absence, `Result` for Failure
+
+```rust
+enum Option<T>    { Some(T), None }
+enum Result<T, E> { Ok(T),   Err(E) }
+```
+
+- `None` says *nothing happened* &mdash; and nothing has gone wrong
+- `Err(FsError::NameTooLong)` says *what* went wrong, so the caller can decide
+- `Result` is `#[must_use]`: ignoring one is a compiler warning
+
+`.ok_or(e)` is the bridge, and the line where the **policy** lives:
+`lookup(name).ok_or(ExecError::NotFound)?` &mdash; `exec.rs:649`
+
+---
+
+## Your Own Error Type
+
+```rust
+// fs.rs:19
+pub enum FsError {
+    NotFound,     AlreadyExists,  NotADirectory,  IsADirectory,
+    NoFreeInode,  DirFull,        NameTooLong,    FileTooBig,
+}
+```
+
+- The caller `match`es a *named* failure, not an integer
+- `shell.rs:135`: `touch` treats `AlreadyExists` as success
+- Grow the enum later and every `match` needing a new decision stops compiling
+
+---
+
+## `?` and Its Desugaring
+
+```rust
+let inum = fsg.dirlookup(dir, name)?;
+
+// means exactly:
+match fsg.dirlookup(dir, name) {
+    Ok(v)  => v,
+    Err(e) => return Err(From::from(e)),
+}
+```
+
+`From::from` &mdash; the error is **converted** on the way out. Same types? Free: the blanket `impl<T> From<T> for T` is the identity.
+
+Works only inside a function that itself returns `Result` or `Option`.
+
+---
+
+## `From`: the Joint Between Layers
+
+```rust
+pub enum ShellError { Fs(FsError), Exec(ExecError), BadArgs }
+
+impl From<FsError> for ShellError {
+    fn from(e: FsError) -> ShellError { ShellError::Fs(e) }
+}
+```
+
+Now one function may `?` on `Result<_, FsError>` **and** `Result<_, ExecError>`, with no visible conversion.
+
+Written once per error-type *pair*, not per call site. Direction is fixed: specific inner error &rarr; general outer one.
+
+---
+
+## Where a `Result` Becomes a Number
+
+```text
+  layer                      type it speaks in          what it can say
+  ─────────────────────────────────────────────────────────────────────
+  cat.rs (user program)      Result<usize,ulib::Error>  Error(-1)
+  ulib::read    lib.rs:104   isize, read out of a0      -1
+  ══ trap boundary ══ one register, no types, another address space ══
+  sys_read      syscall.rs:468  isize                   -1   <- cause lost
+  FS.read_at    fs.rs:231    Result<usize, FsError>     IsADirectory, ...
+  dirlookup     fs.rs:109    Result<usize, FsError>     NotFound
+```
+
+The collapse belongs in **one** place: the boundary. Everything behind it speaks `FsError`.
+
+---
+
+## `ulib`: the Design Problem
+
+- Week 3: you write `cat.rs` on a laptop; `cargo test` grades it
+- December: you have a RISC-V kernel with files, fds, `exec`, user mode
+- Goal: the **same source file** &mdash; same bytes, not a port &mdash; runs on both
+
+The two environments share nothing:
+
+| | laptop | rv6 |
+|---|---|---|
+| `read` | libc &rarr; macOS/Linux | `ecall`, number in `a7` |
+| `std` | yes | no |
+| heap | yes | no |
+
+---
+
+## One Seam, Two Backends
+
+<div class="mermaid">
+flowchart TD
+    SRC["commands/src/bin/cat.rs\none file, zero cfg attributes"]
+    SRC --> U["ulib\nread / write / open / close / exit"]
+    U --> C{"target_os == none ?"}
+    C -->|no| H["sys/host.rs\nstd::fs, std::io,\nor a capture buffer"]
+    C -->|yes| R["sys/rv6.rs\necall, a7 = syscall number"]
+    H --> HOST["cargo test, week 3"]
+    R --> K["your rv6 kernel, December"]
+</div>
+
+---
+
+## The Whole Mechanism
+
+```rust
+// ulib/src/sys/mod.rs
+#[cfg(target_os = "none")]
+mod rv6;
+#[cfg(target_os = "none")]
+pub(crate) use rv6::*;
+
+#[cfg(not(target_os = "none"))]
+mod host;
+#[cfg(not(target_os = "none"))]
+pub(crate) use host::*;
+```
+
+Both backends expose the same five functions, so `lib.rs` above them has **no `#[cfg]` at all**. Your command file has none either &mdash; two lines of ceremony (`cat.rs:15`, `cat.rs:19`).
+
+---
+
+## Why Not a Cargo Feature?
+
+- `target_os` is **derived** from `--target`: one source of truth, cannot disagree with the machine you are building for
+- **Forget** `--features rv6` on a RISC-V build &rarr; a wall of `std`, `panic_handler`, `eh_personality` errors that never say "you forgot a feature"
+- **Set it wrongly** on the host &rarr; a program that runs `ecall` on macOS, from a build that warned about nothing
+- Features are **additive and unified**: one crate enabling `ulib/rv6` enables it everywhere in the graph
+
+<div class="highlight-box">
+Features add capabilities. They do not choose between alternatives.
+</div>
+
+---
+
+## Testing Through the Seam
+
+```rust
+let out = testing::run_with_files(
+    &["cat", "a.txt"],
+    &[("a.txt", b"hello\nworld\n")],
+    super::run,
+);
+assert_eq!(out.out(), "hello\nworld\n");
+```
+
+`testing::run` (`testing.rs:28`) diverts writes into a thread-local capture buffer and calls your `run` directly &mdash; no process spawned, no temp files, and **byte-identical source** to what will run on rv6.
+
+---
+
+## Summary
+
+1. **No runtime** &mdash; every abstraction is assembled at compile time
+2. **Trait** = named contract; required methods plus free default methods
+3. **Bound** = what the body may assume and the caller must prove
+4. **Monomorphization** = one copy per combination used; calls direct and inlined
+5. **`dyn`** = one indirect call, one copy, and the ability to *store* the thing
+6. **Failure is a value**: `Option` for absence, `Result` for failure, `?` + `From` to propagate
+7. **`ulib`** = one seam, two backends, chosen by `#[cfg(target_os = "none")]`
+
+---
+
+## Today's Work Block
+
+**`r07_traits`** &mdash; build both kernel abstractions: `Out` with two sinks, `Scheduler` with two policies, and one generic function driving every combination.
+
+**`r08_errors`** &mdash; a tiny filesystem: `find` (absence), `lookup` (failure), `read`, `read_file` chained with `?`, and the boundary that turns it all into one integer.
+
+```bash
+oslings run r07_traits
+oslings watch          # re-runs on every save
+oslings hint           # when stuck
+```
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undoing any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

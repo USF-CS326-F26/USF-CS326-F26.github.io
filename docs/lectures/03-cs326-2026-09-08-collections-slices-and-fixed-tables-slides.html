@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arrays, Slices, Vec, and Fixed Tables - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Arrays, Slices, `Vec`, and Fixed Tables
+
+## CS 326 Operating Systems
+
+L05 &middot; September 8, 2026 &middot; exercise `r06_collections`
+
+---
+
+## Learning Objectives
+
+- Distinguish `[T; N]`, `&[T]`, `&mut [T]`, and `Vec<T>` by where the bytes live
+- Describe a slice as a two-word fat pointer, and why `[T]` cannot stand alone
+- Explain what a bounds check compiles to and what it costs
+- Choose the right indexing form for an **untrusted** index
+- Trace adapter chains: `iter`, `iter_mut`, `enumerate`, `position`, `find`, `map`
+- Justify rv6's fixed `[Proc; NPROC]` from boot order, the fault path, and failure semantics
+
+---
+
+## The Question
+
+A program keeps N values of one type.
+
+**Where do the bytes go, and who is responsible for them?**
+
+Three interesting answers, and Rust gives each its own type:
+
+| Type | Slogan |
+|---|---|
+| `[T; N]` | the values **are** the variable |
+| `Vec<T>` | the variable **owns** the values |
+| `&[T]` | the variable **points at** the values |
+
+---
+
+## `[T; N]` — the array
+
+```rust
+let a: [u32; 4] = [10, 20, 30, 40];   // list the elements
+let b = [0u32; 4];                     // repeat one value
+```
+
+- N is part of the **type**: `[u32; 4]` and `[u32; 5]` are different types
+- No array ever changes length
+- `size_of::<[u32; 4]>() == 16`, known before the program runs
+- A `static` array lives in `.bss`; the linker fixes its address
+
+<div class="info-box">
+Nothing has to <em>run</em> for a static array to exist. That is most of today's argument.
+</div>
+
+---
+
+## `Vec<T>` — the growable one
+
+Three machine words on the stack, elements on the **heap**:
+
+```text
++-------+-------+-------+
+|  ptr  | len=4 | cap=8 |   24 bytes
++-------+-------+-------+
+    |
+    v  heap: allocated at run time, freed when the Vec drops
++----+----+----+----+----+----+----+----+
+| 10 | 20 | 30 | 40 | ?? | ?? | ?? | ?? |
++----+----+----+----+----+----+----+----+
+```
+
+- `push` past `cap`: allocate bigger, copy, free the old block
+- Amortised O(1) — but any single `push` may be slow, **and may fail**
+
+---
+
+## `&[T]` — the slice
+
+A borrowed window onto elements somebody else owns.
+
+```text
+&[u32]   (16 bytes)
++-------------------+-------------------+
+| ptr -> first elem |  len = 3          |
++-------------------+-------------------+
+```
+
+- No capacity: a slice cannot grow
+- No ownership: it allocated nothing, it frees nothing
+- Borrow rules from `r03` apply: `&[T]` shared, `&mut [T]` exclusive
+
+---
+
+## All Three, Same Four Numbers
+
+```text
+  [u32; 4]  — the values ARE the variable
+  +----+----+----+----+
+  | 10 | 20 | 30 | 40 |      stack or .bss, size fixed at compile time
+  +----+----+----+----+
+   ^
+   |  &arr[1..3]
+   |  +-------+-------+
+   +--|  ptr  | len=2 |      a slice: borrows the middle two
+      +-------+-------+
+
+  Vec<u32> — the variable POINTS AT the values
+  +-------+-------+-------+
+  |  ptr  | len=4 | cap=8 |  24 bytes on the stack, elements on the heap
+  +-------+-------+-------+
+```
+
+---
+
+## A Slice Is a Fat Pointer
+
+`[T]` is **unsized** — legal type, but you can never hold one. Only behind a
+pointer: `&[T]`, `&mut [T]`, `Box<[T]>`.
+
+```rust
+core::mem::size_of::<&u32>()      // 8   thin
+core::mem::size_of::<&[u32]>()    // 16  fat: address + length
+core::mem::size_of::<&[u32; 4]>() // 8   thin: the 4 is in the type
+```
+
+<div class="highlight-box">
+<code>&amp;[u32; 4]</code> needs no run-time length — it is a compile-time fact.
+<code>&amp;[u32]</code> could point at 3 elements or 3 million.
+</div>
+
+---
+
+## Making Slices
+
+Given `let buf = [0u8; 512];` — `&buf[..]`, `&buf[..n]`, `&buf[n..]`,
+`&buf[a..b]`, `&mut buf[..n]`.
+
+rv6's `wc` writes the important one:
+
+```rust
+let n = ulib::read(fd, &mut buf)?;   // wc.rs:36
+for &b in &buf[..n] { ... }          // wc.rs:40
+```
+
+- `read` fills part of a 512-byte buffer and returns how much
+- `&buf[..n]` is the prefix that holds real data
+- Iterating `&buf` would count 512 stale bytes every time
+
+---
+
+## Slices Are the Interface
+
+```rust
+pub trait Scheduler {
+    fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
+}
+```
+
+`sched.rs:6`
+
+- The policy never learns how big the process table is — it reads `states.len()`
+- Change `NPROC` from 64 to 8: the scheduler cannot be wrong about it
+- Caller builds `[ProcState; NPROC]` and passes `&states` (`usermode.rs:285`, `:290`)
+
+**Rule:** `&[T]` to read, `&mut [T]` to write; concrete types only when you must own or must know N.
+
+---
+
+## What `table[i]` Compiles To
+
+```asm
+    # let x = table[i];   table in a0, i in a1, len 8
+    li      t0, 8
+    bgeu    a1, t0, .Lpanic   # unsigned: is i >= len ?
+    slli    t1, a1, 3         # i * 8 bytes per element
+    add     t1, a0, t1
+    ld      a2, 0(t1)         # the actual load
+```
+
+- Unsigned compare catches negative indices too — both ends, one instruction
+- Never-taken branch: predicted perfectly
+- Most checks are **deleted**: `for x in table.iter()` emits none
+
+---
+
+## Three Ways to Index
+
+| Form | On a bad index | Use when |
+|---|---|---|
+| `table[i]` | panics | `i` is yours and provably in range |
+| `table.get(i)` | returns `None` | out-of-range is a normal outcome |
+| `get_unchecked(i)` | undefined behaviour | essentially never here |
+
+And a fourth, for kernels: **check it yourself at the boundary**, once, then
+index freely downstream.
+
+---
+
+## Boundary Validation
+
+```rust
+unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {
+    if fd >= NOFILE {          // syscall.rs:313
+        return None;
+    }
+    let f = (*p).ofile[fd];
+    ...
+}
+```
+
+<div class="highlight-box">
+A panic in the kernel is not a failed test. The handler prints and <strong>halts the
+machine</strong> — so a user program that can panic the kernel with a bad system-call
+argument owns a denial of service.
+</div>
+
+---
+
+## What C Does Instead
+
+No check. `table[99]` on an 8-element array computes an address and uses it.
+
+- Root of a large share of the security bugs of the last forty years
+- 1988 Morris worm: `gets` into a fixed buffer in `fingerd`
+- CWE-787 "out-of-bounds write" is still in the CWE top five
+
+<div class="info-box">
+The bounds check is cheap insurance. The deeper lesson is <code>getfile</code>'s:
+know where untrusted numbers enter, and check them there.
+</div>
+
+---
+
+## Iterating: Three Doors
+
+| You write | Each item is | Afterwards |
+|---|---|---|
+| `table.iter()` | `&T` — read only | untouched |
+| `table.iter_mut()` | `&mut T` — assign with `*s = ...` | modified in place |
+| `table.into_iter()` | `T` — moved out | consumed |
+
+Which one you *may* use is decided by your signature, not by preference: a
+function that took `&[T]` cannot call `iter_mut`.
+
+---
+
+## `enumerate`: Which Slot?
+
+```rust
+for (index, slot) in table.iter().enumerate() {
+    if *slot == Some(pid) {
+        return Some(index);
+    }
+}
+```
+
+- Kernel tables care about *where* a thing is as much as what it is
+- `enumerate` counts from 0 regardless of what it counts
+- On `table[3..].iter().enumerate()` the count is **not** the table index — classic off-by-three
+
+---
+
+## The Adapters Worth Knowing
+
+| Adapter | Yields | Kernel use |
+|---|---|---|
+| `enumerate()` | `(usize, T)` | find which slot |
+| `position(f)` | `Option<usize>` | index of first match |
+| `find(f)` | `Option<T>` | first matching item |
+| `any(f)` / `all(f)` | `bool` | "is any process runnable?" |
+| `filter(f)` / `map(f)` | items | walk live slots, project a field |
+| `count()` | `usize` | how many slots are free |
+| `collect()` | a container | **allocates** — host code only |
+
+---
+
+## One Real Chain
+
+```rust
+fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
+    let n = states.len();
+    (0..n)
+        .map(|off| (self.next + off) % n)
+        .find(|&i| states[i] == ProcState::Runnable)
+        .map(|i| { self.next = (i + 1) % n; i })
+}
+```
+
+`sched.rs:20` — consider `n` offsets, wrap from where we left off, take the
+first runnable, remember to resume after it.
+
+**Lazy:** `map` computes one index per `find` request; `find` stops on success.
+No intermediate list, no allocation — the compiled code is a hand-written loop.
+
+---
+
+## The Line This Session Aims At
+
+```rust
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65
+pub const NPROC: usize = 64;                                        // param.rs:7
+```
+
+Sixty-four slots, decided when the kernel is compiled. Never sixty-five.
+
+<div class="highlight-box">
+In ordinary Rust this looks like a beginner's mistake — surely a growable
+<code>Vec&lt;Proc&gt;</code> is better? It is not, for three reasons that generalise.
+</div>
+
+---
+
+## Boot Order Decides It
+
+<div class="mermaid">
+flowchart TD
+    A["_entry: machine boots\nPROCS already exists in .bss"] --> B["uart::init()\nwe can print"]
+    B --> C["kalloc::init()\na PAGE allocator, 4096-byte chunks"]
+    C --> D["vm::kvminithart()\nthe MMU comes on"]
+    D --> E["proc::init()\nwalk PROCS, mark slots Unused"]
+    E --> F["trap::init(), fs init"]
+    F --> G["ex08: kheap registers the\nglobal allocator — NOW Vec works"]
+    style A fill:#e8f5e9,stroke:#00543c
+    style G fill:#fff3cd,stroke:#FDBB30
+</div>
+
+---
+
+## Reason 1: No Allocator Yet
+
+- `PROCS` is used at `proc::init()` — the fourth line of `kinit` (`main.rs:87`)
+- `Vec` calls the **global allocator**; rv6 has none until exercise 08 (`kheap.rs:40`)
+- `04_processes` has no `kheap.rs`; `08_semaphores/main.rs:18` is the first `extern crate alloc`
+
+<div class="info-box">
+This is the shape of every boot. <code>kalloc::init()</code> walks physical memory to
+build the free list — it <em>is</em> what makes allocation possible, so it cannot
+allocate. Anything needed earlier must be a fixed-size static.
+</div>
+
+---
+
+## Reason 2: The Fault Path Must Not Allocate
+
+The process table is touched from the trap handler: timer interrupt, page
+fault, system call. The rule there is absolute.
+
+- Allocation can **fail** — a page-fault handler has nowhere to report failure
+- Allocation takes **unbounded time** — you cannot wait with interrupts disabled
+- Allocation **takes locks** — deadlock against the code you interrupted
+
+Linux fights this with `GFP_ATOMIC` and a ban on sleeping allocators in
+interrupt context. A fixed array simply **cannot break the rule**.
+
+---
+
+## Reason 3: A Hard Limit Fails Honestly
+
+**Array:** `allocproc` scans for `Unused`, returns null if full
+(`proc.rs:107`, `:134`) &rarr; `fork` returns `-1` &rarr; the machine keeps
+running. Testable: fill the table, check that the 65th `fork` fails.
+
+**Vec:** the limit is "until memory runs out" — failure arrives late, at an
+unrelated allocation, possibly on the trap path. You cannot test it.
+
+<div class="highlight-box">
+"We might need more than N" is answered with a compile-time constant and an
+error, not with growth.
+</div>
+
+---
+
+## How Everyone Else Does It
+
+- **xv6**: `struct proc proc[NPROC];`, `#define NPROC 64` — identical, decades older
+- **Linux**: `task_struct` from a slab cache, *but* `pid_max`, `RLIMIT_NPROC`, `file-max`, and statically reserved per-CPU interrupt stacks
+- **Power of Ten** (JPL/NASA), rule 3: no dynamic allocation after initialisation
+- **MISRA C**: `malloc` banned outright
+- **seL4**: no kernel heap at all
+
+The difference is where the boundary sits, not whether one exists.
+
+---
+
+## Sizing the Constant
+
+| Field | Bytes |
+|---|---|
+| `state` | 1 |
+| `pid`, `kstack`, `xstate`, 3 pointers | 8 each |
+| `context` (14 saved registers, `swtch.rs:7`) | 112 |
+| `ofile` — `[File; 16]`, `File` is 24 bytes | 384 |
+| `name` — `[u8; 16]` | 16 |
+| **`size_of::<Proc>()`** | **568** |
+
+`64 x 568 = 36,352` bytes = 35.5 KiB of `.bss`, reserved whether one process
+runs or sixty-four.
+
+---
+
+## rv6's Static Bounds
+
+| Constant | Value | Where | Bounds |
+|---|---|---|---|
+| `NPROC` | 64 | `param.rs:7` | processes in the system |
+| `NOFILE` | 16 | `file.rs:19` | open files per process |
+| `NINODE` | 64 | `fs.rs:5` | files in the filesystem |
+| `NDIRENT` | 16 | `fs.rs:6` | entries per directory |
+| `NAMELEN` | 14 | `fs.rs:7` | bytes in a filename |
+| `FILESIZE` | 128 | `fs.rs:8` | bytes in one file |
+| `BUF_LEN` | 256 | `console.rs:8` | buffered keystrokes |
+
+Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
+
+---
+
+## The Lowest-Free-Slot Rule
+
+```text
+   ofile:  fd 0     fd 1     fd 2     fd 3     fd 4    ...  fd 15
+         +--------+--------+--------+--------+--------+     +------+
+         |Console |Console |Console | None   | None   | ... | None |
+         +--------+--------+--------+--------+--------+     +------+
+            stdin   stdout   stderr    ^
+                          open() returns 3: the lowest free index
+```
+
+- `allocproc` (`proc.rs:108`) and `fdalloc` (`syscall.rs:298`) are the same scan
+- For fds it is the **Unix contract**: `open` returns the lowest unused descriptor
+- That is why `cmd > file` = "close fd 1, then open" — you write this in **exercise 20**
+
+---
+
+## Where `Vec` Does Belong
+
+`Vec` is not bad; it is a tool with a prerequisite.
+
+- **Module 1, host commands, `cargo test`**: use it freely — the OS allocator is already running
+- **Kernel, exercise 08 onward**: legal, under two standing rules
+    - allocate at initialisation, never on the trap path
+    - know your allocator: `KernelHeap::alloc` (`kheap.rs:23`) serves one 4096-byte page per allocation and refuses anything larger
+
+---
+
+## Summary
+
+1. `[T; N]` **is** the data, `Vec<T>` **owns** it, `&[T]` **points at** it
+2. A slice is a fat pointer: address + length, 16 bytes, no ownership
+3. Take `&[T]` / `&mut [T]` in signatures — one function, every table size
+4. Bounds checks are ~3 instructions, usually optimised away
+5. Check untrusted indices at the **boundary** (`fd >= NOFILE`)
+6. Iterator adapters are lazy and allocate nothing; `collect` is the exception
+7. `PROCS: [Proc; NPROC]` — no allocator yet, no allocation on the fault path, honest failure
+8. Kernels bound resources statically: a constant and an error, not growth
+
+**Next:** exercise `r06_collections` — build the miniature process table.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

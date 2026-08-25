@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building an Operating System - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Building an Operating System
+
+## CS 326 Operating Systems
+
+L01 &middot; August 25, 2026
+
+---
+
+## Learning Objectives
+
+- Define an operating system by the **four jobs** it does, not by a product list
+- Map each job onto the rv6 subsystem and exercise that implements it
+- Distinguish RISC-V's **machine**, **supervisor**, and **user** privilege modes
+- Order the semester's kernel milestones and say why each is blocked
+- Explain what `unsafe` does and does not promise
+- Describe the OSlings release-and-submit model, and why nothing cascades
+
+---
+
+## What is an operating system?
+
+"Linux, macOS, Windows, Android" is a list of **examples**, not a definition —
+and useless for building one. Better question: what must be true for **two
+programs to run on one computer** without either knowing the other exists?
+
+A bare machine has exactly one of everything: one instruction stream, one span
+of memory, one disk, one serial port. Sharing all of that, invisibly, is four
+jobs.
+
+---
+
+## The Four Jobs
+
+<div class="mermaid">
+flowchart TB
+    subgraph U["User programs"]
+        A["sh"]
+        B["grep"]
+        C["cat"]
+    end
+    subgraph K["Kernel"]
+        K1["Multiplex the CPU"]
+        K2["Virtualise memory"]
+        K3["Name persistent data"]
+        K4["Abstract devices"]
+    end
+    subgraph H["Hardware"]
+        H1["one CPU"]
+        H2["128 MiB RAM"]
+        H3["storage"]
+        H4["UART"]
+    end
+    A -->|system calls| K
+    B -->|system calls| K
+    C -->|system calls| K
+    K1 --> H1
+    K2 --> H2
+    K3 --> H3
+    K4 --> H4
+</div>
+
+**Every one of these four is something you implement this semester.**
+
+---
+
+## Job 1 &middot; Multiplex the CPU
+
+One CPU, many programs. Run one for a few milliseconds, take the CPU away, give
+it to another — fast enough that it looks simultaneous.
+
+- **Process** — the kernel's record of one running program
+- **Context switch** — save one set of registers, restore another
+- **Scheduler** — the policy that picks who runs next
+
+A program that never yields must still be interrupted, and only hardware can do
+that: a **timer interrupt**, arriving whether or not the program consents. That
+is why *preemptive* multitasking needs hardware and *cooperative* does not.
+
+<div class="highlight-box">
+A context switch <strong>cannot be written in Rust</strong>. Rust gives you no way to say "save every register." It is the one place we drop into assembly.
+</div>
+
+---
+
+## Job 2 &middot; Virtualise Memory
+
+Physical addresses are real: RAM is `0x8000_0000` &ndash; `0x8800_0000`, so two
+programs both using `0x1000` corrupt each other. The fix is an **MMU** between
+the CPU and memory, rewriting every address the CPU issues.
+
+- Program addresses are **virtual**; the MMU translates them to **physical**
+- Through a table the kernel builds, in **pages** of 4096 bytes
+- One entry in that table — a **PTE** — is a page number plus permission bits
+
+```rust
+pub const PTE_V: usize = 1 << 0;  // valid
+pub const PTE_R: usize = 1 << 1;  // readable
+pub const PTE_W: usize = 1 << 2;  // writable
+pub const PTE_X: usize = 1 << 3;  // executable
+pub const PTE_U: usize = 1 << 4;  // reachable from user mode
+
+impl Pte {
+    pub const fn new(pa: usize, flags: usize) -> Pte {
+        Pte(((pa >> 12) << 10) | flags)
+    }
+}
+```
+
+`vm.rs:17`&ndash;`:32` — five bits and a shift.
+
+<div class="highlight-box">
+<code>PTE_U</code>, one bit, is the <strong>entire wall</strong> between a user program and the kernel.
+</div>
+
+---
+
+## The page allocator's trick
+
+```rust
+pub unsafe fn kfree(pa: *mut u8) {
+    let r = pa as *mut Run;
+    (*r).next = FREELIST;
+    FREELIST = r;
+}
+```
+
+`kalloc.rs:34` — the whole allocator is 46 lines.
+
+The free list has **no storage of its own**. Each free page stores the pointer
+to the next *inside itself*.
+
+There is nowhere else to put it — the allocator is what you would have had to
+ask for memory.
+
+---
+
+## Job 3 &middot; Name Persistent Data
+
+Memory is addresses. A disk is numbered blocks. Neither is a name.
+
+```rust
+pub struct Inode {
+    kind: InodeKind,      // Free, File, or Dir
+    size: usize,
+    data: [u8; FILESIZE],
+    entries: [DirEnt; NDIRENT],
+}
+```
+
+`fs.rs:50`
+
+- An **inode** is one file's kind, size, and contents, under a number
+- A **directory** is a file whose contents are (name, inode number) pairs
+- rv6's filesystem lives in RAM — files do not survive a reboot
+
+---
+
+## Job 4 &middot; Abstract Devices
+
+A serial port is not a stream of bytes. It is registers at fixed addresses.
+
+```rust
+pub fn putc(c: u8) {
+    while !tx_ready() {}
+    unsafe { reg_write(THR, c) }
+}
+```
+
+`uart.rs:48` — the UART sits at `0x1000_0000`, and the driver is 71 lines.
+
+Every `println!` you have ever written bottoms out in something like this.
+
+`read` and `write` work on a keyboard, a file, and a pipe alike because the
+kernel puts one interface — the **file descriptor** — over non-uniform hardware.
+
+---
+
+## Where you build them
+
+| Job | rv6 source | Exercises |
+|---|---|---|
+| Multiplex the CPU | `proc.rs`, `swtch.rs`, `sched.rs` | `ex04`&ndash;`ex06`, `ex21` |
+| Virtualise memory | `kalloc.rs`, `vm.rs` | `ex02`, `ex03`, `ex09` |
+| Name persistent data | `fs.rs`, `file.rs` | `ex10`, `ex17`, `ex20` |
+| Abstract devices | `uart.rs`, `plic.rs`, `console.rs` | `ex11`, `ex14`, `ex15` |
+
+Everything else — traps, locks, system calls, `fork`, `exec` — serves one of
+these four.
+
+---
+
+## The machine: RISC-V on QEMU
+
+Target triple: **`riscv64gc-unknown-none-elf`**
+
+- 64-bit RISC-V, general + compressed extensions
+- no vendor
+- `unknown-none` — **no operating system beneath you**
+
+We run QEMU's `virt` machine: a board that exists only in software.
+
+<div class="info-box">
+Not a compromise. An emulated machine can be stopped mid-instruction and inspected. Your kernel is still a real RISC-V ELF that would boot on silicon.
+</div>
+
+---
+
+## The `virt` physical memory map
+
+```text
+  0x0000_0000  +-------------------------------+
+               |  boot ROM, test finisher      |  0x0010_0000  power off
+  0x0200_0000  |  CLINT   - timer, soft irq    |
+  0x0c00_0000  |  PLIC    - device interrupts  |
+  0x1000_0000  |  UART0   - the serial console |
+               |            ...                |
+  0x8000_0000  +-------------------------------+  <- KERNBASE: RAM starts,
+               |  the kernel is loaded here    |     and _entry runs here
+               |  128 MiB of RAM               |
+  0x8800_0000  +-------------------------------+  <- PHYSTOP
+```
+
+<div class="highlight-box">
+RAM and devices share <strong>one</strong> address space. <code>0x1000_0000</code> is a serial port pretending to be memory — storing a byte there transmits it.
+</div>
+
+---
+
+## Three privilege modes
+
+| Mode | Who runs here | Can do |
+|---|---|---|
+| **Machine (M)** | firmware, a few dozen lines of rv6 | everything; no translation |
+| **Supervisor (S)** | the kernel | the MMU, traps, devices |
+| **User (U)** | `sh`, `grep`, `cat` | ordinary instructions, own pages only |
+
+Orientation only today — **L18** does the mechanism.
+
+---
+
+## The privilege ladder
+
+<div class="mermaid">
+flowchart TB
+    M["Machine mode (M)\n_entry, start.rs, timervec"]
+    S["Supervisor mode (S)\nkmain and the whole kernel"]
+    U["User mode (U)\nuser programs"]
+    M -->|mret| S
+    S -->|sret| U
+    U -->|ecall / interrupt / fault| S
+    S -->|trap| M
+</div>
+
+Privilege **decreases** only by explicit instruction. It **increases** only by
+trap. That asymmetry is the entire security model.
+
+---
+
+## Down with `mret`, up with `ecall`
+
+`start.rs` sets `mstatus.MPP` to supervisor, points `mepc` at `kmain`, and
+executes one instruction:
+
+```rust
+mstatus |= MSTATUS_MPP_SUPERVISOR;   // start.rs:30
+asm!("la t0, kmain", "csrw mepc, t0", out("t0") _);
+asm!("mret", options(noreturn));     // start.rs:54
+```
+
+Going back up, `ecall` deliberately raises an exception. The kernel reads the
+request number from `a7`, dispatches, and returns with `sret`.
+
+rv6's whole syscall table is **nine numbers**, and they are xv6's numbers.
+Linux has around 350 — surface area, not principle.
+
+---
+
+## The semester, end to end
+
+<div class="mermaid">
+flowchart LR
+    R["Module 1\nRust + commands"]
+    E0["ex00\nno_std"]
+    E1["ex01\nboot + print"]
+    E2["ex02\nkalloc"]
+    E3["ex03\npaging"]
+    E4["ex04-06\nprocesses"]
+    E7["ex07-08\nlocks"]
+    E9["ex09-12\nboot to life"]
+    E13["ex13-15\ntraps"]
+    E16["ex16-17\nkernel shell"]
+    E18["ex18-21\nuser mode"]
+    E22["ex22\nuserland"]
+    R --> E0 --> E1 --> E2 --> E3 --> E4 --> E7 --> E9 --> E13 --> E16 --> E18 --> E22
+</div>
+
+---
+
+## Nothing in that chain is reorderable
+
+- a **stack** before any Rust function can run
+- an **allocator** before page tables, which are made of pages
+- a complete **kernel page table** before `satp` can be written
+- a **supervisor kernel** before anything can trap into it
+- **traps** before `ecall` means anything
+
+<div class="info-box">
+Each step is blocked by the substrate the previous one built. Stack before code; memory before structures over memory; privilege before the thing that must be less privileged.
+</div>
+
+---
+
+## Module 1 &middot; weeks 1&ndash;4
+
+Nothing boots. Everything runs on your laptop under `cargo test`.
+
+| Exercises | What you do |
+|---|---|
+| `r00`&ndash;`r09` | Rust, from `let` bindings to raw pointers |
+| `c00`&ndash;`c04` | `echo`, `cat`, `wc`, `head`, `grep` against `ulib` |
+| `a00` | RISC-V registers and the calling convention |
+
+<div class="highlight-box">
+You should not fight the borrow checker <strong>and</strong> the hardware at once.
+</div>
+
+---
+
+## Two abrupt steps, and one shell twice
+
+**Both abrupt steps are a single instruction.**
+
+- `ex09` writes `satp` — every address in flight changes meaning
+- `ex13` executes `mret` — the kernel stops being all-powerful
+
+**You write the shell twice.**
+
+- `ex16`: inside the kernel. Easy — kernel code calls the filesystem directly
+- `ex22`: an ordinary user program with **no privileges**, talking to the kernel
+  only through `ecall`
+
+The gap between those two is where everything hard about operating systems lives.
+
+---
+
+## Why Rust, honestly
+
+xv6 is C. Linux is C. The burden of proof is on Rust.
+
+Kernel C bugs cluster into a few shapes:
+
+- use a pointer after the memory was freed
+- write past the end of a buffer
+- read a value another CPU is halfway through writing
+- free the same page twice
+
+<div class="highlight-box">
+In application code the OS catches these. In kernel code <strong>there is nothing beneath you</strong>. A use-after-free in the allocator does not crash — it hands the same page to two processes, and the symptom appears ten minutes later somewhere unrelated.
+</div>
+
+---
+
+## What `unsafe` actually means
+
+`unsafe` does **not**:
+
+- disable the borrow checker
+- turn off type checking
+- mean "trust me"
+
+<div class="info-box">
+It means: <strong>"the compiler cannot verify this one; I have checked it."</strong>
+</div>
+
+Its real value is that it is **greppable**. When the kernel corrupts memory, the
+places that could have done it are the `unsafe` blocks — a searchable list, not
+the whole program.
+
+---
+
+## The 90/10 claim, measured
+
+Reference rv6: 24 modules, ~3,100 lines, 101 occurrences of the keyword.
+
+| Module | Lines | `unsafe` |
+|---|---|---|
+| `fs.rs` — the filesystem | 277 | 0 |
+| `shell.rs` — the shell | 373 | 1 |
+| `sched.rs` — scheduling policy | 30 | 0 |
+| `vm.rs` — page tables | 419 | 15 |
+| `uart.rs` — the device driver | 71 | 9 |
+
+**Six of twenty-four modules contain not one occurrence.** The unsafety
+concentrates exactly where you would predict.
+
+---
+
+## What Rust does *not* fix
+
+- A page table that maps the wrong page is a **valid Rust program**
+- **Deadlock is memory-safe** — two threads waiting forever violate no rule
+- Races between the kernel and *hardware* are outside the model
+- `unsafe` code you got wrong is exactly as dangerous as C
+
+<div class="highlight-box">
+Rust removes one historically dominant category of bug and leaves every conceptual difficulty of operating systems intact — and <em>those</em> are the subject of this course.
+</div>
+
+---
+
+## OSlings &middot; three commands, every session
+
+```bash
+oslings update      # receive the exercise this session releases
+oslings             # read the lesson, write the code, watch the test
+oslings submit      # commit and push, pass or fail
+```
+
+- **Build** exercises pass when the kernel compiles for the bare-metal target
+- **QEMU** exercises pass when the kernel boots and prints `OSLINGS:PASS`
+- Grading re-runs the same test on a rebuilt kernel — local state cannot fake it
+
+<div class="highlight-box">
+No homework means that commit is the only record you were in the room. <strong>Attendance is computed from it.</strong>
+</div>
+
+---
+
+## How a session runs
+
+<div class="mermaid">
+flowchart LR
+    L["read the lesson"] --> W["write one file"]
+    W --> R["oslings run"]
+    R -->|fails| H["oslings hint"]
+    H --> W
+    R -->|passes| S["oslings submit"]
+</div>
+
+- You work the exercise **in the room**, during the session
+- **No Internet and no AI assistant** while you work it
+- What you do have: the **lecture notes**, the **guides**, and `oslings hint`
+- Attendance is not a separate thing — that `submit` **is** the record
+
+---
+
+## Nothing cascades
+
+**Every exercise starts from the reference completed code for all previous
+exercises.**
+
+- Do not finish `ex04`? `ex05` still opens on a working process table
+- Miss a whole week? Tuesday begins from a kernel that boots
+- Your own work is archived in `my-work/`; `oslings goto` restores it
+- The lowest **two** scores in each module are dropped automatically
+
+<div class="info-box">
+A missed exercise costs you that exercise. It cannot cost you the semester.
+</div>
+
+---
+
+## Why the work happens in the room
+
+rv6 is modeled on **xv6** and **Octox** — both public on GitHub, therefore both
+in the training data of every large language model.
+
+Any model will emit a working `walk()` instantly. Pretending otherwise would be
+silly, so the course is arranged so the question does not arise:
+
+- Exercises are released **at the start of the session that works them** — an
+  unreleased exercise exists in no commit you can fetch
+- **During a session: no Internet, no AI assistant.** GitHub and crates.io only
+- **Outside a session: use AI freely to learn** — concepts, code you are
+  reading, compiler errors, practice problems
+
+The test is whether you can explain what you submitted. The TA may ask.
+
+---
+
+## The payoff
+
+```text
+   commands/src/bin/grep.rs           <- one file, written in week 4
+              |
+            ulib
+         /         \
+   host backend    rv6 backend
+   (std: read,     (ecall: your
+    write)          syscalls)
+        |               |
+   your laptop      YOUR KERNEL
+   cargo test       ex22, December
+```
+
+The `grep` you write in **week 4** is the same source file — not a port, the
+same file — that runs on the kernel you finish in **week 15**.
+
+---
+
+## What that sentence contains
+
+`grep foo notes.txt`, typed at a `$` prompt, in a shell that is a **user
+process**, `fork`ed and `exec`ed by another user process, on a kernel that:
+
+- boots itself into **supervisor mode**
+- allocates its own **pages** and builds its own **page tables**
+- schedules its own **processes** and services its own **interrupts**
+
+<div class="highlight-box">
+Every layer of which you wrote. That is what this course is for.
+</div>
+
+---
+
+## Summary
+
+1. An OS is defined by **four jobs**, not a product list — and you implement all four
+2. Three **privilege modes**: privilege drops by instruction, rises only by trap
+3. The semester has a **forced dependency order**; each step needs the last one's substrate
+4. **Rust** makes the unsafe part small and labelled — six of 24 modules have no `unsafe`
+5. Rust fixes memory safety and **nothing else**; the hard parts remain the subject
+6. **Nothing cascades.** Run `oslings submit` every session, red or green
+
+---
+
+## Today: Lab 00
+
+Second half of this session — budget about 45 minutes.
+
+1. Install Rust with `rustup`
+2. Create a **private** repo `oslings-<your-github-username>`, add instructor + TA
+3. Clone the course repo and run `./setup.sh`
+4. `oslings doctor` until every line is green
+5. `oslings init-repo <your repo url>`
+6. `oslings update` &rarr; work `r00` &rarr; `oslings submit`
+
+<div class="info-box">
+If something breaks, that is expected — the people who can fix it are in the room.
+</div>
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any
+        // HTML-entity escaping from the markdown pipeline) and wait for web
+        // fonts so text measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

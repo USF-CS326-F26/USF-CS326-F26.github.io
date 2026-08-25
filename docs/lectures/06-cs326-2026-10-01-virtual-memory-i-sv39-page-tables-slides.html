@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Memory I: Sv39 Page Tables - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Virtual Memory I: Sv39 Page Tables
+
+## CS 326 Operating Systems
+
+---
+
+## Learning Objectives
+
+- Explain the three problems virtual memory solves: **isolation, relocation, protection**
+- Decode a 39-bit virtual address into `VPN[2]`, `VPN[1]`, `VPN[0]`, offset
+- Name every bit of an Sv39 page-table entry by position
+- Distinguish a **leaf** PTE from a **branch** PTE by its `R`/`W`/`X` bits
+- Trace a three-level page-table walk by hand, with the arithmetic
+- Contrast **building** a page table with the **hardware using** one
+
+---
+
+## Every Address So Far Has Been Real
+
+- Exercises 00-02: `0x8000_0000`, `0x1000_0000` — actual bytes of RAM and MMIO
+- `kalloc` hands out real physical pages
+- The kernel and any program it runs share one flat address space
+
+<div class="highlight-box">
+Today that stops. We put a hardware translation layer between every address the CPU computes and every byte RAM holds.
+</div>
+
+This is the hardest concept in Module 2 — not because a piece is hard, but because **three ideas arrive through one mechanism**.
+
+---
+
+## Problem 1: Isolation
+
+Process A stores to `0x1000`. Process B holds a pointer to *its* `0x1000`.
+
+- If both denote the same byte, A corrupts B — and can *read* B's secrets by guessing
+- Isolation means neither process can **name** the other's bytes
+- Not "is not allowed to" — **cannot name**
+
+<div class="info-box">
+If a physical page appears in no entry of A's page table, then <strong>no 64-bit number A can compute reaches it</strong>. That is far stronger than a permission check.
+</div>
+
+---
+
+## Problems 2 and 3: Relocation and Protection
+
+**Relocation** — the linker must pick addresses at build time. With virtual memory it stops caring: `USER_CODE = 0x0` (`memlayout.rs:61`), so *every* rv6 program is linked at virtual 0 and ten of them can run at once, each with a page table sending virtual 0 somewhere different.
+
+**Protection** — RAM has no opinion about code vs. data; a page table does.
+
+```rust
+// vm.rs:228  user code pages      // vm.rs:245  user stack page
+PTE_R | PTE_X | PTE_U              PTE_R | PTE_W | PTE_U
+```
+
+- Code is **not writable**, the stack is **not executable** — W^X, one line apart
+- `PTE_U` is a **wall**, not a permission: no `U` bit, no user access at all (`vm.rs:21-23`)
+
+---
+
+## What It Costs, and What Came Before
+
+Everything above comes from **one extra indirection per memory access**.
+
+| Scheme | Gives you | Fails at |
+|---|---|---|
+| **Base + bound** | isolation, relocation, 2 registers | one region, no sharing, no per-page perms, fragments |
+| **Segmentation** | several regions | variable sizes &rarr; external fragmentation |
+| **Paging** | fixed 4 KiB pages, any page fits any need | needs a big lookup structure |
+
+Paging won because fixed-size pages make allocation trivial — which is exactly why your `kalloc` free list can be a *single* list.
+
+---
+
+## Pages and the Offset
+
+```text
+   virtual address                       physical address
+  ┌──────────────┬──────────┐           ┌───────────────┬──────────┐
+  │  VPN (27 b)  │ off (12) │           │  PPN (44 b)   │ off (12) │
+  └──────┬───────┴────┬─────┘           └───────▲───────┴────▲─────┘
+         │            │                         │            │
+         │            └─────────── copied ──────┼────────────┘
+         │                                      │
+         └────── page table lookup ─────────────┘
+```
+
+- `PGSIZE = 4096 = 2^12` (`memlayout.rs:7`)
+- **The offset is never translated.** Translation only ever asks: *which physical page?*
+- So a PTE stores `pa >> 12` — the low 12 bits are always zero anyway
+
+---
+
+## The Two Sv39 Address Formats
+
+```text
+  63                39 38      30 29      21 20      12 11         0
+ ┌────────────────────┬──────────┬──────────┬──────────┬────────────┐
+ │  sign extension    │  VPN[2]  │  VPN[1]  │  VPN[0]  │   offset   │
+ │ (must equal bit 38)│  9 bits  │  9 bits  │  9 bits  │  12 bits   │
+ └────────────────────┴──────────┴──────────┴──────────┴────────────┘
+```
+
+```text
+  63      56 55                                    12 11         0
+ ┌──────────┬────────────────────────────────────────┬────────────┐
+ │  unused  │              PPN (44 bits)             │   offset   │
+ └──────────┴────────────────────────────────────────┴────────────┘
+```
+
+- Bits 63..39 **must** copy bit 38 or the access faults — the "canonical hole". rv6 dodges it entirely: `MAXVA = 1 << 38` (`memlayout.rs:49`)
+- **56** physical bits vs. **39** virtual — a machine may hold far more RAM than any one process can address
+
+---
+
+## Why Nine Bits, and Why a Tree
+
+```rust
+// vm.rs:44-46
+const fn px(level: usize, va: usize) -> usize {
+    (va >> (12 + level * 9)) & 0x1ff
+}
+```
+
+**Nine falls out of three choices:**
+
+- One page table = one page, so `kalloc` can supply table pages
+- A PTE is 8 bytes &rarr; `4096 / 8 = 512` entries &rarr; `512 = 2^9`
+- Three levels: `3 x 9 + 12 = 39`. The name **Sv39** is a *consequence*.
+
+**Why not one flat table?**
+
+- `2^27` entries x 8 bytes = **1 GiB of page table per process**, almost all zeros
+- A tree materializes only the subtrees you use: one page costs root + L1 + L0 = **12 KiB**
+
+---
+
+## The PTE: Every Bit
+
+```text
+ 63 62  61 60      54 53                        10 9 8 7 6 5 4 3 2 1 0
+ ┌──┬──────┬──────────┬────────────────────────────┬───┬─┬─┬─┬─┬─┬─┬─┬─┐
+ │N │ PBMT │ reserved │           PPN              │RSW│D│A│G│U│X│W│R│V│
+ └──┴──────┴──────────┴────────────────────────────┴───┴─┴─┴─┴─┴─┴─┴─┴─┘
+   1    2       7                 44                 2  1 1 1 1 1 1 1 1
+```
+
+```rust
+// vm.rs:17-23
+pub const PTE_V: usize = 1 << 0;
+pub const PTE_R: usize = 1 << 1;
+pub const PTE_W: usize = 1 << 2;
+pub const PTE_X: usize = 1 << 3;
+pub const PTE_U: usize = 1 << 4;
+```
+
+---
+
+## The PTE Flags
+
+| Bits | Name | Meaning |
+|---|---|---|
+| 0 | `V` | Valid — if 0 the walk faults |
+| 1 | `R` | Readable |
+| 2 | `W` | Writable |
+| 3 | `X` | eXecutable |
+| 4 | `U` | Reachable from user mode |
+| 5 | `G` | Global — TLB keeps it across ASID switch |
+| 6 | `A` | Accessed |
+| 7 | `D` | Dirty |
+| 9:8 | `RSW` | Reserved for **software** (Linux: swap markers) |
+| 53:10 | `PPN` | The 44-bit physical page number |
+
+`Pte::flags` masks `0x3ff` — the low **ten** bits (`vm.rs:36-38`).
+
+---
+
+## Leaf vs. Branch: The Rule
+
+<div class="highlight-box">
+A valid PTE with <strong>none</strong> of R/W/X set is a <strong>branch</strong>: its PPN is the next-level table.<br/>
+A valid PTE with <strong>any</strong> of them set is a <strong>leaf</strong>: its PPN is the data page.
+</div>
+
+There is **no separate "is this a table" bit** — the permission bits carry that meaning.
+
+```rust
+// vm.rs:67  — linking a new intermediate table: V and nothing else
+*pte = Pte::new(page as usize, PTE_V);
+
+// vm.rs:358 — the same rule, running backwards, in free_pt
+let is_leaf = (*pte).flags() & (PTE_R | PTE_W | PTE_X) != 0;
+```
+
+---
+
+## The `X W R` Encoding
+
+| `X W R` | Meaning |
+|---|---|
+| `0 0 0` | **Branch** — pointer to the next-level table |
+| `0 0 1` | Leaf, read-only |
+| `0 1 0` | *Reserved* — write without read is illegal |
+| `0 1 1` | Leaf, read-write |
+| `1 0 0` | Leaf, execute-only |
+| `1 0 1` | Leaf, read-execute |
+| `1 1 0` | *Reserved* |
+| `1 1 1` | Leaf, read-write-execute |
+
+---
+
+## Encoding: `Pte::new`
+
+```rust
+// vm.rs:30-35
+pub const fn new(pa: usize, flags: usize) -> Pte {
+    Pte(((pa >> 12) << 10) | flags)
+}
+pub const fn pa(self) -> usize {
+    (self.0 >> 10) << 12
+}
+```
+
+Map the UART page read-write:
+
+```text
+  pa                = 0x1000_0000
+  pa >> 12          = 0x0001_0000        (PPN)
+  (pa >> 12) << 10  = 0x0400_0000
+  flags V|R|W       = 0x7
+  PTE               = 0x0400_0007
+```
+
+`pa()` discards the flags for free — shifting right by 10 drops bits 9..0.
+
+---
+
+## Decoding: Same Shifts, Opposite Meanings
+
+```text
+  PTE = 0x2008_040F
+  flags = PTE & 0x3ff = 0x00F = V | R | W | X   -> LEAF
+  PPN   = PTE >> 10   = 0x0008_0201
+  pa    = PPN << 12   = 0x8020_1000
+```
+
+```text
+  PTE = 0x2008_0001
+  flags = 0x001 = V only, R/W/X all zero        -> BRANCH
+  PPN   = 0x0008_0200
+  next-level table at 0x8020_0000
+```
+
+<div class="info-box">
+The shift is <strong>10</strong>, not 12 — the flag field is ten bits wide. Off-by-two here is the most common paging bug there is, and it produces a plausible-looking, page-aligned, wrong address.
+</div>
+
+---
+
+## `A`, `D`, `G`, and Superpages
+
+- **`A` / `D`** support paging to disk. On `A = 0`, hardware may either update the bit atomically (**QEMU does this**) or **fault** and expect the kernel to fix it (some real silicon)
+- rv6 never sets or reads them — like xv6. A port to real hardware might need an `A`/`D` handler
+- **`G`** is a TLB optimization rv6 does not use
+
+**Superpages:** an `R`/`W`/`X` bit at level 1 or 2 stops the walk early — a **2 MiB** or **1 GiB** leaf. Linux maps its direct map this way. rv6 never does, so for us "upper-level entry" and "branch" are synonyms.
+
+---
+
+## The Walk
+
+<div class="mermaid">
+flowchart TD
+    VA["virtual address\nVPN2 . VPN1 . VPN0 . offset"] --> SATP
+    SATP["satp holds the root PPN"] --> L2
+    L2["level-2 table\n512 entries, one page"] -->|"index = VPN2"| E2["PTE"]
+    E2 -->|"V=1, RWX=000: branch\nfollow pte.pa()"| L1
+    E2 -->|"V=0"| F["trap: page fault"]
+    L1["level-1 table"] -->|"index = VPN1"| E1["PTE"]
+    E1 -->|"branch"| L0
+    E1 -->|"V=0"| F
+    L0["level-0 table"] -->|"index = VPN0"| E0["leaf PTE\nRWX nonzero"]
+    E0 -->|"pa = pte.pa() OR offset"| PA["physical address"]
+    E0 -->|"V=0, or denied"| F
+</div>
+
+Three memory reads to resolve one address. That is why the TLB exists.
+
+---
+
+## `walk` in rv6
+
+```rust
+// vm.rs:52-73
+pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
+    let mut level = 2;
+    while level > 0 {
+        let pte = table.add(px(level, va));
+        if (*pte).is_valid() {
+            table = (*pte).pa() as *mut Pte;
+        } else {
+            if !alloc { return ptr::null_mut(); }
+            let page = kalloc::kalloc();
+            if page.is_null() { return ptr::null_mut(); }
+            ptr::write_bytes(page, 0, PGSIZE);
+            *pte = Pte::new(page as usize, PTE_V);
+            table = page as *mut Pte;
+        }
+        level -= 1;
+    }
+    table.add(px(0, va))
+}
+```
+
+---
+
+## Four Things About `walk`
+
+1. **The loop runs for levels 2 and 1 only.** Level 0 is the return at `vm.rs:72` — the loop's job is to find the level-0 *table*
+2. **It returns a pointer to a PTE**, not a physical address — so the caller can write it (`mappages`) or read it (`walkaddr`)
+3. **`alloc` is build-vs-inspect.** `true` creates missing tables (`vm.rs:86`); `false` returns null (`vm.rs:256`). New tables are **zeroed** first (`vm.rs:66`) — a fresh `kalloc` page still holds free-list pointers
+4. **It never checks permissions.** No `R`, `W`, `X`, `U`. The *hardware* enforces those
+
+---
+
+## `mappages`
+
+```rust
+// vm.rs:75-98
+let mut a = pgrounddown(va);
+let last = pgrounddown(va + size - 1);
+loop {
+    let pte = walk(table, a, true);
+    if pte.is_null() { return Err(()); }
+    *pte = Pte::new(pa, perm | PTE_V);
+    if a == last { break; }
+    a += PGSIZE;
+    pa += PGSIZE;
+}
+```
+
+- The `- 1` in `last` is what makes a `PGSIZE` request map **exactly one** page
+- `vm.rs:90` is the only place `PTE_V` is added to a leaf — callers pass permissions
+- Layering: `mappages` &rarr; `walk` &rarr; `px` &rarr; one shift and one mask
+
+---
+
+## Worked Translation 1: The UART Page
+
+Identity-mapped so printing survives the MMU (`vm.rs:132`). Translate `0x1000_0010`:
+
+```text
+  offset = va & 0xFFF                   = 0x010
+  VPN[0] = (va >> 12) & 0x1FF
+         = 0x10000 & 0x1FF              = 0     (0x10000 = 128 * 512)
+  VPN[1] = (va >> 21) & 0x1FF = 0x80    = 128
+  VPN[2] = (va >> 30) & 0x1FF = 0       = 0
+
+  root[0] -> L1[128] -> L0[0], PPN = 0x10000
+  pa = (0x10000 << 12) | 0x010 = 0x1000_0010
+```
+
+`va == pa` — but three lookups happened. It matches only because `kvmmake` passed the same address as both `va` and `pa`.
+
+---
+
+## Worked Translation 2: The High Code Page
+
+Exercise 03 maps a page at virtual `0x0040_0000`; translate `0x0040_0123`:
+
+```text
+  offset = 0x123
+  VPN[0] = (va >> 12) & 0x1FF = 0x400 & 0x1FF = 0
+  VPN[1] = (va >> 21) & 0x1FF = 2             = 2
+  VPN[2] = (va >> 30) & 0x1FF                 = 0
+
+  root[0] -> L1[2] -> L0[0], PPN = 0x87654
+  pa = 0x8765_4000 | 0x123 = 0x8765_4123
+```
+
+Same `VPN[2]` as the UART &rarr; **same root entry, same level-1 table**.
+Different `VPN[1]` (2 vs 128) &rarr; **different level-0 tables**.
+
+---
+
+## The Tree Charges for Spread, Not Volume
+
+```text
+  root (level 2)
+   ├─ [0]  V, no RWX ─────► level-1 table
+   └─ (511 zeros)              ├─ [2]   V, no RWX ──► level-0 table A
+                               ├─ [128] V, no RWX ──► level-0 table B
+                               └─ (510 zeros)
+
+  L0 table A: [0] V R X -> code page
+  L0 table B: [0] V R W -> 0x1000_0000 (UART)
+```
+
+**4 pages of tables (16 KiB) to map 2 pages of data (8 KiB).**
+
+Map 512 *consecutive* pages instead and one level-0 table serves them all. Locality in the address space is locality in the page table.
+
+---
+
+## Building vs. Using — Two Different Agents
+
+<div class="mermaid">
+flowchart LR
+    subgraph BUILD["BUILDING: exercise 03_paging"]
+        direction TB
+        B1["kernel Rust code\ncalls mappages"] --> B2["walk with alloc = true"]
+        B2 --> B3["kallocs tables,\nwrites PTEs"]
+        B3 --> B4["a tree in RAM,\ninert"]
+    end
+    subgraph USE["USING: exercise 09_virtual_memory"]
+        direction TB
+        U1["csrw satp, root PPN\nthen sfence.vma"] --> U2["MMU reads the tree\non EVERY access"]
+        U2 --> U3["hardware checks V R W X U"]
+        U3 --> U4["every load, store,\nfetch is translated"]
+    end
+    B4 -.->|"the same bytes in RAM"| U2
+</div>
+
+---
+
+## What Changes When Hardware Takes Over
+
+| | Building (ex 03) | Using (ex 09+) |
+|---|---|---|
+| Who reads the PTEs | your `walk`, in Rust | the MMU, in hardware |
+| When | when you call it | every load, store, fetch |
+| Checks `V` | yes (`vm.rs:56`) | yes |
+| Checks `R`/`W`/`X`/`U` | **no** | **yes**, faults if denied |
+| Leaf vs branch | **no** — follows any valid PTE | **yes** — stops at first `R`/`W`/`X` |
+| Cost of a mistake | a printed `[fail]` | a silent hang |
+| Caching | none | TLB; needs `sfence.vma` |
+
+---
+
+## The Classic Bug
+
+```rust
+// in walk, linking a new intermediate table:
+*pte = Pte::new(page as usize, PTE_V | PTE_R);   // <-- R on a BRANCH
+```
+
+- **Exercise 03 passes.** `walk` descends on `is_valid()` alone (`vm.rs:56`) and never reads `R`/`W`/`X`. Every translation the harness checks is correct.
+- **Exercise 09 hangs.** The MMU stops at the first `R` — treats a level-2 entry as a **1 GiB superpage leaf**, finds a PPN that is not 1 GiB-aligned, faults on the instruction right after `csrw satp`. No trap handler yet, so nothing prints.
+
+The mirror image: forget `R` on a **leaf** &rarr; hardware reads a fourth level of page table out of your data.
+
+---
+
+## Why We Separate Them
+
+<div class="highlight-box">
+<code>walk</code> asks "is there an entry here?"<br/>
+The MMU asks "is there an entry here, <em>does it stop the walk</em>, and <em>am I allowed to do this</em>?"
+</div>
+
+- If the page holding the running instruction is unmapped, the CPU faults on the next fetch and wedges — **nothing to debug, because nothing prints**
+- So ex 03 gets the structure right while mistakes are cheap and printable
+- Ex 09 adds identity mapping, `satp`, `sfence.vma` — and verifies every mapping **with `walk`, MMU still off**, before flipping the switch
+
+---
+
+## Costs, and How Others Do It
+
+```text
+  each level-0 table covers 512 * 4 KiB   = 2 MiB
+  128 MiB of RAM / 2 MiB                  = 64 level-0 tables
+  all 64 share one level-1 table, hanging off root[2]
+  -----------------------------------------------------
+  1 root + 1 level-1 + 64 level-0  =  66 pages  =  264 KiB
+```
+
+- ~0.2% overhead — one 8-byte PTE per 4096-byte page is 1/512. `root[2]` is no accident: each level-2 entry covers 1 GiB and `KERNBASE` is exactly 2 GiB
+- One 1 GiB superpage would cover the same RAM with **zero** extra tables — why production kernels use them for the direct map
+- **xv6-riscv** is nearly line-for-line: `walk`, `mappages`, the `PTE_*` flags, `PX`, `kvmmake`. The differences are Rust's: `*mut Pte` for `pagetable_t`, `Result<(), ()>` (`vm.rs:81`) for a `0` return
+- **Linux on RISC-V** adds what we omit: demand paging (invalid leaf, `RSW` names a swap slot), copy-on-write (rv6's `uvmcopy`, `vm.rs:383-419`, copies eagerly), superpages, ASIDs, Sv48/Sv57
+
+---
+
+## Summary
+
+1. **Three problems, one mechanism** — isolation, relocation, protection
+2. **The offset is never translated** — only page numbers are
+3. **Sv39's numbers follow from three choices** — one table per page, 8-byte PTEs, three levels
+4. **PPN at bit 10, ten flag bits below it** — encode `((pa >> 12) << 10) | flags`, decode `(pte >> 10) << 12`
+5. **`RWX == 000` is a branch; anything else is a leaf** — no separate table bit
+6. **Building a table and hardware using one are different activities** — `walk` checks `V` only; the MMU checks everything
+
+---
+
+## Next: Exercise `03_paging`
+
+You will write three things in `vm.rs`:
+
+- `Pte::new` — pack `pa` and `flags`
+- `Pte::pa` — take the address back out
+- `walk` — descend levels 2 and 1, return the level-0 leaf slot
+
+<div class="info-box">
+The MMU stays <strong>off</strong>. The harness is software pretending to be an MMU: it calls your <code>walk</code> and ORs in the offset — the same arithmetic you just did by hand, in Rust instead of silicon.
+</div>
+
+Read the exercise `README.md` first. It tells you what to type; the lecture page tells you what the bits mean.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering: read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

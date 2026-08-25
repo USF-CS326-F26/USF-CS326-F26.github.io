@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locks, Semaphores, and the Kernel Heap - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Locks, Semaphores, and the Kernel Heap
+
+## CS 326 Operating Systems
+
+L15 · October 22, 2026 · unlocks `07_spinlocks` and `08_semaphores`
+
+---
+
+## Learning Objectives
+
+- **Construct** a race condition and exhibit the interleaving that breaks it
+- **Distinguish** test-and-set from compare-and-swap, and the RISC-V instruction each becomes
+- **Justify** `Acquire` on lock and `Release` on unlock
+- **Explain** how an RAII guard plus `UnsafeCell` makes locking compiler-enforced
+- **Derive** the single-hart deadlock between a lock holder and an interrupt handler
+- **Compute** what `Box`, `Vec`, and `Arc` cost on a page-per-allocation heap
+
+---
+
+## One Writer Becomes Two
+
+Every structure so far has had exactly one writer:
+
+- the free list (`kalloc.rs:11`)
+- the process table
+- the scheduler cursor
+
+That assumption ends here.
+
+- Interrupts already fire (`trap.rs:39`)
+- Real hardware has more than one hart
+- Two flows of control can now be **inside the same structure at the same instant**
+
+---
+
+## The Flag That Does Not Work
+
+```rust
+static mut BUSY: bool = false;
+
+if !BUSY {          // is anyone inside?
+    BUSY = true;    // no — claim it
+    critical();
+    BUSY = false;
+}
+```
+
+<div class="highlight-box">
+Three separate memory events: a <strong>load</strong>, a <strong>branch</strong>, and a <strong>store</strong>. Nothing keeps them together.
+</div>
+
+---
+
+## The Interleaving
+
+```text
+   time   A                        B                        BUSY
+   ----   -------------------      -------------------      -----
+     1    lbu  t0 <- 0 (free)                                false
+     2    bnez t0, not taken                                 false
+     3                             lbu  t0 <- 0 (free)       false
+     4                             bnez t0, not taken        false
+     5    sb   1 -> BUSY                                     true
+     6                             sb   1 -> BUSY            true
+     7    critical()               critical()                true
+                           both inside; BUSY says one is
+```
+
+The window is **two instructions** — a couple of nanoseconds.
+
+---
+
+## Three Words, Precisely
+
+- **Critical section** — code that must not run in two flows at once
+- **Mutual exclusion** — the property that it doesn't
+- **Race condition** — what you have when you needed mutual exclusion and did not get it
+
+<div class="info-box">
+A race is a property of the <strong>program</strong>, not the run. The run that produced the right answer had the race too.
+</div>
+
+Same shape on data: `COUNTER += 1` is `ld` / `addi` / `sd` — the **lost update**.
+
+---
+
+## Why More Code Cannot Fix It
+
+- **Dekker (1962)** and **Peterson (1981)** do achieve mutual exclusion from plain loads and stores
+- …and need explicit fences on any CPU designed after ~1990
+
+The structural objection:
+
+- Every software solution is a sequence of independent operations an adversary may interleave
+- Each added instruction is a **new window**
+- The window closes only with an operation that has **no interior**
+
+That is an **atomic** operation — the one thing you cannot build yourself.
+
+---
+
+## The RISC-V A Extension
+
+`riscv64gc` — the `g` is IMAFD — includes atomics.
+
+**AMOs** read, combine, write back, return the *old* value in `rd`:
+
+```text
+amoswap.w rd, rs2, (rs1)   rd = M[rs1];  M[rs1] = rs2
+amoadd / amoor / amoand / amoxor / amomax / amomin
+```
+
+- Widths `.w` and `.d` only — **no byte-width AMOs**
+
+**LR/SC**: `lr.d` places a *reservation*; `sc.d` stores only if it is intact.
+Another hart's write, a context switch, a cache eviction all break it.
+
+---
+
+## Test-and-Set
+
+Write `true` unconditionally; report what was there before.
+
+```rust
+while flag.swap(true, Ordering::Acquire) {
+    core::hint::spin_loop();
+}
+```
+
+- Old value `false` → the lock was free and is now yours
+- One instruction, no failure path; the only state it expresses is **"busy"**
+
+**Spinning is not free.** Every iteration is a *write*, and a write takes the
+cache line **exclusive** — eight spinners ping-pong one line doing no work. The
+standard fix, **test-and-test-and-set**, spins on a plain load until the lock
+reads free and only then tries the atomic. rv6 has one hart and skips it.
+
+---
+
+## Compare-and-Swap
+
+Conditional: change `x` to `new` **only if** it is currently `old`.
+
+```rust
+self.locked
+    .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+```
+
+`spinlock.rs:25` — `Ok(_)` you made the transition, `Err(actual)` you did not.
+
+<div class="info-box">
+<strong>ABA:</strong> CAS compares <em>values</em>, so a word that went A → B → A looks untouched. LR/SC watches the <em>address</em>, so it is immune.
+</div>
+
+---
+
+## What rv6 Actually Compiles To
+
+```asm
+lock:   andi    a1, a0, -4        # round &AtomicBool down to a word
+        slli    a0, a0, 3         # byte offset within it, times 8
+        li      a2, 1
+        sllw    a2, a2, a0        # shift the 1 into that byte's lane
+        amoor.w.aq a3, a2, (a1)   # the atomic
+        beqz    a3, .LBB0_2       # old byte 0 -> we got the lock
+.LBB0_1:
+        pause                     # core::hint::spin_loop()
+        amoor.w.aq a3, a2, (a1)
+        bnez    a3, .LBB0_1
+```
+
+- The mask-and-shift **is** the missing byte-width AMO
+- **No `lr`/`sc` at all** — CAS `false → true` on a `bool` *is* test-and-set
+- On `AtomicUsize` it cannot be reduced: `lr.d.aq` / `bne` / `sc.d` / `bnez`
+
+---
+
+## Memory Ordering: RVWMO
+
+An atomic makes **one** operation indivisible. It says nothing about the ones around it.
+
+- RISC-V uses **weak memory ordering**: stores may become visible out of issue order
+- On *any* machine, the **compiler** will sink a store past another or hoist a load
+
+<div class="highlight-box">
+Ordering matters in rv6 even with one CPU — the reordering an interrupt handler observes is usually the compiler's.
+</div>
+
+---
+
+## Acquire and Release
+
+- **`Acquire`** (load / RMW) — nothing after it may move before it, so every access to the protected data stays *inside* the lock
+- **`Release`** (store) — nothing before it may move after it, so every write lands *before* the unlock
+- **`Relaxed`** — atomic with respect to itself, nothing more
+
+They are useless alone. They work as a **pair**.
+
+`spinlock.rs:46` compiles to `fence rw, w` then `sb zero, 0(a0)`. Two details:
+the **failure ordering is `Relaxed`** (a failed CAS acquired nothing, and a
+contended lock fails on most iterations), and **`is_locked` is `Relaxed` too** —
+its answer is stale the instant you have it.
+
+---
+
+## The Pair
+
+<div class="mermaid">
+sequenceDiagram
+    participant A as Holder A
+    participant M as Memory
+    participant B as Acquirer B
+    A->>M: data = 42 (plain store)
+    A->>M: locked = false (store, Release)
+    Note over A,M: Release: earlier writes<br/>cannot sink below this
+    B->>M: CAS locked false to true (Acquire)
+    Note over M,B: Acquire: later reads<br/>cannot hoist above this
+    B->>M: read data, sees 42
+</div>
+
+---
+
+## The Interior-Mutability Puzzle
+
+`lock(&self)` takes a *shared* reference and must hand back something you can write through.
+
+```rust
+pub struct SpinLock<T> {
+    locked: AtomicBool,
+    data: UnsafeCell<T>,     // spinlock.rs:7
+}
+```
+
+- `&T` normally means **nobody may mutate**
+- `UnsafeCell<T>` is the one type the compiler treats as opting out
+- It checks nothing — it grants **permission**; the lock supplies the correctness
+
+---
+
+## `Drop` Is the Unlock
+
+```rust
+pub struct SpinLockGuard<'a, T> { lock: &'a SpinLock<T> }
+
+impl<T> Drop for SpinLockGuard<'_, T> {
+    fn drop(&mut self) { self.lock.unlock(); }     // spinlock.rs:71
+}
+```
+
+- Cannot forget to unlock — early `return` or panic cannot skip it
+- Cannot unlock twice — `Drop` runs once
+- Cannot reach the data without the lock — the only path is through a guard
+- `'a` stops the lock being moved or dropped while a guard lives
+
+---
+
+## One Character Apart
+
+```rust
+let _g = lock.lock();   // held to end of scope
+let _  = lock.lock();   // held for ZERO statements
+```
+
+- `_` is a *pattern*, not a binding — the temporary drops at the end of that statement
+- No warning. The code is well-formed and means what was written
+- `drop(guard)` releases early on purpose — `shell.rs:102`
+
+---
+
+## `Send` and `Sync`
+
+- **`Send`** — a value may be *moved* to another thread
+- **`Sync`** — a `&T` may be *shared* with another thread
+
+`UnsafeCell` is deliberately **not** `Sync`, so `SpinLock<T>` isn't either.
+
+```rust
+unsafe impl<T: Send> Sync for SpinLock<T> {}    // spinlock.rs:12
+```
+
+- The `unsafe` is a **signature**: *I checked that the lock serialises access*
+- `T: Send`, not `T: Sync` — the lock hands `&mut T` to whichever hart wins
+- `const fn new` (`spinlock.rs:15`) is why `fs.rs:277` can be a plain `static`
+
+---
+
+## Deadlock
+
+Four conditions, all at once (Coffman, 1971): **mutual exclusion**, **hold-and-wait**, **no preemption**, **circular wait**. Break any one.
+
+```text
+   thread A                    thread B
+   FS.lock()                   PROC.lock()
+   PROC.lock()   <-- waits     FS.lock()     <-- waits     forever
+```
+
+- Kernels break the fourth: a **global lock order**, acquired in increasing order
+- xv6 states it in comments; Linux checks it at runtime with `lockdep`
+
+---
+
+## The Single-Hart Deadlock
+
+<div class="mermaid">
+flowchart TD
+    A["kernel code calls FS.lock()\nCAS false to true succeeds"] --> B["UART interrupt fires\ninterrupts were never disabled"]
+    B --> C["console::intr runs\non the SAME hart"]
+    C --> D["handler calls FS.lock()"]
+    D --> E["CAS sees true, spin_loop forever"]
+    E --> F["the only code that could store false\nis the code we interrupted"]
+    F --> E
+</div>
+
+---
+
+## Two Rules Every Kernel Follows
+
+**1. Interrupts off while holding a spinlock.**
+
+- xv6: `acquire()` calls `push_off()` (clears `sstatus.SIE`, bumps a nesting depth); `release()` calls `pop_off()`
+- Nesting matters — naive enable-on-release re-enables while the outer lock is held
+- Linux: `spin_lock_irqsave`
+
+**2. Never sleep holding a spinlock.** Waiters burn CPU; on one hart nobody can run the holder again.
+
+rv6 does neither — one hart, lock-free interrupt handlers (`console.rs:13`).
+
+---
+
+## Semaphores: P and V
+
+Dijkstra, 1965, the THE system. *proberen* / *verhogen*.
+
+- **P / wait** — decrement if the count exceeds zero, otherwise block
+- **V / post** — increment, waking a waiter
+
+```text
+count = initial + (completed V) - (completed P)      and  count >= 0
+```
+
+- 1 permit → **binary semaphore**, behaves like a mutex
+- *n* permits → **counting semaphore**: buffer slots, DMA channels
+
+A mutex has an **owner**; a semaphore does not — which is why it is good at *signalling*.
+
+---
+
+## rv6's Semaphore
+
+```rust
+pub struct Semaphore {
+    count: SpinLock<i64>,        // semaphore.rs:6
+}
+```
+
+- The count is shared mutable state, so it lives behind the lock you just built
+- `try_wait` (`semaphore.rs:16`) locks, tests, decrements
+- `post` (`semaphore.rs:26`) locks and increments
+- Both take `&self` — interior mutability, laundered through the lock
+
+`try_wait`, not `wait`: blocking needs a sleep queue and somebody else to run.
+
+---
+
+## The Lost Wakeup
+
+```text
+   time   consumer                     producer         count  sleeping
+   ----   --------------------------   --------------   -----  --------
+     1    reads count == 0, decides                       0       -
+          to sleep
+     2                                 count += 1         1       -
+     3                                 wakeup()           1     none!
+     4    sleep()                                         1    forever
+```
+
+The wakeup woke nobody, because nobody was asleep yet.
+Two instructions wide; the symptom is a hang minutes later somewhere else.
+
+---
+
+## The Sleep/Wakeup Contract
+
+Testing the condition and going to sleep must be **atomic with respect to the wakeup**.
+
+1. Evaluate the condition **while holding a lock**
+2. `sleep` marks the process `Sleeping`, **then** releases the lock
+3. `wakeup` takes the same lock before scanning
+4. On waking, re-test in a **`while`, not an `if`**
+
+xv6's `sleep(chan, lk)`, and every condition variable in every language.
+`ProcState::Sleeping` exists in `proc.rs`; nothing puts a process there yet.
+
+---
+
+## The Bounded Buffer
+
+```text
+   empty = N   free slots     full = 0   filled slots     mutex = 1
+
+   producer                          consumer
+     P(empty)   // claim a slot        P(full)    // claim an item
+     P(mutex)                          P(mutex)
+     buf[in] = item; in = (in+1)%N     item = buf[out]; out = (out+1)%N
+     V(mutex)                          V(mutex)
+     V(full)    // publish it          V(empty)   // release the slot
+
+   invariant:  empty + full + (items in flight) = N
+```
+
+Swap `P(mutex)` and `P(empty)` and you block **holding the mutex** — deadlock.
+
+---
+
+## The Kernel Heap Comes Online
+
+```rust
+unsafe impl GlobalAlloc for KernelHeap {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {         // kheap.rs:23
+        if layout.size() > PGSIZE || layout.align() > PGSIZE {  // kheap.rs:26
+            return ptr::null_mut();
+        }
+        kalloc::kalloc()
+    }
+    unsafe fn dealloc(&self, ptr: *mut u8, _l: Layout) { kalloc::kfree(ptr) }
+}
+
+#[global_allocator]                                             // kheap.rs:40
+static ALLOCATOR: KernelHeap = KernelHeap;
+```
+
+A **language item**: one per binary, and every allocation in the program routes through it.
+
+---
+
+## What It Costs
+
+| Expression | Bytes wanted | Pages | Wasted |
+|---|---|---|---|
+| `Box::new(7u64)` | 8 | 1 | 4088 |
+| `Arc::new(Semaphore::new(2))` | 32 | 1 | 4064 |
+| `Vec::<u32>::with_capacity(2048)` | 8192 | — | fails, then panics |
+
+- `Arc::clone` bumps the strong count **atomically** — your spinlock's primitive
+- `Arc<T>` yields only `&T`, so shared mutation needs interior mutability inside
+- `Arc<Semaphore>` = `Arc<Mutex<T>>`, the standard Rust shape
+
+---
+
+## Why So Late, Why So Small
+
+**Late** — the heap allocates from `kalloc`, whose free list is only populated by `kalloc::init()` (`main.rs:89`). Nothing may allocate before that.
+
+**Small** — Linux uses a buddy allocator plus SLUB; xv6 has no kernel `malloc` at all. rv6's forty lines serve a `Vec<(String, usize)>` and a few `Arc`s.
+
+<div class="highlight-box">
+And it is <strong>not thread-safe</strong>: <code>kalloc</code> walks a bare <code>static mut FREELIST</code> (<code>kalloc.rs:11</code>) with no lock. Fixing it means wrapping the free list in the <code>SpinLock</code> you are about to write.
+</div>
+
+---
+
+## Where This Goes
+
+Today's exercises:
+
+- **`07_spinlocks`** — `lock` and `try_lock` on `compare_exchange`, with the guard, `UnsafeCell`, and `unsafe impl Sync` given
+- **`08_semaphores`** — `try_wait` and `post` on your lock; the heap turns on and `Arc` starts working
+
+Read `07_spinlocks/README.md` first — it has the API and the failure messages.
+
+Later: `14_interrupts` makes preemption real, and every shared structure in the kernel needs what you built today.
+
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            // Render Mermaid diagrams after Reveal is ready
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // CS 326: robust mermaid rendering — read decoded textContent (undo any
+        // HTML-entity escaping from the markdown pipeline) and wait for web fonts
+        // so text measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buffers, Bytes, and Line-Oriented I/O - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Buffers, Bytes, and Line-Oriented I/O
+
+## CS 326 Operating Systems
+
+L07 &middot; September 15, 2026 &middot; exercises `c00`&ndash;`c04`
+
+---
+
+## Learning Objectives
+
+- Explain the `read`/`write` contract, and why a **short read is normal**
+- Trace a copy loop over a stream that returns arbitrary chunk sizes
+- Justify `write_all` over a bare `write`
+- Derive a buffer size from syscall cost, stack budget, and device geometry
+- Distinguish `u8`, `char`, `&str`, `&[u8]` — and say why a kernel uses bytes
+- Design a streaming computation whose state is O(1) in the input
+
+---
+
+## The Narrowest Waist
+
+Every source and sink of bytes looks the same: a **file descriptor**, a small
+integer indexing a per-process table.
+
+| Fd | Name | `ulib` | Usually |
+|---|---|---|---|
+| 0 | standard input | `STDIN` | keyboard, or left side of a pipe |
+| 1 | standard output | `STDOUT` | terminal, or a file after `>` |
+| 2 | standard error | `STDERR` | terminal, **even when** stdout is redirected |
+
+A program cannot tell a file from a terminal from a pipe. That is the point.
+
+---
+
+## Four Calls, One `ecall` Each
+
+```rust
+read(fd, &mut buf)  -> Result<usize, Error>   // lib.rs:104
+write(fd, &buf)     -> Result<usize, Error>   // lib.rs:114
+open(path, flags)   -> Result<Fd, Error>      // lib.rs:125
+close(fd)           -> Result<(), Error>      // lib.rs:134
+```
+
+On rv6 each is one instruction: number in `a7`, args in `a0`–`a2`,
+result back in `a0` (`sys/rv6.rs:21`).
+
+`SYS_EXIT 2 · SYS_READ 5 · SYS_OPEN 15 · SYS_WRITE 16 · SYS_CLOSE 21`
+
+---
+
+## Where a `read` Actually Goes
+
+<div class="mermaid">
+flowchart TD
+    A["ulib::read(fd, &amp;mut buf)"] --> B["sys_read — rv6.rs:33"]
+    B --> C["ecall: a7=5, a0=fd, a1=ptr, a2=len"]
+    C --> D["trap: trampoline saves 31 registers"]
+    D --> E["syscall.rs:468 sys_read"]
+    E --> F["Console: one getc — syscall.rs:489"]
+    E --> G["Inode: 128-byte kernel buffer — syscall.rs:496"]
+    F --> H["copyout, return count in a0"]
+    G --> H
+</div>
+
+---
+
+## The Short-Read Contract
+
+```rust
+pub fn read(fd: Fd, buf: &mut [u8]) -> Result<usize, Error>
+```
+
+Returns **how many bytes it actually read** — anywhere from `0` to `buf.len()`.
+
+<div class="highlight-box">
+Exactly one value means end of file, and it is <strong>0</strong>.
+A partially filled buffer is a success, not an error.
+</div>
+
+---
+
+## Why a Read Comes Back Short
+
+- **The file ran out** — 40 bytes left, you asked for 512
+- **The console is one keystroke at a time** — `syscall.rs:489` calls
+  `console::getc()` once and returns `1`, whatever your buffer size
+- **The kernel has its own buffer** — `syscall.rs:496` declares
+  `[0u8; 128]` and clips your request to it
+- **A pipe hands over what exists** — 12 bytes so far, so 12
+- **A signal interrupted a transfer in progress** (Linux)
+
+---
+
+## The Loop
+
+```rust
+loop {
+    let n = ulib::read(fd, &mut buf)?;   // 0 ..= buf.len()
+    if n == 0 { break; }                 // only 0 means EOF
+    ulib::write_all(STDOUT, &buf[..n])?; // exactly n, not buf.len()
+}
+```
+
+Two details carry everything:
+
+- Stop at `0` — **not** at "smaller than the buffer"
+- Write `&buf[..n]` — `buf[n..]` is last iteration's leftovers
+
+---
+
+## One Program, Three Call Patterns
+
+```text
+file: 1500 bytes, 512-byte buffer
+
+host (regular file):
+  512, 512, 476, 0        ->  4 reads, 3 writes
+
+rv6 (kernel clips at 128, syscall.rs:497):
+  128 x 11, 92, 0         -> 13 reads, 12 writes
+
+rv6 console (syscall.rs:489):
+  1, 1, 1, ...            -> one syscall PER KEYSTROKE
+```
+
+The source file is identical in all three.
+
+<div class="highlight-box">
+A single-read implementation passes every small test — a 12-byte fixture fits
+in one read — then truncates a real file. No error, no panic, no log line:
+the output is just <strong>short</strong>.
+</div>
+
+---
+
+## Short Writes, and `write_all`
+
+```rust
+pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
+    while !buf.is_empty() {
+        let n = write(fd, buf)?;
+        if n == 0 { return Err(Error(-1)); }
+        buf = &buf[n..];
+    }
+    Ok(())
+}
+```
+
+`lib.rs:154`. The binding is `mut`, not the data. No count returned —
+"all of it" is the only success. The `n == 0` guard stops an infinite loop.
+
+---
+
+## What Your Tests Cannot Catch
+
+<div class="info-box">
+The host harness (<code>host.rs:33</code>) accepts <strong>every</strong> write in full,
+and its descriptor table grows. So no test on your laptop can fail a
+<code>write</code>-instead-of-<code>write_all</code> bug, or a missing <code>close</code>.
+</div>
+
+rv6 charges you for both — and its entire diagnostic is the six-line panic
+handler at `sys/rv6.rs:66`, which prints the word `panic`.
+
+---
+
+## Why Buffer At All
+
+One byte per `read` works, and costs a full trap per byte:
+
+- save 31 registers to the trapframe, switch `sp` and the page table
+- dispatch, do the work, restore, `sret`
+- hundreds of cycles of overhead for **one byte** of payload
+
+512 bytes per `read` pays that fixed cost once and amortises it. The extra
+work is a 512-byte `memcpy` — a handful of cycles.
+
+---
+
+## The Curve
+
+```text
+   syscalls to move 1 MiB
+   1048576 |*
+     16384 |    *
+      2048 |         *          <- 512-byte buffer
+       256 |              *     <- 4 KiB buffer
+        16 |                  * <- 64 KiB buffer
+           +---------------------
+             1   64  512  4K  64K
+```
+
+1 &rarr; 512 removes **99.95 %** of the calls.
+512 &rarr; 64 KiB removes 99.2 % of what is left, at 128&times; the memory.
+
+---
+
+## Four Forces on the Size
+
+1. **Syscall amortisation** — wants it large, with steep diminishing returns
+2. **Device geometry** — sectors are 512 B, pages 4 KiB; alignment matters
+3. **The kernel's staging buffer** — rv6 clips at 128 (`syscall.rs:497`),
+   so asking for more buys nothing there
+4. **Your memory budget** — and on rv6 this one bites
+
+---
+
+## The rv6 Budget
+
+```text
+0x0001_1000   initial sp; push_argv copies argv strings below it
+0x0001_0000   THE stack page -- one page, 4096 bytes, all you get
+   ...        unmapped guard gap: overrun = clean page fault
+0x0000_0000   flat image, 1..16 pages -> 64 KiB maximum
+```
+
+`cat.rs:23`, `wc.rs:34` use `[0u8; 512]`.
+`head.rs:40`, `grep.rs:45` use `[0u8; 1024]` — a **quarter** of the stack.
+
+`[0u8; 8192]` is not slow. It is a page fault.
+
+---
+
+## Four Types That Are Not "Text"
+
+| Type | Size | Guarantees |
+|---|---|---|
+| `u8` | 1 byte | none — any of 256 values |
+| `char` | **4 bytes** | one Unicode scalar value |
+| `&str` | ptr + len | pointed-to bytes are **valid UTF-8** |
+| `&[u8]` | ptr + len | none |
+
+`'a' as u32 == 97`; `'🦀' as u32 == 129408`. `&str` carries a validity
+invariant that other unsafe code relies on — so the conversion can fail.
+
+---
+
+## Why the Kernel Works in Bytes
+
+- **The data genuinely is bytes.** A disk block, a UART register, a page:
+  none has an encoding
+- **Validation costs image space.** A UTF-8 table plus the `core::fmt`
+  that travels with it is 12–18 KiB — a fifth of a 64 KiB program budget.
+  Hence `write_usize` (`lib.rs:181`): 20 lines, no table
+- **Chunk boundaries ignore characters.** A 4-byte emoji straddling a
+  512-byte buffer arrives two bytes now, two bytes later
+
+---
+
+## UTF-8 Is Designed for This
+
+<div class="info-box">
+Thompson and Pike, 1992: <strong>every byte of a multi-byte sequence has its
+high bit set</strong>. No byte of a multi-byte character can be mistaken for an
+ASCII byte.
+</div>
+
+- Searching for `cat` cannot false-hit inside `café`'s encoding
+- Splitting on `\n` (0x0A) can never split inside a character
+- Byte-oriented `grep` and byte-oriented line splitting are correct on
+  UTF-8 text **for free**
+
+And so: `wc` counts bytes. `printf 'café\n' | wc` reports **6**.
+
+---
+
+## What a Line Is
+
+A run of bytes ending at `\n`. A **separator**, not a container.
+
+- the newline is not part of the line
+- the last line of a file may not have one
+- a Windows file leaves a `\r` at the end of the line unless stripped
+
+With a heap: allocate a `String` per line, keep a growable remainder.
+Without one: **one fixed buffer**, and lines do not align with reads.
+
+---
+
+## `ulib::Lines` — Four Cases
+
+`lines.rs:32`, in priority order:
+
+1. **Newline already in the buffer** (`:34`) — return the slice, advance
+   `start`. **No syscall.** The common case
+2. **EOF with bytes left** (`:39`) — return them; this is why a file with
+   no trailing newline still yields its last line
+3. **Buffer full, no newline** (`:52`) — a line longer than the buffer:
+   return what there is and set `truncated`
+4. **Otherwise** (`:49`) — compact, then refill
+
+---
+
+## Compaction
+
+```text
+12-byte buffer, "ghijkl" is an unconsumed fragment
+
+before:  [ a b c \n d e f \n g h i j k l ]   start=8, len=16
+                          ^start        ^len
+
+compact: [ g h i j k l . . . . . . . . . ]   start=0, len=6
+refill:   read(fd, &mut buf[6..]) -> 10
+         [ g h i j k l m n \n o p q r s t ]   start=0, len=16
+
+return:  "ghijklmn"                          start=9
+```
+
+The buffer is **yours**; `Lines<'b>` borrows it, so the compiler forbids you
+touching it while a returned slice is alive.
+
+---
+
+## Five Commands, One Idea
+
+<div class="mermaid">
+flowchart LR
+    A["c00 echo\nno input"] --> B["c01 cat\nstream it"]
+    B --> C["c02 wc\nstream + O(1) state"]
+    C --> D["c03 head\nstop early"]
+    D --> E["c04 grep\nmatch"]
+</div>
+
+Each adds exactly one thing to the same skeleton.
+
+---
+
+## `echo` and `cat`
+
+**`echo`** — no input at all. argv in, bytes out, exit status back.
+Its one subtlety: a space is a **separator**, not a terminator, so `n`
+arguments take `n-1` spaces.
+
+**`cat`** — the read loop, made executable. Two non-obvious rules:
+
+- do **not** `return` on the first bad file; `cat missing real` still prints
+  `real`, then exits non-zero
+- `close` what you opened — the descriptor table is a small fixed array
+
+---
+
+## `wc`: One Bit of Memory
+
+You cannot split — there is nowhere to put the pieces, and often nowhere to
+put the input. So count **transitions** into non-whitespace instead.
+
+```text
+input:     ' '   ' '   'a'   ' '   ' '   'b'   '\n'
+in_word:    f     f     t     f     f     t      f
+words:      0     0     1     1     1     2      2
+                        ^                 ^
+                        transition: +1 each
+```
+
+Ten spaces still separate one pair of words. A final word with no trailing
+newline needs **no EOF special case** — it was counted when it started.
+Three `usize` and one `bool`, whether the input is 14 bytes or 14 GB — and
+the same shape returns in the UART driver (ex. 15), the shell's tokenizer
+(ex. 16), and the ELF parser (ex. 19).
+
+---
+
+## `head`: Correctness Includes Not Working
+
+`head -n 5 /var/log/huge.log` must not read a gigabyte.
+`slow_program | head -n 1` must not wait for `slow_program`.
+
+```rust
+while printed < limit { ... }     // head.rs:43 — the stopping IS the loop bound
+```
+
+Not "read every line, print the first `limit`". Both pass every test; only
+one is `head`.
+
+**Backpressure**: a reader that stops eventually blocks the writer. That is
+why `yes | head -n 1` terminates.
+
+---
+
+## `grep`: Three Ways to Break a Search
+
+1. **Empty needle** — occurs in every string at position 0. *Definitional*:
+   state it before scanning
+2. **Needle longer than haystack** — `haystack.len() - needle.len()` on
+   `usize`. `3 - 8` panics in debug, wraps to ~1.8&times;10¹⁹ in release and
+   then indexes out of bounds. *Type* edge case
+3. **Match at the very end** — the last start position is exactly
+   `len - needle.len()`, so the range is `0..=n`, not `0..n`
+   (`grep.rs:33`). *Off-by-one*, and the dangerous kind
+
+(2) and (3) pull opposite ways — which is why the guards come **before** the
+subtraction.
+
+---
+
+## Exit Status Is an Output
+
+| Status | Meaning |
+|---|---|
+| `0` | at least one line matched |
+| `1` | nothing matched, and nothing went wrong |
+| `2` | something went wrong — bad usage, or a file that would not open |
+
+"Found nothing" is deliberately **not** an error. That is what makes
+`grep -q x f && echo yes` work — and it is the only value a program returns
+that another program can act on without parsing text.
+
+---
+
+## What This Buys in December
+
+| Command | Flat image | Of the 64 KiB budget |
+|---|---|---|
+| `echo` | 384 B | 0.6 % |
+| `cat` | 1256 B | 1.9 % |
+| `wc` | 1821 B | 2.8 % |
+| `head` | 2713 B | 4.1 % |
+| `grep` | 2854 B | 4.4 % |
+
+All five together: under 9 KiB — one `println!` would roughly quintuple the
+largest. `oslings ship grep` builds `commands/src/bin/grep.rs` — **not a
+port** — for RISC-V and embeds it in your kernel, where your `exec` loads it
+and your trap handler catches every `ecall`.
+
+Reach for a `Vec` and the file stops being able to make the trip.
+
+---
+
+## Summary
+
+1. A short read is **normal**; only `0` means EOF
+2. Read into a fixed buffer, stop at `0`, write `&buf[..n]`, repeat
+3. `write` can be short too — always `write_all`
+4. Buffering amortises the trap; the first order of magnitude is most of it
+5. Bytes, not `char` or `&str` — validation costs image space, and UTF-8 is
+   ASCII-transparent so byte operations are already right
+6. `Lines` compacts and refills one buffer you own, and reports truncation
+7. `wc` counts transitions; `head` stops early; `grep`'s edge cases are
+   three distinct classes of bug
+
+**Next:** `c02_wc`, `c03_head`, `c04_grep` — then L08, RISC-V registers.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

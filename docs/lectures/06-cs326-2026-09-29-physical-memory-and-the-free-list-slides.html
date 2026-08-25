@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physical Memory and the Free List - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Physical Memory and the Free List
+
+## CS 326 Operating Systems
+
+L11 · Module 2 · Exercise `02_physical_memory`
+
+---
+
+## Learning Objectives
+
+- Explain why memory is handed out in fixed-size pages, not arbitrary blocks
+- Distinguish internal from external fragmentation
+- Describe the intrusive free list and why its overhead is zero bytes
+- Trace `kfree` as a push and `kalloc` as a pop, pointer by pointer
+- Derive the order pages come off a freshly built free list
+- Diagnose the ordering bug and predict what QEMU prints
+
+---
+
+## What the Kernel Inherits
+
+At `kmain`: one CPU, one UART, one flat array of bytes.
+
+```rust
+pub const PGSIZE: usize = 4096;                          // memlayout.rs:7
+pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs:11
+pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs:13
+```
+
+134,217,728 bytes = **exactly 32,768 pages**. The allocator answers two questions:
+
+1. `kalloc()` — give me a page nobody else is using
+2. `kfree(pa)` — I am done with this page
+
+<div class="info-box">
+<strong>Not virtual memory.</strong> This hands out <em>real RAM at real addresses</em>. Paging (L12) is a layer on top — and page tables are themselves pages that came from <code>kalloc</code>.
+</div>
+
+---
+
+## The Hardest Easy Problem
+
+Every subsystem depends on it. It depends on nothing.
+
+- Must be correct before anything else can be tested
+- Cannot call anything that might itself allocate
+- **`kfree` must never be able to fail**
+
+```rust
+kalloc::kfree((*p).trapframe as *mut u8);   // proc.rs:143
+kalloc::kfree((*p).kstack as *mut u8);      // proc.rs:147
+```
+
+<div class="highlight-box">
+Teardown runs <em>after</em> an allocation has already failed. If returning memory required memory, the kernel would deadlock exactly when it was already in trouble.
+</div>
+
+---
+
+## Why Pages I: the Hardware
+
+Sv39 translates at 4096-byte granularity. A PTE stores a page *number*:
+
+```rust
+pub const fn new(pa: usize, flags: usize) -> Pte {
+    Pte(((pa >> 12) << 10) | flags)          // vm.rs:30
+}
+```
+
+- `>> 12` **discards** the low twelve bits — no rounding, no error
+- `Pte::new(0x8003_1008)` silently maps `0x8003_1000`
+- The TLB caches *page* translations: finer granularity burns entries
+
+An unaligned frame is not an error the hardware can report. It cannot perceive it.
+
+---
+
+## Why Pages II: Allocation Becomes O(1)
+
+`malloc` is hard because its blocks are all different sizes.
+
+| `malloc` must… | A page allocator… |
+|---|---|
+| Search for a fitting block | Takes the first; they are identical |
+| Store each block's size | Stores nothing; always `PGSIZE` |
+| Split and coalesce | Never splits, never merges |
+| Honour alignment | Always 4096-aligned |
+
+Both operations become **a single pointer swap** — same cost with 1 free page as with 32,719.
+
+---
+
+## The Fragmentation Trade
+
+Fixed-size blocks do not remove fragmentation; they move it.
+
+- **External** — free memory unusable because it is not contiguous.
+  `malloc`'s chronic disease. A page allocator is **completely immune**:
+  every free page is as good as every other.
+- **Internal** — memory handed out but unused. A page allocator has this
+  in abundance.
+
+<div class="info-box">
+External fragmentation makes requests <strong>fail</strong>. Internal fragmentation makes them <strong>expensive</strong>. A kernel prefers waste to unpredictable failure.
+</div>
+
+---
+
+## Internal Fragmentation: the Honest Extreme
+
+```rust
+//! (a 16-byte `Arc` still costs 4096 bytes)     // kheap.rs:11
+unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+    if layout.size() > PGSIZE || layout.align() > PGSIZE {
+        return ptr::null_mut();
+    }
+    kalloc::kalloc()                             // kheap.rs:29
+}
+```
+
+- 99.6% waste on a 16-byte allocation
+- rv6 accepts it: few small objects, and the fix is a second allocator
+- Linux's answer to the same problem is SLUB on top of the buddy allocator
+
+---
+
+## What "Page-Aligned" Buys
+
+Low 12 bits zero. Two cheap facts, both used by rv6:
+
+```rust
+fn pgroundup(addr: usize) -> usize {
+    (addr + PGSIZE - 1) & !(PGSIZE - 1)     // kalloc.rs:18
+}
+fn pgrounddown(a: usize) -> usize { a & !(PGSIZE - 1) }   // vm.rs:49
+```
+
+- `& !(PGSIZE - 1)` clears the low bits — rounds **down**
+- Adding `PGSIZE - 1` first makes it round **up**
+- Power of two: two instructions, not a division
+- Page number is just `pa >> 12`; any smaller alignment satisfied for free
+
+---
+
+## The Idea
+
+We need O(1) insert and remove over ~32,719 pages — and we **must not allocate
+in order to record a free**. (An array of free-page addresses needs ~256 KiB.
+Allocated from where?)
+
+**A free page contains nothing.** That is what "free" means. So put the link
+*inside the page*:
+
+```rust
+#[repr(C)]
+struct Run {
+    next: *mut Run,                                  // kalloc.rs:8
+}
+
+static mut FREELIST: *mut Run = ptr::null_mut();     // kalloc.rs:11
+```
+
+`Run` is a lie the kernel tells itself. There is no `Run` in RAM — there is a page, and `pa as *mut Run` reads its first eight bytes as a pointer.
+
+---
+
+## The Intrusive Free List
+
+<div class="mermaid">
+flowchart LR
+    H["FREELIST\n(8 bytes in .bss)"] --> A
+    A["page 0x87FF_F000\nbytes 0..8: 0x87FF_E000"]
+    B["page 0x87FF_E000\nbytes 0..8: 0x87FF_D000"]
+    C["page 0x87FF_D000\nbytes 0..8: ..."]
+    D["page 0x8003_1000\nbytes 0..8: NULL"]
+    A --> B --> C -.-> D
+</div>
+
+Bookkeeping outside the managed memory: **eight bytes**, whatever the RAM size.
+
+---
+
+## Why `kfree` Cannot Fail
+
+<div class="info-box">
+The free list's capacity is automatically equal to the resource it manages. You can never run out of room to record a free page, because the page you are recording <em>is</em> the room.
+</div>
+
+- No allocation on the free path — the property §1 demanded, for nothing
+- Teardown (`freeproc`, `free_user_pagetable`) runs under memory pressure
+- Contrast: any allocator with an out-of-line node pool can fail while freeing
+
+---
+
+## `kfree` is a Push
+
+```rust
+pub unsafe fn kfree(pa: *mut u8) {
+    let r = pa as *mut Run;         // kalloc.rs:35
+    (*r).next = FREELIST;           // kalloc.rs:36
+    FREELIST = r;                   // kalloc.rs:37
+}
+```
+
+The middle line is a **real store to physical RAM**, at the address of the page being freed.
+
+That is the moment the bookkeeping is written into the resource it describes.
+
+---
+
+## The Push, Step by Step
+
+```text
+before:  FREELIST ──▶ [ B ] ──▶ [ C ] ──▶ NULL
+         page A holds whatever the previous owner left
+
+step 1:  r = A as *mut Run       no memory touched
+step 2:  (*r).next = FREELIST    writes B's address into A[0..8]
+step 3:  FREELIST = r
+
+after:   FREELIST ──▶ [ A ] ──▶ [ B ] ──▶ [ C ] ──▶ NULL
+```
+
+<div class="highlight-box">
+<strong><code>kfree</code> destroys data.</strong> A page's first eight bytes are gone the instant it is freed. Reading a page after freeing it was always a bug — now it is a bug that announces itself.
+</div>
+
+---
+
+## `kalloc` is a Pop
+
+```rust
+pub unsafe fn kalloc() -> *mut u8 {
+    let r = FREELIST;               // kalloc.rs:41
+    if !r.is_null() {
+        FREELIST = (*r).next;       // kalloc.rs:43
+    }
+    r as *mut u8                    // kalloc.rs:45
+}
+```
+
+- Null head **is** the out-of-memory answer; callers check (`vm.rs:63`, `proc.rs:119`)
+- The page comes off the list *before* the caller can touch it
+- It still holds a stale `next` — `kalloc` does not clean up after itself
+
+---
+
+## LIFO, and Why It Is Right
+
+Both operations act on the front → **last in, first out**.
+
+- Falls out of using the cheap end of a singly linked list
+- A page just freed was just *in use*, so its cache lines are still resident
+- FIFO would systematically hand out the **coldest** page in the system
+
+The self-test checks exactly this: `kfree(b); kalloc() == b` — the signature of pushing and popping at the same end.
+
+---
+
+## Where the List Comes From: `end`
+
+The linker marks the end of the kernel image; hardcoding it would break on every commit.
+
+```text
+  PROVIDE(end = .);                     /* kernel.ld:43 */
+```
+
+```rust
+extern "C" { static end: u8; }          // kalloc.rs:14
+
+pub unsafe fn init() {
+    let start = &end as *const u8 as usize;   // kalloc.rs:22
+    free_range(start, PHYSTOP);               // kalloc.rs:23
+}
+```
+
+`end` is not a variable — only its **address** means anything.
+
+---
+
+## Building the List
+
+```rust
+unsafe fn free_range(start: usize, stop: usize) {
+    let mut p = pgroundup(start);       // kalloc.rs:27
+    while p + PGSIZE <= stop {          // kalloc.rs:28
+        kfree(p as *mut u8);            // kalloc.rs:29
+        p += PGSIZE;
+    }
+}
+```
+
+- `pgroundup` skips the partial page holding the kernel's tail (`.bss`)
+- `p + PGSIZE <= stop` skips a partial page at the top
+- Built **entirely from `kfree` calls** — no separate init path
+
+---
+
+## One Real Build
+
+```text
+   0x8800_0000  PHYSTOP
+        ^
+        |       32,719 free pages, all on the free list
+        |
+   0x8003_1000  first free page  = pgroundup(end)
+   0x8003_0748  end              <- PROVIDE(end = .), kernel.ld:43
+        |       .bss   (includes STACK0, the 16 KiB boot stack)
+        |       .data / .rodata / .text
+   0x8000_0000  KERNBASE = _entry
+```
+
+Kernel = 49 pages. 32,768 − 49 = **32,719** free. Your `end` will differ — that is the point.
+
+---
+
+## Where It Sits in Boot
+
+<div class="mermaid">
+flowchart TD
+    A["_entry: set sp (entry.rs:18)"] --> B["start: M-mode setup, mret"]
+    B --> C["kmain → kinit (main.rs:87)"]
+    C --> D["uart::init"]
+    D --> E["kalloc::init (main.rs:89)"]
+    E --> F["vm::kvmmake — needs a page for the root table"]
+    F --> G["proc::init — trapframes, kernel stacks"]
+    G --> H["everything else"]
+</div>
+
+The ordering is forced: `kvmmake` allocates on its first line (`vm.rs:126`).
+
+---
+
+## Which Page Comes Out First?
+
+- `free_range` walks **upward** from `0x8003_1000`
+- Every `kfree` pushes onto the **front**
+- So the *last* page freed is the *first* on the list
+
+<div class="highlight-box">
+The very first <code>kalloc()</code> in the kernel returns <strong>0x87FF_F000</strong> — the top page of RAM. The list runs downward through memory even though it was built upward.
+</div>
+
+Push-front applied to an ascending sequence. Nothing enforces address order.
+
+---
+
+## What We Give Up (1/2)
+
+**No contiguous multi-page allocation.**
+The list has no adjacency information; finding an adjacent pair means a search, which destroys O(1). DMA buffers and superpages need contiguity — rv6 needs neither, Linux does.
+
+**No zeroing.**
+
+```rust
+let page = kalloc::kalloc();
+if page.is_null() { return ptr::null_mut(); }
+ptr::write_bytes(page, 0, PGSIZE);            // vm.rs:66
+```
+
+Also `vm.rs:130`, `proc.rs:98`, `proc.rs:123`. An un-zeroed page handed to a user process leaks the previous owner's data.
+
+---
+
+## What We Give Up (2/2)
+
+**No detection.** `kfree` takes an address and no length.
+
+- Double free → a cycle in the list → two owners of one frame
+- Free into the middle of a page → live data corrupted
+- Free outside RAM → a store into MMIO space
+- xv6 adds cheap checks and poisons freed pages; rv6 does not
+
+**No locking.** `FREELIST` is a `static mut` (`kalloc.rs:11`). One hart only — the spinlock arrives in exercise `07`.
+
+---
+
+## Alternative: Bitmap
+
+One bit per page. For 128 MiB: 32,768 bits = **exactly one page** of metadata.
+
+- Allocation scans for a zero bit — O(n), fast in practice with `ctz`
+- Decisive advantage: `k` consecutive zero bits = `k` **contiguous** pages
+- Common in bootloaders and filesystems
+
+The free list can never do that.
+
+---
+
+## Alternative: Buddy (What Linux Uses)
+
+Power-of-two blocks, order 0 = 4 KiB up to order 10 = 4 MiB, one free list per order.
+
+```text
+order 3  [================ 32K ================]
+                        split
+order 2  [====== 16K =====][====== 16K =====]
+              split                buddy, stays free
+order 1  [= 8K =][= 8K =]
+            split      buddy, stays free
+order 0  [4K][4K]
+          ^   buddy, stays free
+          returned to caller
+```
+
+Buddy address = yours with one bit flipped → coalescing is an XOR and a lookup.
+
+---
+
+## Four Allocators, One Table
+
+| | rv6 free list | Bitmap | Buddy | `malloc` |
+|---|---|---|---|---|
+| Block sizes | 4 KiB only | 4 KiB only | 4 KiB · 2^k | arbitrary |
+| alloc / free | O(1) / O(1) | O(n) / O(1) | O(log n) | O(1)+ / coalesce |
+| Metadata | **0 bytes** | 1 bit/page | per-order lists | per-block headers |
+| Contiguous runs | impossible | yes | yes | yes |
+| External frag. | none | none | bounded | chronic |
+| Internal frag. | ≤ 4095 B | ≤ 4095 B | up to 50% | small |
+| Can free fail? | no | no | no | no |
+
+---
+
+## The Ordering Bug
+
+```rust
+pub unsafe fn kfree(pa: *mut u8) {
+    let r = pa as *mut Run;
+    FREELIST = r;               // WRONG: head moved first
+    (*r).next = FREELIST;       // ...so this stores r into r
+}
+```
+
+```text
+correct:                       buggy:
+  FREELIST ─▶ [A] ─▶ [B] ─▶ …    FREELIST ─▶ [A] ─┐
+                                              ^   │
+                                              └───┘
+```
+
+Every node points at itself. During `init`, all but one of 32,719 pages leak.
+
+---
+
+## What QEMU Prints
+
+The self-test passes checks 1–3 — a real, aligned, writable page — then:
+
+```text
+  [fail] second kalloc reused or failed
+OSLINGS:FAIL
+```
+
+<div class="highlight-box">
+The symptom names the bug: two allocations returning the same page ⇒ a one-element cycle ⇒ <code>next</code> points at its own node ⇒ <code>next</code> was written <em>after</em> the head moved.
+</div>
+
+Rule: **write the new node's link before you publish the node.** On multicore that same rule becomes a release store.
+
+---
+
+## Where `kalloc` Shows Up Next
+
+| Caller | What it allocates | Cite |
+|---|---|---|
+| `vm::walk` | an interior page-table page | `vm.rs:62` |
+| `vm::kvmmake` | kernel root table, trampoline | `vm.rs:126`, `:158` |
+| `vm::load_segment` | one page per page of the image | `vm.rs:216` |
+| `proc::allocproc` | page table, trapframe, kstack | `proc.rs:96`, `:117`, `:118` |
+| `kheap` | one page per heap allocation | `kheap.rs:29` |
+
+Two functions, forty-six lines, and the whole kernel rests on them.
+
+---
+
+## Summary
+
+1. **First service, depends on nothing** — `kalloc::init()` runs at `main.rs:89`
+2. **Page-granular because the hardware is** — a PTE stores `pa >> 12`
+3. **Fixed size ⇒ O(1) and no external fragmentation**, paid for in internal waste
+4. **Links live inside the free pages** — eight bytes of out-of-line state, total
+5. **`kfree` = push, `kalloc` = pop, and `kfree` cannot fail**
+6. **LIFO** falls out of the design and keeps pages cache-warm
+7. **Order the two stores** or leak all of RAM at boot
+8. **Now go write it**: exercise `02_physical_memory`
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does not
+        // yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

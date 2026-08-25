@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Mode II: System Calls - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# User Mode II: System Calls
+
+## CS 326 Operating Systems
+
+*The interface between a program and its kernel*
+
+---
+
+## Learning Objectives
+
+- Distinguish a **deliberate** trap (`ecall`) from an involuntary one
+- Describe the ABI: number in `a7`, args in `a0`-`a2`, result in `a0`
+- Justify dispatching on a small integer through a kernel-owned table
+- Explain `sepc += 4` — and predict what happens without it
+- Enumerate the **three** reasons a kernel may not dereference a user pointer
+- Trace `copyin` page by page, and order the steps of the return path
+
+---
+
+## Where we are
+
+Last session we built **the wall**:
+
+- a private address space per process
+- `PTE_U` — the one bit that says "user may touch this"
+- the trampoline and the trapframe
+
+<div class="highlight-box">
+A wall with no door is a prison. A program that cannot print is useless.
+Today: <strong>the door</strong>.
+</div>
+
+A system call is a function call whose callee lives on the other side of a
+privilege boundary. Everything odd about it follows from that.
+
+---
+
+## Two kinds of trap
+
+<div class="mermaid">
+flowchart TD
+    A[a user instruction executes] --> B{what happened}
+    B -->|ecall| C[deliberate: scause = 8]
+    B -->|load from unmapped page| D[involuntary: scause = 13]
+    B -->|timer| E[asynchronous: bit 63 set]
+    C --> F[work is done: sepc += 4]
+    D --> G[repair or kill: sepc unchanged]
+    E --> H[service device: sepc unchanged]
+</div>
+
+Same hardware mechanism. Opposite meaning.
+
+---
+
+## `scause`, and the retry question
+
+Every trap does the same six things: `sepc = pc` · `scause = why` ·
+`sstatus.SPP = old mode` · interrupts off · `stval = detail` · `pc = stvec`
+
+| `scause` | Meaning | Re-run it? |
+|---|---|---|
+| `8` | Environment call from U-mode | **No** — already done |
+| `12` / `13` / `15` | Instruction / load / store page fault | Yes, once repaired |
+| `2` | Illegal instruction | Never resumes |
+| `3` | Breakpoint | No — step over |
+| bit 63 set | Interrupt, not exception | Yes — nothing was wrong |
+
+<div class="info-box">
+The interpretation is entirely the kernel's: <strong>when this trap is over,
+should the interrupted instruction run again?</strong> <code>ecall</code> is the
+only instruction whose entire purpose is to trap.
+</div>
+
+---
+
+## Why an instruction, not a call?
+
+1. **`jal` does not change privilege.** Escalation must be a hardware
+   transition, offered at exactly one address: `stvec`.
+2. **No symbol to link against.** The kernel can be recompiled and relocated
+   without touching a single user binary.
+3. **Entry must be controlled.** One door means one place where the kernel's
+   assumptions are re-established from scratch.
+
+Spelling varies: PDP-11 `trap` · x86 `int 0x80`, then `sysenter`/`syscall` ·
+ARM `svc` · RISC-V `ecall`.
+
+---
+
+## The convention across the wall
+
+**Nothing on the stack can participate** — the kernel abandons the user's `sp`.
+
+| Register | Before `ecall` | After |
+|---|---|---|
+| `a7` | the call **number** | unchanged |
+| `a0` | first argument | the **return value** |
+| `a1` | second argument | unchanged |
+| `a2` | third argument | unchanged |
+
+`a7` holds the number so `a0`-`a2` stay exactly where the ordinary C calling
+convention already put the arguments.
+
+---
+
+## The user side is four instructions
+
+```asm
+    la   a1, user_msg     # a1 = buffer address (user virtual!)
+    li   a2, 21           # a2 = length
+    li   a0, 1            # a0 = fd 1, the console
+    li   a7, 16           # a7 = SYS_WRITE
+    ecall                 # trap
+```
+
+A libc wrapper is the same thing: three arguments already in place, one `li`,
+one `ecall`.
+
+---
+
+## The arguments are not in registers
+
+```text
+  user mode              trapframe page             kernel Rust
+  ---------              --------------             -----------
+  a7 = 16   --uservec--> tf.a7  (offset 168) --> dispatch(num, ...)
+  a0 = 1    --uservec--> tf.a0  (offset 112) -->      a0
+  a1 = 0x28 --uservec--> tf.a1  (offset 120) -->      a1
+  a2 = 2    --uservec--> tf.a2  (offset 128) -->      a2
+
+                         tf.a0  <-------------- return value
+  a0 = 2    <--userret-- tf.a0
+```
+
+`uservec` spills all 31 registers before one line of Rust runs.
+
+---
+
+## usertrap reads a struct
+
+```rust
+let ret = crate::syscall::dispatch(
+    (*tf).a7 as usize,
+    (*tf).a0 as usize,
+    (*tf).a1 as usize,
+    (*tf).a2 as usize,
+);
+(*tf).a0 = ret as u64;      // usermode.rs:408
+```
+
+<div class="highlight-box">
+Writing <code>tf.a0</code> <em>is</em> the whole return-value mechanism. The
+value "returned" from the kernel spent its life as a <code>u64</code> in a page
+of RAM.
+</div>
+
+---
+
+## Return values: one register, two conventions
+
+- **rv6 / xv6**: `-1` means failure. That is all.
+- **Linux**: a return in `-4095..=-1` is an error; libc negates it into `errno`
+  and hands the caller `-1`.
+
+A system call cannot return a `Result` — the boundary transports exactly 64
+bits. Every richer convention is an encoding squeezed into that word.
+
+---
+
+## Dispatch
+
+```rust
+pub fn dispatch(num: usize, a0: usize, a1: usize, a2: usize) -> isize {
+    match num {
+        SYS_FORK   => sys_fork(),
+        SYS_EXIT   => sys_exit(a0 as isize),
+        SYS_WRITE  => sys_write(a0, a1, a2),
+        // ...
+        _ => -1,                       // syscall.rs:44
+    }
+}
+```
+
+Fourteen lines, three design decisions.
+
+---
+
+## Three decisions hiding in a `match`
+
+1. **A number, not a name.** No symbol table, no strings, fits in a register,
+   bounds-checked in one instruction — and *stable* forever.
+2. **Indexed, not searched.** xv6: an array of function pointers. Linux:
+   `sys_call_table` guarded by `NR_syscalls`. O(1) at 350+ calls.
+3. **The default arm returns, it does not panic.** `a7` is chosen by the
+   adversary; a user-triggerable panic is a halt.
+
+<div class="info-box">
+The number is an <strong>index into a table the kernel owns</strong> — never a
+function pointer. That indirection is what keeps the choice of callee inside the
+kernel.
+</div>
+
+---
+
+## The numbers are an ABI
+
+| # | rv6 / xv6 | | Linux riscv64 |
+|---|---|---|---|
+| 1 | `fork` | 56 | `openat` (no `open`!) |
+| 2 | `exit` | 63 | `read` |
+| 5 | `read` | 64 | `write` |
+| 16 | `write` | 93 | `exit` |
+| 21 | `close` | 220 | `clone` |
+
+rv6 keeps xv6's gaps (4 = `pipe`, 6 = `kill`, 10 = `dup`) so later exercises add
+calls without renumbering. Linux has never *reused* a number — i386 still
+carries `oldolduname` (59).
+
+---
+
+## `sepc += 4`
+
+Hardware saves the address **of** the faulting instruction, not the next one.
+
+```text
+  without the +4:                    with the +4:
+
+  0x14:  li   a7, 16                 0x14:  li   a7, 16
+  0x18:  ecall      <--+             0x18:  ecall
+  0x1c:  li   a7, 11   |             0x1c:  li   a7, 11  <-- resumes here
+  ...                  |
+         sepc = 0x18 --+ forever            sepc = 0x1c
+```
+
+One line, `usermode.rs:401`: `(*tf).epc += 4;`
+
+---
+
+## Advance, or retry?
+
+- **Advance** when the trap *completed* the work: `ecall`, `ebreak`, an
+  emulated instruction.
+- **Leave it alone** when the trap reported a *condition* you are about to
+  remove (page fault), or was never the instruction's fault (interrupt).
+
+Notes:
+
+- rv6 edits `tf.epc`, not the CSR — the process may be descheduled in between.
+- `ecall` has no compressed encoding, so `+= 4` is always right.
+- Linux does `sepc -= 4` deliberately, to restart a call a signal interrupted.
+
+---
+
+## The security boundary
+
+`sys_write(fd, buf, len)` — `buf` is a 64-bit number the *user* chose.
+
+```rust
+let bytes = core::slice::from_raw_parts(buf as *const u8, len); // CATASTROPHE
+```
+
+<div class="highlight-box">
+That line is wrong <strong>three separate times</strong>, and the three are
+independent. Remove any two and the third still sinks you.
+</div>
+
+---
+
+## Reason 1: the number means something else here
+
+| user's view | the kernel's view of the SAME number |
+|---|---|
+| `0x0000_0028` program code | unmapped |
+| `0x0001_0000` the stack page | unmapped |
+| `0x0010_0000` unmapped | **TEST_FINISHER** — QEMU power-off |
+| `0x0C00_2080` unmapped | a live **PLIC** register |
+| `0x1000_0000` unmapped | the **UART** transmit register |
+| `0x8004_1000` unmapped | kernel code and data |
+
+None of these is a bug in the user program. The bug is assuming a number carries
+its address space with it.
+
+---
+
+## Reason 2: the confused deputy
+
+`buf = 0x3F_FFFF_E000` is `TRAPFRAME`. It **is** mapped in the user's table —
+but without `PTE_U`.
+
+- A user load faults.
+- A kernel copy on the user's behalf hands the program `kernel_satp` and the
+  address of `usertrap`. One page up is the kernel's code.
+
+<div class="info-box">
+A privileged agent tricked into misusing its authority for a caller who lacks it
+— Norm Hardy, 1988. Four decades on, still the shape of most kernel
+vulnerabilities.
+</div>
+
+---
+
+## Hardware grew an interlock
+
+| Arch | Bit | Effect |
+|---|---|---|
+| RISC-V | `sstatus.SUM` | Clear = supervisor loads/stores to `PTE_U` pages **fault** |
+| x86 | SMAP | Same idea |
+| ARM | PAN | Same idea |
+| — | SMEP / PXN | Kernel may not *execute* user pages |
+
+rv6 never sets SUM, so the hardware backs up the software discipline.
+
+---
+
+## Reason 3: a kernel fault is not survivable
+
+- **In user mode:** unmapped `buf` is a page fault, `usertrap`'s final `else`
+  kills the process. One program dies; the machine lives.
+- **In kernel mode:** it goes to `kerneltrap`, which handles interrupts and
+  `scause == 3` and *falls off the end* for anything else. Then `sret` returns
+  to the faulting instruction, which faults again. Forever.
+
+A user pointer of `0` has hung the whole kernel — and there is no process to
+kill, because the faulting code *is* the kernel.
+
+---
+
+## The answer: `walkaddr`
+
+```rust
+pub unsafe fn walkaddr(table: *mut Pte, va: usize) -> usize {
+    if va >= crate::memlayout::MAXVA { return 0; }       // too big for Sv39
+    let pte = walk(table, va, false);
+    if pte.is_null() || !(*pte).is_valid()
+        || (*pte).flags() & PTE_U == 0 { return 0; }     // reason 2, in software
+    (*pte).pa()
+}
+```
+
+**A page the user cannot reach itself, the kernel will not reach on its behalf.**
+
+---
+
+## `copyin`: translate, then copy
+
+```rust
+while copied < dst.len() {
+    let va0 = pgrounddown(srcva);      // the page this address is on
+    let pa0 = walkaddr(table, va0);    // where that page really is
+    if pa0 == 0 { return Err(()); }
+    let off = srcva - va0;
+    let mut n = PGSIZE - off;          // bytes left on this page
+    if n > dst.len() - copied { n = dst.len() - copied; }
+    ptr::copy_nonoverlapping((pa0 + off) as *const u8,
+                             dst.as_mut_ptr().add(copied), n);
+    copied += n;
+    srcva = va0 + PGSIZE;
+}
+```
+
+---
+
+## Why page at a time?
+
+```text
+  user VA:  0x0FC0 ..... 0x0FFF | 0x1000 ............. 0x1023
+            \_ 64 bytes _/        \____ 36 bytes ____/
+                 |                        |
+  walkaddr(0x0) -> 0x8721_2000    walkaddr(0x1000) -> 0x8704_9000
+                 |                        |
+  phys:     0x8721_2FC0..2FFF   |  0x8704_9000..9023
+```
+
+**Contiguous in virtual address space is not contiguous in physical memory.**
+One `copy_nonoverlapping` of 100 bytes would read another process's page.
+
+---
+
+## Never trust a number that crossed
+
+- **The call number** — bounded by `_ => -1`.
+- **The file descriptor** — `getfile` tests `fd >= NOFILE` *before* indexing;
+  Rust's bounds check would catch it, but as a panic, which is a halt.
+- **The length** — `sys_write` loops through a fixed 64-byte kernel buffer, so
+  `len = 0xFFFF_FFFF` costs time, not memory.
+- **The access mode** — checked at *use*, not only at `open`.
+
+And on real hardware: **TOCTOU**. Translate-and-copy beats validate-then-
+dereference because the copy is private.
+
+---
+
+## The return path
+
+| # | Step | Why |
+|---|---|---|
+| 1 | `stvec` back to `uservec` | the next trap comes from user mode |
+| 2 | refill `kernel_satp` / `sp` / `trap` | notes for the next `uservec` |
+| 3 | `sstatus.SPP = 0` | else `sret` returns to **supervisor** mode |
+| 4 | `sstatus.SPIE = 1` | interrupts on once we are there |
+| 5 | `sepc = tf.epc` | the resume address, past the `ecall` |
+| 6 | jump to `userret` on the trampoline | |
+| 7 | `csrw satp` + `sfence` | the address space changes underfoot |
+| 8 | reload 31 registers, `sret` | including the modified `a0` |
+
+---
+
+## The trampoline moment
+
+Step 7 changes `satp`; the instruction *after* it is fetched through the **new**
+table.
+
+- At an ordinary kernel address that is unmapped: garbage, or a fault with no
+  reachable vector.
+- The trampoline is mapped at the same VA in the kernel table and in every user
+  table, so the program counter's meaning does not change when everything
+  else's does.
+
+`li a0, TRAPFRAME` works because that VA is a compile-time constant, identical
+in every process — and the last `csrrw a0, sscratch, a0` leaves it in
+`sscratch` for the next trap.
+
+---
+
+## One full round trip
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as user
+    participant V as uservec
+    participant K as usertrap
+    participant R as userret
+    U->>V: ecall a7=16 a0=1 a1=0x28 a2=2
+    V->>V: park 31 regs, satp = kernel
+    V->>K: jr kernel_trap
+    K->>K: tf.epc = sepc + 4
+    K->>K: dispatch 16, 1, 0x28, 2
+    K->>K: copyin: 0x28 becomes 0x8721_2028
+    K->>K: uart emits h i, tf.a0 = 2
+    K->>R: usertrapret: SPP=0, sepc=0x1c
+    R->>R: satp = user, reload 31 regs
+    R->>U: sret, a0 = 2
+</div>
+
+---
+
+## What that cost
+
+One trap · 31 stores · four `sfence.vma` · a dispatch · a three-level walk *per
+page* · a two-byte copy · 31 loads · `sret`.
+
+**For two bytes of output.** On Linux: 50-200 ns, worse since KPTI.
+
+<div class="info-box">
+The modern answer to "make I/O faster" is almost never "make the trap faster"
+and almost always <strong>"take fewer traps"</strong>: buffered stdio, the vDSO,
+io_uring.
+</div>
+
+---
+
+## Summary
+
+1. **A system call is a call across a privilege boundary** — registers only,
+   number not name, and zero trust in the caller
+2. **`ecall` is the only deliberate trap**; page faults and interrupts use the
+   same hardware and mean the opposite
+3. **Arguments live in the trapframe**, not registers; writing `tf.a0` is the
+   return value
+4. **`sepc += 4` marks the call completed** — omit it and the program re-calls
+   forever
+5. **Three independent reasons** never to dereference a user pointer: wrong
+   table, confused deputy, fatal fault
+6. **`copyin`/`copyout` are a software MMU with a policy** — and the same
+   suspicion applies to every fd, length, and number that crossed the wall
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid with the USF palette
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does not
+        // yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

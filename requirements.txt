@@ -1,0 +1,5 @@
+# Pinned, not floored. A course site must not break mid-semester because an
+# upstream release changed a default. Bump these deliberately.
+mkdocs==1.6.1
+mkdocs-material==9.6.18
+mkdocs-macros-plugin==1.3.9

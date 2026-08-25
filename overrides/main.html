@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block header %}
+  <!-- Include the original header -->
+  {{ super() }}
+  
+  <!-- Add external links sub-header -->
+  <nav class="md-header-nav md-header-nav--external-links" aria-label="External links">
+    <div class="md-header-nav__inner md-grid">
+      <div class="md-header-nav__links">
+        {% if config.extra.external_links %}
+          {% for link in config.extra.external_links %}
+            <a href="{{ link.url }}" class="md-header-nav__link" target="_blank" rel="noopener" title="{{ link.name }}">
+              {% if link.icon %}
+                <span class="twemoji">
+                  {% set icon_path = ".icons/" + link.icon + ".svg" %}
+                  {% include icon_path ignore missing %}
+                </span>
+              {% endif %}
+              <span class="md-header-nav__link-text">{{ link.name }}</span>
+            </a>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+{% endblock %}

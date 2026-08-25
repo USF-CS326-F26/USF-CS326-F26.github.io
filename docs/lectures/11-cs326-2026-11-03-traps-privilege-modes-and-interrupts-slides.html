@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traps, Privilege Modes, and Interrupts - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# Traps, Privilege Modes, and Interrupts
+
+## CS 326 Operating Systems
+
+L18 &middot; November 3, 2026 &middot; unlocks `13_traps` and `14_interrupts`
+
+---
+
+## Learning Objectives
+
+- **Distinguish** exception, interrupt, and trap
+- **State** what M, S, and U mode may each do
+- **Explain** the six CSRs `start.rs` writes before `mret`
+- **Describe** PMP and why skipping it silences the machine
+- **Decode** an `scause` value and decide whether `sepc` advances
+- **Derive** the timer path `mtimecmp` &rarr; `timervec` &rarr; `sip.SSIP`
+
+---
+
+## Three Privilege Modes
+
+| Mode | Bits | Who runs there | May do |
+|---|---|---|---|
+| **M** machine | `11` | `entry.rs`, `start.rs`, `timervec` | Everything: all CSRs, all memory, PMP, the CLINT |
+| **S** supervisor | `01` | the rv6 kernel | `s*` CSRs, `satp`, delegated traps, `sret`, `wfi` |
+| **U** user | `00` | programs, from `18_user_mode` | Ordinary instructions only. **No** CSR access |
+
+The mode lives in two bits of hart state that **no instruction can read**.
+
+---
+
+## Three Properties That Bite Later
+
+- **Privilege belongs to the hart, not the code.** `csrr t0, mstatus` is legal in M, illegal in S and U — checked at execution time
+- **You cannot ask what mode you are in.** No readable `current_mode`; privilege is visible from below only through what fails
+- **Down is a return, up is a trap.** No "enter user mode" instruction
+
+<div class="info-box">
+Privilege and address space are independent. Sv39 controls <strong>which bytes</strong> you reach; the mode controls <strong>which instructions</strong> you may execute.
+</div>
+
+---
+
+## Moving Between Modes
+
+<div class="mermaid">
+flowchart LR
+    M["M · machine\nstart.rs, timervec"]
+    S["S · supervisor\nthe rv6 kernel"]
+    U["U · user\nprograms"]
+    M -->|"mret · start.rs:54"| S
+    S -->|"sret · userret"| U
+    U -->|"ecall / fault / interrupt"| S
+    S -->|"undelegated trap"| M
+    M -.->|"mret · start.rs:106"| S
+</div>
+
+The lower mode never chooses where it lands — the upper mode wrote that address into `mtvec` or `stvec` first.
+
+---
+
+## Three Words, Three Meanings
+
+- **Exception** — *synchronous*. The executing instruction caused it. `ebreak`, page fault, illegal instruction, `ecall`
+- **Interrupt** — *asynchronous*. Something outside the instruction stream. Timer, UART, disk
+- **Trap** — the *transfer of control* either one causes
+
+<div class="highlight-box">
+Both share one vector register (<code>stvec</code>) and one cause register (<code>scause</code>). That is why they get conflated — and why bit 63 exists.
+</div>
+
+---
+
+## Re-run, or Step Past?
+
+- **Exception**: the instruction has **not** completed. `sepc` points *at* it
+  - page fault you repaired &rarr; re-run
+  - `ebreak` you counted &rarr; step past, or trap forever
+- **Interrupt**: nothing failed. `sepc` already points at the next instruction &rarr; **never** advance it
+
+<div class="info-box">
+RISC-V traps are <strong>precise</strong>: everything before the trapping instruction completed, everything after had no effect. That is what lets <code>sepc</code> be one exact address.
+</div>
+
+---
+
+## The M &rarr; S Handoff
+
+```text
+  start.rs:25  start()        in M-mode, no page table, full power
+    |
+    |  1. mstatus.MPP = 01        where mret goes        start.rs:28-31
+    |  2. mepc = kmain            what pc mret loads     start.rs:34
+    |  3. satp = 0                paging off for now     start.rs:37
+    |  4. medeleg = mideleg       send traps to S        start.rs:40
+    |  5. pmpaddr0 / pmpcfg0      let S touch memory     start.rs:43-44
+    |     mcounteren              let S read `time`      start.rs:47
+    |  6. timerinit()             arm the CLINT          start.rs:51
+    v
+  start.rs:54  mret  --------->  kmain, in S-mode
+```
+
+Six registers. All of them must be right.
+
+---
+
+## `mstatus.MPP` and `mepc`
+
+- `mret` is a **return**: it reads its destination out of saved state
+- `mstatus.MPP` (bits 12:11) = the mode it returns to — `00` U, `01` S, `11` M
+- `mepc` = the address it returns to
+
+<div class="highlight-box">
+Neither was saved by a real trap. <code>start()</code> forges both, and <code>mret</code> cannot tell the difference — you enter a lower mode by <em>pretending you were already there</em>.
+</div>
+
+`mstatus` packs a dozen fields, so it is read-modify-write (`start.rs:28-31`), never a blind `csrw`.
+
+---
+
+## Delegation: `medeleg` and `mideleg`
+
+- By default **every** trap is taken in M-mode
+- `medeleg` = bitmask over exception causes; `mideleg` = over interrupt causes
+- `start.rs:40` writes `0xffff` to both: causes 0&ndash;15 go straight to S-mode
+
+<div class="highlight-box">
+Some bits are hardwired zero: <code>medeleg</code> bit 11 (<code>ecall</code> from M), and <code>mideleg</code> bits 3, 7, 11. <strong>Machine-level interrupts cannot be delegated at all</strong> — which is why the timer needs a detour.
+</div>
+
+---
+
+## PMP: Physical Memory Protection
+
+- A handful of range registers checked on **every** S/U load, store, and fetch
+- Sits **below** paging: survive the Sv39 walk, then survive PMP
+- M-mode is exempt (unless the lock bit `L` is set)
+- Purpose: let firmware fence regions off from the OS
+
+QEMU `virt` implements **16 entries, all zero at reset** — matching nothing.
+
+---
+
+## PMP Fails Closed
+
+<div class="highlight-box">
+If <strong>no</strong> PMP entry matches an S/U access and at least one entry is implemented, the access <strong>fails</strong>. Not "allowed by default" — fails.
+</div>
+
+Skip it and: `mret` &rarr; S-mode at `kmain` &rarr; first fetch faults (cause 1) &rarr; delegated to `stvec`, still 0 &rarr; jump to 0 &rarr; fault &rarr; forever. **No output at all.**
+
+```rust
+asm!("li t0, 0x3fffffffffffff", "csrw pmpaddr0, t0", out("t0") _);  // start.rs:43
+asm!("li t0, 0xf", "csrw pmpcfg0, t0", out("t0") _);                // start.rs:44
+```
+
+---
+
+## Decoding `pmpcfg0`
+
+| Bits | Field | `0xf` means |
+|---|---|---|
+| 0 | R | readable |
+| 1 | W | writable |
+| 2 | X | executable |
+| 4:3 | A | `01` = TOR, top of range |
+| 7 | L | unlocked, so M-mode stays exempt |
+
+PMP addresses are byte addresses **shifted right by 2**, so
+`pmpaddr0 = 0x3fffffffffffff` = 2<sup>54</sup>&minus;1 covers up to 2<sup>56</sup>&minus;4 — all of physical memory.
+
+---
+
+## Skip One Line, Get One Symptom
+
+| Omission | Symptom |
+|---|---|
+| `mstatus.MPP` | Kernel runs in M-mode; `satp` is ignored |
+| `mepc` | `mret` jumps to 0. Silence |
+| `medeleg` / `mideleg` | Traps land in M-mode; `kerneltrap` never runs |
+| `pmpcfg0` | Faults on the **first** memory access. Silence |
+| `mcounteren` | `csrr t0, time` is an illegal instruction, cause 2 |
+
+<div class="info-box">
+Most of these print <strong>nothing</strong>. Attach GDB and read <code>mstatus</code>, <code>mepc</code>, <code>pmpcfg0</code> — guessing is not a strategy.
+</div>
+
+---
+
+## What the Hardware Does on a Trap
+
+1. cause &rarr; **`scause`** (kind in bit 63, code in the low bits)
+2. address of the trapping instruction &rarr; **`sepc`**
+3. faulting address &rarr; **`stval`**
+4. `SIE` &rarr; `SPIE`; `SIE` = 0; previous mode &rarr; `SPP`
+5. `pc` &rarr; **`stvec`**
+
+<div class="highlight-box">
+It does <strong>not</strong> save a single register, switch stacks, or switch page tables. Everything else is your software.
+</div>
+
+Step 4 is free non-reentrancy: **traps arrive with interrupts disabled**.
+
+---
+
+## `stvec` and Its Low Two Bits
+
+- Low two bits are a **MODE** field, not address bits
+- `00` Direct — every trap goes to BASE
+- `01` Vectored — interrupt *i* goes to BASE + 4&times;*i*
+
+rv6 uses Direct and dispatches in software, which is why `kerneltrap` starts by reading `scause`.
+
+<div class="info-box">
+<code>kernelvec</code> is declared <code>.align 4</code> (<code>trap.rs:89</code>) so the low bits are zero. A misaligned handler silently selects Vectored mode with a BASE three bytes off.
+</div>
+
+---
+
+## `kernelvec`
+
+```asm
+kernelvec:
+    addi sp, sp, -128      # trap.rs:91   frame on the CURRENT stack
+    sd ra,   0(sp)         # trap.rs:92   save 16 caller-saved regs
+    ...                    #              ra, t0-t2, a0-a7, t3-t6
+    call kerneltrap        # trap.rs:109  into Rust
+    ld ra,   0(sp)         # trap.rs:111  restore all sixteen
+    ...
+    addi sp, sp, 128       # trap.rs:127
+    sret                   # trap.rs:129  resume at sepc, mode from SPP
+```
+
+Sixteen, not thirty-one: the C calling convention already preserves `s0`&ndash;`s11`. Assembly covers one half, the compiler the other.
+
+---
+
+## Decoding `scause`
+
+```rust
+if (scause >> 63) == 1 {          // trap.rs:55
+    match scause & 0xff { ... }   // trap.rs:57  an interrupt
+} else {
+    if scause == 3 { ... }        // trap.rs:75  an exception
+}
+```
+
+<div class="highlight-box">
+Test the top bit <strong>first</strong>, always. The two cause spaces overlap completely.
+</div>
+
+---
+
+## The Collisions
+
+| Code | Interrupt (bit 63 = 1) | Exception (bit 63 = 0) |
+|---|---|---|
+| 1 | Supervisor software — rv6's timer tick | Instruction access fault |
+| 3 | *(machine software)* | Breakpoint, `ebreak` |
+| 5 | Supervisor timer — unused by rv6 | Load access fault |
+| 8 | *(reserved)* | `ecall` from U-mode — a syscall |
+| 9 | Supervisor external — a device via the PLIC | `ecall` from S-mode |
+
+Miss the top-bit test and a page fault gets "handled" as a timer tick.
+
+---
+
+## Advancing `sepc`, and `sret`
+
+```rust
+if scause == 3 {
+    TRAP_COUNT += 1;
+    asm!("csrw sepc, {}", in(reg) sepc + 4);   // trap.rs:77
+}
+```
+
+- `sepc` points **at** the `ebreak`; `sret` resumes there
+- Forget the `+ 4` and the same instruction traps forever — silent, stack-neutral, infinite
+- `sret`: `pc` &larr; `sepc`, mode &larr; `SPP`, `SIE` &larr; `SPIE`, `SPIE` &larr; 1, `SPP` &larr; 0
+
+---
+
+## One Trap, End to End
+
+<div class="mermaid">
+sequenceDiagram
+    participant C as kernel code
+    participant HW as hardware
+    participant V as kernelvec
+    participant K as kerneltrap
+    C->>HW: ebreak (or a timer arrives)
+    HW->>HW: scause, sepc, stval<br/>SPIE=SIE, SIE=0, SPP=1
+    HW->>V: pc = stvec
+    V->>V: sp -= 128; save ra, t*, a*
+    V->>K: call kerneltrap
+    K->>K: interrupt? clear sip.SSIP<br/>exception? sepc += 4
+    K-->>V: return
+    V->>V: restore regs; sp += 128
+    V->>C: sret · pc=sepc, SIE=SPIE
+</div>
+
+---
+
+## The CLINT
+
+| Register | Address | Meaning |
+|---|---|---|
+| `mtime` | `0x0200_0000 + 0xBFF8` | Free-running 64-bit counter, 10 MHz on `virt` |
+| `mtimecmp` | `0x0200_0000 + 0x4000` | Hart 0's alarm: pending while `mtime >= mtimecmp` |
+
+- **Level-triggered**: the only way to clear it is to push `mtimecmp` forward
+- `INTERVAL = 1_000_000` at 10 MHz = 0.1 s &rarr; ten ticks a second
+- `start.rs:74` sets `mie.MTIE` (bit 7)
+
+---
+
+## Why Machine Mode Has to Arm It
+
+- **`mtimecmp` is an M-mode device** — a physical address the kernel deliberately never maps, and `mie` is an M CSR S-mode cannot read
+- **The machine timer interrupt cannot be delegated** — `mideleg` bit 7 is hardwired zero
+
+<div class="highlight-box">
+So the trap is taken in M-mode at <code>mtvec</code>, whatever the kernel wants. rv6, like xv6, installs <code>timervec</code> and forwards the tick down by hand.
+</div>
+
+---
+
+## The Forwarding Path
+
+<div class="mermaid">
+flowchart TD
+    A["mtime reaches mtimecmp"] --> B["machine timer interrupt, cause 7\ncannot be delegated"]
+    B --> C["timervec · M-mode · start.rs:80"]
+    C --> D["csrrw a0, mscratch, a0\nget a scratch register"]
+    D --> E["mtimecmp += INTERVAL\nrearm, or it re-fires"]
+    E --> F["li a1, 2 ; csrw sip, a1\nraise sip.SSIP"]
+    F --> G["mret"]
+    G --> H["supervisor software interrupt, cause 1\nscause = 0x8000...0001"]
+    H --> I["kernelvec → kerneltrap · trap.rs:58"]
+</div>
+
+rv6's tick is a *software* interrupt carrying a *timer's* meaning — which is why `scause` reads 1, not 5.
+
+---
+
+## Three Gates, All Must Be Open
+
+```rust
+asm!("csrs sie, {}", in(reg) 1usize << 1);      // trap.rs:40  SSIE
+asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs:41  SIE
+```
+
+An interrupt fires only when: bit set in `sie` **and** bit set in `sip` **and** `sstatus.SIE` = 1.
+
+<div class="info-box">
+Use <code>csrs</code>, not <code>csrw</code> — a blind write clears <code>sie.SEIE</code> and silently breaks the console in <code>15_console</code>. In user mode, delegated interrupts are always enabled regardless of <code>SIE</code>.
+</div>
+
+---
+
+## Then Clear the Pending Bit
+
+```rust
+asm!("csrr {}, sip", out(reg) sip);
+asm!("csrw sip, {}", in(reg) sip & !2);   // trap.rs:63
+```
+
+<div class="highlight-box">
+Skip it and you get an <strong>interrupt storm</strong>: <code>SSIP</code> still set, <code>SSIE</code> still set, <code>sret</code> restores <code>SIE</code> — so the trap re-fires on the first instruction after <code>sret</code>. One instruction of progress per trap, forever.
+</div>
+
+**No ticks** and **far too many ticks** are opposite bugs with identical silence.
+
+---
+
+## Preemption Needs a Timer
+
+```text
+COOPERATIVE                     PREEMPTIVE
+  P1 runs ..........             P1 runs ....|tick|.... into the kernel
+  P1 calls yield                 kernel: quantum expired
+  kernel picks P2                kernel picks P2
+  P2 loops forever               P2 loops forever
+  *** machine is gone ***        kernel takes it back next tick
+```
+
+A cooperative scheduler is a **subroutine of the running program**. The only escape is an event the program does not control — an interrupt.
+
+---
+
+## What Preemption Would Cost
+
+- Per-process time accounting, to tell "quantum expired" from "just arrived"
+- A `swtch` from **inside** the trap handler
+- A lock on every kernel structure the switch could interrupt — a switch can now happen at *any* instruction (`07_spinlocks`)
+
+<div class="info-box">
+rv6 stays cooperative on purpose: deterministic, so a wrong <code>pick_next</code> gives a wrong <em>order</em>, not a heisenbug. Linux asks firmware for the same tick via SBI <code>TIME</code>; Sstc hardware deletes the detour entirely.
+</div>
+
+---
+
+## What This Unlocks
+
+- **`13_traps`** — install `stvec`, catch an `ebreak`, return from it. A timeout means `sepc` never advanced
+- **`14_interrupts`** — open the gates, receive the forwarded ticks, clear `sip.SSIP`, count them
+
+Then `15_console` reuses the identical path for `scause = 9` (a keypress) and `18_user_mode` for `scause = 8` (a system call).
+
+<div class="highlight-box">
+One vector, one cause register, three completely different subsystems.
+</div>
+
+---
+
+## Summary
+
+1. **Down is a return, up is a trap** — `mret`/`sret` restore forged state; the only way up is an event whose handler the upper mode chose
+2. **Exception, interrupt, trap are three words** — bit 63 of `scause` is all that separates the overlapping cause codes
+3. **Six CSRs, all must be right** — and PMP **fails closed**, so skipping it means total silence
+4. **The hardware saves nothing** — `kernelvec` covers the caller-saved half, the calling convention the rest
+5. **`sepc` decisions are yours** — advance past `ebreak`/`ecall`, never after an interrupt
+6. **A timer is what makes a kernel a kernel** — no tick, no preemption, and one runaway loop owns the machine
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

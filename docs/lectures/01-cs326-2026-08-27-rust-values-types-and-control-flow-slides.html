@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust I: Values, Types, and Control Flow - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Rust I: Values, Types, and Control Flow
+
+## CS 326 Operating Systems
+
+Thursday, August 27, 2026 &middot; Week 1
+
+Unlocks **r00_hello_rust** and **r01_control_flow**
+
+---
+
+## Learning Objectives
+
+- Explain why Rust bindings are **immutable by default**
+- Choose the right integer type for a PTE, a device register, an address
+- Read `0x8000_1234` as a page number plus an offset, by hand
+- Distinguish expressions from statements — and find the stray semicolon
+- Write `if` as an expression; trace `loop`, `while`, and `for`
+- Predict **integer overflow** in debug vs. release, and pick
+  `wrapping_*` / `checked_*` / `saturating_*`
+
+---
+
+## Bindings
+
+```rust
+let page_size = 4096;      // page_size = 8192;  <- COMPILE ERROR
+
+let mut free_pages = 100;  // opt in to change
+free_pages -= 1;
+```
+
+- A **binding** gives a name to a value
+- Immutable **by default** — reassignment is an error, not a warning
+- `mut` is how you say "this one moves"
+- `let x = 5; let x = x + 1;` is **shadowing**, not assignment
+
+---
+
+## Immutability Is a Design Decision
+
+- C has it backwards: mutable by default, `const` to opt out — which
+  almost nobody writes
+- Rust inverts it, so the common case (computed once, then read) needs no
+  ceremony
+- `let mut p = pgroundup(start);` in `kalloc.rs:27` tells you something
+  **true**: `p` walks, everything else stands still
+
+<div class="info-box">
+Ownership and borrowing (L03) are only checkable <em>because</em>
+mutability is written down. This is the wall the language sits on.
+</div>
+
+---
+
+## `const` vs `let`
+
+```rust
+pub const PGSIZE: usize = 4096;                          // memlayout.rs:7
+pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs:10
+pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs:13
+```
+
+- A `const` is **not a binding** — it is substituted at every use site
+- Explicit type required; must be computable at compile time
+- `PHYSTOP` is arithmetic over a `const`, costing nothing at run time
+- Those three lines are our board's memory map: RAM is `KERNBASE..PHYSTOP`
+
+---
+
+## The Scalar Types
+
+| Type | Bits | In rv6 |
+|---|---|---|
+| `u8` | 8 | a byte; a UART register |
+| `u32` | 32 | a 32-bit instruction word |
+| `u64` | 64 | a timer value; a saved register |
+| `usize` | 64 on rv64 | **an address**, a size, an index |
+| `i8`…`isize` | same | values that may go negative |
+| `bool` | 1 byte | a flag |
+
+Rust integers name their size. There is no `int` you have to look up.
+
+---
+
+## A PTE Is Exactly 64 Bits
+
+```rust
+#[repr(transparent)]                  // vm.rs:25
+#[derive(Clone, Copy)]
+pub struct Pte(pub usize);            // vm.rs:27
+```
+
+- Sv39 says so: bits 0–9 flags, bits 10–53 physical page number
+- `#[repr(transparent)]` = "in memory, *exactly* a `usize`" — no header,
+  no padding, no tag
+- The wrapper is for the compiler, not the machine
+- Make it a `u32` and the top half of every page number disappears
+
+---
+
+## A UART Register Is Exactly 8 Bits
+
+```rust
+const LSR_DR:   u8 = 1 << 0;   // uart.rs:14  Data Ready
+const LSR_THRE: u8 = 1 << 5;   // uart.rs:15  Tx Holding Empty
+
+unsafe fn reg_read(off: usize) -> u8 {              // uart.rs:18
+    read_volatile((UART0 + off) as *const u8)
+}
+```
+
+- Read it as a `u32` and you issue a 4-byte load across **four different**
+  one-byte registers
+- On real hardware, some of those reads have side effects
+- **The type is the bus transaction**
+
+---
+
+## An Address Is `usize` — and Nothing Converts Itself
+
+```rust
+let addr: usize = 0x8000_1000;
+let low: u8 = addr as u8;    // 0x00 — the other 56 bits are GONE
+```
+
+- `usize` = "wide enough to hold a pointer here" (64 bits on rv64)
+- Every address, size, offset, index in rv6 is a `usize`
+- `u64 + u32` does **not** compile — no implicit widening
+- `as` between integers truncates: silently, always. The one C-shaped
+  footgun in the language
+
+---
+
+## Hex: One Digit Is Exactly Four Bits
+
+- 16 values, 4 bits — a perfect fit, so a hex numeral is a **picture of
+  the bit pattern**
+- `4096` says nothing about which bits are set
+- `0x1000` says: exactly one bit, twelve places up
+- Every hardware manual and the RISC-V spec are written this way
+- Octal survives in one place: `0o755` is three groups of three bits —
+  `rwx` for owner, group, other
+
+---
+
+## Decoding an Address
+
+```text
+       0    x    8    0    0    0    1    2    3    4
+                 |    |    |    |    |    |    |    |
+              1000 0000 0000 0000 0001 0010 0011 0100
+              ^                    ^^^^^^^^^^^^^^^^^
+              bit 31               low 12 bits = 0x234
+                                   = offset inside a 4 KiB page
+
+       page number = 0x8000_1234 >> 12     = 0x8_0001
+       page base   = 0x8000_1234 & !0xfff  = 0x8000_1000
+```
+
+A 4 KiB page needs 12 offset bits = **exactly three hex digits**.
+
+---
+
+## The Underscore Is Nothing
+
+```rust
+0x80000000     // how many zeros? you are counting. you will miscount.
+0x8000_0000    // 8 followed by seven zeros. done.
+```
+
+- `_` may go anywhere inside a numeric literal; the compiler discards it
+- Group hex in **fours** — four digits is 16 bits, what an eye can count
+- Works in decimal too: `const INTERVAL: u64 = 1_000_000;` (`start.rs:19`)
+- Suffixes pin the type when context does not: `42u8`, `1usize`
+
+---
+
+## Expressions, Statements, Blocks
+
+```rust
+let offset = {
+    let base = addr & !(PGSIZE - 1);
+    addr - base            // no semicolon: this is the block's value
+};
+```
+
+- **Expression** — has a value: `1 + 2`, `if a { 1 } else { 2 }`.
+  **Statement** — acts, has none: `let x = 5;`
+- Any `{ }` is an expression; its value is its **last expression, with no
+  semicolon**
+- Add the semicolon and the value becomes `()`, the **unit type**
+- The semicolon is an operator that **throws a value away**
+
+---
+
+## The Semicolon That Bites
+
+```text
+error[E0308]: mismatched types
+ --> src/lib.rs:3:23
+  |
+3 | fn add(a: u64, b: u64) -> u64 {
+  |    ---                    ^^^ expected `u64`, found `()`
+  |    |
+  |    implicitly returns `()` as its body has no tail expression
+4 |     a + b;
+  |          - help: remove this semicolon to return this value
+```
+
+<div class="highlight-box">
+Wrong return type, and the wrong type is <code>()</code>? Look for a stray
+semicolon <em>before</em> you look anywhere else.
+</div>
+
+---
+
+## Functions, and the Never Type
+
+```rust
+fn add(a: u64, b: u64) -> u64 { a + b }
+
+pub unsafe extern "C" fn _entry() -> ! {    // entry.rs:18
+    asm!( /* set up a stack, then call start */ , options(noreturn));
+}
+```
+
+- Parameter and return types are **always** written out — inference stops
+  at the boundary, because a signature is a contract
+- No `->` means the return type is `()`
+- `-> !` is the **never type**: control does not return here at all
+- `_entry` → `start` (`start.rs:25`) → `mret` into `kmain`, never back
+
+---
+
+## `if` Is an Expression
+
+```rust
+let bigger = if a > b { a } else { b };
+
+pub fn set_loopback(on: bool) {                              // uart.rs:69
+    unsafe { reg_write(MCR, if on { MCR_LOOP } else { 0 }) }
+}
+```
+
+- No parentheses; **braces never optional** (no dangling-else problem)
+- The condition must be a real `bool` — **no truthiness**, so `if 1 { }`
+  will not compile
+- Every branch has the same type; a value needs an `else`
+- Rust has no `? :` because it does not need one
+
+---
+
+## Three Ways to Loop
+
+```rust
+loop { }                                    // forever, until `break`
+while p + PGSIZE <= stop { p += PGSIZE; }   // re-test every pass
+for i in 0..4 { }                           // i = 0, 1, 2, 3
+```
+
+- `0..4` is **half-open**: includes 0, excludes 4. `0..=4` includes it
+- Length of `a..b` is `b - a`, adjacent ranges join with no gap
+- Which is how rv6 says it: RAM is `KERNBASE..PHYSTOP`, and `PHYSTOP` is
+  the first address that is **not** RAM
+
+---
+
+## `while`: Walking Physical Memory
+
+```rust
+unsafe fn free_range(start: usize, stop: usize) {   // kalloc.rs:26
+    let mut p = pgroundup(start);
+    while p + PGSIZE <= stop {
+        kfree(p as *mut u8);
+        p += PGSIZE;
+    }
+}
+```
+
+`p + PGSIZE <= stop`, **not** `p < stop` — the allocator hands out whole
+pages, so the partial page at the end must never be freed.
+
+---
+
+## `free_range`, as a Flow
+
+<div class="mermaid">
+flowchart TD
+    A["p = pgroundup(start)"] --> B{"p + PGSIZE &lt;= stop?"}
+    B -- no --> E["done"]
+    B -- yes --> C["kfree(p)"]
+    C --> D["p += PGSIZE"]
+    D --> B
+</div>
+
+---
+
+## `loop`: The Idle Path
+
+```rust
+pub fn getc() -> u8 {           // console.rs:47
+    loop {
+        if let Some(b) = try_getc() {
+            return b;
+        }
+        unsafe { asm!("wfi") };   // wait-for-interrupt: sleep the CPU
+    }
+}
+```
+
+- No `break` at all — the only exit is the `return`
+- No byte ever arrives? The CPU sleeps forever. That is **correct**
+- `break` leaves a loop; `continue` skips to the next pass
+
+---
+
+## `break` With a Value
+
+```rust
+let pages = loop {
+    if addr + PAGE_SIZE > end { break count; }
+    addr += PAGE_SIZE;
+    count += 1;
+};
+```
+
+- Only `loop` can produce a value
+- `while` and `for` can end by their condition going false, **without ever
+  reaching a `break`** — so there would be no value to hand back
+- `loop` has no other exit, so every exit is a `break`
+
+---
+
+## Integer Overflow: `255u8 + 1`
+
+| Build | Result | Cost |
+|---|---|---|
+| debug — `cargo test`, `oslings run` | **panics**: `attempt to add with overflow` | a branch per operation |
+| release — `cargo build --release` | **wraps** to `0` | none |
+
+- C: 0 silently if unsigned, **undefined behaviour** if signed
+- Two behaviours for one source file is a real bargain, argued for years
+- The rule: **never let wrapping happen by accident**
+
+---
+
+## Why a Kernel Cares
+
+```text
+    addr  = 0xFFFF_FFFF_FFFF_F001      (4095 from the top of memory)
+    +4095 = 0x1_0000_0000_0000_0000    (65 bits — does not fit)
+    wraps = 0x0000_0000_0000_0000
+
+    pgroundup(0xFFFF_FFFF_FFFF_F001) = 0   <- "round UP" that went DOWN
+```
+
+Now `free_range` starts at `p = 0`, and the allocator puts **address 0**
+on the free list. Debug: a panic naming the line. Release: a kernel that
+works fine for twenty minutes. (CWE-190.)
+
+---
+
+## Say What You Mean
+
+| Method | On overflow | Use it when |
+|---|---|---|
+| `a.wrapping_add(b)` | wraps | wrapping **is** the intent |
+| `a.checked_add(b)` | `None` | the caller must handle failure |
+| `a.saturating_add(b)` | clamps at the max | clamping is a sane answer |
+
+Every operator, every integer type: `wrapping_sub`, `checked_mul`,
+`saturating_sub`. Limits are `usize::MAX`, `u64::MAX`, `u8::MAX`.
+
+---
+
+## Choosing
+
+<div class="mermaid">
+flowchart TD
+    A["arithmetic that might overflow"] --> B{"is wrapping correct?"}
+    B -- yes --> C["wrapping_add\nring index, tick counter"]
+    B -- no --> D{"can the caller\ndo something?"}
+    D -- yes --> E["checked_add → Option"]
+    D -- no --> F{"is clamping meaningful?"}
+    F -- yes --> G["saturating_add"]
+    F -- no --> H["plain + and prove\nit cannot overflow"]
+</div>
+
+---
+
+## Wrapping On Purpose
+
+```rust
+let tail = *addr_of!(TAIL);                     // console.rs:20
+let head = *addr_of!(HEAD);
+if tail.wrapping_sub(head) < BUF_LEN {          // console.rs:22
+    *addr_of_mut!(BUF[tail % BUF_LEN]) = b;
+    *addr_of_mut!(TAIL) = tail.wrapping_add(1); // console.rs:24
+}
+```
+
+`tail.wrapping_sub(head)` is the queue length, and stays right even after
+`TAIL` wraps past `usize::MAX` and `HEAD` has not. A technique, not a
+workaround — and it only works because the wrap was **requested**.
+
+---
+
+## `Option`, Just Enough of It
+
+```rust
+match addr.checked_add(PGSIZE - 1) {
+    Some(bumped) => bumped & !(PGSIZE - 1),
+    None         => return None,
+}
+```
+
+- `checked_add` cannot return a number, because sometimes there is none
+- `Option<T>` is `Some(value)` or `None` — Rust has **no null**
+- Different type from `usize`, so the compiler forces you to handle `None`
+- `match` covers every shape, and is itself an expression
+- You have seen it: `uart::getc() -> Option<u8>` (`uart.rs:53`)
+
+---
+
+## Where Today Lands in rv6
+
+| Today | In the kernel | Exercise |
+|---|---|---|
+| `const … : usize` | the memory map, `memlayout.rs` | ex01 |
+| `u8` registers | the UART driver, `uart.rs:14`–`24` | ex11 |
+| `usize` addresses | `Pte`, `walk`, `mappages`, `vm.rs` | ex03 |
+| `while p + PGSIZE <= stop` | `free_range`, `kalloc.rs:26` | ex02 |
+| `loop { }` | the idle path, `console.rs:47` | ex15 |
+| `wrapping_add` | the ring buffer, `console.rs:24` | ex15 |
+
+---
+
+## This Session's Exercises
+
+**r00_hello_rust** — bindings, integer types, hex literals. Including
+`0x8000_0000`, which returns in exercise 01 as the address the kernel is
+linked at.
+
+**r01_control_flow** — `if`, the loops, and overflow. Its five functions
+are `kalloc.rs` with the pointers removed.
+
+```bash
+oslings run r00_hello_rust
+oslings watch          # re-runs on every save
+oslings hint           # when stuck
+```
+
+---
+
+## Summary
+
+1. **Immutable by default** is a design decision, not an inconvenience
+2. **Width is hardware**: PTE 64 bits, UART register 8, address `usize`
+3. **One hex digit is four bits** — which is why hardware is written in hex
+4. **The semicolon throws values away**; a stray one changes the return type
+5. **`if` is an expression**, the condition is a real `bool`, no truthiness
+6. **Only `loop` can `break` with a value**; ranges are half-open
+7. **Overflow panics in debug, wraps in release** — so say which you meant
+8. **`wrapping_*` / `checked_*` / `saturating_*`**: address arithmetic that
+   silently wraps is how an allocator hands out page zero
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

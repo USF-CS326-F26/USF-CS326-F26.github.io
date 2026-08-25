@@ -1,0 +1,491 @@
+# CS 326 Fall 2026 Schedule Data
+# Generated — edit sessions here, the table in docs/index.md renders them.
+semester: "Fall 2026"
+course: "CS 326 Operating Systems"
+
+# Weekly schedule data
+
+weeks:
+
+# === WEEK 1 ===
+  - week: 1
+    tuesday:
+      date: "Aug 25"
+      type: "lecture"
+      topic: "L01 Building an Operating System"
+      links:
+        - text: "Lecture"
+          url: "/lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is/"
+        - text: "Slides"
+          url: "/lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is-slides.html"
+        - text: "Lab 00 Setup"
+          url: "/assignments/lab00-setup/"
+        - text: "Dev Setup"
+          url: "/guides/dev-setup/"
+        - text: "Syllabus"
+          url: "/syllabus/"
+
+    thursday:
+      date: "Aug 27"
+      type: "work"
+      topic: "Work session · read L02 Rust I: Values, Types, Control Flow"
+      due: "Lab 00 setup checkpoint"
+      links:
+        - text: "Lecture"
+          url: "/lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow/"
+        - text: "Slides"
+          url: "/lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow-slides.html"
+        - text: "r00 · r01"
+          url: "/assignments/exercises/"
+        - text: "Rust for Systems"
+          url: "/guides/rust-for-systems/"
+
+    friday:
+      date: "Aug 28"
+      type: "lab"
+      topic: "Lab: Ownership and moves"
+      due: "r00, r01"
+      links:
+        - text: "Using OSlings"
+          url: "/guides/oslings-usage/"
+
+
+# === WEEK 2 ===
+  - week: 2
+    tuesday:
+      date: "Sep 1"
+      type: "lecture"
+      topic: "L03 Ownership, Borrowing, and Lifetimes"
+      due: "r02"
+      links:
+        - text: "Lecture"
+          url: "/lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes/"
+        - text: "Slides"
+          url: "/lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html"
+
+    thursday:
+      date: "Sep 3"
+      type: "work"
+      topic: "Work session · read L04 Structs, impl, and const fn"
+      due: "r03"
+      links:
+        - text: "Lecture"
+          url: "/lectures/02-cs326-2026-09-03-structs-impl-and-const-fn/"
+        - text: "Slides"
+          url: "/lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html"
+
+    friday:
+      date: "Sep 4"
+      type: "lab"
+      topic: "Lab: Enums, Option, and match"
+      due: "r04, r05"
+
+
+# === WEEK 3 ===
+  - week: 3
+    tuesday:
+      date: "Sep 8"
+      type: "lecture"
+      topic: "L05 Collections, Traits, and Errors"
+      due: "r06"
+      links:
+        - text: "Lecture"
+          url: "/lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables/"
+        - text: "Slides"
+          url: "/lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html"
+
+    thursday:
+      date: "Sep 10"
+      type: "work"
+      topic: "Work session · read L06 Traits and the ulib façade"
+      due: "r07, r08"
+      links:
+        - text: "Lecture"
+          url: "/lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade/"
+        - text: "Slides"
+          url: "/lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html"
+
+    friday:
+      date: "Sep 11"
+      type: "lab"
+      topic: "Lab: echo and cat — your first commands"
+      links:
+        - text: "ulib and Commands"
+          url: "/guides/ulib-and-commands/"
+
+
+# === WEEK 4 ===
+  - week: 4
+    tuesday:
+      date: "Sep 15"
+      type: "lecture"
+      topic: "L07 Buffers, Bytes, and Line-Oriented I/O"
+      due: "c00, c01"
+      links:
+        - text: "Lecture"
+          url: "/lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io/"
+        - text: "Slides"
+          url: "/lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html"
+
+    thursday:
+      date: "Sep 17"
+      type: "work"
+      topic: "Work session · read L08 RISC-V Registers and the Calling Convention"
+      due: "c02, c03, c04"
+      links:
+        - text: "Lecture"
+          url: "/lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly/"
+        - text: "Slides"
+          url: "/lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html"
+        - text: "RISC-V"
+          url: "/guides/riscv/"
+
+    friday:
+      date: "Sep 18"
+      type: "lab"
+      topic: "Lab: the assembly bridge — add3, bytecopy, baby_swtch"
+      due: "a00"
+
+
+# === WEEK 5 ===
+  - week: 5
+    tuesday:
+      date: "Sep 22"
+      type: "lecture"
+      topic: "L09 Leaving std: no_std and Bare-Metal Rust"
+      due: "r09"
+      links:
+        - text: "Lecture"
+          url: "/lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust/"
+        - text: "Slides"
+          url: "/lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust-slides.html"
+        - text: "Unsafe Rust and no_std"
+          url: "/guides/rust-unsafe-nostd/"
+
+    thursday:
+      date: "Sep 24"
+      type: "work"
+      topic: "Work session · read L10 Boot: From Reset to kmain"
+      due: "ex00"
+      links:
+        - text: "Lecture"
+          url: "/lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain/"
+        - text: "Slides"
+          url: "/lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html"
+        - text: "Memory Map"
+          url: "/guides/memory-map/"
+
+    friday:
+      date: "Sep 25"
+      type: "lab"
+      topic: "Lab: the boot sequence"
+      due: "ex01"
+
+
+# === WEEK 6 ===
+  - week: 6
+    tuesday:
+      date: "Sep 29"
+      type: "lecture"
+      topic: "L11 Physical Memory and the Free List"
+      links:
+        - text: "Lecture"
+          url: "/lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list/"
+        - text: "Slides"
+          url: "/lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list-slides.html"
+
+    thursday:
+      date: "Oct 1"
+      type: "work"
+      topic: "Work session · read L12 Virtual Memory I: Sv39 Page Tables"
+      due: "ex02"
+      links:
+        - text: "Lecture"
+          url: "/lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
+        - text: "Slides"
+          url: "/lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html"
+        - text: "Sv39 Paging"
+          url: "/guides/sv39-paging/"
+
+    friday:
+      date: "Oct 2"
+      type: "lab"
+      topic: "Lab: the page table walk"
+
+
+# === WEEK 7 ===
+  - week: 7
+    tuesday:
+      date: "Oct 6"
+      type: "lecture"
+      topic: "L13 Processes and the PCB"
+      due: "ex03"
+      links:
+        - text: "Lecture"
+          url: "/lectures/07-cs326-2026-10-06-processes-and-the-process-control-block/"
+        - text: "Slides"
+          url: "/lectures/07-cs326-2026-10-06-processes-and-the-process-control-block-slides.html"
+        - text: "Practice Set 1"
+          url: "/assignments/practice-set-01/"
+
+    thursday:
+      date: "Oct 8"
+      type: "work"
+      topic: "Work session · Practice Set 1 review + processes"
+      due: "ex04"
+
+    friday:
+      date: "Oct 9"
+      type: "lab"
+      topic: "Lab: context switch and the scheduler"
+      due: "ex05"
+
+
+# === WEEK 8 ===
+  - week: 8
+    tuesday:
+      date: "Oct 13"
+      type: "exam"
+      topic: "MIDTERM 1 — Module 1 + ex00–ex04"
+      links:
+        - text: "Exam Prep"
+          url: "/guides/exam-prep/"
+
+    thursday:
+      date: "Oct 15"
+      type: "work"
+      topic: "Work session · read L14 The Context Switch and the Scheduler"
+      due: "ex06"
+      links:
+        - text: "Lecture"
+          url: "/lectures/08-cs326-2026-10-15-context-switch-and-scheduling/"
+        - text: "Slides"
+          url: "/lectures/08-cs326-2026-10-15-context-switch-and-scheduling-slides.html"
+
+    friday:
+      date: "Oct 16"
+      type: "lab"
+      topic: "Lab: spinlocks"
+
+
+# === WEEK 9 ===
+  - week: 9
+    tuesday:
+      date: "Oct 20"
+      type: "holiday"
+      topic: "Fall Break — no class"
+
+    thursday:
+      date: "Oct 22"
+      type: "work"
+      topic: "Work session · read L15 Locks, Semaphores, and the Kernel Heap"
+      due: "ex07"
+      links:
+        - text: "Lecture"
+          url: "/lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
+        - text: "Slides"
+          url: "/lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
+
+    friday:
+      date: "Oct 23"
+      type: "lab"
+      topic: "Lab: Debugging rv6 with QEMU and GDB — catch-up"
+      due: "ex08"
+      links:
+        - text: "QEMU and GDB"
+          url: "/guides/qemu-gdb/"
+
+
+# === WEEK 10 ===
+  - week: 10
+    tuesday:
+      date: "Oct 27"
+      type: "lecture"
+      topic: "L16 Virtual Memory II: Turning the MMU On"
+      due: "ex09"
+      links:
+        - text: "Lecture"
+          url: "/lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on/"
+        - text: "Slides"
+          url: "/lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on-slides.html"
+
+    thursday:
+      date: "Oct 29"
+      type: "work"
+      topic: "Work session · read L17 Filesystems, Devices, and the Boot Sequence"
+      due: "ex10"
+      links:
+        - text: "Lecture"
+          url: "/lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life/"
+        - text: "Slides"
+          url: "/lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html"
+
+    friday:
+      date: "Oct 30"
+      type: "lab"
+      topic: "Lab: boot to life — cargo run boots rv6"
+      due: "ex11, ex12"
+
+
+# === WEEK 11 ===
+  - week: 11
+    tuesday:
+      date: "Nov 3"
+      type: "lecture"
+      topic: "L18 Traps, Privilege Modes, and Interrupts"
+      links:
+        - text: "Lecture"
+          url: "/lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts/"
+        - text: "Slides"
+          url: "/lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts-slides.html"
+
+    thursday:
+      date: "Nov 5"
+      type: "work"
+      topic: "Work session · read L19 Device Interrupts, the PLIC, and the Console"
+      due: "ex13"
+      links:
+        - text: "Lecture"
+          url: "/lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console/"
+        - text: "Slides"
+          url: "/lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html"
+
+    friday:
+      date: "Nov 6"
+      type: "lab"
+      topic: "Lab: the interrupt-driven console"
+      due: "ex14, ex15"
+      links:
+        - text: "Withdraw deadline"
+          url: "/syllabus/"
+
+
+# === WEEK 12 ===
+  - week: 12
+    tuesday:
+      date: "Nov 10"
+      type: "lecture"
+      topic: "L20 Shells, and the Module 2 → 3 handoff"
+      links:
+        - text: "Lecture"
+          url: "/lectures/12-cs326-2026-11-10-shells-and-the-module-3-handoff/"
+        - text: "Slides"
+          url: "/lectures/12-cs326-2026-11-10-shells-and-the-module-3-handoff-slides.html"
+        - text: "rv6 Architecture"
+          url: "/guides/rv6-architecture/"
+
+    thursday:
+      date: "Nov 12"
+      type: "work"
+      topic: "Work session · read L21 File Commands over a Filesystem API"
+      due: "ex16"
+      links:
+        - text: "Lecture"
+          url: "/lectures/12-cs326-2026-11-12-file-commands-over-a-filesystem-api/"
+        - text: "Slides"
+          url: "/lectures/12-cs326-2026-11-12-file-commands-over-a-filesystem-api-slides.html"
+
+    friday:
+      date: "Nov 13"
+      type: "lab"
+      topic: "Lab: touch, cat, echo >, rm, rmdir"
+      due: "ex17"
+
+
+# === WEEK 13 ===
+  - week: 13
+    tuesday:
+      date: "Nov 17"
+      type: "lecture"
+      topic: "L22 User Mode I: The Wall, Trampoline, Trapframe"
+      links:
+        - text: "Lecture"
+          url: "/lectures/13-cs326-2026-11-17-user-mode-i-the-wall-trampoline-and-trapframe/"
+        - text: "Slides"
+          url: "/lectures/13-cs326-2026-11-17-user-mode-i-the-wall-trampoline-and-trapframe-slides.html"
+        - text: "Practice Set 2"
+          url: "/assignments/practice-set-02/"
+
+    thursday:
+      date: "Nov 19"
+      type: "work"
+      topic: "Work session · read L23 User Mode II: System Calls"
+      links:
+        - text: "Lecture"
+          url: "/lectures/13-cs326-2026-11-19-user-mode-ii-system-calls/"
+        - text: "Slides"
+          url: "/lectures/13-cs326-2026-11-19-user-mode-ii-system-calls-slides.html"
+
+    friday:
+      date: "Nov 20"
+      type: "lab"
+      topic: "Lab: user mode (2 of 2) + Practice Set 2 review"
+      due: "ex18"
+
+
+# === WEEK 14 ===
+  - week: 14
+    tuesday:
+      date: "Nov 24"
+      type: "exam"
+      topic: "MIDTERM 2 — Module 2 + ex16–ex18"
+
+    thursday:
+      date: "Nov 26"
+      type: "holiday"
+      topic: "Thanksgiving — no class"
+
+    friday:
+      date: "Nov 27"
+      type: "holiday"
+      topic: "Thanksgiving — no class"
+
+
+# === WEEK 15 ===
+  - week: 15
+    tuesday:
+      date: "Dec 1"
+      type: "lecture"
+      topic: "L24 exec, File Descriptors, fork and wait"
+      links:
+        - text: "Lecture"
+          url: "/lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork/"
+        - text: "Slides"
+          url: "/lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html"
+
+    thursday:
+      date: "Dec 3"
+      type: "work"
+      topic: "Work session · read L25 exec as a System Call, and Userland"
+      due: "ex19, ex20"
+      links:
+        - text: "Lecture"
+          url: "/lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland/"
+        - text: "Slides"
+          url: "/lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html"
+
+    friday:
+      date: "Dec 4"
+      type: "lab"
+      topic: "Lab: fork/wait and the multi-process scheduler"
+      due: "ex21"
+      links:
+        - text: "Practice Set 3"
+          url: "/assignments/practice-set-03/"
+
+
+# === WEEK 16 ===
+  - week: 16
+    tuesday:
+      date: "Dec 8"
+      type: "lecture"
+      topic: "L26 Pipes, the Payoff, and Final Review"
+      due: "ex22 · extra credit"
+      links:
+        - text: "Lecture"
+          url: "/lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review/"
+        - text: "Slides"
+          url: "/lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html"
+        - text: "Extra Credit"
+          url: "/assignments/extra-credit/"
+

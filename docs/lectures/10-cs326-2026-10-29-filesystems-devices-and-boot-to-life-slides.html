@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filesystems, Devices, and the Boot Sequence - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# Filesystems, Devices, and the Boot Sequence
+
+## CS 326 Operating Systems
+
+---
+
+## Learning Objectives
+
+- **Distinguish** an inode, an inode number, a directory entry, and a name
+- **Derive** hard links, O(1) rename, and `unlink` from that separation
+- **Trace** path resolution as repeated `dirlookup`
+- **Enumerate** what rv6's filesystem omits, and what each omission costs
+- **Decode** an NS16550A line-status byte, and say what a driver checks first
+- **Justify** every edge in rv6's `kinit` dependency graph
+
+---
+
+## One Decision, Made Around 1970
+
+**The object holding a file's contents does not hold its name.**
+
+- Contents and metadata &rarr; the **inode**
+- Names &rarr; the **directory**, a table of (name, inode number)
+- Everything characteristic about Unix filesystems follows from this
+
+<div class="info-box">
+An <strong>inode number</strong> is an <em>index</em>, not a pointer. An index survives being written to disk and reloaded at a different address.
+</div>
+
+---
+
+## rv6's Inode Has No Name Field
+
+```rust
+pub struct Inode {                  // fs.rs:50
+    kind: InodeKind,                // Free | File | Dir
+    size: usize,
+    data: [u8; FILESIZE],           // file bytes ...
+    entries: [DirEnt; NDIRENT],     // ... or directory entries
+}
+```
+
+- Inode 1 is the root, made a `Dir` by `init` (`fs.rs:83`)
+- `alloc` scans upward from `ROOT` for the first `Free` slot (`fs.rs:86`)
+- A real inode holds *block numbers*; rv6 holds the bytes inline
+
+---
+
+## Names Live in the Directory
+
+<div class="mermaid">
+flowchart LR
+    subgraph D["directory inode 1 — the root"]
+        E0["entry 0: 'hello' -> 2"]
+        E1["entry 1: 'greet' -> 2"]
+        E2["entry 2: 'sub'   -> 3"]
+    end
+    subgraph T["inode table"]
+        I2["inode 2: File, size 5"]
+        I3["inode 3: Dir"]
+    end
+    E0 --> I2
+    E1 --> I2
+    E2 --> I3
+</div>
+
+Two entries point at inode 2. Nothing forbids it.
+
+---
+
+## Three Consequences, All Free
+
+- **One file, many names.** Neither is the original; `stat` has no name field. A **hard link** was never built — it was never prevented.
+- **Rename is cheap.** One directory entry rewritten; `mv` costs the same for 4 KiB and 40 GiB. Across filesystems it must copy.
+- **Deletion is `unlink`.** It removes a *name*. Whether the file dies is answered by counting.
+
+---
+
+## rv6's `unlink` Has No Link Count
+
+```rust
+// fs.rs:197 — free the inode, unconditionally
+self.inodes[e.inum] = Inode::new();
+self.inodes[dir].entries[i].used = false;
+```
+
+<div class="highlight-box">
+Correct only because rv6 has no <code>link</code>. Add one and the next <code>dircreate</code> hands that inode number to a new file — a surviving name silently becomes a second name for unrelated data.
+</div>
+
+Real inodes carry `nlink`: freed at zero, *and* only when no process has it open.
+
+---
+
+## Directories Are Files With Structure
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `NINODE` | 64 | inodes in the table |
+| `NDIRENT` | 16 | entries per directory |
+| `NAMELEN` | 14 | bytes of name |
+| `FILESIZE` | 128 | bytes per file |
+
+V7 Unix entries were exactly 16 bytes: a 2-byte inode number and a 14-character name. 4.2BSD's FFS (1983) made them variable-length and raised the cap to 255.
+
+---
+
+## `dirlookup`: Check the Kind, Then Scan
+
+```rust
+pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError> {
+    if self.inodes[dir].kind != InodeKind::Dir {
+        return Err(FsError::NotADirectory);      // fs.rs:110
+    }
+    for e in &self.inodes[dir].entries {
+        if e.used && e.len == name.len() && &e.name[..e.len] == name {
+            return Ok(e.inum);
+        }
+    }
+    Err(FsError::NotFound)
+}
+```
+
+---
+
+## Two Errors, and One Quiet Discipline
+
+- `NotFound` vs `NotADirectory` are different facts, so they are different variants — the kind check is why `cat /etc/passwd/foo` says `ENOTDIR`
+- `dircreate` reuses `dirlookup` for its duplicate check, treating `NotFound` as permission to proceed (`fs.rs:126`)
+- The scan is O(entries); ext4 switches to hashed B-trees once a directory outgrows a block
+
+<div class="info-box">
+<code>dircreate</code> takes the directory slot <em>before</em> allocating the inode (<code>fs.rs:132</code>). Reverse them and a create into a full directory leaks an inode every time.
+</div>
+
+---
+
+## Path Resolution Is Repeated `dirlookup`
+
+```text
+resolve("/sub/inner/notes")
+
+  start   dir = ROOT (1)                    leading '/' -> the root
+  step 1  dirlookup(1, "sub")    -> Ok(3)   a Dir: keep walking
+  step 2  dirlookup(3, "inner")  -> Ok(7)   a Dir: keep walking
+  step 3  dirlookup(7, "notes")  -> Ok(9)   last component: answer
+
+  "inner/notes" is the same loop with dir = cwd
+```
+
+There is no such thing as "opening a path".
+
+---
+
+## What the Walk Is For
+
+- **Errors.** Which step failed picks the error: `ENOENT` vs `ENOTDIR`
+- **Mount points.** Each step asks "is this inode a mount?" — the same hook gives chroot, bind mounts, namespaces
+- **Caching.** Linux's dentry cache is nearly all of path-resolution performance
+- **xv6** packages it as `namei` / `nameiparent`
+
+<div class="highlight-box">
+<strong>rv6 has no <code>namei</code>.</strong> The shell resolves one component at a time and keeps the cwd as a stack of <code>(name, inum)</code> — which is why <code>pwd</code> works with no <code>..</code> stored anywhere.
+</div>
+
+---
+
+## What rv6 Trades Away
+
+| Property | rv6 | xv6 | ext4 |
+|---|---|---|---|
+| Storage | RAM array | virtio disk | block device |
+| Survives reboot | no | yes | yes |
+| File size | 128 B | direct + indirect | extents |
+| Free space | `Free` scan | bitmap block | bitmap + groups |
+| Link count | none | `nlink` | `nlink` |
+| Crash consistency | n/a | write-ahead log | journal |
+| Locking | one spinlock | per-inode | fine-grained |
+
+---
+
+## The Layout rv6 Does Not Build
+
+```text
+  block 0     block 1      log blocks     inode blocks   bitmap    data blocks
++-----------+-----------+--------------+--------------+---------+-------------+
+| boot      | SUPER     | WRITE-AHEAD  | inodes,      | one bit | file and    |
+| sector    | BLOCK     | LOG          | packed       | per     | directory   |
+| (ignored) | sizes and | (uncommitted | N per block  | data    | contents    |
+|           | offsets   |  writes)     |              | block   |             |
++-----------+-----------+--------------+--------------+---------+-------------+
+```
+
+---
+
+## Why Each Structure Exists
+
+- **Superblock** — the one fixed location; everything else is found through it. Why `mkfs` is a program, not a constant
+- **Inode blocks** — `inum` &rarr; (block, offset) is integer division; rv6's `self.inodes[inum]` *is* that arithmetic
+- **Free bitmaps** — rv6 scans every inode for `Free`; on a disk that is one read per candidate
+- **Buffer cache** — at most one buffer per block, which is what makes locking a block mean anything
+
+---
+
+## The Write-Ahead Log
+
+Creating a file touches three blocks: the new inode, the parent directory, the free bitmap.
+
+- Power fails between them &rarr; an inode nothing points to, or an entry naming a free block
+- `fsck` was the original answer: scan the whole disk at boot and guess
+- Logging: write the group to a log, write a commit record, *then* install in place
+- Crash before the commit &rarr; discard; after &rarr; replay (installing twice is harmless)
+
+<div class="info-box">
+The log makes an operation <strong>atomic</strong>, not <strong>durable</strong>. Durability is <code>fsync</code>.
+</div>
+
+---
+
+## Devices: Addresses That Are Not RAM
+
+| Device | Physical address | Source |
+|---|---|---|
+| UART | `0x1000_0000` | `memlayout.rs:17` |
+| Test finisher | `0x10_0000` | `memlayout.rs:21` |
+| PLIC | `0x0c00_0000` | `memlayout.rs:26` |
+| RAM (`KERNBASE`) | `0x8000_0000` | `memlayout.rs:10` |
+
+x86 has a *separate* 16-bit I/O space reached with `in`/`out`. RISC-V does not repeat that.
+
+---
+
+## The NS16550A Register File
+
+```text
+addr           off  read                    write
+0x1000_0000     0   RBR received byte       THR byte to transmit
+0x1000_0001     1   IER interrupt enable    IER
+0x1000_0002     2   IIR interrupt ident.    FCR FIFO control
+0x1000_0003     3   LCR line control        LCR 8N1, DLAB
+0x1000_0004     4   MCR modem control       MCR loopback bit
+0x1000_0005     5   LSR LINE STATUS         (read-only)
+
+LSR:   7      6      5      4      3      2      1      0
+     | ERR  | TEMT | THRE |  BI  |  FE  |  PE  |  OE  |  DR  |
+                      ^                                   ^
+              room to transmit                    a byte is waiting
+```
+
+Offset 0 is two different registers. Offsets 0-1 become the baud divisor when `LCR` bit 7 is set.
+
+---
+
+## The Polled Driver
+
+```rust
+pub fn tx_ready() -> bool { unsafe { reg_read(LSR) & LSR_THRE != 0 } }
+pub fn rx_ready() -> bool { unsafe { reg_read(LSR) & LSR_DR   != 0 } }
+
+pub fn putc(c: u8) {
+    while !tx_ready() {}            // uart.rs:49 — spin for room
+    unsafe { reg_write(THR, c) }
+}
+
+pub fn getc() -> Option<u8> {
+    if rx_ready() { Some(unsafe { reg_read(RBR) }) } else { None }
+}
+```
+
+Every polled driver: *is it ready*, *transfer*, *acknowledge*.
+
+---
+
+## Why `putc` Spins and `getc` Does Not
+
+- Waiting for the transmitter is a **bounded** wait: at 115200 baud, ten bits a frame, one byte is ~87 µs and it *will* finish
+- Waiting for the receiver is waiting for a **human** — "nothing yet" is an ordinary answer, so it returns `Option`
+
+<div class="highlight-box">
+87 µs is ~87,000 instructions on a 1 GHz CPU. QEMU's UART swallows bytes instantly, so exercise 01's blind write looks fine — on real hardware most of a banner vanishes.
+</div>
+
+---
+
+## Polling vs Interrupts
+
+**Poll when the expected wait is shorter than the interrupt overhead; interrupt when it is longer.**
+
+- UART transmitter (µs) &rarr; poll
+- Disk (ms) &rarr; interrupt
+- NVMe &rarr; poll again; the interrupt became the slow part
+- rv6 moves *input* to interrupts in L19 (`uart.rs:36`, `plic.rs:14`, `console.rs:68`)
+- Output stays polled forever: the console must work when everything else is broken
+
+---
+
+## `volatile`: Three Miscompilations
+
+1. **The hoisted poll** — nothing in the loop writes `0x1000_0005`, so the load moves out: read once, then fall through or spin forever
+2. **The dead store** — two writes to `THR` with no read between; only the last survives, and the kernel prints `i`
+3. **The reorder** — `LCR` must precede the divisor bytes, but they are independent stores to different addresses
+
+<div class="info-box">
+"Works in debug, hangs in release" on hardware code means a missing <code>volatile</code>.
+</div>
+
+---
+
+## What `volatile` Does and Does Not Give You
+
+- The access **happens**, **exactly once**, **in order with other volatile accesses**
+- **Not** atomic. **Not** a barrier against ordinary accesses. Says nothing about caches
+- Real hardware also wants a non-cacheable mapping, sometimes a fence
+- Rust has no `volatile` *type*: volatility is a property of the **access**, reachable only through an `unsafe` raw-pointer call
+
+---
+
+## `kinit`: Six Lines, Six Arguments
+
+```rust
+unsafe fn kinit() {                  // main.rs:87
+    uart::init();                    // console first
+    kalloc::init();                  // physical pages
+    vm::kvminithart(vm::kvmmake());  // page table, then arm the MMU
+    proc::init();                    // the process table
+    trap::init();                    // the trap vector (ex 13)
+    fs::FS.lock().init();            // the root directory (ex 16)
+}
+```
+
+Exercise 12 is the first four.
+
+---
+
+## Boot as a Dependency Graph
+
+<div class="mermaid">
+flowchart TD
+    U["uart::init()"] -->|"policy: failures\nmust be reportable"| K["kalloc::init()"]
+    K -->|"kvmmake's first\nact is kalloc()"| V["kvmmake + kvminithart"]
+    K -->|"every Box/Vec is\none kalloc page"| H["kheap"]
+    K -->|"allocproc takes a stack\nand a page table"| P["proc::init()"]
+    V -->|"MMIO pages must be mapped\nor printing dies"| P
+    P --> T["trap::init()"]
+    T -->|"no interrupt before\nits handler"| I["intr_on()"]
+</div>
+
+---
+
+## Which Edges Are Real?
+
+- **Policy:** UART first. Nothing in `kalloc` calls it — but a kernel that cannot say why it died is debugged with a logic analyzer
+- **Mechanical:** `kvmmake` calls `kalloc` (`vm.rs:126`). No free list &rarr; null root &rarr; `satp` pointing at physical page 0
+- **Mechanical:** `csrw satp` retires and the *next instruction* is translated. rv6 survives on the identity map (`vm.rs:141`)
+- **Conventional:** `fs::FS.lock().init()` allocates nothing and could go almost anywhere
+
+---
+
+## Armed, but Inert
+
+<div class="highlight-box">
+Through exercise 12 the kernel runs in <strong>machine mode</strong>, where <code>satp</code> translates nothing. The write lands, the mode field reads back as 8, and no translation happens.
+</div>
+
+- Exercise 13's `start` sets `mstatus.MPP`, points `mepc` at `kmain`, and `mret`s (`start.rs:29`-`54`)
+- **A broken page table can pass exercise 12 and hang exercise 13** — with no code change in between
+- Boot lab fine on Friday, trap lab dead on Tuesday? Suspect `kvmmake`
+
+---
+
+## The Same Problem at Linux Scale
+
+- `start_kernel()` — ~90 calls in a hand-fixed order, ending in `rest_init()` (PID 1, PID 2, the idle task)
+- **`printk` works before the console exists**: a ring buffer, replayed when a console registers. Hence `earlycon`, which is rv6's exercise-01 blind write
+- **Driver inits are not called from `start_kernel`**: `module_init` / `subsys_initcall` / `late_initcall` place pointers in per-level sections, and `do_initcalls()` runs early &rarr; core &rarr; postcore &rarr; arch &rarr; subsys &rarr; fs &rarr; device &rarr; late
+- Still not enough: `-EPROBE_DEFER` retries what the level order cannot express
+
+---
+
+## Reading a Boot Log
+
+```text
+$ cargo run                            what this proves
+ _ __            / /_                  uart::init() ran, MMIO reaches
+| '__|  \ \ / /  | '_ \                0x1000_0000, THRE poll drains
+|_|       \_/     \___/
+
+rv6: kernel booted.                    kinit() RETURNED: every init
+                                       finished, satp write did not fault
+
+rv6: nothing to do yet — idling.       the non-harness arm: a wfi loop
+```
+
+Each line proves everything before it completed. Debugging a boot is binary search over the last line printed.
+
+---
+
+## Summary
+
+1. **A file is not its name** — inode holds contents, directory holds names
+2. **An inode number is an index**, which is what lets it go to disk
+3. **Path resolution is repeated `dirlookup`** — errors, mounts, and caches all live in that loop
+4. **rv6 defers the disk**: superblock, bitmaps, buffer cache, write-ahead log
+5. **A driver is a state machine over a status register** — `THRE` gates `putc`, `DR` gates `getc`
+6. **`volatile` = happens, once, in order** — and nothing else
+7. **Boot is a topological sort you write by hand**, and the log is how you debug it
+
+Next: `10_filesystem`, `11_devices`, `12_boot_to_life` &mdash; then `cargo run` boots rv6.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid with the USF palette
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does not
+        // yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

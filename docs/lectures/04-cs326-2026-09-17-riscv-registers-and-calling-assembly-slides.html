@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RISC-V Registers and Calling Assembly from Rust - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# RISC-V Registers and Calling Assembly from Rust
+
+## CS 326 Operating Systems
+
+L08 · September 17, 2026 · unlocks `a00_asm_bridge`
+
+---
+
+## Learning Objectives
+
+- Explain why a kernel cannot be written entirely in a high-level language
+- Identify the RV64 registers by number and **ABI name**
+- State the **caller-saved / callee-saved** contract, in both directions
+- Derive why a context switch saves only **14** registers
+- Justify why calling an `extern "C"` symbol is `unsafe`
+- Trace `baby_swtch` and name what it is
+
+---
+
+## The Sentence You Cannot Write
+
+Here is something every kernel must be able to say:
+
+<div class="info-box">
+Save the current value of <strong>every</strong> callee-saved register into this struct, then load <strong>every</strong> one of them from that other struct, then return.
+</div>
+
+- There is no Rust expression for "the current value of `s7`" — no type whose value is a register
+- The **register allocator** puts your `x` in `a3` here and `s7` fifty lines later, and changes its mind when you add a line
+- C cannot name a register either. Nor Go, nor Ada
+
+<div class="highlight-box">
+Assembly in a kernel is <strong>not an optimization</strong>. Nobody writes <code>swtch</code> in assembly because it is faster — they write it because it is <em>not expressible</em>.
+</div>
+
+---
+
+## Always the Same Few Places
+
+<div class="mermaid">
+flowchart TD
+    A["<b>Boot trampoline</b> · entry.rs\nRust needs a valid sp before its\nfirst instruction"]
+    B["<b>Context switch</b> · swtch.rs\nNames 14 registers; returns to a\ndifferent ra than it was called with"]
+    C["<b>Trap vectors</b> · trap.rs\nNo stack, nothing may be clobbered"]
+    D["<b>User-mode return</b> · usermode.rs\nSwitches satp mid-execution"]
+    E["Everything else — allocator, page tables,\nscheduler policy, filesystem, shell"]
+    A --> B --> C --> D -.->|"the other 99%"| E
+</div>
+
+rv6, xv6, and Linux: the same four spots, for the same reasons.
+
+Both sides of that boundary must agree — without consulting each other — on where arguments go, what comes back, and what survives a call. That agreement is the **ABI**; RISC-V's is **LP64**.
+
+---
+
+## The RV64 Register File
+
+| Register | ABI name | Role | Saved by |
+|---|---|---|---|
+| `x0` | `zero` | Hardwired 0; writes discarded | — |
+| `x1` | `ra` | Return address — where `ret` jumps | Caller |
+| `x2` | `sp` | Stack pointer | Callee |
+| `x3`, `x4` | `gp`, `tp` | Unused in rv6 (`-smp 1`) | — |
+| `x5`–`x7` | `t0`–`t2` | Temporaries | Caller |
+| `x8`, `x9` | `s0`/`fp`, `s1` | Saved registers | Callee |
+| `x10`–`x11` | `a0`–`a1` | Arguments **and** return values | Caller |
+| `x12`–`x17` | `a2`–`a7` | Arguments | Caller |
+| `x18`–`x27` | `s2`–`s11` | Saved registers | Callee |
+| `x28`–`x31` | `t3`–`t6` | Temporaries | Caller |
+
+Nobody writes `x14`. Everyone writes the ABI name — and every role above is pure **convention**. The CPU has no idea `a0` means "first argument"; `extern "C"` is Rust's way of promising to obey.
+
+---
+
+## `zero` Pays for Itself
+
+| What you write | What is emitted |
+|---|---|
+| `mv rd, rs` | `addi rd, rs, 0` |
+| `li rd, 5` | `addi rd, zero, 5` |
+| `beqz rs, L` | `beq rs, zero, L` |
+| `j L` | `jal zero, L` |
+| `ret` | `jalr zero, 0(ra)` |
+
+**Pseudo-instructions**: mnemonics the assembler expands. Not slower, not fake.
+
+GDB will sometimes disassemble your `ret` as `jalr zero, 0(ra)`. That is not a bug.
+
+---
+
+## `ra` and `sp`
+
+**`ra` is an ordinary register.** x86 pushes the return address on the stack; RISC-V puts it in `ra`. Nothing is pushed, nothing is popped.
+
+<div class="highlight-box">
+A function that changes <code>ra</code> before returning <strong>returns somewhere else</strong>. One <code>ld</code>. Remember this.
+</div>
+
+**`sp` grows downward.** Claim 32 bytes with `addi sp, sp, -32`, and keep `sp` 16-byte aligned at every call.
+
+- Point `sp` at the **top** of a fresh buffer, never the bottom
+- RISC-V has **no red zone** — below `sp` may be overwritten by a trap at any instant
+
+---
+
+## The Two Rules
+
+**Caller-saved** — `ra`, `t0`–`t6`, `a0`–`a7`
+
+<div class="info-box">
+A called function may destroy these. If the <strong>caller</strong> still needs a value afterwards, it saves it first — normally spilled into its own stack frame.
+</div>
+
+**Callee-saved** — `sp`, `s0`–`s11`
+
+<div class="info-box">
+A called function must return these unchanged. If the <strong>callee</strong> wants one, it saves the old value on entry and restores it before returning.
+</div>
+
+Neither rule is optional. Neither is checked.
+
+---
+
+## The Ledger Across a Call
+
+```text
+     caller (Rust)                  callee (your assembly)
+     -------------                  ----------------------
+     t0 = 0x11  \ about to be
+     a3 = 0x22  / clobbered  ---->  free to use immediately, with
+                                    no saving of any kind.
+     needs them after the call?
+     spills them to its OWN frame.
+
+     s2 = 0x33  \ must survive --->  wants s2? then it must:
+     s5 = 0x44  / the call             addi sp, sp, -16
+                                       sd   s2, 0(sp)    <- save
+     the caller does nothing.          ...use s2...
+     It simply trusts.                 ld   s2, 0(sp)    <- restore
+                                       addi sp, sp, 16
+```
+
+A compiler puts a counter that survives forty calls in `s3`, and a value used once in `t0`.
+
+---
+
+## Why a Context Switch Is Cheap
+
+A switch is entered by an **ordinary `call`**, from ordinary Rust, on the ordinary kernel stack. The ABI applies.
+
+So where are the caller's live `t` and `a` registers?
+
+<div class="highlight-box">
+<strong>Already on the stack.</strong> The compiler had to assume <code>swtch</code> would destroy them, so it spilled anything it still needed. Saving them again saves the same values twice.
+</div>
+
+And the frame holding them is reached through `sp` — one of the registers the switch saves.
+
+That leaves **14**: `s0`–`s11`, `sp`, and `ra`. 112 bytes. `swtch.rs:7`.
+
+---
+
+## Three Save Areas, Three Sizes
+
+| Structure | Saves | Size | Why |
+|---|---|---|---|
+| `Context` (`swtch.rs:7`) | `ra`, `sp`, `s0`–`s11` | 14 regs | Entered by a **call** — caller already spilled |
+| `kernelvec` frame (`trap.rs:91`) | `ra`, `t0`–`t6`, `a0`–`a7` | 16 regs | Entered by an **interrupt** — nothing spilled. Calls Rust, which preserves `s*` free |
+| `Trapframe` (`usermode.rs:34`) | all 31 + `epc` | 35+ | Resumed much later, from elsewhere. Nothing may be lost |
+
+<div class="highlight-box">
+A <strong>call</strong> is cooperative — both compilers know it is coming. A <strong>trap</strong> lands between any two instructions, in any state.
+</div>
+
+---
+
+## The Calling Convention
+
+| Rule | Detail |
+|---|---|
+| Integer/pointer arguments | `a0`–`a7`, first eight, left to right |
+| Arguments 9+ | On the caller's stack (rv6 never needs this) |
+| Return value | `a0` (a second in `a1`) |
+| Return address | `ra`, written by `call`, jumped to by `ret` |
+| Stack | Grows down; `sp` 16-byte aligned at every call |
+| Wide values | Pointer, `usize`, `u64` — all one register on RV64 |
+
+`bytecopy(dst, src, n)` arrives as `a0 = dst`, `a1 = src`, `a2 = n`.
+
+A function whose arguments are already in the right registers needs **no setup code**.
+
+---
+
+## Prologue and Epilogue
+
+```asm
+myfunc:
+    addi sp, sp, -32         # claim 32 bytes (multiple of 16)
+    sd   ra, 24(sp)          # we are about to call, which overwrites ra
+    sd   s0, 16(sp)          # save s0 because we intend to use it
+    sd   s1, 8(sp)
+
+    mv   s0, a0              # park the argument somewhere call-proof
+    call helper              # clobbers ra, t*, a* -- s0 and s1 survive
+    add  a0, a0, s0
+
+    ld   s1, 8(sp)           # the prologue, backwards
+    ld   s0, 16(sp)
+    ld   ra, 24(sp)
+    addi sp, sp, 32
+    ret
+```
+
+A **leaf** function calls nothing, so it needs no saved `ra` and no frame. All three routines in `a00` are leaves.
+
+---
+
+## The Instructions You Need
+
+| Instruction | Meaning |
+|---|---|
+| `add` / `addi` | `rd = rs1 + rs2`, or `+ imm` (−2048..2047) |
+| `li` / `la` | Load a constant / the *address* of a symbol |
+| `lb` / `sb` | Load / store one **b**yte |
+| `ld` / `sd` | Load / store a 64-bit **d**oubleword |
+| `beqz` / `bnez` | Branch if a register is / is not zero |
+| `j` / `call` / `ret` | Jump / call (sets `ra`) / return (jumps to `ra`) |
+
+<div class="highlight-box">
+<code>add</code> <strong>wraps silently</strong>. No overflow trap, no flags, no condition codes. Rust's <code>+</code> panics in debug; the hardware has no opinion.
+</div>
+
+---
+
+## Load–Store, and 12-Bit Offsets
+
+`add` cannot add a value in memory to a register — there is no such instruction. Only loads and stores touch memory.
+
+One addressing mode: `off(rs1)` = the address `rs1 + off`.
+
+<div class="highlight-box">
+<code>off</code> is a <strong>signed 12-bit constant baked into the instruction</strong>. A literal in −2048..2047. Never a register, never computed at run time.
+</div>
+
+That is why every save/restore in the kernel is a column of hard-coded numbers — and why those numbers must match a Rust struct byte for byte.
+
+---
+
+## Local Numeric Labels
+
+Assembly has no scoping: `loop:` can exist exactly once per object file.
+
+```asm
+bytecopy:
+    beqz a2, 2f              # n == 0: skip the loop entirely
+1:                           # <- loop top
+    lb   t0, 0(a1)
+    sb   t0, 0(a0)
+    addi a0, a0, 1
+    addi a1, a1, 1
+    addi a2, a2, -1
+    bnez a2, 1b              # <- back to the nearest 1: above
+2:
+    ret
+```
+
+`1b` = nearest `1:` **b**ackward. `2f` = nearest `2:` **f**orward.
+
+The zero test comes **first**. Test-at-the-bottom copies one byte when asked for none — the classic `memcpy` bug.
+
+---
+
+## `global_asm!`
+
+```rust
+use core::arch::global_asm;
+
+global_asm!(
+    r#"
+.globl add3
+add3:
+    add  a0, a0, a1
+    add  a0, a0, a2
+    ret
+"#
+);
+```
+
+- Emits assembly at **module level**; `.globl` makes a real linker symbol
+- `r#"…"#` is a **raw string** — no escape processing, so `\n` reaches the assembler intact
+- Literal `{` and `}` must be doubled: they are template placeholders
+- `asm!` is the sibling for instructions *inside* a function
+
+---
+
+## `extern "C"` — The Signature Is a Promise
+
+```rust
+extern "C" {
+    pub fn add3(a: u64, b: u64, c: u64) -> u64;
+}
+```
+
+`"C"` names the ABI: args in `a0`–`a2`, result in `a0`, callee-saved preserved.
+
+Rust **cannot** check this against the assembly. By link time the assembly is machine code with no types in it.
+
+<div class="highlight-box">
+The declaration is not a description the compiler verifies — it is an <strong>assertion you are making</strong>, and the compiler generates code that depends on it. That is what <code>unsafe</code> marks: <em>you</em> are the type checker.
+</div>
+
+Get it wrong and there is no panic, no error — just a wrong number.
+
+---
+
+## Names Go the Other Way Too
+
+Rust **mangles** symbols: `foo` in crate `bar` becomes `_ZN3bar3foo17h9c4f8e…E`.
+
+```rust
+#[no_mangle]
+pub extern "C" fn kmain() -> ! { /* ... */ }
+```
+
+- `#[no_mangle]` fixes the **name**, so `call kmain` resolves
+- `extern "C"` fixes the **convention**
+- You normally need both
+
+Same pair on `_entry` (`entry.rs:10-12`) and on every `static mut` the assembly reaches with `la`: `CO_STACK`, `MAIN_CTX`, `CO_CTX` (`main.rs:138-147`).
+
+---
+
+## `#[repr(C)]`, Now Load-Bearing
+
+```text
+    #[repr(C)]                        memory, at the address in a0
+    pub struct Ctx {                  +--------+  <- a0 + 0
+        pub ra: usize,  // offset  0  |   ra   |
+        pub sp: usize,  // offset  8  +--------+  <- a0 + 8
+        pub s0: usize,  // offset 16  |   sp   |
+        pub s1: usize,  // offset 24  +--------+  <- a0 + 16
+    }                                 |   s0   |
+                                      +--------+  <- a0 + 24
+    size = 32, align = 8              |   s1   |
+                                      +--------+
+```
+
+`repr(Rust)` is **unspecified** — the compiler may reorder fields to kill padding.
+
+`sd ra, 0(a0)` welds that `0` into the instruction. If `sp` moved to offset 0, that store corrupts `sp` and **nothing warns you**.
+
+---
+
+## The Machine It Runs On
+
+`global_asm!` text → assembler → `rust-lld` (following `asmlab.ld`) → ELF with `.entry` at `0x8000_0000` → QEMU.
+
+`-bios none`: no firmware. Your program **is** the whole software stack — no OS, no libc, no loader, no `println!`.
+
+<div class="highlight-box">
+<code>qemu-system-riscv64</code> emulates a <strong>whole machine</strong>. <code>qemu-riscv64</code> is <strong>linux-user</strong> emulation: it runs one RISC-V Linux <em>process</em>. There is no Linux here to make syscalls to — and it is not built for macOS at all.
+</div>
+
+---
+
+## `baby_swtch`: The Setup
+
+```rust
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Ctx { pub ra: usize, pub sp: usize,
+                 pub s0: usize, pub s1: usize }
+
+extern "C" {
+    pub fn baby_swtch(old: *mut Ctx, new: *const Ctx);
+}
+```
+
+- By the calling convention: `a0 = old`, `a1 = new`
+- By `#[repr(C)]`: fields at **0, 8, 16, 24**
+
+Two facts from two different sections, and now the assembly can be written.
+
+---
+
+## Eight Instructions
+
+```asm
+.globl baby_swtch
+baby_swtch:
+    sd   ra, 0(a0)           # 1  *old.ra = our return address
+    sd   sp, 8(a0)           # 2  *old.sp = our stack
+    sd   s0, 16(a0)          # 3
+    sd   s1, 24(a0)          # 4
+
+    ld   ra, 0(a1)           # 5  ra = the other context's return address
+    ld   sp, 8(a1)           # 6  sp = the other context's stack
+    ld   s0, 16(a1)          # 7
+    ld   s1, 24(a1)          # 8
+
+    ret                      # 9  jalr zero, 0(ra) -- the ra just LOADED
+```
+
+1–4 photograph the current thread of execution. 5–8 install a different one. 9 is the punchline.
+
+---
+
+## The Trace
+
+| Point | `ra` | `sp` | `s0` | `s1` |
+|---|---|---|---|---|
+| A. about to `call` | line after the call | main stack | `kmain`'s | `kmain`'s |
+| B. after instr. 4 | unchanged, now in `MAIN_CTX` | stored | stored | stored |
+| C. after instr. 8 | `co_entry` | top of `CO_STACK` | `0xC0FFEE` | `0xBEEF` |
+| D. after `ret` | running at `co_entry`, on the other stack | | | |
+
+A context that has never run has no saved registers — so the harness **forges** one: `ra` = entry point, `sp` = top of a fresh stack.
+
+Between B and C, one function's entire identity is replaced. Four loads did it.
+
+---
+
+## That Was a Context Switch
+
+<div class="highlight-box">
+<code>ret</code> is <code>jalr zero, 0(ra)</code>. It jumps to whatever <code>ra</code> holds — and <code>ra</code> holds a value loaded out of a struct four instructions ago. <strong>The function does not return to its caller. It returns into whatever the other context was doing.</strong>
+</div>
+
+`sp` came along too, so the resumed code runs on a **different stack**: different locals, different saved registers, different return addresses.
+
+Two independent threads of execution now exist. The only difference between them is which values are in `ra` and `sp`.
+
+---
+
+## The Round Trip
+
+<div class="mermaid">
+sequenceDiagram
+    participant K as kmain (main stack)
+    participant B as baby_swtch
+    participant C as co_entry (CO_STACK)
+    K->>B: call baby_swtch(&MAIN_CTX, &CO_CTX)
+    Note over B: save → MAIN_CTX<br/>load ← CO_CTX
+    B-->>C: ret jumps to CO_CTX.ra
+    Note over C: records s0 and s1
+    C->>B: call baby_swtch(&CO_CTX, &MAIN_CTX)
+    Note over B: save → CO_CTX<br/>load ← MAIN_CTX
+    B-->>K: ret jumps to MAIN_CTX.ra —<br/>the line after the FIRST call
+</div>
+
+Arriving back proves `ra` round-tripped. Not faulting proves `sp` is valid. The recorded values prove `s0`/`s1` survived.
+
+---
+
+## Save All Before You Load Any
+
+```asm
+    ld   ra, 0(a1)           # WRONG: ra is now the OTHER context's
+    ...
+    sd   ra, 0(a0)           # and this stores the wrong value into *old
+```
+
+`*old` records the *new* context's registers. The old thread of execution is **gone** — its return address was in `ra`, overwritten before anything read it.
+
+Nothing faults. The machine runs perfectly, in the wrong place, forever.
+
+<div class="info-box">
+A <strong>hang with no output</strong> is the signature of a <code>ret</code> to a wrong-but-<em>valid</em> address. A crash is the signature of a wrong-and-invalid one. The hang is harder.
+</div>
+
+---
+
+## Scaling Up
+
+`swtch.rs:46-82` is the same function with ten more registers:
+
+- fourteen `sd`s at offsets 0 … 104
+- fourteen `ld`s at the same offsets
+- `ret`
+
+Same shape. Same argument. Same punchline.
+
+`init_context` (`swtch.rs:38-44`) forges a first context the same way the harness does — `ra` = the function a new process should start in, `sp` = top of its kernel stack.
+
+`05_context_switch` writes it. `06_scheduling` calls it in a loop, and one CPU starts pretending to be many.
+
+---
+
+## Today's Exercise
+
+**`a00_asm_bridge`** — three routines in RISC-V assembly, called from Rust, running on the bare machine.
+
+- `add3` — does the calling convention work the way you think it does?
+- `bytecopy` — loads, stores, a loop, and the `n == 0` case
+- `baby_swtch` — exercise 05 in miniature
+
+```bash
+oslings run a00_asm_bridge
+```
+
+Builds for `riscv64gc-unknown-none-elf` and boots it in QEMU. Passes when the console prints `OSLINGS:PASS`. Due **Friday, September 18**.
+
+---
+
+## Summary
+
+1. **The floor is narrow.** No language whose compiler allocates registers can express "save every register and switch stacks."
+
+2. **32 registers, two classes**, always called by ABI name.
+
+3. **Caller-saved: the callee may destroy it. Callee-saved: the callee must give it back.** Nothing enforces either.
+
+4. **A switch saves 14 because the rest are already on the stack** — and `sp`, the handle to them, is one of the 14.
+
+5. **A call is cooperative; a trap is not.** 14 registers vs 35.
+
+6. **Offsets are welded into instructions**, so `#[repr(C)]` is load-bearing.
+
+7. **`extern "C"` is a promise, not a check.** That is what `unsafe` marks.
+
+8. **`ret` jumps to whatever is in `ra`, and `ra` is just a register.**
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            // Render Mermaid diagrams after Reveal is ready
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // CS 326: robust mermaid rendering — read decoded textContent (undo any
+        // HTML-entity escaping from the markdown pipeline) and wait for web fonts
+        // so text measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

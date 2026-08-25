@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Context Switch and the Scheduler - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# The Context Switch and the Scheduler
+
+## CS 326 Operating Systems
+
+Week 8 &middot; October 15, 2026 &middot; exercises 05 + 06
+
+---
+
+## Learning Objectives
+
+- Explain why a context switch saves only the **callee-saved** registers
+- Trace `swtch` instruction by instruction, including the `ret`
+- Describe what `#[repr(C)]` guarantees and what breaks without it
+- Justify the **double switch** through a per-CPU scheduler context
+- Distinguish **mechanism** from **policy** and use the `Scheduler` trait
+- Define fairness, quantum, throughput, latency, starvation — and rank FCFS, SJF, priority, MLFQ, CFS
+
+---
+
+## The Problem
+
+Everything so far has run **once**, start to finish:
+
+```text
+kmain -> boot -> kalloc -> page tables -> proc table -> stop
+```
+
+- We have a process table (ex 04). Nothing has ever *run*.
+- One CPU, many processes: the kernel must **pause** one and **resume** another
+- Two separate questions:
+  1. **How** do you pause and resume? &rarr; `swtch` (ex 05)
+  2. **Which** one do you resume? &rarr; the scheduler (ex 06)
+
+---
+
+## What a Context Is
+
+A CPU has no memory of its own past. At any instant its state is:
+
+- 32 general-purpose registers
+- the program counter
+- some control registers
+
+Everything else — stack, heap, code — is in **RAM**, and RAM does not evaporate.
+
+<div class="info-box">
+To pause a computation you copy out its <strong>registers</strong>, not its memory. That snapshot is the <strong>context</strong>.
+</div>
+
+---
+
+## Why Exactly 14 Registers
+
+| Class | Registers | Rule |
+|---|---|---|
+| Caller-saved | `t0`-`t6`, `a0`-`a7` | A called function may destroy these freely |
+| Callee-saved | `ra`, `sp`, `s0`-`s11` | A called function must return them unchanged |
+
+<div class="highlight-box">
+<code>swtch</code> is an <strong>ordinary function</strong>. When the compiler emitted the call to it, it had <strong>already spilled</strong> every caller-saved value it still needed — so saving <code>sp</code> saves them all, for free.
+</div>
+
+- What is left is the callee-saved set: `ra`, `sp`, `s0`-`s11` &rarr; **14**
+- **No `pc`**: a suspended kernel thread is always inside `swtch`, so its resume address *is* `ra`
+
+---
+
+## The Context Struct
+
+```rust
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Context {
+    pub ra: usize,
+    pub sp: usize,
+    pub s0: usize,
+    // ... s1 through s11 ...
+    pub s11: usize,
+}
+```
+
+`swtch.rs:5`-`swtch.rs:22`
+
+- Rust's default `repr(Rust)` **may reorder fields** to reduce padding
+- `#[repr(C)]` = declaration order, C alignment rules &rarr; fixed offsets
+
+---
+
+## The Offsets Are the Contract
+
+```text
+Context — 112 bytes
+   0  ra   <- where this thread resumes    8  sp   <- and on which stack
+  16  s0    24  s1    32  s2    40  s3   48  s4   56  s5
+  64  s6    72  s7    80  s8    88  s9   96  s10 104  s11
+```
+
+<div class="highlight-box">
+Without <code>#[repr(C)]</code>, if <code>s11</code> landed at offset 8 then <code>ld sp, 8(a1)</code> loads a garbage stack pointer. It does <strong>not</strong> fault there — it faults later, in unrelated code.
+</div>
+
+---
+
+## swtch, In Full
+
+```asm
+.globl swtch
+swtch:
+    sd ra,  0(a0)          # a0 = old: freeze the CURRENT context
+    sd sp,  8(a0)
+    sd s0,  16(a0)
+    ...
+    sd s11, 104(a0)
+
+    ld ra,  0(a1)          # a1 = new: thaw the TARGET context
+    ld sp,  8(a1)
+    ld s0,  16(a1)
+    ...
+    ld s11, 104(a1)
+
+    ret                    # jump to the ra we just LOADED
+```
+
+`swtch.rs:46`-`swtch.rs:82`
+
+---
+
+## The Moment
+
+`ret` is a pseudo-instruction for `jalr x0, 0(ra)`. It never consults the stack.
+
+<div class="highlight-box">
+<strong>swtch is a function that does not return to its caller.</strong> It returns to whoever last called <code>swtch</code> with this context as their <code>old</code> — a different thread, on a different stack, possibly minutes ago.
+</div>
+
+- `ld sp, 8(a1)` switched stacks
+- `ld ra, 0(a1)` rewrote the return address
+- `ret` jumps there. That is the whole mechanism.
+
+---
+
+## You Already Wrote This (a00)
+
+```asm
+.globl baby_swtch                 .globl swtch
+baby_swtch:                       swtch:
+    sd   ra, 0(a0)                    sd ra,  0(a0)
+    sd   sp, 8(a0)                    sd sp,  8(a0)
+    sd   s0, 16(a0)                   sd s0,  16(a0)
+    sd   s1, 24(a0)                   sd s1,  24(a0)
+                                      ...          (s2..s10)
+                                      sd s11, 104(a0)
+    ld   ra, 0(a1)                    ld ra,  0(a1)
+    ld   sp, 8(a1)                    ld sp,  8(a1)
+    ld   s0, 16(a1)                   ld s0,  16(a1)
+    ld   s1, 24(a1)                   ld s1,  24(a1)
+                                      ...          (s2..s10)
+                                      ld s11, 104(a1)
+    ret                               ret
+```
+
+Ten more registers. Same ABI, same ordering rule, same `ret`.
+
+---
+
+## Two Rules From a00
+
+**`global_asm!`, not `asm!` inside a function**
+
+- A Rust function gets a prologue/epilogue that adjust `sp`
+- `swtch` is *about* `sp`, so it cannot tolerate a wrapper
+- `extern "C"` (`swtch.rs:34`) declares the symbol; calling it is `unsafe`
+
+**Save all fourteen before loading any**
+
+- A `ld` before the matching `sd` saves the target's value, not the caller's
+- Save-then-load makes `old == new` a harmless no-op
+
+---
+
+## A Context Is Not a Trap Frame
+
+<div class="info-box">
+<strong>Context</strong> — the small set a <em>kernel thread</em> needs to resume from a <em>voluntary</em> call. 14 registers, because the ABI covers the rest.
+<br><br>
+<strong>Trap frame</strong> (ex 18) — what a <em>user process</em> needs when hardware interrupts it at an <em>arbitrary</em> instruction. All 31 registers plus <code>pc</code> and several CSRs, because no calling convention protects anything.
+</div>
+
+Two mechanisms, two sizes, two reasons.
+
+---
+
+## The Double Switch
+
+<div class="mermaid">
+sequenceDiagram
+    participant A as Process A
+    participant S as Scheduler
+    participant B as Process B
+    A->>S: swtch(A.ctx, SCHED_CTX)
+    Note over S: pick_next() picks B
+    S->>B: swtch(SCHED_CTX, B.ctx)
+    Note over B: B runs a while
+    B->>S: swtch(B.ctx, SCHED_CTX)
+    Note over S: pick_next() picks A
+    S->>A: swtch(SCHED_CTX, A.ctx)
+    Note over A: A resumes inside its own swtch
+</div>
+
+Process A never switches to B directly.
+
+---
+
+## Why Not Switch Directly?
+
+1. **The scheduler needs a stack nobody is about to free.** `exit_current` marks itself `Zombie` and its kernel stack goes back to `kalloc` — you cannot free the stack you stand on
+2. **Two shapes instead of `n²`.** Every invariant (lock held across the switch, released by whoever arrives) has two cases, not every pair
+3. **Per-CPU.** Each hart needs its own scheduler context *and* stack
+4. **One place to look.** Every decision is in one loop
+
+Cost: 28 stores + 28 loads per handover instead of 14 + 14. Noise.
+
+---
+
+## Per-CPU, With N = 1
+
+```rust
+static mut SCHED_CTX: Context = Context::zero();   // usermode.rs:204
+static mut CURPROC:  *mut Proc = ptr::null_mut();  // usermode.rs:206
+```
+
+- rv6 is single-hart, so these are two statics
+- xv6 keeps exactly these two fields in a per-CPU `struct cpu` indexed by hart id
+- rv6's statics **are** that struct, with the array length set to one
+- Going SMP is mechanical; going SMP with *direct* switching is not
+
+---
+
+## The Scheduler Loop
+
+```rust
+let mut policy = RoundRobin::new();
+loop {
+    let mut states = [ProcState::Unused; NPROC];
+    for i in 0..NPROC { states[i] = (*proc::proc_at(i)).state; }
+
+    match policy.pick_next(&states) {
+        Some(i) => {
+            let p = proc::proc_at(i);
+            (*p).state = ProcState::Running;
+            CURPROC = p;
+            swtch::swtch(addr_of_mut!(SCHED_CTX), addr_of_mut!((*p).context));
+            CURPROC = ptr::null_mut();
+        }
+        None => { /* nothing runnable */ }
+    }
+}
+```
+
+`usermode.rs:278`. One textual call at line 297; unbounded time inside it.
+
+---
+
+## Yielding
+
+```rust
+pub unsafe fn proc_yield(p: *mut Proc) {
+    (*p).state = ProcState::Runnable;
+    swtch::swtch(addr_of_mut!((*p).context), addr_of_mut!(SCHED_CTX));
+}
+```
+
+`usermode.rs:363`
+
+<div class="highlight-box">
+Mark yourself <code>Runnable</code> <strong>before</strong> switching away — after the <code>swtch</code> you are not running and cannot mark anything.
+</div>
+
+Resume lands at the closing brace, with every local intact. That is just `sp`.
+
+---
+
+## Process States
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Unused
+    Unused --> Runnable: allocproc
+    Runnable --> Running: scheduler picks, swtch in
+    Running --> Runnable: proc_yield / quantum expires
+    Running --> Sleeping: blocks on IO or a lock
+    Sleeping --> Runnable: wakeup
+    Running --> Zombie: exit_current
+    Zombie --> Unused: parent reaps
+</div>
+
+---
+
+## Forging a Context That Never Ran
+
+```rust
+pub unsafe fn ready(p: *mut Proc) {
+    (*p).context = Context::zero();
+    (*p).context.ra = forkret as *const () as usize;
+    (*p).context.sp = (*p).kstack + PGSIZE;
+}
+```
+
+`usermode.rs:245`-`249` (ex 05's `init_context` in general form)
+
+- **`ra` = entry function** &rarr; the first `swtch` turns `ret` into the call
+- **`sp` = `kstack + PGSIZE`** &rarr; the *top*; RISC-V stacks grow **down**
+- `sp = kstack` is a classic bug: the first push writes below the page
+
+---
+
+## Mechanism vs Policy
+
+| | Mechanism | Policy |
+|---|---|---|
+| Question | *How* do we switch? | *Which* runs next? |
+| Code | `swtch.rs` | `sched.rs` |
+| Language | assembly | safe Rust |
+| Content | 14 stores, 14 loads, `ret` | arithmetic over a table |
+| Opinions | none | all of them |
+
+<div class="info-box">
+The separation is what makes a scheduler <strong>replaceable</strong>: swap the policy and the delicate assembly is not recompiled, not re-reviewed, not re-debugged.
+</div>
+
+---
+
+## The Seam Is a Trait
+
+```rust
+pub trait Scheduler {
+    fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
+}
+```
+
+`sched.rs:5`-`7` — the loop names the *trait*, not the implementation.
+
+- `&mut self` lets a policy carry state (a cursor, a priority table, a clock)
+- The interface decides which policies are expressible: states alone are **not** enough for SJF (needs burst estimates) or CFS (needs runtime)
+- Linux's `sched_class`: ~2 dozen function pointers, classes chained stop &rarr; deadline &rarr; rt &rarr; fair &rarr; idle
+
+---
+
+## Round Robin
+
+```rust
+fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
+    let n = states.len();
+    (0..n)
+        .map(|off| (self.next + off) % n)
+        .find(|&i| states[i] == ProcState::Runnable)
+        .map(|i| {
+            self.next = (i + 1) % n;
+            i
+        })
+}
+```
+
+`sched.rs:20`-`29`
+
+---
+
+## Why It Is Fair
+
+```text
+states: [Runnable, Sleeping, Runnable, Runnable]
+            p1        p2        p3        p4
+
+next=0 -> scan 0,1,2,3 -> pick 0 (p1), next=1
+next=1 -> scan 1,2,3,0 -> pick 2 (p3), next=3
+next=3 -> scan 3,0,1,2 -> pick 3 (p4), next=0
+-> 1, 3, 4, 1, 3, 4, ...
+```
+
+**No-starvation invariant.** Each pick moves the cursor strictly *past* the chosen index, so a process that stays `Runnable` is picked within `n` picks.
+
+`self.next = i` instead of `(i + 1) % n` &rarr; the same process forever.
+
+---
+
+## Quantum
+
+The exercise is **cooperative**: the process calls `proc_yield`. A process that loops forever owns the machine.
+
+- **Quantum** = max CPU held before the scheduler runs again, enforced by a timer
+- rv6 already has the hardware: `INTERVAL = 1_000_000` at `start.rs:19`, `time` CSR at 10 MHz &rarr; a tick every ~0.1 s
+- Preemption is exercise **14**; cooperative is deterministic, so a wrong `pick_next` gives a wrong *order*, not a heisenbug
+
+Too small &rarr; overhead dominates. Too large &rarr; round robin becomes FCFS.
+
+---
+
+## Vocabulary, Precisely
+
+| Term | Definition |
+|---|---|
+| Turnaround | `c - a`. Time in the system |
+| Response / latency | `f - a`. Arrival to first execution |
+| Waiting | `(c - a) - s`. Runnable but not running |
+| Throughput | Jobs completed per unit time |
+| Fairness | Each of `n` gets `W/n` of window `W` (or weight-proportional). About *share*, not order |
+| Starvation | Selection can be deferred **indefinitely** — no bound. Not deadlock |
+| Quantum | Max uninterrupted CPU time |
+
+---
+
+## FCFS and SJF
+
+```text
+three jobs at t=0 needing 100, 1, 1 seconds
+
+FCFS:  [-------- J1 (100) --------][J2][J3]
+       turnaround: 100, 101, 102        avg = 101
+SJF:   [J2][J3][-------- J1 (100) --------]
+       turnaround: 1, 2, 102            avg = 35
+```
+
+- **FCFS**: FIFO, non-preemptive, max throughput, no starvation, **convoy effect**
+- **SJF**: provably optimal average turnaround (exchange argument), but needs the future and **starves long jobs**
+- **SRTF**: preemptive SJF, optimal online
+
+---
+
+## Priority and MLFQ
+
+```text
+  Q3 (q=1ms)  [ vim ] [ shell ]    <- interactive
+       | used a full quantum -> demote
+  Q2 (q=2ms)  [ make ]
+  Q1 (q=4ms)  [ ]
+  Q0 (q=8ms)  [ ffmpeg ] [ cc1 ]   <- CPU-bound, long slices
+       ^
+       +-- every S ms: boost everything back to Q3
+```
+
+- **Priority**: starves without **aging**; **priority inversion** (Mars Pathfinder, 1997) needs **priority inheritance**
+- **MLFQ**: approximates SJF by *learning from behaviour*. Patches: account total CPU per level (anti-gaming), periodic boost (anti-starvation)
+
+---
+
+## CFS
+
+Linux's default 2.6.23 (2007) &rarr; 6.6 (2023). Model an ideal CPU running all `n` tasks at `1/n` speed; run whoever has fallen furthest behind.
+
+```text
+vruntime += delta_exec * (NICE_0_WEIGHT / task_weight)
+```
+
+- `NICE_0_WEIGHT` = 1024; each nice level scales weight ~1.25x (5 levels &asymp; 3x)
+- **Pick**: smallest `vruntime` = leftmost node of a red-black tree, `O(log n)`
+- **No fixed quantum**: a target period split as `period * w_i / sum(w)`
+- **No starvation**: a waiting task's `vruntime` freezes; new tasks clamp to `min_vruntime`
+- 6.6+ replaced it with **EEVDF** (virtual deadlines for latency requests)
+
+---
+
+## One Page
+
+| Policy | Preempt | Picks | Optimizes | Starves? |
+|---|---|---|---|---|
+| FCFS | No | Earliest arrival | Throughput | No |
+| SJF | No | Smallest service | Avg turnaround | Yes |
+| Round robin | With quantum | Next in rotation | Response, fairness | No |
+| Priority | Either | Highest priority | Whatever it encodes | Yes (age it) |
+| MLFQ | Yes | Top non-empty queue | Latency + throughput | Yes (boost it) |
+| CFS | Yes | Smallest `vruntime` | Proportional fairness | No |
+
+rv6 and xv6 both use plain round robin — rv6 just lifts the cursor behind a trait.
+
+---
+
+## Summary
+
+1. **Save only what the ABI cannot recover** — `ra`, `sp`, `s0`-`s11`; the caller already spilled the rest, and `sp` reaches them
+2. **`#[repr(C)]` is load-bearing** — the assembly hardcodes offsets 0, 8, ..., 104
+3. **The `ret` is the mechanism** — it jumps to the `ra` you just loaded
+4. **rv6 goes process &rarr; scheduler &rarr; process** through a per-CPU hub
+5. **A new context is forged**: `ra` = entry, `sp` = `kstack + PGSIZE`
+6. **Mechanism / policy** — the `Scheduler` trait is the seam
+7. **Round robin never starves** because the cursor advances past each pick
+8. **Now go write them**: `oslings run 05_context_switch`, then `06_scheduling`
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the markdown
+        // pipeline) and wait for web fonts so text measurement does not yield NaN
+        // geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

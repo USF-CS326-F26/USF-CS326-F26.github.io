@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipes, the Payoff, and Final Review - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 520px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# Pipes, the Payoff, and Final Review
+
+## CS 326 Operating Systems
+
+Dec 8, 2026 · exercise `22_userland` + extra credit
+
+---
+
+## Learning Objectives
+
+- Describe a pipe as a bounded ring buffer behind two file descriptors
+- Derive the end-of-file rule from the blocking rules, rather than memorising it
+- Construct `a | b` from `pipe`, `fork`, `dup`, `close`, and `exec` alone
+- Explain how one command source compiles for a laptop *and* for bare-metal RISC-V
+- Walk rv6 from the first instruction after reset to a blocked `getc`
+- Map each rv6 mechanism onto its Linux counterpart, and name what rv6 omits
+
+---
+
+## Three Parts
+
+1. **Pipes** — a bounded buffer with two names, and the one rule everyone gets wrong
+2. **The payoff** — your week-3 `grep`, unchanged, on your own kernel
+3. **Final review** — power-on to a prompt, rv6 vs Linux, and the honest gaps
+
+<div class="info-box">
+Nothing new is required after today. Everything below is either extra credit or exam material.
+</div>
+
+---
+
+## A Pipe Is a Bounded Buffer With Two Names
+
+- A kernel-resident **byte stream**: reader end and writer end, each an fd
+- No records, no boundaries, no seeking, **no filesystem name**
+- The first object in this course two processes share **without sharing memory**
+- Adding it changes **no caller**: `FileKind` gains a third variant, `read`/`write` are untouched
+
+<div class="highlight-box">
+"Everything is a file" is the claim that one tiny interface — read, write, close, with an integer handle — names a console, a disk file, a socket, and a channel between processes.
+</div>
+
+---
+
+## The Ring Buffer
+
+```text
+  data: [u8; 512]
+
+     |<-- consumed -->|<-- readable -->|<--- free --->|
+     0              nread            nwrite
+
+  nread     : total bytes ever read      (monotonic)
+  nwrite    : total bytes ever written   (monotonic)
+  readopen  / writeopen : is any end still open?
+
+  available = nwrite - nread        byte i at data[i % 512]
+  empty <=> nread == nwrite         full <=> nwrite - nread == 512
+```
+
+- Monotonic totals, **not** wrapped indices: `head == tail` would mean both empty and full
+- The difference *is* the count — no extra field, no wasted slot
+- 512 = xv6's `PIPESIZE`; Linux uses 16 pages (64 KiB), tunable with `F_SETPIPE_SZ`
+
+---
+
+## Blocking: The Whole Semantics
+
+| Call | Buffer | Other end | What happens |
+|---|---|---|---|
+| `read` | has bytes | either | copy `min(n, available)`, return that count |
+| `read` | empty | writer open | **block** |
+| `read` | empty | no writer | **return 0** — EOF |
+| `write` | has room | reader open | copy in, wake a reader |
+| `write` | full | reader open | **block** |
+| `write` | any | no reader | **error** — `SIGPIPE`/`EPIPE`; `-1` in rv6 |
+
+---
+
+## Short Read Is Not EOF
+
+<div class="highlight-box">
+A <code>read</code> that returns fewer bytes than you asked for is normal. It means "this is what was here when I looked." Only <strong>0</strong> means end of file.
+</div>
+
+```rust
+// correct
+while let n = read(fd, &mut buf) { if n == 0 { break } ... }
+
+// broken: loses everything after the first partial read
+if n < buf.len() { done = true }
+```
+
+---
+
+## The Rule Everyone Gets Wrong
+
+```text
+  read returns 0  <=>  nread == nwrite   AND   writeopen == false
+                       ^^^^^^^^^^^^^^^         ^^^^^^^^^^^^^^^^^^
+                       buffer is empty         no writer can ever
+                                               put anything in it
+```
+
+- "The last writer" is a **reference count**: every `fork` and every `dup` adds one
+- `writeopen` may only go false when that count reaches **zero**
+- This is why a two-stage pipeline needs **six** `close` calls
+
+---
+
+## Three Ways to Get It Wrong
+
+| Wrong rule | Symptom |
+|---|---|
+| empty ⇒ EOF | `cat big.txt \| wc -l` prints a different number each run, often 0 |
+| last writer closed ⇒ EOF | `echo hi \| cat` prints nothing — buffered bytes discarded |
+| neither (always block) | `wc` hangs after the input ends |
+
+Each bug is easy to write, and each looks completely unlike the others.
+
+---
+
+## The Life of a Pipe
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Empty: pipe creates both ends
+    Empty --> Data: write
+    Data --> Empty: reader drains it
+    Data --> Full: writers outrun readers
+    Full --> Data: reader makes room
+    Empty --> Eof: last writer closes
+    Data --> Draining: last writer closes
+    Draining --> Eof: reader drains the remainder
+    Eof --> [*]: reader closes and the pipe is freed
+</div>
+
+---
+
+## Where "Block" Comes From in rv6
+
+- rv6 has no `sleep`/`wakeup` — it has `proc_yield` (`usermode.rs:363`) and round robin (`sched.rs:20`)
+- So blocking is a **poll**: lock, test, unlock, yield, repeat — same shape as `sys_wait` (`syscall.rs:141`)
+- Correct on one hart, but a blocked process stays `Runnable` and burns a timeslice each rotation
+- xv6 does it properly with `sleep(chan, lock)` / `wakeup(chan)`, where the channel is just an address
+
+---
+
+## The Lost Wakeup
+
+```text
+  Reader                                Writer
+  ---------------------------------     -------------------------
+  lock(); sees nread == nwrite
+  unlock()
+                                        lock(); writes bytes
+                                        wakeup(&pipe.nread)  <- nobody
+                                        unlock()                is asleep
+  sleep(&pipe.nread)   <-- forever
+```
+
+- The wakeup lands in the gap between "unlock" and "sleep", and is lost
+- Fix: `sleep` must take the **lock** — mark `Sleeping` first, *then* release
+- Same signature, same reason: `pthread_cond_wait`, `Condvar::wait`, `wait_event`
+
+---
+
+## `a | b` Is Not a Kernel Feature
+
+<div class="highlight-box">
+The kernel supplies <code>pipe</code>, <code>dup</code>, and <code>close</code>. None of them knows what a pipeline is. The <strong>shell</strong> composes them with <code>fork</code> and <code>exec</code>, which it already had.
+</div>
+
+- Nothing is added to `exec`'s parameter list
+- Nothing in `a` or `b` knows it is in a pipeline, or can find out
+- This is the `fork`/`exec` split from last week, cashed in
+
+---
+
+## `dup` and the Lowest Free Slot
+
+`dup(fd)` returns the **lowest-numbered free descriptor** naming the same open file.
+
+```text
+    close(1);          // fd 1 is now the lowest free descriptor
+    dup(pipe_write);   // ...so the copy necessarily lands in fd 1
+```
+
+- Two calls, and stdout is the pipe
+- That "lowest-numbered" rule *is* the mechanism behind both `>` and `|`
+- POSIX later added `dup2(old, new)`: close-then-dup is not atomic if another thread can open a file in the gap
+
+---
+
+## The Construction
+
+```text
+  shell:  p = pipe()                    p[0] read end, p[1] write end
+
+          fork() -> left child
+              close(1); dup(p[1])       stdout is the pipe
+              close(p[0]); close(p[1])
+              exec("a")
+
+          fork() -> right child
+              close(0); dup(p[0])       stdin is the pipe
+              close(p[0]); close(p[1])
+              exec("b")
+
+          close(p[0]); close(p[1])      <-- THE PARENT MUST CLOSE TOO
+          wait(); wait()
+```
+
+---
+
+## The Resulting Wiring
+
+<div class="mermaid">
+flowchart LR
+    subgraph LC["child running a"]
+      A0["fd 0 to console"]
+      A1["fd 1 to pipe write end"]
+    end
+    subgraph PIPE["the pipe, in the kernel"]
+      PB["512-byte ring\nnread and nwrite\nreadopen and writeopen"]
+    end
+    subgraph RC["child running b"]
+      B0["fd 0 from pipe read end"]
+      B1["fd 1 to console"]
+    end
+    A1 --> PB
+    PB --> B0
+</div>
+
+`exec` contributes **nothing**: it swaps the address space and leaves the fd table alone (`exec.rs:753`).
+
+---
+
+## Forget One Close, Hang the Terminal
+
+Shell keeps `p[1]`:
+
+- `a` exits, closing its copy — but the write reference count is still 1
+- `writeopen` stays true, so `b`'s `read` on the empty buffer **blocks** instead of returning 0
+- `b` waits forever; the shell's `wait` waits forever
+
+<div class="highlight-box">
+The symptom appears in <code>b</code> — a process with no bug in it, on a data path the faulty process is not part of. Rule: <strong>every process closes every pipe fd it will not use, including the shell.</strong>
+</div>
+
+---
+
+## Things You Have Been Living With
+
+- **`yes | head -1` terminates** — `head` exits, the next `write` finds no reader, `SIGPIPE` kills the producer
+- **`echo hi | read x` leaves `x` unset** — both sides are children; the assignment dies with the process
+- **A pipeline's status is the last stage's** — hence `PIPESTATUS` and `set -o pipefail`
+- **Cycles deadlock** — bounded buffers make one-directional pipelines safe and two-way plumbing a design problem
+- **`PIPE_BUF`** — writes of ≤ 4096 bytes (Linux) are atomic; larger ones can interleave
+
+---
+
+## 1964 → 1973
+
+- Doug McIlroy's memo: programs that "screw together like garden hose". He argued for it for **nine years**
+- Ken Thompson implemented it in Version 3 Unix in 1973, reportedly in one night
+- The toolbox philosophy was rewritten around it almost immediately
+- The kernel mechanism is a couple of hundred lines. **The idea is the part that mattered.**
+
+---
+
+## The Payoff: One Source, Two Machines
+
+```rust
+#![cfg_attr(target_os = "none", no_std)]
+
+#[cfg(not(target_os = "none"))] mod host;  // std: real files
+#[cfg(target_os = "none")]      mod rv6;   // ecall into YOUR kernel
+```
+
+- Your command source has **no `cfg` attribute at all** — the seam is at the bottom
+- Selection is on the **target triple**, not a cargo feature: a feature can disagree with reality, a triple cannot
+- That is the difference between a façade and a wrapper
+
+---
+
+## One Line, Two Worlds
+
+```rust
+ulib::write_all(STDOUT, line)?;     // grep.rs, unchanged since week 3
+```
+
+On your laptop → `write(2)`. On `riscv64gc-unknown-none-elf` →
+
+```asm
+li    a7, 16        # SYS_WRITE — the number from syscall.rs:28
+                    # a0 = fd, a1 = buffer, a2 = length
+ecall
+```
+
+→ your trampoline → `usertrap` (`usermode.rs:385`) → `dispatch` (`syscall.rs:33`)
+→ `sys_write` (`syscall.rs:517`) → `getfile` → `uart::putc`.
+
+---
+
+## From Your Source to a Page
+
+```text
+  commands/src/bin/grep.rs      byte-identical to week 3
+        |  cargo build --release --target riscv64gc-unknown-none-elf
+  grep                          ELF64, e_machine = 243, ET_EXEC
+        |  flatten PT_LOAD segments, zero-fill the p_memsz tail
+  rv6/src/userbin/grep.bin      2,854 bytes
+        |  include_bytes!
+  the kernel image              exec::lookup("mygrep")
+        |  build_addrspace -> load_segment (vm.rs:196)
+  a page table                  image at 0x0 (R X U), stack at 0x1_0000 (R W U)
+                                sret; the CPU executes byte 0
+```
+
+---
+
+## The Numbers
+
+| Command | Image | Pages | % of the 64 KiB budget |
+|---|---|---|---|
+| `echo` | 384 bytes | 1 | 0.6% |
+| `cat` | 1,256 bytes | 1 | 1.9% |
+| `wc` | 1,821 bytes | 1 | 2.8% |
+| `head` | 2,713 bytes | 1 | 4.1% |
+| `grep` | 2,854 bytes | 1 | 4.4% |
+
+Budget = `MAX_PROG_PAGES` × 4 KiB (`memlayout.rs:65`). All five together: 9,028 bytes — **14% of what one program is allowed**.
+
+---
+
+## Why It Is This Small
+
+- No allocator, no standard library, no runtime, no dynamic linker, no unwinder, no `.bss`
+- `#![no_std]` deletes formatting and collections; `panic = "abort"` plus one handler in `ulib` deletes unwinding
+- Statically linked glibc hello world: well over half a megabyte. musl: ~20 KB. Neither does anything.
+- Image pages are `R X U` with **no `W`** (`vm.rs:227`) — a shipped command cannot have a mutable global
+
+<div class="highlight-box">
+A real substring search, with argv parsing, file opening, and line splitting across buffer boundaries, in <strong>2,854 bytes</strong>. Most of the size of ordinary software is infrastructure nobody decided they needed.
+</div>
+
+---
+
+## Power-On to a Prompt
+
+<div class="mermaid">
+flowchart TD
+    R["reset: hart 0, machine mode\nQEMU ROM jumps to 0x8000_0000"] --> E["_entry: sp = top of STACK0\nentry.rs:18"]
+    E --> S["start: M-mode setup, then mret\nstart.rs:25"]
+    S --> K["kmain, now in SUPERVISOR mode\nmain.rs:97"]
+    K --> A["kalloc::init: free list end..PHYSTOP\nkalloc.rs:21"]
+    A --> V["kvmmake + kvminithart: satp, MMU ON\nvm.rs:125, vm.rs:177"]
+    V --> P["proc::init, trap::init, FS.init"]
+    P --> C["console::init: UART RX, PLIC, sie.SEIE\nconsole.rs:58"]
+    C --> I["intr_on: sstatus.SIE — deliberately last\ntrap.rs:39"]
+    I --> SH["shell::run: print rv6$, then getc spins on wfi\nshell.rs:343"]
+</div>
+
+---
+
+## What Each Step Demonstrates
+
+| Step | Mechanism |
+|---|---|
+| `_entry` | Rust cannot run without a stack; the linker puts `.entry` first |
+| `start` → `mret` | dropping privilege by **faking a trap return** |
+| `kalloc::init` | the free list lives *in* the free pages |
+| `kvminithart` | the MMU turns on **between two instructions** — the identity map makes the next one fetchable |
+| `proc::init` | a fixed table, not a list: no allocator in the process layer |
+| `intr_on` **last** | nothing may interrupt half-built state |
+| `getc` | blocking, honestly: halt the core with `wfi` |
+
+---
+
+## rv6 and Linux
+
+| Mechanism | rv6 | Linux |
+|---|---|---|
+| Physical allocator | free list of 4 KiB pages | buddy + SLUB (`mm/page_alloc.c`) |
+| PCB | `Proc`, fixed `[Proc; 64]` | `task_struct`, one per **thread** |
+| Scheduler | round robin (`sched.rs:20`) | EEVDF, per-CPU runqueues |
+| Trap entry | trampoline + trapframe | `pt_regs` on the kernel stack |
+| Syscall ABI | `ecall`, `a7` = number | **identical**, ~350 numbers |
+| fd table | `[File; 16]` by value | `files_struct` → `struct file *`, refcounted |
+| `read` | `syscall.rs:468` | `ksys_read` → `vfs_read` (`fs/read_write.c`) |
+| `fork` | copies every page | `clone3` + copy-on-write (`kernel/fork.c`) |
+| Program loading | flat image at VA 0 | ELF, `binfmt_elf`, dynamic linker |
+
+---
+
+## What rv6 Does *Not* Do
+
+- **No disk.** Needs virtio-blk, a buffer cache, an on-disk layout — and the hard part, **crash consistency** (xv6's `log.c`)
+- **No demand paging.** The trap already reports `stval`; what's missing is a backing store and *resuming at the same `sepc`*
+- **No copy-on-write.** Map read-only, refcount pages, copy on `scause` 15. Half a page of code; turns `fork` from O(space) into O(page table)
+- **No SMP.** One hart. The **locks** are correct; the discipline around every `static mut` has never been tested
+
+Shorter: signals, `sleep`/`wakeup`, kernel preemption, `chdir`/`mkdir`/`readdir`, ELF loading, users, a clock, networking.
+
+---
+
+## The Final Exam
+
+- **Dec 11–17**, registrar's slot · paper, closed book · the printed Cheatsheet only · 20%
+- **Cumulative, weighted toward Module 3**:
+  `exec` and program loading · file descriptors · `fork`/`exit`/`wait` ·
+  why the split exists · userland and pid 1 · pipes
+- Pipes are examinable **exactly as today presents them** — semantics and construction. `24_pipes` is extra credit; no question depends on it.
+
+<div class="info-box">
+Expect one long question that walks a single operation through every layer. Prepare by narrating <code>rv6$ ls</code> — and today's boot walk — out loud.
+</div>
+
+---
+
+## The Last Slide
+
+- A pipe is a bounded ring buffer; `read` returns 0 only when it is **empty AND the last writer has closed**
+- `a | b` is `pipe` + `fork` + `dup` + `close` + `exec` — no new kernel feature
+- Your week-3 `grep` runs on your December kernel because the façade kept the target out of the source
+- 2,854 bytes, no allocator, no libc, no runtime
+- You can now narrate a computer from reset to a prompt, and name honestly what is missing
+
+**Every layer under that prompt is yours.**
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

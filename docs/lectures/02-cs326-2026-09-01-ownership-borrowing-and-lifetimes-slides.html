@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ownership, Borrowing, and Lifetimes - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Ownership, Borrowing, and Lifetimes
+
+## CS 326 Operating Systems
+
+L03 &middot; September 1, 2026 &middot; Exercises `r02_ownership`, `r03_borrowing`
+
+---
+
+## Learning Objectives
+
+- Explain why a kernel can use neither `malloc`/`free` discipline nor a garbage collector
+- Trace ownership through assignments and calls, naming the owner at every line
+- Distinguish `Copy` types from move-only types via owned resources and `Drop`
+- State aliasing-XOR-mutation and apply it to data an interrupt handler touches
+- Decode E0382, E0499, E0502, and E0106 into the underlying mistake
+- Read `SpinLockGuard<'a, T>` as a safety argument, not as syntax
+
+---
+
+## Start With the Object
+
+The kernel's physical page allocator, in full (`kalloc.rs:40`):
+
+```rust
+pub unsafe fn kalloc() -> *mut u8 {
+    let r = FREELIST;
+    if !r.is_null() {
+        FREELIST = (*r).next;
+    }
+    r as *mut u8
+}
+```
+
+- A **page** is 4096 bytes — `PGSIZE` (`memlayout.rs:7`)
+- The free list is a `static mut` raw pointer (`kalloc.rs:11`)
+- Its nodes live **inside the free pages themselves**
+
+---
+
+## The One Invariant
+
+<div class="info-box">
+A page that has been handed out is <strong>not</strong> on the free list, and a page on the free list has <strong>not</strong> been handed out.
+</div>
+
+```text
+   FREELIST ──▶ [ 0x8000_5000 ]──▶ [ 0x8000_6000 ]──▶ null
+
+   kfree(0x8000_5000) a second time:
+
+   FREELIST ──▶ [ 0x8000_5000 ]──┐
+                     ▲───────────┘   one page, on the list twice
+
+   kalloc()  ──▶ 0x8000_5000   → the page-table code
+   kalloc()  ──▶ 0x8000_5000   → a process stack
+```
+
+Nothing crashes. The MMU walks a page table full of stack frames minutes later.
+
+<div class="highlight-box">
+Double free &rarr; use-after-free. Microsoft and Chromium each report that <strong>~70%</strong> of the vulnerabilities they fix are memory-safety bugs of this family.
+</div>
+
+---
+
+## Three Roads Out
+
+1. **Manual discipline** — C's answer, and xv6's. Free once, never touch it
+   again. Nothing checks either claim; the rule lives in a comment.
+2. **Garbage collection** — Java, Python. A runtime scans for unreachable
+   values. Needs a thread, memory of its own, and an OS underneath.
+3. **Ownership** — make responsibility part of the type system, check it at
+   compile time, emit the release where responsibility ends.
+
+<div class="info-box">
+We are <em>writing</em> the operating system. There is nothing underneath us.
+</div>
+
+---
+
+## The Rule
+
+1. Every value has exactly one **owner** — a binding responsible for it
+2. There is only one owner at a time
+3. When the owner goes out of scope the value is **dropped** and its resources
+   released right there
+
+```rust
+{
+    let label = String::from("kernel");   // `label` owns this text
+}                                          // scope ends: dropped here
+```
+
+No `free`. No collector. The release point is visible in the source.
+
+---
+
+## What a Move Actually Is
+
+```text
+   stack                                     heap
+BEFORE  a: { ptr, len=6, cap=6 } ─────────▶  [ k e r n e l ]
+AFTER   a: <marked dead by rustc>
+        b: { ptr, len=6, cap=6 } ─────────▶  [ k e r n e l ]  (untouched)
+```
+
+- Run time: copy 3 words of stack, usually optimized away
+- Compile time: `a` is struck off the list of usable names
+- Nothing is scanned. Nothing is reference-counted.
+
+---
+
+## The Error Is the Mechanism
+
+```text
+error[E0382]: borrow of moved value: `a`
+  |     let b = a;
+  |             - value moved here
+  |     println!("{}", a);
+  |                    ^ value borrowed here after move
+```
+
+<div class="highlight-box">
+Read "moved" as <strong>"given away."</strong> That message is a use-after-free caught before the program ever ran.
+</div>
+
+---
+
+## Moves at Function Boundaries
+
+```rust
+fn consume(text: String) { }   // `text` owns it, drops it at the `}`
+```
+
+- The parameter becomes the new owner
+- The value dies at the callee's closing brace unless it is passed on
+- If the caller still needs it, the callee must **return** it
+
+<div class="info-box">
+That is why <code>r02_ownership</code> looks clumsy on purpose: while <code>take_page</code> runs it is the <em>only</em> owner of the free list.
+</div>
+
+---
+
+## `Copy`: Values That Do Not Move
+
+```rust
+let page = 3usize;
+let other = page;
+assert_eq!(page, 3);   // still fine
+```
+
+- `Copy`: integers, `bool`, `char`, `&T`, arrays of `Copy` types
+- Not `Copy`: `String`, `Vec<T>`, `&mut T`
+- The line is not "small" — it is **does this own a resource whose release must
+  happen exactly once?**
+
+---
+
+## `Copy` XOR `Drop`
+
+<div class="highlight-box">
+<code>Copy</code> and <code>Drop</code> are <strong>mutually exclusive</strong>. A type may implement at most one.
+</div>
+
+- `Copy` says "duplicating the bits duplicates the value"
+- `Drop` says "release runs exactly once"
+- Allow both and release runs once per duplicate — the double free in a new hat
+
+```text
+error[E0184]: the trait `Copy` cannot be implemented for this type;
+              the type has a destructor
+```
+
+---
+
+## Drop: Where `free()` Went
+
+- Deterministic: happens at a **specific instruction**
+- Reverse declaration order within a scope
+- Carries what a collector never could: releasing a lock, returning a page,
+  closing a file, re-enabling interrupts
+
+```rust
+struct Page(usize);
+
+impl Drop for Page {
+    fn drop(&mut self) { println!("kfree({})", self.0); }
+}
+```
+
+`drop(x)` is no intrinsic: `pub fn drop<T>(_x: T) { }`
+
+<div class="info-box">
+C++ has had this since the mid-1980s as <strong>RAII</strong>. What Rust adds is that ownership itself is <em>checked</em> — RAII cannot be defeated by an accidental copy or a second owner.
+</div>
+
+---
+
+## Borrowing: Lend, Don't Give
+
+```rust
+let page = [0u8; 4096];
+let sum = checksum(&page);   // lend
+let first = page[0];         // still ours
+```
+
+- `&page` is a **reference**: points at `page` without owning it
+- Run time: one machine word — the same address a C pointer would hold
+- Compile time: the **borrow checker** tracks how long it lives and what else
+  may touch the value meanwhile
+
+---
+
+## Slices Are the Systems Shape
+
+`&[u8]` = pointer + length. Two words, no copy of the data.
+
+```rust
+pub fn read(&self, inum: usize, buf: &mut [u8]) -> Result<usize, FsError>   // fs.rs:97
+pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError>  // fs.rs:109
+```
+
+- A page from the allocator, a 512-byte disk block, the typed-so-far console
+  buffer
+- `ulib::read` (`ulib/src/lib.rs:104`), called from `wc`
+  (`commands/src/bin/wc.rs:36`)
+- In C both are `(char *buf, int n)` and the length is the caller's problem
+  forever
+
+---
+
+## The Two Kinds
+
+- `&T` — **shared** borrow. Read only. Any number at once.
+- `&mut T` — **exclusive** borrow. Read and write, and while it exists it is the
+  *only* way to reach the value.
+
+<div class="highlight-box">
+"Mutable reference" misleads. What matters is not that you can write through it — it is that <strong>nobody else can even look</strong>. Read <code>&amp;mut</code> as <em>exclusive</em>.
+</div>
+
+---
+
+## How to Pass a Value
+
+<div class="mermaid">
+flowchart TD
+    A["Pass a value to a function"] --> B{"Does the callee keep it\nafter returning?"}
+    B -->|yes| C["by value — move\nfn f(v: Vec&lt;usize&gt;)"]
+    B -->|no| D{"Must it modify it?"}
+    D -->|yes| E["&amp;mut — exclusive borrow\nfn f(v: &amp;mut [u8])"]
+    D -->|no| F["&amp; — shared borrow\nfn f(v: &amp;[u8])"]
+    C --> G["caller's binding is dead"]
+    E --> H["caller may not touch v\nwhile the borrow lives"]
+    F --> I["caller may still read v"]
+</div>
+
+---
+
+## Aliasing XOR Mutation
+
+<div class="highlight-box">
+For any one value at any one moment: <strong>either any number of <code>&amp;</code> borrows, or exactly one <code>&amp;mut</code> borrow. Never both.</strong>
+</div>
+
+```rust
+let mut page = [0u8; 16];
+let a = &mut page;       // exclusive borrow #1
+let b = &mut page;       // exclusive borrow #2  <- error[E0499]
+```
+
+Many readers, or one writer.
+
+---
+
+## Why the Kernel Needs This Most
+
+- **Iterator invalidation** — pointer into a list, list reallocates, pointer
+  aims at freed memory
+- **Optimizer hazards** — C must assume same-typed pointers may alias; hence
+  `restrict`, and its silent miscompiles
+- **Concurrent corruption** — two writers, or a reader and a writer, is what
+  shreds a process table
+
+<div class="info-box">
+A kernel is concurrent <strong>even on one CPU</strong>: an interrupt lands between any two instructions.
+</div>
+
+---
+
+## Where Rust Cannot Help: the Console
+
+```rust
+static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];   // console.rs:13
+static mut HEAD: usize = 0; // next index the consumer will read
+static mut TAIL: usize = 0; // next index the producer will write
+```
+
+- UART interrupt handler pushes bytes, advances `TAIL`
+- A process blocked in `read` pops, advances `HEAD`
+- Two agents, shared mutable state, no call relationship
+
+That is *why* these are `static mut` and every access is `unsafe`.
+
+---
+
+## xv6 vs Linux vs rv6
+
+| | xv6 (C) | Linux (C) | rv6 (Rust) |
+|---|---|---|---|
+| Ownership of memory | comment | comment | type system |
+| Use-after-free | anywhere | anywhere; KASAN at run time | only in `unsafe` |
+| Lock/data link | comment | `sparse`, `lockdep` | data is *inside* `SpinLock<T>` |
+| Forget to unlock | possible | possible | impossible: `Drop` |
+| Trusted region | all of it | all of it | the `unsafe` blocks |
+
+---
+
+## Borrows End at Their Last Use
+
+```text
+let mut buf = [0u8; 4];      ── buf owned, unborrowed
+let view = &buf;             ──┐ shared borrow begins
+let n = checksum(view);      ──┘ last use of `view`: borrow ENDS
+fill(&mut buf, 1);           ──▶ exclusive borrow: no conflict
+```
+
+- Non-lexical lifetimes, Rust 2018
+- Pre-2018, `view` stayed borrowed to the closing brace
+- Most "why is this rejected?" moments: a borrow used again further down —
+  **move the later use earlier**
+
+---
+
+## Lifetimes
+
+A **lifetime** is the region of the program over which a reference is valid.
+Not seconds. Not something you choose — the borrowed values already decided it.
+
+Three elision rules mean you usually write none:
+
+1. Each elided input reference gets a fresh lifetime
+2. With exactly one input lifetime, it goes to every elided output
+3. With `&self` / `&mut self`, `self`'s lifetime goes to the outputs
+
+---
+
+## When Elision Fails
+
+```rust
+fn longest(a: &[u8], b: &[u8]) -> &[u8]   // error[E0106]
+```
+
+Two candidate regions, no rule to choose. Name the region:
+
+```rust
+fn longest<'a>(a: &'a [u8], b: &'a [u8]) -> &'a [u8]
+```
+
+<div class="info-box">
+Read it as: <em>for some region <code>'a</code>, give me two references valid at least that long, and I return one also valid that long.</em>
+</div>
+
+---
+
+## Structs That Hold References
+
+```rust
+pub struct Args<'a> {          // ulib/src/lib.rs:63
+    argv: &'a [&'a [u8]],
+}
+```
+
+- `Args` does **not** own the command line
+- `exec` pushed those bytes onto the new process's stack
+- `'a` says: an `Args` may not outlive that memory
+
+---
+
+## The Destination: `SpinLockGuard`
+
+```rust
+pub fn lock(&self) -> SpinLockGuard<'_, T> {   // spinlock.rs:22
+    /* spin */ SpinLockGuard { lock: self }
+}
+
+pub struct SpinLockGuard<'a, T> {              // spinlock.rs:54
+    lock: &'a SpinLock<T>,
+}
+
+impl<T> Drop for SpinLockGuard<'_, T> {        // spinlock.rs:71
+    fn drop(&mut self) { self.lock.unlock(); }
+}
+```
+
+---
+
+## The Safety Argument
+
+<div class="mermaid">
+flowchart LR
+    L["SpinLock&lt;T&gt;\nlives in a static"] -->|"lock() borrows &amp;self for 'a"| G["SpinLockGuard&lt;'a, T&gt;"]
+    G -->|"DerefMut yields &amp;mut T"| D["the protected data"]
+    G -.->|"Drop::drop → unlock()"| U["released at the guard's\nclosing brace"]
+    D -.->|"cannot outlive"| G
+    G -.->|"cannot outlive"| L
+</div>
+
+"Only touch this data while you hold the lock" stops being a rule people
+remember and becomes one the compiler enforces.
+
+---
+
+## The Four Errors You Will Hit
+
+| Code | What it really means | Usual fix |
+|---|---|---|
+| **E0382** | You gave the value away, then named it again | borrow instead; or return it; or `.clone()` |
+| **E0499** | Two writers to one value at one time | let the first `&mut` end first |
+| **E0502** | A reader and a writer overlap | read the value out, not a reference to it |
+| **E0106** | Signature does not say which input the result borrows from | add `<'a>`, or return an owned value |
+
+Ask: *who owns this, and who is looking at it now?*
+
+---
+
+## Where the Rules Run Out
+
+```rust
+/// Raw pointer to process slot `i`. Lets other modules reach the table without
+/// creating references into a `static mut`.            // proc.rs:70
+pub unsafe fn proc_at(i: usize) -> *mut Proc {
+    ptr::addr_of_mut!(PROCS[i])
+}
+```
+
+<div class="highlight-box">
+<code>unsafe</code> does <strong>not</strong> turn off the borrow checker. It enables five extra abilities. Ownership and borrow rules still apply inside the block.
+</div>
+
+---
+
+## Today's Exercises
+
+- **`r02_ownership`** — a page allocator built from nothing but a `Vec<usize>`
+  and move semantics. "Handed out is not free" enforced by signatures.
+- **`r03_borrowing`** — `&`, `&mut`, slices, and a `Guard<'a>` holding a
+  `&'a mut u64`.
+
+```bash
+oslings run r02_ownership
+oslings watch          # re-runs on every save
+oslings hint
+```
+
+---
+
+## Summary
+
+1. **One owner, always** — transferred, never shared
+2. **A move** is 3 words of stack plus a compile-time death sentence
+3. **`Copy` excludes `Drop`** — or release would run once per copy
+4. **`Drop` is where `free()` went** — deterministic, reverse declaration order
+5. **`&` is shared, `&mut` is exclusive** — read `&mut` as *exclusive*
+6. **Aliasing XOR mutation** — many readers or one writer, never both
+7. **Lifetimes** state a relationship the compiler checks at every call site
+8. **The guard pattern** turns a locking convention into a checked fact
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

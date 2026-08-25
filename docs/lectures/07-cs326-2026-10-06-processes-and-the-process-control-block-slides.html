@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processes and the Process Control Block - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Processes and the Process Control Block
+
+## CS 326 Operating Systems
+
+L13 · October 6, 2026 · unlocks `04_processes`
+
+---
+
+## Learning Objectives
+
+- Define a process as the **unit of isolation** and the **unit of scheduling**
+- Derive every field of rv6's `Proc` from a question the kernel must answer
+- Distinguish the saved kernel `Context` from the saved user `Trapframe`
+- Trace the `Unused → Runnable → Running → Zombie → Unused` lifecycle
+- Justify `PROCS: [Proc; NPROC]` — a fixed array, not a list
+- Compare rv6's `Proc`, xv6's `struct proc`, and Linux's `task_struct`
+
+---
+
+## What Is a Process?
+
+"A program in execution" is true and useless. Here is a definition you can implement:
+
+<div class="info-box">
+A process is the kernel's <strong>unit of isolation</strong> (its own page table decides what memory it may touch) and its <strong>unit of scheduling</strong> (its own saved registers let the kernel stop and restart it).
+</div>
+
+Every PCB field serves one of those two jobs, or a third:
+
+- **Accounting** — the relationships and results the system needs *after* the process is gone (`parent`, `xstate`)
+
+If a proposed field fits none of the three buckets, it does not belong in the PCB.
+
+---
+
+## Program vs Process
+
+```text
+     one program image                     three processes
+     (bytes on disk)                       (kernel state)
+
+     +---------------+          Proc slot 3      Proc slot 7      Proc slot 12
+     |  .text        |          pid   = 4        pid   = 9        pid   = 11
+     |  0x00: main   |  <-----  state = Running  state = Runnable state = Sleeping
+     |  .rodata      |          pt    -> PT_A    pt    -> PT_B    pt    -> PT_C
+     +---------------+          kstack-> page    kstack-> page    kstack-> page
+```
+
+Instructions can be shared. Everything the kernel remembers about a *run* of them cannot be.
+
+<div class="highlight-box">
+There is no "process object" elsewhere. A process <strong>is</strong> its PCB: <code>curproc()</code> returns a <code>*mut Proc</code>.
+</div>
+
+---
+
+## Deriving the PCB: Seven Questions
+
+| The kernel must answer | Field | rv6 |
+|---|---|---|
+| Which process is this? | `pid` | `proc.rs:29` |
+| Is it eligible to run? | `state` | `proc.rs:28` |
+| What memory may it touch? | `pagetable` | `proc.rs:30` |
+| Where do I resume it *in the kernel*? | `context` | `proc.rs:33` |
+| Where do I resume it *in user mode*? | `trapframe` | `proc.rs:35` |
+| Where does its kernel code push frames? | `kstack` | `proc.rs:37` |
+| What has it open? | `ofile` | `proc.rs:39` |
+| Who learns that it died, and with what? | `parent`, `xstate` | `proc.rs:42,44` |
+
+Ten fields total. Everything else in the kernel is derived from them.
+
+---
+
+## rv6's PCB
+
+```rust
+pub struct Proc {
+    pub state: ProcState,          // Unused/Runnable/Running/Sleeping/Zombie
+    pub pid: usize,                // unique, monotone, never reused
+    pub pagetable: *mut Pte,       // OWNED: Sv39 root page
+    pub context: Context,          // 14 callee-saved regs, inline
+    pub trapframe: *mut Trapframe, // OWNED: one page, all 31 user regs
+    pub kstack: usize,             // OWNED: one page
+    pub ofile: [File; NOFILE],     // fd n is ofile[n]
+    pub parent: *mut Proc,         // who forked me
+    pub xstate: isize,             // what I exited with
+    pub name: [u8; 16],
+}
+```
+
+`proc.rs:27-46`. `Proc::new()` is a `const fn` (`proc.rs:49-62`) — the whole table is built at compile time.
+
+---
+
+## Identity: pid vs Slot Index
+
+- `pid` comes from `NEXTPID`, a counter that only increases (`proc.rs:66`, `alloc_pid` at `proc.rs:89-93`)
+- Slot indices are **recycled** the instant a process is freed
+
+<div class="highlight-box">
+A stale <strong>slot index</strong> silently names whichever process now occupies the slot. A stale <strong>pid</strong> names nothing. Remember processes by pid.
+</div>
+
+Over one boot, slot 3 may hold pid 5, then pid 41, then pid 208.
+
+A `*mut Proc` is the slot *address* — it has exactly the same hazard.
+
+---
+
+## Address Space: One Pointer Is the Isolation
+
+```rust
+pub pagetable: *mut Pte,   // physical address of the Sv39 root
+```
+
+- The root you built in exercise `03_paging`
+- Hardware translates **every** user load and store through whatever root `satp` holds
+- Two processes with different roots cannot see each other's memory
+- The process **owns** this page and everything reachable from it
+
+No permission checks in kernel code — the isolation is a hardware consequence of one field.
+
+---
+
+## Two Register Saves, Two Reasons
+
+This is the confusing part of any PCB. Say it out loud:
+
+<div class="info-box">
+<strong>Context</strong> answers "where was this process's <em>kernel</em> execution?" — 14 registers.<br/>
+<strong>Trapframe</strong> answers "where was this process's <em>user</em> execution?" — 35 fields, a whole page.
+</div>
+
+| | `Context` | `Trapframe` |
+|---|---|---|
+| Size | 14 × `usize` inline | 4 KiB page, pointed to |
+| Holds | `ra`, `sp`, `s0`–`s11` | all 31 user regs + `epc` + 3 kernel pointers |
+| Written by | `swtch` (a function call) | trampoline assembly (a trap) |
+| Direction | kernel ↔ kernel | user ↔ kernel |
+| Source | `swtch.rs:5-22` | `usermode.rs:33-71` |
+
+Why only 14? `swtch` is an ordinary call — the compiler already spilled caller-saved registers.
+
+---
+
+## The Kernel Stack
+
+When a process traps in, kernel code runs **on that process's behalf** and must push frames somewhere.
+
+- Not the user stack — user memory is untrusted
+- Not one global kernel stack — a process can be suspended **mid-syscall** and resumed later; its half-finished kernel frames must survive
+
+So: one page per process.
+
+```rust
+// usermode.rs:245-249
+(*p).context.ra = forkret as usize;
+(*p).context.sp = (*p).kstack + PGSIZE;   // RISC-V stacks grow down
+```
+
+---
+
+## What One PCB Owns
+
+<div class="mermaid">
+flowchart LR
+    subgraph T["One PCB in static memory"]
+        A["pid, state, xstate\nparent, name"]
+        B["context (14 regs, inline)"]
+        C["pagetable *mut Pte"]
+        D["trapframe *mut Trapframe"]
+        E["kstack usize"]
+    end
+    C --> P1["root page table\n4 KiB from kalloc"]
+    P1 --> P2["lower tables\n+ user data pages"]
+    D --> P3["trapframe page\n4 KiB from kalloc"]
+    E --> P4["kernel stack page\n4 KiB from kalloc"]
+</div>
+
+Three owned pages. Everything else is inline — which is why a PCB can live in a static array with no allocator.
+
+---
+
+## Relationships and Results
+
+```rust
+pub parent: *mut Proc,   // proc.rs:42
+pub xstate: isize,       // proc.rs:44
+```
+
+- `sys_wait` scans the table for a slot where `(*q).parent == p` **and** `state == Zombie` (`syscall.rs:147`)
+- `exit_current` stores `xstate` (`usermode.rs:373`); `sys_wait` copies it into the parent's memory (`syscall.rs:149-152`)
+- `has_children` (`proc.rs:173-181`) lets `wait` tell "no children" from "no child has exited yet"
+
+These two fields are the entire reason the `Zombie` state must exist.
+
+---
+
+## Five States
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Unused: table reset at boot
+    Unused --> Runnable: allocproc claims the slot
+    Runnable --> Running: scheduler picks this slot
+    Running --> Runnable: proc_yield gives the CPU back
+    Running --> Sleeping: blocks on an event
+    Sleeping --> Runnable: the event arrives
+    Running --> Zombie: exit_current records xstate
+    Zombie --> Unused: wait reaps it, freeproc runs
+    Runnable --> Unused: allocproc rollback or cleanup
+</div>
+
+"Exactly one of a fixed set of named alternatives" is precisely a Rust `enum` (`proc.rs:18-25`).
+
+---
+
+## Every Edge Has a Code Site
+
+| From | To | Event | Code |
+|---|---|---|---|
+| — | `Unused` | boot-time table reset | `proc.rs:74-87` |
+| `Unused` | `Runnable` | a free slot is claimed | `proc.rs:112` |
+| `Runnable` | `Running` | the policy chose this slot | `usermode.rs:293` |
+| `Running` | `Runnable` | voluntary yield | `usermode.rs:364` |
+| `Running` | `Zombie` | the process called `exit` | `usermode.rs:374` |
+| `Zombie` | `Unused` | a parent's `wait` reaped it | `syscall.rs:153` |
+| any live | `Unused` | teardown of a finished run | `usermode.rs:344-351` |
+
+Nothing in rv6 ever writes `Sleeping` — it is declared for the shape a real kernel takes.
+
+---
+
+## Why Runnable and Running Are Separate
+
+- `Runnable` = "put me in the lottery"
+- `Running` = "I hold the CPU — do not pick me again"
+
+```rust
+// sched.rs:20-29 — the policy filters on exactly one of them
+(0..n).map(|off| (self.next + off) % n)
+      .find(|&i| states[i] == ProcState::Runnable)
+```
+
+<div class="highlight-box">
+Linux does <strong>not</strong> separate them: <code>TASK_RUNNING</code> covers both, and "is it on a CPU?" is answered from the runqueue. Defensible there; for rv6, where the table <em>is</em> the runqueue, separate states are cheaper.
+</div>
+
+---
+
+## Why Zombie Has to Exist
+
+Why can't `exit` just free the slot?
+
+<div class="info-box">
+Because the exit status has an <strong>addressee</strong>. The parent may not have called <code>wait</code> yet, and it is entitled to that value. Freeing the PCB destroys the status before delivery.
+</div>
+
+- `exit_current` writes `xstate`, sets `Zombie` (`usermode.rs:373-374`)
+- The scheduler never picks a `Zombie` — it is not `Runnable`
+- The slot lingers as a corpse holding one number until `wait` reaps it
+
+A parent that never calls `wait` leaves slots holding no memory, running no code — the classic zombie leak.
+
+---
+
+## What the Enum Buys You
+
+```rust
+// (a) comparison chain — compiles today, silently wrong tomorrow
+if states[i] != ProcState::Unused && states[i] != ProcState::Zombie {
+    return Some(i);
+}
+
+// (b) exhaustive match — the compiler is now on your side
+match states[i] {
+    ProcState::Runnable => return Some(i),
+    ProcState::Unused | ProcState::Running
+    | ProcState::Sleeping | ProcState::Zombie => continue,
+}
+```
+
+Add a sixth state `Stopped`: (a) compiles and starts scheduling stopped processes. (b) fails with *"non-exhaustive patterns"* and names **every** site to revisit.
+
+An `enum` costs one byte and buys a compile-time work list. C gives you a code review and hope.
+
+---
+
+## The Process Table
+
+```rust
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];
+static mut NEXTPID: usize = 1;
+```
+
+`proc.rs:65-66`, with `NPROC = 64` from `param.rs:7`.
+
+- Built at compile time by repeating a `const fn`
+- No allocator, no init-order problem, nothing to fail at boot
+- Reached only through `ptr::addr_of_mut!(PROCS[i])` (`proc.rs:71`), never `&mut`
+
+---
+
+## What the Table Looks Like
+
+```text
+  idx   state      pid   pagetable   kstack     parent
+  ---   --------   ---   ---------   --------   ------
+   0    Running      1   0x8020_1000 0x8020_5000  null      <- the shell
+   1    Runnable     4   0x8020_9000 0x8020_a000  &PROCS[0] <- forked child
+   2    Zombie       3   null        null         &PROCS[0] <- exited, unreaped
+   3    Unused       0   null        0            null
+   ...
+  63    Unused       0   null        0            null
+
+  allocproc scans 0..64 for the first Unused slot   -> proc.rs:108-110
+  a full scan that finds none returns null          -> proc.rs:134
+```
+
+---
+
+## Why an Array, Not a List
+
+1. **No allocator dependency** — the table must exist before, and independently of, the allocator
+2. **Bounded memory** — a growable core structure is a fork-bomb amplifier
+3. **Index equals identity, cheaply** — the scheduler snapshots `[ProcState; NPROC]` and the policy returns an index
+4. **No allocation on the fork path** — failing because the table is *full* is far easier to reason about than failing because it could not *grow*
+5. **Deterministic worst case** — O(64) scan, no indirection, a handful of cache lines
+
+The cost is a hard ceiling. That is exactly what check 3 in `04_processes` verifies.
+
+---
+
+## When the Table Is Full
+
+Nothing dramatic — that is the design goal.
+
+```rust
+// proc.rs:134  — scanned all NPROC slots, none Unused
+ptr::null_mut()
+
+// syscall.rs:96-98
+let child = proc::allocproc();
+if child.is_null() { return -1; }      // fork() fails in userspace
+```
+
+<div class="highlight-box">
+<strong>Resource exhaustion in the kernel becomes an error return in userspace — never a kernel failure.</strong> Linux says the same thing with <code>-EAGAIN</code> when <code>RLIMIT_NPROC</code> or <code>pid_max</code> is hit.
+</div>
+
+---
+
+## Ownership Without the Borrow Checker
+
+`Proc` deliberately is **not** `Copy` — copying a PCB would make two owners of one page table.
+
+```text
+  allocproc — acquire in order, roll back on any failure   (proc.rs:107-135)
+
+  find Unused slot ........ proc.rs:108-110
+  pid, state, parent ...... proc.rs:111-114     cheap, cannot fail
+  pagetable = create_pagetable()  proc.rs:116   \
+  trapframe = kalloc()            proc.rs:117    |  3 pages, any may fail
+  kstack    = kalloc()            proc.rs:118   /
+       |
+  any null? -- yes --> freeproc(p); return null   proc.rs:119-122
+       no
+  zero trapframe, open fds 0/1/2, return p        proc.rs:123-131
+```
+
+A constructor that fails partway must undo everything it did.
+
+---
+
+## freeproc: Release, Null, Then Unused
+
+```rust
+if !(*p).trapframe.is_null() {
+    kalloc::kfree((*p).trapframe as *mut u8);
+    (*p).trapframe = ptr::null_mut();   // <- not optional
+}
+// ... pagetable, kstack ...
+(*p).state = ProcState::Unused;         // proc.rs:157 — LAST
+```
+
+- **Null after free**, or a second `freeproc` puts one page on the free list twice
+- **`Unused` last**, or a concurrent `allocproc` claims the slot and your trailing free destroys *its* page table
+
+<div class="highlight-box">
+A leak costs you a page. A double free costs you the allocator — and the symptom shows up minutes later in unrelated code. When unsure, leak.
+</div>
+
+---
+
+## The Dangling Parent Pointer
+
+`has_children` and `sys_wait` compare `(*q).parent == p` — **pointer equality against a slot address**.
+
+```text
+1. P in slot 3 (pid 7) forks C -> slot 4 (pid 8)
+2. P exits, slot 3 freed immediately
+3. New process N claims slot 3, pid 9
+4. N calls wait()  ->  (*C).parent == N is TRUE
+```
+
+N blocks for a child it never forked, then reaps C and collects a stranger's exit status. An ABA bug — the *value* matches, so no check fires.
+
+Real kernels **reparent** orphans to `init` during exit (xv6 `reparent()`, Linux `forget_original_parent()`). rv6 sidesteps it by tearing whole trees down together.
+
+---
+
+## Three PCBs Compared
+
+| Concern | rv6 `Proc` | xv6 `struct proc` | Linux `task_struct` |
+|---|---|---|---|
+| State | `ProcState` (5) | `procstate` (6, adds `USED`) | `__state` bitmask + `exit_state` |
+| Address space | `*mut Pte` | `pagetable_t`, `sz` | `mm_struct *mm`, `*active_mm` |
+| Kernel regs | `Context` (14) | `struct context` (14) | `struct thread_struct` |
+| User regs | `*mut Trapframe` | `struct trapframe *` | `pt_regs` on the kernel stack |
+| Kernel stack | 4 KiB | 4 KiB | 16 KiB (x86-64) |
+| Open files | `[File; 16]` inline | `struct file *ofile[16]` | `files_struct *` (shareable) |
+| Parent | `*mut Proc` | `struct proc *` | `real_parent` + children/sibling lists |
+| Locking | none yet | `struct spinlock lock` | many, plus RCU |
+| Debug name | `[u8; 16]` | `char name[16]` | `comm[16]` |
+| Lives in | `[Proc; 64]` static | `proc[NPROC]`, 64 | slab cache, unbounded |
+
+---
+
+## What That Table Says
+
+- **The essential core is seven fields**: identity, state, address space, saved registers, kernel stack, parent, exit status. rv6 has exactly them, plus open files.
+- **Linux's `task_struct` is a *thread*, not a process.** A Linux process is a thread group sharing one `tgid`, `mm_struct`, and `files_struct`. `getpid()` returns the `tgid`. That comes straight from `clone()` — rv6's `fork` is `clone()` with everything unshared.
+- **The 16-byte name survives everywhere** — rv6, xv6, and Linux's `TASK_COMM_LEN`. That is why `ps` truncates command names: a 1970s buffer size, still visible in your terminal.
+
+---
+
+## Fixed Table vs Dynamic Allocation
+
+<div class="mermaid">
+flowchart TB
+    subgraph RV["rv6 / xv6 — fixed array"]
+        A["PROCS, 64 slots\nstatic, compile-time\nscan for Unused"]
+    end
+    subgraph LX["Linux — dynamic"]
+        B["slab: task_struct_cachep"] --> C["one alloc per clone"]
+        C --> D["threaded into tasklist,\nchildren/sibling lists,\nper-CPU runqueues, pid hash"]
+    end
+    A -->|"table full → allocproc null → fork -1"| E["userspace sees failure"]
+    D -->|"RLIMIT_NPROC / pid_max → -EAGAIN"| E
+</div>
+
+Different mechanisms, same contract at the boundary.
+
+---
+
+## How Big Is the Table?
+
+Assume declaration order and natural alignment on `riscv64gc`:
+
+| | Bytes |
+|---|---|
+| `File` (`FileKind`, 2 × `usize`, 2 × `bool`) | 32 |
+| `ofile: [File; 16]` | 512 |
+| `context: Context` (14 × `usize`) | 112 |
+| everything else (`state`+pad, `pid`, 3 pointers, `xstate`, `name`) | 72 |
+| **`Proc`** | **696** |
+| **`PROCS: [Proc; 64]`** | **44,544 ≈ 43.5 KiB ≈ 11 pages** |
+
+`ofile` is 74% of the PCB — which is exactly why xv6 and Linux store file *pointers* and Linux shares a refcounted `files_struct`.
+
+The `Proc` you build today: four fields, 40 bytes, 2.5 KiB of table.
+
+---
+
+## What Isn't in the PCB Yet
+
+| Field | Becomes load-bearing in |
+|---|---|
+| `context` | `05_context_switch` — `swtch` needs somewhere to save |
+| `state` (as a policy input) | `06_scheduling` — your round-robin reads a snapshot |
+| `trapframe`, `kstack` | `13_traps`, `18_user_mode` — once there is a user mode |
+| `ofile` | `20_file_descriptors` |
+| `parent`, `xstate` | `21_fork_wait` |
+
+Today: the skeleton, plus **claim a slot** and **give it back**.
+
+`oslings run 04_processes` checks allocation, pid uniqueness, the `NPROC` ceiling, refusal when full, and clean reuse after a free. Its `README.md` has the how.
+
+---
+
+## Summary
+
+1. **A process is two guarantees** — the unit of isolation and the unit of scheduling. Every PCB field serves one of those, or accounting.
+
+2. **The PCB is the process.** `Proc` is ten fields (`proc.rs:27-46`); every module names a process by `*mut Proc`.
+
+3. **Two register saves, two reasons.** `Context` (14, kernel↔kernel) vs `Trapframe` (35, user↔kernel).
+
+4. **Five states, every edge a code site.** `Zombie` exists only because the exit status has an addressee.
+
+5. **The enum buys a compile-time work list** — one byte at runtime, exhaustiveness at compile time.
+
+6. **A fixed array beats a list in a kernel.** Full table → null → `fork` returns `-1`. Never a kernel failure.
+
+7. **One owner, one release.** Roll back completely; null after free; `Unused` last.
+
+8. **The essential PCB is seven fields.** Everything Linux adds answers a requirement rv6 does not have.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            // Render Mermaid diagrams after Reveal is ready
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // CS 326: robust mermaid rendering — read decoded textContent (undo any
+        // HTML-entity escaping from the markdown pipeline) and wait for web fonts
+        // so text measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

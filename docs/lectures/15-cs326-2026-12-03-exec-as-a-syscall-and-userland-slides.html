@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>exec as a System Call, and Userland - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 520px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="..">&larr; Back to Course</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <section data-markdown>
+                <textarea data-template>
+# exec as a System Call, and Userland
+
+## CS 326 Operating Systems
+
+L25 &middot; December 3, 2026 &middot; Exercises `21_fork_wait`, `22_userland`
+
+---
+
+## Learning Objectives
+
+- Explain why a finished process must linger as a **zombie**, and what it still owns
+- Trace a `fork` / `wait` / `exit` interleaving through the round-robin scheduler
+- Describe orphaning, reparenting, and `init` as pid 1 — and what rv6 does instead
+- Argue why Unix splits process creation into `fork` + `exec` rather than one `spawn`
+- Compare that split with `posix_spawn` and Windows `CreateProcess`
+- Distinguish what `exec` replaces from what it deliberately preserves
+
+---
+
+## The Last Three System Calls
+
+| Call | Question it answers | Status |
+|------|---------------------|--------|
+| `fork` | make another process | exercise 21 |
+| `exit` | I am done, here is my result | exercise 21 |
+| `wait` | tell me when a child finishes | exercise 21 |
+| `exec` | become a *different* program | **today** |
+
+<div class="info-box">
+With <code>exec</code> reachable through <code>ecall</code>, the shell can leave the kernel. That is the moment rv6 becomes a Unix.
+</div>
+
+---
+
+## exit: Why a Corpse Has a Job
+
+- The exit status is a message addressed to **another** process — and the sender just died
+- So Unix keeps a husk: no CPU, no future, but the slot lingers with the **pid** and the **exit status**
+- **Zombie** is the real state name — `ps` prints `Z` beside `<defunct>`
+
+```rust
+// usermode.rs:371
+pub unsafe fn exit_current(status: isize) -> ! {
+    let p = CURPROC;
+    (*p).xstate = status;                // the message
+    (*p).state = ProcState::Zombie;      // the husk
+    swtch::swtch(ptr::addr_of_mut!((*p).context),
+                 ptr::addr_of_mut!(SCHED_CTX));
+    unreachable!() // the scheduler never swtch-es back into a Zombie
+}
+```
+
+---
+
+## The Process State Machine
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Runnable: allocproc
+    Runnable --> Running: scheduler picks it
+    Running --> Runnable: proc_yield, blocked in wait
+    Running --> Zombie: exit_current records xstate
+    Zombie --> [*]: freeproc, the parent's wait reaps it
+</div>
+
+---
+
+## What a Zombie Costs, and the Status Word
+
+- rv6 keeps **everything** until `freeproc` (`proc.rs:139`): trapframe, kernel stack, page table
+- Linux tears the address space down at exit, keeping only a few hundred bytes of `task_struct`
+- Same principle: *the identity and the result survive; the memory need not*
+
+| Bits of the Linux status word | Meaning | Accessor |
+|---|---|---|
+| 15..8 | low 8 bits of `exit(status)` | `WEXITSTATUS` |
+| 7 | core dumped | `WCOREDUMP` |
+| 6..0 | terminating signal, 0 if normal | `WTERMSIG` |
+
+`exit(300)` reaches a Linux parent as **44**. rv6's 32-bit `xstate` reports 300.
+
+---
+
+## wait: Three Outcomes, No Others
+
+1. **A zombie child exists** &rarr; `copyout` its status, `freeproc` it, return its pid
+2. **No children at all** &rarr; return &minus;1 (POSIX spells this `ECHILD`)
+3. **Children, but none finished** &rarr; `proc_yield` and scan again later
+
+```rust
+// syscall.rs:147 — the reaping scan
+if (*q).parent == p && (*q).state == ProcState::Zombie {
+    let pid = (*q).pid;
+    let st = (*q).xstate as i32;
+    let _ = vm::copyout((*p).pagetable, status_addr, &st.to_le_bytes());
+    proc::freeproc(q);
+    return pid as isize;
+}
+```
+
+---
+
+## rv6 Polls; Real Kernels Are Told
+
+- rv6's blocked `wait` marks itself `Runnable` and **rescans** every time it is picked
+- Correct on one cooperative hart — and one wasted scheduler round per attempt
+- xv6: `wait` sleeps on a wait channel, `exit` calls `wakeup(p->parent)`
+- Linux: a wait queue plus `SIGCHLD`
+
+<div class="highlight-box">
+Reaping is what frees the slot. A parent that forks in a loop and never waits exhausts <code>NPROC</code> while doing no work at all — the mechanism behind a fork bomb.
+</div>
+
+---
+
+## The Process Tree
+
+<div class="mermaid">
+flowchart TD
+    I["init - pid 1\nloop: wait"] --> SH["sh"]
+    SH --> A["ls"]
+    SH --> B["cat"]
+    B --> C["child of cat"]
+    B -.->|"cat exits first"| X["C is now an ORPHAN"]
+    X -.->|"kernel re-points C.parent"| I
+</div>
+
+One parent pointer per process (`syscall.rs:108`) — because `wait` needs a
+**unique** collector.
+
+---
+
+## Orphans, init, and the Double Fork
+
+- A child can outlive its parent; its exit status then has no addressee
+- **Reparenting:** the kernel re-points orphans' `parent` at pid 1
+- `init` is nothing but `while (1) wait(0);` — the universal reaper
+- Linux generalizes with `PR_SET_CHILD_SUBREAPER` for service managers
+
+<div class="info-box">
+<strong>Double fork:</strong> fork, have the child fork again and exit immediately, reap the middle process. The grandchild is instantly orphaned, reparented to init, and now nobody's problem — the classic daemon idiom.
+</div>
+
+---
+
+## What rv6 Does Instead
+
+```rust
+// usermode.rs:344 — the whole tree dies with the command you typed
+unsafe fn cleanup_except(root: *mut Proc) {
+    for i in 0..crate::param::NPROC {
+        let q = proc::proc_at(i);
+        if q != root && (*q).state != ProcState::Unused {
+            proc::freeproc(q);
+        }
+    }
+}
+```
+
+- `wait` compares parents by **pointer** (`syscall.rs:147`), and slots are recycled
+- A stale `parent` could let a new process adopt a child it never forked
+- rv6 avoids it: `freeproc` nulls `parent`, and no tree outlives its root
+
+---
+
+## The Scheduler Finally Wakes Up
+
+- Exercises 18–20 ran exactly **one** process: no decision to make
+- After `sys_fork` returns there are two `Runnable` processes and a real choice
+
+```rust
+// sched.rs:20 — exercise 06, unchanged, finally load-bearing
+fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
+    let n = states.len();
+    (0..n).map(|off| (self.next + off) % n)
+          .find(|&i| states[i] == ProcState::Runnable)
+          .map(|i| { self.next = (i + 1) % n; i })
+}
+```
+
+The cursor advances past the winner: no runnable process is skipped twice.
+
+---
+
+## forktest, Scheduled
+
+A child never "returns from `fork`": `ready` sets `ra = forkret`
+(`usermode.rs:245`), so the first `swtch` lands in `forkret` &rarr;
+`usertrapret`, restoring the parent's trapframe with `a0` = 0.
+
+<div class="mermaid">
+sequenceDiagram
+    participant S as scheduler
+    participant P as parent, pid 1
+    participant C as child, pid 2
+    S->>P: swtch in
+    P->>P: fork - child Runnable
+    P->>P: write "parent"
+    P->>S: wait finds no zombie, proc_yield
+    S->>C: swtch in, lands at forkret
+    C->>C: fork returned 0, write "child"
+    C->>S: exit 7, state = Zombie
+    S->>P: swtch in, wait rescans
+    P->>P: reaps pid 2, status = 7
+    P->>S: exit 17, run ends
+</div>
+
+---
+
+## Why Not One `spawn`?
+
+Making a copy of yourself only to obliterate it looks absurd.
+
+```text
+    pid = fork();
+    if (pid == 0) { exec("ls", argv); }   // the copy BECOMES ls
+    else          { wait(&status); }
+```
+
+<div class="info-box">
+The answer is not tradition. Between <code>fork</code> and <code>exec</code> the child is a <strong>complete process running its own ordinary code</strong> — and that window is what makes shell redirection and pipes expressible at all.
+</div>
+
+---
+
+## The Window: Redirection Falls Out for Free
+
+```text
+   pid = fork()
+        |
+        +-- child:  close(1)                              # give up the console
+        |           open("out.txt", O_CREATE|O_WRONLY)    -> returns fd 1
+        |           exec("ls", argv)                      # ls writes to fd 1
+        |
+        +-- parent: wait(&status)                         # shell's fd 1 untouched
+```
+
+- `fdalloc` (`syscall.rs:295`) returns the **lowest free** descriptor
+- Close 1, and the next `open` is handed 1
+- `ls` never learns anything changed
+
+---
+
+## Two Lines Make It Work
+
+```rust
+// syscall.rs:107 — fork copies the whole fd table
+(*child).ofile = (*parent).ofile;
+
+// exec.rs:753 — exec_into replaces pagetable, epc, sp, a0, a1
+// ...and never mentions ofile
+```
+
+<div class="highlight-box">
+<code>exec</code> preserves descriptors <strong>by doing nothing</strong>. Redirection is not a feature anyone implemented — it is what happens when process creation and program loading are separate.
+</div>
+
+Pipes follow immediately: `A | B | C` is the same six lines, three times.
+
+---
+
+## The Counting Argument
+
+| Adjustment made in the window | What `spawn` would need |
+|---|---|
+| Redirect stdin/stdout/stderr | a descriptor-mapping parameter |
+| Wire up pipe ends, close the rest | a list of fd actions |
+| `chdir` to a working directory | a directory parameter |
+| Drop privilege (`setuid`/`setgid`) | credential parameters |
+| Reset signal handlers / mask | a signal-disposition parameter |
+| New process group or session | a job-control parameter |
+| Namespaces, cgroups, capabilities | many more, and growing |
+
+The `fork` window needs **zero** parameters — it is not an API, it is a place
+to run code.
+
+---
+
+## The Other Road
+
+- **`posix_spawn`** (POSIX 2001): exists because `fork` needs an MMU
+  - `posix_spawn_file_actions_t`: `addopen` / `adddup2` / `addclose`
+  - `posix_spawnattr_t`: signal mask, process group, scheduling policy
+- **`CreateProcess`** (Win32): ten parameters plus `STARTUPINFO` with `hStdInput` / `hStdOutput` / `hStdError`
+  - anything else requires `CREATE_SUSPENDED` and meddling from outside
+  - the NT *kernel* can fork (`NtCreateProcess`, used by WSL 1); Win32 forbids it
+
+<div class="highlight-box">
+Both are faster and MMU-free. Both can only express what their designers enumerated — nothing in them runs <em>your</em> code.
+</div>
+
+---
+
+## What fork Costs
+
+- **Expensive:** even with copy-on-write, forking a large process copies page
+  tables and takes a storm of COW faults, all to discard the result
+  (`vfork` in 4.0BSD was invented purely to dodge this)
+- **Hostile to threads:** duplicates only the calling thread, copies every lock
+  mid-flight; async-signal-safe calls only until `exec`
+- **Bakes memory semantics into an interface:** every new OS feature must answer
+  "what does fork do to this?"
+
+See *A fork() in the road*, Baumann et al., HotOS 2019 — worth reading because
+it disagrees with the design you just built.
+
+<div class="info-box">
+Ritchie: <code>fork</code> on the PDP-7 was about 27 lines of assembly. The split was cheap to implement first and discovered to be powerful second.
+</div>
+
+---
+
+## exec: Kept vs Replaced
+
+| Survives `exec` | Replaced by `exec` |
+|---|---|
+| pid, parent pointer | user page table |
+| open file table `ofile` | program image, code and data |
+| kernel stack page | user stack and its contents |
+| trapframe **page** | trapframe **contents**: `epc`, `sp`, `a0`, `a1` |
+| process-table slot | argc, argv |
+
+<div class="info-box">
+The process keeps its identity; only the program changes.
+</div>
+
+---
+
+## exec_into: The Swap
+
+```rust
+// exec.rs:753
+pub unsafe fn exec_into(p: *mut Proc, name: &str, args: &[&str])
+    -> Result<usize, ExecError>
+{
+    let built = build_addrspace((*p).trapframe as usize, name, args)?;
+    let old = (*p).pagetable;
+    (*p).pagetable = built.pagetable;
+    let tf = (*p).trapframe;
+    (*tf).epc = USER_CODE as u64;
+    (*tf).sp  = built.sp as u64;
+    (*tf).a0  = built.argc as u64;
+    (*tf).a1  = built.argv as u64;
+    vm::free_user_pagetable(old);
+    Ok(built.argc)
+}
+```
+
+---
+
+## Order Matters, and Why Freeing Is Safe
+
+- A failed `exec` must leave the caller **running its own code, memory intact** —
+  so `build_addrspace` builds everything first and cleans up after itself (`exec.rs:662`)
+- Freeing the old table is safe because the user program is **not running**:
+  `uservec` switched `satp` to the kernel table on the way in (`usermode.rs:134`)
+- The trampoline is shared; the trapframe page belongs to the `Proc`, not the table
+
+<div class="highlight-box">
+<strong>Build, then swap, then free.</strong> Free first and a failing exec leaves a process with no memory to return to. Swap before repointing the trapframe and it resumes at the old <code>epc</code> inside the new program.
+</div>
+
+---
+
+## exec Does Not Return — and a0 Proves It
+
+- `usertrap` advances `epc` past the `ecall`, dispatches, then stores the
+  handler's return into `a0` (`usermode.rs:408`)
+- But `exec_into` already set `epc`, `sp`, `a0`, `a1` for the **new** program
+- So that final store lands on a trapframe describing `hello`, not the caller
+
+<div class="highlight-box">
+This is why <code>sys_exec</code> returns <strong>argc</strong> and not 0: the value written over <code>a0</code> must be the argc the new program expects there. <code>a1</code> (argv) is never touched.
+</div>
+
+On failure: nothing swapped, &minus;1 in `a0`, caller lives on — that is what
+`execfail` (`exec.rs:542`) proves.
+
+---
+
+## What argv Really Is
+
+```text
+  0x1_1000  USER_STACK_TOP --> +-----------------------+ high
+                               | "hello\0"             |   strings pushed first
+                               | "world\0"             |
+                               | "echo\0"              |
+                               +-----------------------+
+                               | NULL                  |
+                               | ptr to "world"        |   argv[]: an array of
+                               | ptr to "hello"        |   USER virtual addresses
+                      sp ----> | ptr to "echo"         |   a1 = argv = sp
+  0x1_0000  USER_STACK ------> +-----------------------+ low
+```
+
+Built by `push_argv` (`exec.rs:781`) with `copyout`, **into an address space
+nobody is running yet**. `argv` is bytes on a stack plus a convention.
+
+---
+
+## The Shell Is Just a Program
+
+```text
+  loop {
+      write(1, "$ ", 2)                    // prompt
+      read(0, buf, 1) until newline        // a line
+      split into words -> argv             // parse
+      if argv[0] == "exit" { exit(0) }     // a builtin
+      pid = fork()                         // a child
+      if pid == 0 { exec(argv[0], argv); write("not found"); exit(1) }
+      wait(0)                              // collect
+  }
+```
+
+`sh` (`exec.rs:354`) returns to user mode with `SPP = 0`, cannot call
+`FS.lock()` or `kalloc`, and reaches the kernel only through the nine numbers
+in `syscall.rs:21`.
+
+---
+
+## Why `cd` Is a Builtin
+
+- `cd` changes the **shell's own** working directory
+- Run as a child: `chdir`, exec, exit — and the parent is exactly where it was
+- Builtins are not an optimization; they are the commands whose entire effect is
+  on the shell process itself (`exit` likewise)
+
+<div class="highlight-box">
+A blocking <code>read</code> needs interrupts back on: the keypress arrives as a UART interrupt, but a trap enters the kernel with interrupts off. <code>sys_read</code> re-enables them at that one call (<code>syscall.rs:488</code>) — not everywhere — so <code>exec</code> keeps running on a quiet 4 KiB kernel stack.
+</div>
+
+---
+
+## The Payoff Walk: `rv6$ ls`
+
+<div class="mermaid">
+flowchart TD
+    K["keypress, UART RX interrupt"] --> P["PLIC claim, ex 11 and 15"]
+    P --> T["trap vector, stvec, ex 13"]
+    T --> C["console::intr pushes to ring buffer, ex 15"]
+    C --> G["console::getc pops a byte"]
+    G --> SL["shell::run echoes, builds the line, ex 16"]
+    SL --> D["Shell::exec dispatches on the first word"]
+    D --> LS["cmd_ls: FS.lock, ex 07 spinlock"]
+    LS --> FE["for_each_entry walks the directory inode, ex 10 and 17"]
+    FE --> O["out.puts to uart::putc, ex 01 and 15"]
+</div>
+
+---
+
+## And Now the Second Half
+
+```text
+  sh (user) -ecall a7=1--> sys_fork  -> allocproc, uvmcopy, child a0 = 0
+  sh (user) -ecall a7=7--> sys_exec  -> copyinstr, fetch_argv,
+                                        exec_into: build + swap + free
+  child resumes at USER_CODE as `hello`, prints, ecall a7=2 -> Zombie
+  sh (user) -ecall a7=3--> sys_wait  -> reaps the zombie, returns its pid
+  sh writes "$ " again
+```
+
+Six user/kernel switches, two address spaces created and one destroyed, a
+context switch each way — for one word typed at a prompt. **That is a Unix.**
+
+---
+
+## What Is Still Missing
+
+- `ls` cannot yet be a user program: no `chdir`, `mkdir`, or `readdir` syscall
+- No `pipe` / `dup`, no signals, no copy-on-write, no ELF, no preemption, one hart
+- Each is an afternoon's work on top of what you now have
+
+<div class="info-box">
+The real cost of having a userland: every capability the kernel keeps to itself must be re-exposed deliberately, one system call at a time.
+</div>
+
+---
+
+## Summary
+
+1. **A zombie exists because the exit status must outlive the process** — someone has to be able to read it
+2. **`wait` has exactly three outcomes:** reap, `ECHILD`, or block; reaping is what frees the slot
+3. **One parent pointer makes the tree;** orphans go to `init` in Unix, and to `cleanup_except` in rv6
+4. **The exercise-06 scheduler finally has independent processes to choose between**
+5. **The `fork`/`exec` split exists to create a window** where the child runs its own code — redirection and pipes need no new API
+6. **`exec` swaps the address space and keeps the process** — pid, parent, kernel stack, and the fd table all survive
+7. **The shell is an ordinary unprivileged program:** a loop around `fork`, `exec`, and `wait`
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo HTML-entity escaping from the markdown
+        // pipeline) and wait for web fonts so text measurement does not yield
+        // NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>
