@@ -3,3 +3,5 @@
 mkdocs==1.6.1
 mkdocs-material==9.6.18
 mkdocs-macros-plugin==1.3.9
+# check_links.py reads docs/schedule.yml; keep it pinned with the rest.
+pyyaml==6.0.2

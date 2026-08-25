@@ -136,7 +136,7 @@ nav:
       - Integrity Policy: guides/integrity-policy.md
   - Assignments:
       - "All Exercises": assignments/exercises.md
-      - "Lab 00 · Setup": assignments/lab00-setup.md
+      - "Setup": assignments/setup.md
       - "Practice Set 1": assignments/practice-set-01.md
       - "Midterm 1": assignments/midterm-1.md
       - "Practice Set 2": assignments/practice-set-02.md
@@ -144,6 +144,31 @@ nav:
       - "Practice Set 3": assignments/practice-set-03.md
       - "Final Exam": assignments/final.md
       - "Extra Credit": assignments/extra-credit.md
+  - Exercise Prep:
+      - "Aug 27 · Prep: Setup and Hello, Rust — 00r": prep/01-cs326-2026-08-27-prep-setup-and-hello-rust.md
+      - "Aug 28 · Prep: Control Flow — 01r": prep/01-cs326-2026-08-28-prep-control-flow.md
+      - "Sep 3 · Prep: Ownership — 02r": prep/02-cs326-2026-09-03-prep-ownership.md
+      - "Sep 4 · Prep: Borrowing and Lifetimes — 03r": prep/02-cs326-2026-09-04-prep-borrowing.md
+      - "Sep 10 · Prep: Structs, impl, and const fn — 04r": prep/03-cs326-2026-09-10-prep-structs-and-impl.md
+      - "Sep 11 · Prep: Enums and match — 05r": prep/03-cs326-2026-09-11-prep-enums-and-match.md
+      - "Sep 17 · Prep: Collections and Traits — 06r · 07r": prep/04-cs326-2026-09-17-prep-collections-and-traits.md
+      - "Sep 18 · Prep: Errors, and Your First Command — 08r · 10c": prep/04-cs326-2026-09-18-prep-errors-and-echo.md
+      - "Sep 24 · Prep: cat — 11c": prep/05-cs326-2026-09-24-prep-cat.md
+      - "Sep 25 · Prep: wc and grep — 12c · 13c": prep/05-cs326-2026-09-25-prep-wc-and-grep.md
+      - "Oct 1 · Prep: The Assembly Bridge — 20a": prep/06-cs326-2026-10-01-prep-asm-bridge.md
+      - "Oct 2 · Prep: unsafe, and Leaving std — 21r · 30k": prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics.md
+      - "Oct 8 · Prep: Boot, and Physical Memory — 31k · 32k": prep/07-cs326-2026-10-08-prep-boot-and-physical-memory.md
+      - "Oct 9 · Prep: Sv39 Page Tables — 33k": prep/07-cs326-2026-10-09-prep-paging.md
+      - "Oct 22 · Prep: Processes and the PCB — 34k": prep/09-cs326-2026-10-22-prep-processes.md
+      - "Oct 23 · Prep: The Context Switch and the Scheduler — 35k · 36k": prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling.md
+      - "Oct 29 · Prep: Spinlocks and Semaphores — 37k · 38k": prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores.md
+      - "Oct 30 · Prep: Turning the MMU On — 39k": prep/10-cs326-2026-10-30-prep-virtual-memory.md
+      - "Nov 5 · Prep: An In-Memory Filesystem — 40k": prep/11-cs326-2026-11-05-prep-filesystem.md
+      - "Nov 6 · Prep: Boot to Life, Traps, and Interrupts — 42k · 43k · 44k": prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts.md
+      - "Nov 12 · Prep: The Console and the Kernel Shell — 45k · 46k": prep/12-cs326-2026-11-12-prep-console-and-shell.md
+      - "Nov 13 · Prep: User Mode — 48k": prep/12-cs326-2026-11-13-prep-user-mode.md
+      - "Dec 3 · Prep: exec and File Descriptors — 49k · 50k": prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors.md
+      - "Dec 4 · Prep: fork, the User Shell, and Your Commands — 51k · 52k · 53k": prep/15-cs326-2026-12-04-prep-fork-userland-and-ship.md
   - Lectures:
       - "Aug 25 · Building an Operating System": lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is.md
       - "Aug 25 · Slides": lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is-slides.html
@@ -171,8 +196,8 @@ nav:
       - "Oct 1 · Slides": lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html
       - "Oct 6 · Processes and the Process Control Block": lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md
       - "Oct 6 · Slides": lectures/07-cs326-2026-10-06-processes-and-the-process-control-block-slides.html
-      - "Oct 15 · The Context Switch and the Scheduler": lectures/08-cs326-2026-10-15-context-switch-and-scheduling.md
-      - "Oct 15 · Slides": lectures/08-cs326-2026-10-15-context-switch-and-scheduling-slides.html
+      - "Oct 13 · The Context Switch and the Scheduler": lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md
+      - "Oct 13 · Slides": lectures/08-cs326-2026-10-13-context-switch-and-scheduling-slides.html
       - "Oct 22 · Locks, Semaphores, and the Kernel Heap": lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md
       - "Oct 22 · Slides": lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html
       - "Oct 27 · Virtual Memory II: Turning the MMU On": lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on.md
@@ -183,14 +208,14 @@ nav:
       - "Nov 3 · Slides": lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts-slides.html
       - "Nov 5 · Device Interrupts, the PLIC, and the Console": lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md
       - "Nov 5 · Slides": lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html
-      - "Nov 10 · Shells, and the Module 2 → 3 Handoff": lectures/12-cs326-2026-11-10-shells-and-the-module-3-handoff.md
-      - "Nov 10 · Slides": lectures/12-cs326-2026-11-10-shells-and-the-module-3-handoff-slides.html
-      - "Nov 12 · File Commands over a Filesystem API": lectures/12-cs326-2026-11-12-file-commands-over-a-filesystem-api.md
-      - "Nov 12 · Slides": lectures/12-cs326-2026-11-12-file-commands-over-a-filesystem-api-slides.html
-      - "Nov 17 · User Mode I: The Wall, the Trampoline, and the Trapframe": lectures/13-cs326-2026-11-17-user-mode-i-the-wall-trampoline-and-trapframe.md
-      - "Nov 17 · Slides": lectures/13-cs326-2026-11-17-user-mode-i-the-wall-trampoline-and-trapframe-slides.html
-      - "Nov 19 · User Mode II: System Calls": lectures/13-cs326-2026-11-19-user-mode-ii-system-calls.md
-      - "Nov 19 · Slides": lectures/13-cs326-2026-11-19-user-mode-ii-system-calls-slides.html
+      - "Nov 10 · User Mode I: The Wall, the Trampoline, and the Trapframe": lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe.md
+      - "Nov 10 · Slides": lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe-slides.html
+      - "Nov 12 · Shells, and the Reference Kernel": lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md
+      - "Nov 12 · Slides": lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel-slides.html
+      - "Nov 17 · User Mode II: System Calls": lectures/13-cs326-2026-11-17-user-mode-ii-system-calls.md
+      - "Nov 17 · Slides": lectures/13-cs326-2026-11-17-user-mode-ii-system-calls-slides.html
+      - "Nov 24 · File Commands over a Filesystem API": lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md
+      - "Nov 24 · Slides": lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api-slides.html
       - "Dec 1 · `exec`, File Descriptors, and `fork`": lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md
       - "Dec 1 · Slides": lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html
       - "Dec 3 · exec as a System Call, and Userland": lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland.md

@@ -41,12 +41,10 @@ hide:
     <td class="topic-cell">
       <div class="session-content">
         <h4 class="session-topic">
-          {% if day_data.type == 'lab' %}
-          <span class="label label-purple">LAB</span>
-          {% elif day_data.type == 'work' %}
-          <span class="label label-purple">WORK</span>
-          {% elif day_data.type == 'lecture' %}
+          {% if day_data.type == 'lecture' %}
           <span class="label label-green">LEC</span>
+          {% elif day_data.type == 'exercise' %}
+          <span class="label label-purple">EXERCISE</span>
           {% elif day_data.type == 'exam' %}
           <span class="label label-red">EXAM</span>
           {% elif day_data.type == 'holiday' %}
@@ -56,7 +54,7 @@ hide:
         </h4>
         {% if day_data.due %}
         <div class="due-item">
-          <span class="label label-due">DUE</span> {{ day_data.due }}
+          <span class="label label-due">SUBMIT</span> {{ day_data.due }}
         </div>
         {% endif %}
       </div>
@@ -85,13 +83,15 @@ hide:
 </div>
 
 !!! info "How this course runs"
-    **All programming work happens in class.** There is no homework. Each
-    session releases one exercise, you work it in the room, and you run
-    `oslings submit` before you leave — passed or not. That submit is both your
-    progress record and your attendance.
+    **Tuesday is lecture. Thursday and Friday are exercise sessions.** Every
+    line of code in this course is written in the room, on the classroom
+    network. Read the **Prep** page before each session. The session's
+    exercise is released when the session starts; run `oslings submit`
+    before you leave, passed or not. **SUBMIT** lists what each session
+    releases.
 
-    Tuesdays are a lecture plus a guided start on the session's exercise.
-    Thursdays and Fridays are working sessions.
+    Did not finish? Finish it yourself: Thursday's exercise by Thursday
+    11:59 pm, Friday's by Monday 11:59 pm.
 
 ---
 

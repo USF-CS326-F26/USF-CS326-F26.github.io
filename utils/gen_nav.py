@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Regenerate the Lectures and Assignments sections of mkdocs.yml.
+"""Regenerate the Assignments, Exercise Prep, and Lectures sections of mkdocs.yml.
 
 The lecture nav in CS 315 is ~80 hand-maintained lines that must stay in sync
 with the filenames, and it drifts. Generate it instead.
 
 Lecture files are named `{WW}-cs326-{YYYY-MM-DD}-{kebab-topic}.md`, each with a
-matching `-slides.html`. Sorting by filename sorts by week then date, which is
-chronological, so no ordering metadata is needed.
+matching `-slides.html`. Prep pages are named
+`{WW}-cs326-{YYYY-MM-DD}-prep-{kebab-topic}.md`. Sorting by filename sorts by
+week then date, which is chronological, so no ordering metadata is needed.
 
 Run from the repo root:  python3 utils/gen_nav.py
 """
@@ -17,11 +18,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 MKDOCS = ROOT / "mkdocs.yml"
+MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 # Assignment pages, in the order they matter to a student, not alphabetical.
 ASSIGNMENT_ORDER = [
     ("exercises.md", "All Exercises"),
-    ("lab00-setup.md", "Lab 00 · Setup"),
+    ("setup.md", "Setup"),
     ("practice-set-01.md", "Practice Set 1"),
     ("midterm-1.md", "Midterm 1"),
     ("practice-set-02.md", "Practice Set 2"),
@@ -40,6 +43,10 @@ def title_of(md: Path) -> str:
     return md.stem
 
 
+def date_label(mm: str, dd: str) -> str:
+    return f"{MONTHS[int(mm)]} {int(dd)}"
+
+
 def lecture_entries():
     out = []
     for md in sorted((DOCS / "lectures").glob("*.md")):
@@ -48,13 +55,27 @@ def lecture_entries():
             print(f"  ! skipping oddly-named {md.name}", file=sys.stderr)
             continue
         _, _, mm, dd, _ = m.groups()
-        month = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][int(mm)]
-        label = f"{month} {int(dd)} · {title_of(md)}"
-        out.append((label, f"lectures/{md.name}"))
+        day = date_label(mm, dd)
+        out.append((f"{day} · {title_of(md)}", f"lectures/{md.name}"))
         slides = md.with_name(md.stem + "-slides.html")
         if slides.exists():
-            out.append((f"{month} {int(dd)} · Slides", f"lectures/{slides.name}"))
+            out.append((f"{day} · Slides", f"lectures/{slides.name}"))
+    return out
+
+
+def prep_entries():
+    """One entry per docs/prep/*.md, labeled "<Mon D> · <H1 title>"."""
+    out = []
+    prep = DOCS / "prep"
+    if not prep.is_dir():
+        return out
+    for md in sorted(prep.glob("*.md")):
+        m = re.match(r"(\d+)-cs326-(\d{4})-(\d{2})-(\d{2})-prep-(.+)", md.stem)
+        if not m:
+            print(f"  ! skipping oddly-named {md.name}", file=sys.stderr)
+            continue
+        _, _, mm, dd, _ = m.groups()
+        out.append((f"{date_label(mm, dd)} · {title_of(md)}", f"prep/{md.name}"))
     return out
 
 
@@ -86,29 +107,58 @@ def render(entries, indent="      "):
     )
 
 
+def section_pattern(header: str):
+    """`  - <header>:` and everything indented under it."""
+    return re.compile(rf"^(  - {re.escape(header)}:).*?(?=^  - |\Z)", re.S | re.M)
+
+
 def replace_section(text: str, header: str, body: str) -> str:
-    """Replace `  - <header>:` and everything indented under it."""
-    pattern = re.compile(
-        rf"^(  - {re.escape(header)}:).*?(?=^  - |\Z)", re.S | re.M
-    )
+    pattern = section_pattern(header)
     if not pattern.search(text):
         raise SystemExit(f"could not find nav section '{header}' in mkdocs.yml")
     return pattern.sub(lambda m: f"{m.group(1)}\n{body}\n", text)
 
 
+def ensure_section(text: str, header: str, before: str) -> str:
+    """Insert an empty `  - <header>:` section ahead of `  - <before>:` if absent."""
+    if section_pattern(header).search(text):
+        return text
+    anchor = re.search(rf"^  - {re.escape(before)}:", text, re.M)
+    if not anchor:
+        raise SystemExit(f"could not find nav section '{before}' in mkdocs.yml")
+    return text[:anchor.start()] + f"  - {header}:\n      []\n" + text[anchor.start():]
+
+
+def remove_section(text: str, header: str) -> str:
+    return section_pattern(header).sub("", text)
+
+
 def main():
     lectures = lecture_entries()
     assignments = assignment_entries()
+    preps = prep_entries()
 
     text = MKDOCS.read_text()
     text = replace_section(text, "Assignments", render(assignments))
+    # An empty nav section builds under --strict but Material renders it as a
+    # bare "Exercise Prep" link to the home page, so the section exists only
+    # while docs/prep/ has pages. It is inserted between Assignments and
+    # Lectures the first time one appears.
+    if preps:
+        text = ensure_section(text, "Exercise Prep", before="Lectures")
+        text = replace_section(text, "Exercise Prep", render(preps))
+    else:
+        text = remove_section(text, "Exercise Prep")
     text = replace_section(text, "Lectures", render(lectures))
     MKDOCS.write_text(text)
 
     pages = sum(1 for l, _ in lectures if "Slides" not in l)
     decks = len(lectures) - pages
     print(f"nav updated: {pages} lecture pages, {decks} slide decks, "
-          f"{len(assignments)} assignment pages")
+          f"{len(assignments)} assignment pages, {len(preps)} prep pages")
+    if not preps:
+        print("  (no docs/prep/*.md yet — the Exercise Prep section is omitted "
+              "until the first prep page exists)")
 
 
 if __name__ == "__main__":
