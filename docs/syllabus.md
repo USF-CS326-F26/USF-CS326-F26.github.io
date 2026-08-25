@@ -7,7 +7,7 @@
 | **Instructor** | Greg Benson |
 | **Teaching Assistant** | Ankit Mukhopadhyay |
 | **Term** | Fall 2026 — August 25 through December 9 |
-| **Meetings** | Tuesday & Thursday (lecture / work), Friday (lab) |
+| **Meetings** | Tuesday 1h45 (lecture) · Thursday 1h45 (exercise session) · Friday 1h30 (exercise session) |
 | **Final exam** | December 11–17, in the registrar's assigned slot |
 
 ---
@@ -50,55 +50,51 @@ After completing this course you will be able to:
 
 ## How This Course Works
 
-**All programming work happens in class. There is no homework.**
-
-Each session releases one exercise. You work it in the room, with the
-instructor and TA present, and you run `oslings submit` before you leave —
-whether or not it passes. That submit is your progress record and your
-attendance.
+**Tuesday is lecture. Thursday and Friday are exercise sessions, and the
+programming happens there, in the room.** Your time outside class is for
+reading.
 
 | Day | Length | Shape |
 |---|---|---|
-| **Tuesday** | 1h45 | ~70 min lecture, then a guided start on the session's exercise |
-| **Thursday** | 1h45 | Working session |
-| **Friday** | 1h30 | Lab — working session |
+| **Tuesday** | 1h45 | Lecture. Ends with a short walk-through of Thursday's Prep page. |
+| **Thursday** | 1h45 | Exercise session |
+| **Friday** | 1h30 | Exercise session |
 
-One lecture is delivered live each week, on Tuesday. The second lecture page for
-that week is posted with its slides and is **reading**, to be done before the
-Thursday session — that reading and preparation is what your time outside of
-class is for.
+One lecture is delivered live each week, on Tuesday. The second lecture page
+for that week is posted with its slides and is **reading**.
+
+Every exercise session has a **Prep page**, linked from its row on the
+[schedule](index.md). It says what you will build, which lecture sections and
+guides to reread, and what to check that you understand before you arrive.
+**Read the Prep page before class.** It is the bridge between the lecture and
+the exercise: a student who has read it spends the session writing code, and a
+student who has not spends it reading.
 
 Exercises are delivered by **OSlings**, a command-line tool that stages each
-exercise into your repository, runs its test, and gives progressive hints. An
-exercise is released at the start of the session that works it and does not
-exist in your repository before then.
+exercise into your repository, runs its test, and gives hints. An exercise is
+released at the start of the session that works it and does not exist in your
+repository before then. Before you leave the room you run `oslings submit`,
+whether or not the exercise passes — that submit is your record of the
+session. See [Using OSlings](guides/oslings-usage.md) and the
+[Setup](assignments/setup.md) page for the first session.
 
-### Nothing cascades
+At the start of each session you register your laptop with the CS 326 class
+server on the classroom router. The tool for this is not ready yet;
+instructions will be given in class.
 
-Every exercise's starting point contains the *reference* completed code for
-all earlier exercises. If you do not finish an exercise — or miss a session
-entirely — the next session still starts you from a working kernel.
-
-**A missed exercise costs you that exercise. It cannot cost you the
-semester.** This is the single most important thing to understand about the
-course structure, and it is why you should keep coming even after a session
-that went badly.
-
-Your own work is never lost either: it is archived in `my-work/` and
-`oslings goto <exercise>` returns you to exactly where you left off.
+Your own work is archived in `my-work/`, and `oslings goto <name>` returns you
+to it.
 
 ## Assignments and Grading
 
 | Component | Weight |
 |---|---|
-| Attendance & in-class participation | 10% |
-| Module 1 exercises (`r00`–`r09`, `c00`–`c04`, `a00`) | 10% |
-| Module 2 exercises (`ex00`–`ex15`) | 20% |
-| Module 3 exercises (`ex16`–`ex21`) | 15% |
-| **Midterm 1** — Tuesday, October 13 | 10% |
-| **Midterm 2** — Tuesday, November 24 | 15% |
+| Module 1 exercises (`00r`–`21r`: Rust, commands, bridges to bare metal) | 20% |
+| Module 2 exercises (`30k`–`53k`: the kernel) | 30% |
+| **Midterm 1** — Thursday, October 15 | 15% |
+| **Midterm 2** — Thursday, November 19 | 15% |
 | **Final exam** — December 11–17 | 20% |
-| *Extra credit* (`ex22`, pipes, porting your commands, optional exercises) | *up to +4%* |
+| *Extra credit* (`14c`, `41k`, `47k`, `54k`, `55k`) | *up to +3%* |
 
 ### How exercises are scored
 
@@ -109,38 +105,42 @@ one.
 
 | | Criterion | Score |
 |---|---|---|
-| **Pass** | The exercise's test is green | 100% |
-| **Substantial** | Compiles, markers meaningfully attempted, archived in `my-work/` | 60% |
-| **Absent** | Nothing submitted | 0% |
+| **Pass** | The test is green in the `oslings submit` you ran during the session | 100% |
+| **Completed after class** | Not passing in the session, but passing by the deadline — **Thursday exercises by Thursday 11:59 pm, Friday exercises by Monday 11:59 pm.** Run `oslings submit` again. | 75% |
+| **Substantial** | Submitted from the session: compiles, markers meaningfully attempted, test not green | 50% |
+| **Nothing submitted** | Nothing by the deadline | 0% |
 
-**The lowest two exercise scores in each module are dropped automatically.**
-That is the no-questions-asked absence policy: it covers illness, interviews,
-and the session where the toolchain simply would not cooperate. You do not
-need to email about it.
+The lowest two exercise scores in each module are dropped. There is no other
+make-up work.
 
-### Make-up work
+### Solutions
 
-An exercise may be completed later, in office hours with the TA present, for
-**75%** within one week of its session and **50%** after that, through the last
-day of classes. Supervision is part of the policy, not an inconvenience — see
-*Academic Integrity* below.
-
-### Attendance
-
-Attendance is recorded mechanically: a session counts as attended if a
-`submit` commit lands from it. **Working and not finishing earns full
-attendance credit.** The lowest three attendance days are dropped.
+The reference solution for an exercise is released with the next exercise,
+after its completion deadline, into `exercises/<name>/solution/` in your
+repository; `oslings solution <name>` prints it. Before that it exists in no
+repository you can fetch. Exam and practice-set solutions are posted on the
+site under [Solutions](solutions/index.md).
 
 ### Exams
 
-Both midterms and the final are **in class, on paper, closed book**, with one
-permitted reference: the course cheatsheet, which is published on this site
-and which you may print. No electronic devices.
+Both midterms are given in class on a **Thursday** — October 15 and
+November 19 — in the Thursday session's slot. There is no Friday session in an
+exam week. The final is in the registrar's slot, December 11–17.
+
+| Exam | Covers |
+|---|---|
+| **Midterm 1** — Thursday, October 15 | Module 1 (`00r`–`21r`) and the kernel through paging (`30k`–`33k`) |
+| **Midterm 2** — Thursday, November 19 | Processes (`34k`) through user mode (`48k`) |
+| **Final** — December 11–17 | Cumulative, weighted toward `49k`–`53k` |
+
+All three are **on paper, closed book**, with one permitted reference: the
+course cheatsheet, which is published on this site and which you may print.
+No electronic devices.
 
 Exams test understanding rather than recall: tracing registers through a
 context switch, decoding a page table entry, ordering the steps of a boot
 sequence, explaining why a race condition occurs. Practice sets in the same
-style are distributed and worked in class before each exam.
+style are distributed before each exam.
 
 You must average C or better across the exams to pass the course.
 
@@ -164,23 +164,27 @@ This course is unusual, and the reason is worth stating plainly.
 `rv6` is modeled on xv6 and Octox, which are public and are in the training
 data of every large language model. An AI assistant can produce a working
 version of nearly any exercise in this course instantly. **That is precisely
-why all work happens in class.**
+why the programming happens in class.**
 
 So the policy is simple, and the line is drawn at **the session**:
 
 - **Exercises are done in the room, during the session, on your own keyboard.**
   Exercises are not released before the session that works them, so there is
   nothing to pre-solve.
-- **During a session: no Internet and no AI assistant.** The lab network
+- **During a session: no Internet and no AI assistant.** The classroom network
   reaches GitHub and the Rust package registry — which `oslings` and `cargo`
   need — and nothing else. No chat window, no editor autocomplete that writes
   code for you, no phone. What you have in the room is the lecture notes, the
   guides on the course site, `oslings hint`, the compiler, and the instructor
   and TA.
+- **Hints are limited.** `oslings hint` gives two hints per exercise. The third
+  is never released.
 - **Outside a session: use AI freely, and often.** Ask it to explain a concept,
   walk you through code you are reading, generate practice problems, or decode
   a compiler error. That is genuinely useful, it is where a good deal of your
   preparation should happen, and you are encouraged to do it.
+- **Finishing an exercise after class is on your honor.** The same rules
+  apply: your own work, which you can explain line by line.
 - **Do not share your solutions with other students.** Explaining a concept to
   a classmate is good and welcome. Handing over code is not.
 
@@ -189,9 +193,9 @@ because a phone hotspot defeats any network restriction and nobody is pretending
 otherwise. Reaching the open Internet or using an AI assistant during a session
 is an integrity violation whether or not anything stopped you.
 
-You should only submit work you fully understand and can explain. The TA may
-ask you to walk through code you submitted; being unable to is treated as an
-integrity matter.
+You should only submit work you fully understand and can explain. The TA or
+instructor may ask you to walk through code you submitted; being unable to is
+treated as an integrity matter.
 
 ### Data recorded by OSlings
 
@@ -204,14 +208,15 @@ appear in any report the course produces. It exists so that if a question ever
 arises about a submission there is context for a conversation. It is a
 starting point for a discussion, never proof of anything.
 
-### Laptops and the lab network
+### Laptops and the classroom network
 
 Sessions run on a restricted network that reaches GitHub and the Rust package
 registry and not much else, so that `oslings update`, `oslings submit` and
-`cargo` all work and very little else does. Keeping the room off the open
-Internet is the rule, not just the router's default; see
+`cargo` all work and very little else does. You register your laptop with the
+CS 326 class server on that network at the start of each session. Keeping the
+room off the open Internet is the rule, not just the router's default; see
 [Academic Integrity and AI](guides/integrity-policy.md) for why it is written
-that way round.
+that way around.
 
 ### Communication
 
@@ -235,6 +240,16 @@ Recommended, and free:
   — the authority on the CSRs and privilege model.
 - **Operating Systems: Three Easy Pieces** — free online; excellent on
   concepts, though it uses a different codebase.
+
+Optional Rust practice, for early finishers and anyone who wants more
+repetitions than the exercises give:
+
+- **[Rustlings](https://github.com/rust-lang/rustlings)** — small exercises
+  that run from the command line, in the same spirit as OSlings.
+- **[100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/)**
+  — a test-driven tour of the language, one concept at a time.
+
+Neither is required or graded.
 
 Run `rustup doc` for the standard library documentation offline.
 

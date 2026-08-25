@@ -9,4 +9,5 @@
 ## Ankit Mukhopadhyay (Teaching Assistant)
 - Office: HR 411/413
 - Office hours: TBA
-- Make-up exercise sessions are held during TA office hours
+
+Office hours are for questions and for extra-credit work.

@@ -184,14 +184,27 @@ L01 &middot; August 25, 2026
 
 ---
 
+## Introductions
+
+- **Greg Benson** — instructor
+- **Ankit Mukhopadhyay** — TA, and the author of OSlings
+- **You** — name, year, and one thing you wish your computer did that it does not
+
+Show of hands:
+
+- Who has taken CS 315? Written C? Written RISC-V assembly?
+- Who has written any Rust? Finished Rustlings?
+
+---
+
 ## Learning Objectives
 
 - Define an operating system by the **four jobs** it does, not by a product list
-- Map each job onto the rv6 subsystem and exercise that implements it
-- Distinguish RISC-V's **machine**, **supervisor**, and **user** privilege modes
-- Order the semester's kernel milestones and say why each is blocked
-- Explain what `unsafe` does and does not promise
-- Describe the OSlings release-and-submit model, and why nothing cascades
+- Map each job onto the part of rv6 you will build
+- Distinguish RISC-V's **machine**, **supervisor**, and **user** modes — at the level of who runs where
+- Order the semester's two modules, and say why the kernel is built in a fixed order
+- Explain why a kernel needs a way to step outside Rust's safety rules — and why Rust is still the right choice
+- Describe how a session runs, and what to do before Thursday
 
 ---
 
@@ -218,7 +231,7 @@ flowchart TB
     end
     subgraph K["Kernel"]
         K1["Multiplex the CPU"]
-        K2["Virtualise memory"]
+        K2["Virtualize memory"]
         K3["Name persistent data"]
         K4["Abstract devices"]
     end
@@ -254,270 +267,102 @@ A program that never yields must still be interrupted, and only hardware can do
 that: a **timer interrupt**, arriving whether or not the program consents. That
 is why *preemptive* multitasking needs hardware and *cooperative* does not.
 
-<div class="highlight-box">
-A context switch <strong>cannot be written in Rust</strong>. Rust gives you no way to say "save every register." It is the one place we drop into assembly.
+<div class="info-box">
+<strong>Concurrency</strong> is many things in progress at once; <strong>parallelism</strong> is many things executing at the same instant. rv6 has one CPU — and every hard problem in this course shows up anyway.
 </div>
 
 ---
 
-## Job 2 &middot; Virtualise Memory
+## Job 2 &middot; Virtualize Memory
 
-Physical addresses are real: RAM is `0x8000_0000` &ndash; `0x8800_0000`, so two
-programs both using `0x1000` corrupt each other. The fix is an **MMU** between
-the CPU and memory, rewriting every address the CPU issues.
+Two programs, both compiled to use address `0x1000`. If `0x1000` names one
+physical location, they corrupt each other.
 
-- Program addresses are **virtual**; the MMU translates them to **physical**
-- Through a table the kernel builds, in **pages** of 4096 bytes
-- One entry in that table — a **PTE** — is a page number plus permission bits
-
-```rust
-pub const PTE_V: usize = 1 << 0;  // valid
-pub const PTE_R: usize = 1 << 1;  // readable
-pub const PTE_W: usize = 1 << 2;  // writable
-pub const PTE_X: usize = 1 << 3;  // executable
-pub const PTE_U: usize = 1 << 4;  // reachable from user mode
-
-impl Pte {
-    pub const fn new(pa: usize, flags: usize) -> Pte {
-        Pte(((pa >> 12) << 10) | flags)
-    }
-}
-```
-
-`vm.rs:17`&ndash;`:32` — five bits and a shift.
-
-<div class="highlight-box">
-<code>PTE_U</code>, one bit, is the <strong>entire wall</strong> between a user program and the kernel.
+<div class="mermaid">
+flowchart LR
+    A["Program A\nuses 0x1000"] --> M["MMU\ntranslates through\nthe kernel's map"]
+    B["Program B\nuses 0x1000"] --> M
+    M --> PA["physical page\nfor A"]
+    M --> PB["physical page\nfor B"]
 </div>
 
----
-
-## The page allocator's trick
-
-```rust
-pub unsafe fn kfree(pa: *mut u8) {
-    let r = pa as *mut Run;
-    (*r).next = FREELIST;
-    FREELIST = r;
-}
-```
-
-`kalloc.rs:34` — the whole allocator is 46 lines.
-
-The free list has **no storage of its own**. Each free page stores the pointer
-to the next *inside itself*.
-
-There is nowhere else to put it — the allocator is what you would have had to
-ask for memory.
+- Programs see **virtual** addresses; the hardware translates every one through a map the **kernel** builds
+- The map works in **pages** of 4096 bytes
+- One bit in that map separates user pages from kernel pages — that bit is the wall
 
 ---
 
 ## Job 3 &middot; Name Persistent Data
 
-Memory is addresses. A disk is numbered blocks. Neither is a name.
+Memory is addresses. A disk is numbered blocks. Neither is a name a human can use.
 
-```rust
-pub struct Inode {
-    kind: InodeKind,      // Free, File, or Dir
-    size: usize,
-    data: [u8; FILESIZE],
-    entries: [DirEnt; NDIRENT],
-}
+```text
+   what a program sees              what the storage has
+   /
+   +-- notes.txt   ------------->   block 4192, block 4193
+   +-- bin/
+       +-- grep    ------------->   block 7, block 8, block 9
 ```
 
-`fs.rs:50`
-
-- An **inode** is one file's kind, size, and contents, under a number
-- A **directory** is a file whose contents are (name, inode number) pairs
-- rv6's filesystem lives in RAM — files do not survive a reboot
+- A **file** is bytes under a name; a **directory** is a table of names to files
+- The kernel keeps the map between the two; programs only ever use the names
+- rv6's filesystem lives in RAM — files do not survive a reboot. A scope cut, not an accident
 
 ---
 
 ## Job 4 &middot; Abstract Devices
 
-A serial port is not a stream of bytes. It is registers at fixed addresses.
+A serial port is not a stream of bytes. It is a handful of registers at a fixed
+address, and sending one character means waiting for a status bit, then storing
+a byte.
 
-```rust
-pub fn putc(c: u8) {
-    while !tx_ready() {}
-    unsafe { reg_write(THR, c) }
-}
-```
+- The kernel talks to the hardware once, in a **driver**, and hides it
+- Everything above sees one interface — `read` and `write` on a **file descriptor**
+- A program cannot tell a keyboard from a file from a pipe, and that is the point
 
-`uart.rs:48` — the UART sits at `0x1000_0000`, and the driver is 71 lines.
-
-Every `println!` you have ever written bottoms out in something like this.
-
-`read` and `write` work on a keyboard, a file, and a pipe alike because the
-kernel puts one interface — the **file descriptor** — over non-uniform hardware.
-
----
-
-## Where you build them
-
-| Job | rv6 source | Exercises |
-|---|---|---|
-| Multiplex the CPU | `proc.rs`, `swtch.rs`, `sched.rs` | `ex04`&ndash;`ex06`, `ex21` |
-| Virtualise memory | `kalloc.rs`, `vm.rs` | `ex02`, `ex03`, `ex09` |
-| Name persistent data | `fs.rs`, `file.rs` | `ex10`, `ex17`, `ex20` |
-| Abstract devices | `uart.rs`, `plic.rs`, `console.rs` | `ex11`, `ex14`, `ex15` |
-
-Everything else — traps, locks, system calls, `fork`, `exec` — serves one of
-these four.
+<div class="info-box">
+Every <code>println!</code> you have ever written bottoms out in a driver like the one you will write.
+</div>
 
 ---
 
 ## The machine: RISC-V on QEMU
 
-Target triple: **`riscv64gc-unknown-none-elf`**
-
-- 64-bit RISC-V, general + compressed extensions
-- no vendor
-- `unknown-none` — **no operating system beneath you**
-
-We run QEMU's `virt` machine: a board that exists only in software.
+- rv6 runs on **64-bit RISC-V** — the instruction set you met in CS 315
+- On **QEMU's `virt` machine**: a computer that exists only in software, with one CPU, 128 MiB of RAM, a serial port, and a timer, all at fixed addresses
+- In CS 315 you wrote a RISC-V emulator. QEMU is that idea, at full fidelity
 
 <div class="info-box">
-Not a compromise. An emulated machine can be stopped mid-instruction and inspected. Your kernel is still a real RISC-V ELF that would boot on silicon.
-</div>
-
----
-
-## The `virt` physical memory map
-
-```text
-  0x0000_0000  +-------------------------------+
-               |  boot ROM, test finisher      |  0x0010_0000  power off
-  0x0200_0000  |  CLINT   - timer, soft irq    |
-  0x0c00_0000  |  PLIC    - device interrupts  |
-  0x1000_0000  |  UART0   - the serial console |
-               |            ...                |
-  0x8000_0000  +-------------------------------+  <- KERNBASE: RAM starts,
-               |  the kernel is loaded here    |     and _entry runs here
-               |  128 MiB of RAM               |
-  0x8800_0000  +-------------------------------+  <- PHYSTOP
-```
-
-<div class="highlight-box">
-RAM and devices share <strong>one</strong> address space. <code>0x1000_0000</code> is a serial port pretending to be memory — storing a byte there transmits it.
+Not a compromise. An emulated machine can be stopped mid-instruction and inspected. Your kernel is a real RISC-V program that would boot on silicon.
 </div>
 
 ---
 
 ## Three privilege modes
 
-| Mode | Who runs here | Can do |
+| Mode | Who runs here | What it can do |
 |---|---|---|
-| **Machine (M)** | firmware, a few dozen lines of rv6 | everything; no translation |
-| **Supervisor (S)** | the kernel | the MMU, traps, devices |
-| **User (U)** | `sh`, `grep`, `cat` | ordinary instructions, own pages only |
+| **Machine** | firmware, and a few lines of rv6 at boot | everything |
+| **Supervisor** | the kernel | manage memory, handle traps, talk to devices |
+| **User** | your programs: `sh`, `grep`, `cat` | ordinary instructions, its own memory only |
 
-Orientation only today — **L18** does the mechanism.
+Privilege goes **down** by an explicit instruction and **up** only through a
+trap. A program cannot make itself privileged — it *asks*, with a **system
+call**, and the kernel decides.
 
----
-
-## The privilege ladder
-
-<div class="mermaid">
-flowchart TB
-    M["Machine mode (M)\n_entry, start.rs, timervec"]
-    S["Supervisor mode (S)\nkmain and the whole kernel"]
-    U["User mode (U)\nuser programs"]
-    M -->|mret| S
-    S -->|sret| U
-    U -->|ecall / interrupt / fault| S
-    S -->|trap| M
-</div>
-
-Privilege **decreases** only by explicit instruction. It **increases** only by
-trap. That asymmetry is the entire security model.
+Orientation only today. The mechanism comes in November, when you build it.
 
 ---
 
-## Down with `mret`, up with `ecall`
+## Why learn both Rust and an OS
 
-`start.rs` sets `mstatus.MPP` to supervisor, points `mepc` at `kmain`, and
-executes one instruction:
-
-```rust
-mstatus |= MSTATUS_MPP_SUPERVISOR;   // start.rs:30
-asm!("la t0, kmain", "csrw mepc, t0", out("t0") _);
-asm!("mret", options(noreturn));     // start.rs:54
-```
-
-Going back up, `ecall` deliberately raises an exception. The kernel reads the
-request number from `a7`, dispatches, and returns with `sret`.
-
-rv6's whole syscall table is **nine numbers**, and they are xv6's numbers.
-Linux has around 350 — surface area, not principle.
-
----
-
-## The semester, end to end
-
-<div class="mermaid">
-flowchart LR
-    R["Module 1\nRust + commands"]
-    E0["ex00\nno_std"]
-    E1["ex01\nboot + print"]
-    E2["ex02\nkalloc"]
-    E3["ex03\npaging"]
-    E4["ex04-06\nprocesses"]
-    E7["ex07-08\nlocks"]
-    E9["ex09-12\nboot to life"]
-    E13["ex13-15\ntraps"]
-    E16["ex16-17\nkernel shell"]
-    E18["ex18-21\nuser mode"]
-    E22["ex22\nuserland"]
-    R --> E0 --> E1 --> E2 --> E3 --> E4 --> E7 --> E9 --> E13 --> E16 --> E18 --> E22
-</div>
-
----
-
-## Nothing in that chain is reorderable
-
-- a **stack** before any Rust function can run
-- an **allocator** before page tables, which are made of pages
-- a complete **kernel page table** before `satp` can be written
-- a **supervisor kernel** before anything can trap into it
-- **traps** before `ecall` means anything
-
-<div class="info-box">
-Each step is blocked by the substrate the previous one built. Stack before code; memory before structures over memory; privilege before the thing that must be less privileged.
-</div>
-
----
-
-## Module 1 &middot; weeks 1&ndash;4
-
-Nothing boots. Everything runs on your laptop under `cargo test`.
-
-| Exercises | What you do |
-|---|---|
-| `r00`&ndash;`r09` | Rust, from `let` bindings to raw pointers |
-| `c00`&ndash;`c04` | `echo`, `cat`, `wc`, `head`, `grep` against `ulib` |
-| `a00` | RISC-V registers and the calling convention |
+- An operating system is where a language's guarantees are tested hardest: no runtime beneath you, nothing to catch a bad pointer
+- Rust is what new systems code is written in — drivers in Linux, Android, Windows components, most new infrastructure
+- Learning Rust *on* a kernel means every feature arrives with a reason: ownership because pages have owners, `match` because hardware has states, traits because a scheduler is a policy
 
 <div class="highlight-box">
-You should not fight the borrow checker <strong>and</strong> the hardware at once.
+By December you will have written a kernel in the language the industry is moving kernels to.
 </div>
-
----
-
-## Two abrupt steps, and one shell twice
-
-**Both abrupt steps are a single instruction.**
-
-- `ex09` writes `satp` — every address in flight changes meaning
-- `ex13` executes `mret` — the kernel stops being all-powerful
-
-**You write the shell twice.**
-
-- `ex16`: inside the kernel. Easy — kernel code calls the filesystem directly
-- `ex22`: an ordinary user program with **no privileges**, talking to the kernel
-  only through `ecall`
-
-The gap between those two is where everything hard about operating systems lives.
 
 ---
 
@@ -538,51 +383,99 @@ In application code the OS catches these. In kernel code <strong>there is nothin
 
 ---
 
-## What `unsafe` actually means
+## An OS is special — so Rust has `unsafe`
 
-`unsafe` does **not**:
+A kernel must do things no ordinary program does:
 
-- disable the borrow checker
-- turn off type checking
-- mean "trust me"
+- execute **privileged instructions** and read hardware registers
+- control **virtual memory** explicitly — build the page tables everything else relies on
+- build its **own allocator** — there is no runtime beneath it to ask for memory
+
+Rust's answer is not to relax the rules. It is one mechanism — the `unsafe`
+keyword — that lets you step outside strict memory safety in small, marked
+places.
 
 <div class="info-box">
-It means: <strong>"the compiler cannot verify this one; I have checked it."</strong>
+The dangerous part of the kernel becomes <strong>small and labeled</strong> instead of being the whole program. That is the argument for Rust, in one sentence.
 </div>
 
-Its real value is that it is **greppable**. When the kernel corrupts memory, the
-places that could have done it are the `unsafe` blocks — a searchable list, not
-the whole program.
+---
+
+## What you bring from CS 315
+
+| You did | Here it becomes |
+|---|---|
+| C, with pointers | Rust, with ownership — the compiler checks what you used to check by hand |
+| RISC-V assembly and the calling convention | the **context switch**: saving one program's registers and restoring another's |
+| A RISC-V emulator; addresses as numbers | **page tables**: the kernel deciding what every address means |
+| Digital design: a processor | QEMU running **your** kernel on that processor |
+
+Expect to *review* C and RISC-V, not to have memorized them. The review is planned.
 
 ---
 
-## The 90/10 claim, measured
+## The semester, end to end
 
-Reference rv6: 24 modules, ~3,100 lines, 101 occurrences of the keyword.
+<div class="mermaid">
+flowchart LR
+    R["Module 1\nRust, commands,\nbridges to bare metal\n00r - 21r"]
+    K0["boot and memory\nno_std, UART,\nallocator, paging\n30k - 33k"]
+    K4["processes and locks\nPCB, context switch,\nscheduler, MMU on\n34k - 39k"]
+    K10["files, traps,\nconsole, kernel shell\n40k - 46k"]
+    K18["user mode\nthe wall, ecall\n48k"]
+    K19["exec, fds, fork,\nuser shell,\nyour commands\n49k - 53k"]
+    R --> K0 --> K4 --> K10 --> K18 --> K19
+</div>
 
-| Module | Lines | `unsafe` |
-|---|---|---|
-| `fs.rs` — the filesystem | 277 | 0 |
-| `shell.rs` — the shell | 373 | 1 |
-| `sched.rs` — scheduling policy | 30 | 0 |
-| `vm.rs` — page tables | 419 | 15 |
-| `uart.rs` — the device driver | 71 | 9 |
-
-**Six of twenty-four modules contain not one occurrence.** The unsafety
-concentrates exactly where you would predict.
+Each step needs what the one before it built: a stack before any Rust code, an
+allocator before page tables, a kernel before a program can trap into it.
 
 ---
 
-## What Rust does *not* fix
+## The course in two modules
 
-- A page table that maps the wrong page is a **valid Rust program**
-- **Deadlock is memory-safe** — two threads waiting forever violate no rule
-- Races between the kernel and *hardware* are outside the model
-- `unsafe` code you got wrong is exactly as dangerous as C
+| | When | What | Where it runs |
+|---|---|---|---|
+| **Module 1** | Aug 27 – Oct 2 | Rust `00r`–`08r`, the commands `10c`–`13c`, two bridges to bare metal `20a` and `21r` | your laptop, `cargo test` (`20a` boots in QEMU) |
+| **Module 2** | Oct 2 – Dec 4 | the kernel, `30k`–`53k` | QEMU |
+
+Midterms **Thursday, October 15** and **Thursday, November 19**. Final exam
+December 11–17.
 
 <div class="highlight-box">
-Rust removes one historically dominant category of bug and leaves every conceptual difficulty of operating systems intact — and <em>those</em> are the subject of this course.
+You should not fight the borrow checker <strong>and</strong> the hardware at once. Module 1 exists so that you never have to.
 </div>
+
+---
+
+## How the course runs
+
+- **Tuesday** — lecture (this), ending with a walk-through of Thursday's Prep page
+- **Thursday and Friday** — exercise sessions. Every line of code for this course is written **in the room**, on the classroom network
+- **Before each session** — read its Prep page, linked from the schedule. Your homework is reading, not coding
+- **At the start of each session** — register your laptop with the CS 326 class server on the classroom Wi-Fi; that is how the exercise reaches you
+- **Before you leave** — `oslings submit`, passed or not
+
+<div class="info-box">
+Why: an AI assistant can write any exercise in this course. So the exercises happen where the assistant is not — and the reading happens where it is.
+</div>
+
+---
+
+## Grading at a glance
+
+| Component | Weight |
+|---|---|
+| Module 1 exercises | 20% |
+| Module 2 exercises | 30% |
+| Midterm 1 &middot; Midterm 2 &middot; Final | 15% &middot; 15% &middot; 20% |
+| Extra credit | up to +3% |
+
+Each exercise: **Pass** in class 100% &middot; **Completed after class** 75%
+&middot; **Substantial** progress submitted in class 50% &middot; nothing 0%.
+
+Finishing after class: Thursday's exercise by **Thursday 11:59 pm**, Friday's
+by **Monday 11:59 pm**.
 
 ---
 
@@ -594,12 +487,12 @@ oslings             # read the lesson, write the code, watch the test
 oslings submit      # commit and push, pass or fail
 ```
 
-- **Build** exercises pass when the kernel compiles for the bare-metal target
-- **QEMU** exercises pass when the kernel boots and prints `OSLINGS:PASS`
+- A **test** exercise passes under `cargo test` on your laptop (Module 1)
+- A **QEMU** exercise passes when your kernel boots and prints `OSLINGS:PASS`
 - Grading re-runs the same test on a rebuilt kernel — local state cannot fake it
 
 <div class="highlight-box">
-No homework means that commit is the only record you were in the room. <strong>Attendance is computed from it.</strong>
+<strong>Live demo</strong> — what a session looks like from your seat.
 </div>
 
 ---
@@ -608,58 +501,41 @@ No homework means that commit is the only record you were in the room. <strong>A
 
 <div class="mermaid">
 flowchart LR
-    L["read the lesson"] --> W["write one file"]
+    G["register"] --> L["read the lesson"] --> W["write one file"]
     W --> R["oslings run"]
     R -->|fails| H["oslings hint"]
     H --> W
     R -->|passes| S["oslings submit"]
 </div>
 
-- You work the exercise **in the room**, during the session
+- In the room, during the session, on your own keyboard
 - **No Internet and no AI assistant** while you work it
-- What you do have: the **lecture notes**, the **guides**, and `oslings hint`
-- Attendance is not a separate thing — that `submit` **is** the record
-
----
-
-## Nothing cascades
-
-**Every exercise starts from the reference completed code for all previous
-exercises.**
-
-- Do not finish `ex04`? `ex05` still opens on a working process table
-- Miss a whole week? Tuesday begins from a kernel that boots
-- Your own work is archived in `my-work/`; `oslings goto` restores it
-- The lowest **two** scores in each module are dropped automatically
-
-<div class="info-box">
-A missed exercise costs you that exercise. It cannot cost you the semester.
-</div>
+- What you do have: the lecture notes, the guides, **two hints** per exercise, and the TA or instructor
 
 ---
 
 ## Why the work happens in the room
 
 rv6 is modeled on **xv6** and **Octox** — both public on GitHub, therefore both
-in the training data of every large language model.
+in the training data of every large language model. Any model will emit a
+working page-table walk instantly.
 
-Any model will emit a working `walk()` instantly. Pretending otherwise would be
-silly, so the course is arranged so the question does not arise:
+Pretending otherwise would be silly, so the course is arranged so the question
+does not arise:
 
-- Exercises are released **at the start of the session that works them** — an
-  unreleased exercise exists in no commit you can fetch
-- **During a session: no Internet, no AI assistant.** GitHub and crates.io only
-- **Outside a session: use AI freely to learn** — concepts, code you are
-  reading, compiler errors, practice problems
+- Exercises are released **at the start of the session that works them** — an unreleased exercise exists in no commit you can fetch
+- **During a session:** no Internet, no AI assistant
+- **Outside a session:** use AI freely to *learn* — concepts, code you are reading, compiler errors, practice problems
+- The reference solution arrives with the next exercise, after the deadline
 
-The test is whether you can explain what you submitted. The TA may ask.
+The test is whether you can explain what you submitted. The TA or instructor may ask.
 
 ---
 
 ## The payoff
 
 ```text
-   commands/src/bin/grep.rs           <- one file, written in week 4
+   commands/src/bin/grep.rs           <- one file, written in week 5
               |
             ulib
          /         \
@@ -668,15 +544,15 @@ The test is whether you can explain what you submitted. The TA may ask.
     write)          syscalls)
         |               |
    your laptop      YOUR KERNEL
-   cargo test       ex22, December
+   cargo test       53k, December 4
 ```
 
-The `grep` you write in **week 4** is the same source file — not a port, the
+The `grep` you write in **week 5** is the same source file — not a port, the
 same file — that runs on the kernel you finish in **week 15**.
 
 ---
 
-## What that sentence contains
+## What you will understand by December
 
 `grep foo notes.txt`, typed at a `$` prompt, in a shell that is a **user
 process**, `fork`ed and `exec`ed by another user process, on a kernel that:
@@ -694,27 +570,26 @@ Every layer of which you wrote. That is what this course is for.
 ## Summary
 
 1. An OS is defined by **four jobs**, not a product list — and you implement all four
-2. Three **privilege modes**: privilege drops by instruction, rises only by trap
-3. The semester has a **forced dependency order**; each step needs the last one's substrate
-4. **Rust** makes the unsafe part small and labelled — six of 24 modules have no `unsafe`
-5. Rust fixes memory safety and **nothing else**; the hard parts remain the subject
-6. **Nothing cascades.** Run `oslings submit` every session, red or green
+2. Three **privilege modes**: privilege drops by instruction, rises only by trap; a program *asks*
+3. The semester has a **forced order**: each step needs the last one's substrate
+4. A kernel must step outside the rules; **Rust** makes that part small and labeled
+5. The course runs **in the room**: prep before, exercise during, submit before you leave
+6. The **payoff**: the `grep` you write in week 5 runs on the kernel you finish in week 15
 
 ---
 
-## Today: Lab 00
+## Before Thursday
 
-Second half of this session — budget about 45 minutes.
+1. Install Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+2. Make sure you have a **GitHub account**
+3. Read the **Setup** page and Thursday's **Prep** page — both linked from the schedule
+4. Bring a charged laptop: macOS, Linux, or Windows with WSL2
 
-1. Install Rust with `rustup`
-2. Create a **private** repo `oslings-<your-github-username>`, add instructor + TA
-3. Clone the course repo and run `./setup.sh`
-4. `oslings doctor` until every line is green
-5. `oslings init-repo <your repo url>`
-6. `oslings update` &rarr; work `r00` &rarr; `oslings submit`
+Thursday is the **setup session**: toolchain, repository, OSlings, and your
+first exercise, `00r_hello_rust`. No coding today.
 
 <div class="info-box">
-If something breaks, that is expected — the people who can fix it are in the room.
+If something breaks on Thursday, that is expected — the people who can fix it are in the room.
 </div>
                 </textarea>
             </section>

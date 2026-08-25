@@ -2,8 +2,8 @@
 
 This page is the reference for getting a CS 326 machine working: `rustup`, the
 bare-metal RISC-V target, QEMU, your private repository, and the `oslings`
-command. You will work through it once during [Lab 00](../assignments/lab00-setup.md)
-in the first week, and then come back to it whenever `oslings doctor` turns red
+command. You will work through it once during [Setup](../assignments/setup.md)
+on Thursday, August 27, and then come back to it whenever `oslings doctor` turns red
 or a build stops working. It covers macOS, Linux, and Windows via WSL2. If you
 are already set up and want to know what the commands *do*, read
 [Using OSlings](oslings-usage.md) and [Git and Submission](git-and-submission.md)
@@ -13,13 +13,13 @@ instead.
 
 | Piece | Provides | First needed |
 |---|---|---|
-| `rustup` + stable Rust | `cargo`, `rustc`, `cargo test` | Day 0 (`r00`) |
-| `riscv64gc-unknown-none-elf` on **stable** | cross-compiling `asmlab/` and `commands/` | `a00`, Sep 18 |
-| Nightly toolchain | the `rv6` kernel (`rv6/rust-toolchain.toml` pins it) | `ex00`, week 5 |
-| `riscv64gc-unknown-none-elf` on **nightly** | kernel `core` for the bare-metal target | `ex00` |
-| `rust-src`, `llvm-tools` | `oslings doctor` requires them; rust-analyzer and ELF inspection use them | `ex00` |
-| `qemu-system-riscv64` | booting every `mode = "qemu"` exercise | `a00`, Sep 18 |
-| `git` + a GitHub account | your private repo, `oslings update`, `oslings submit` | Day 0 |
+| `rustup` + stable Rust | `cargo`, `rustc`, `cargo test` | Aug 27 (`00r`) |
+| `riscv64gc-unknown-none-elf` on **stable** | cross-compiling `asmlab/` and `commands/` | `20a`, Oct 1 |
+| Nightly toolchain | the `rv6` kernel (`rv6/rust-toolchain.toml` pins it) | `21r`/`30k`, Oct 2 |
+| `riscv64gc-unknown-none-elf` on **nightly** | kernel `core` for the bare-metal target | `21r`/`30k` |
+| `rust-src`, `llvm-tools` | `oslings doctor` requires them; rust-analyzer and ELF inspection use them | `21r`/`30k` |
+| `qemu-system-riscv64` | booting every `mode = "qemu"` exercise | `20a`, Oct 1 |
+| `git` + a GitHub account | your private repo, `oslings update`, `oslings submit` | Aug 27 |
 
 Two things on this list are commonly gotten wrong.
 
@@ -167,10 +167,10 @@ It is safe to re-run at any time; every step is idempotent. In order, it:
    rust-analyzer needs to give you completions in `no_std` code.
 5. **Adds the same RISC-V target to the default (stable) toolchain**:
    `rustup target add riscv64gc-unknown-none-elf` (`setup.sh:35`). This is the
-   step people delete when they are cleaning things up, and it breaks `a00` and
-   `oslings ship`. The assembly lab in `asmlab/` and the user commands in
+   step people delete when they are cleaning things up, and it breaks `20a` and
+   `oslings ship`. The assembly bridge in `asmlab/` and the user commands in
    `commands/` both build on stable, on purpose, so that a broken nightly
-   install can never block Module 1.
+   install can never block the Rust and command exercises (`00r`–`13c`).
 6. **Checks for QEMU**, and offers to install it via your package manager
    (`setup.sh:37-71`). In a non-interactive shell it only prints the command.
 7. **Builds and installs the `oslings` command**: `cargo install --path
@@ -234,7 +234,7 @@ Six checks, each printed as `[ ok ]` or `[MISS]` with the exact fix command
 
 One honest gap: `doctor` checks the RISC-V target only on **nightly**. It does
 not check the stable toolchain, so a machine can show six green lines and still
-fail `a00` with a linker error. If that happens, run `setup.sh:35` by hand:
+fail `20a` with a linker error. If that happens, run `setup.sh:35` by hand:
 
 ```bash
 rustup target add riscv64gc-unknown-none-elf
@@ -254,7 +254,7 @@ rustup target list --installed | grep riscv
 | `[MISS] qemu-system-riscv64` on Ubuntu | installed `qemu` instead of `qemu-system-misc` | `sudo apt-get install -y qemu-system-misc` |
 | `[MISS] qemu-system-riscv64` on macOS | Homebrew not on `PATH` | `export PATH=/opt/homebrew/bin:$PATH` in `~/.zprofile`, new terminal |
 | `[MISS] qemu-system-riscv64` but `qemu-riscv64` exists | installed the linux-user emulator | Install the *system* package; `qemu-riscv64` is never used in this course |
-| All six `[ ok ]`, but `a00` fails to link | RISC-V target missing on **stable** | `rustup target add riscv64gc-unknown-none-elf` |
+| All six `[ ok ]`, but `20a` fails to link | RISC-V target missing on **stable** | `rustup target add riscv64gc-unknown-none-elf` |
 | All six `[ ok ]`, but everything is slow on Windows | repo lives under `/mnt/c` | Re-clone into your WSL home directory |
 
 Failures `doctor` cannot see:
@@ -283,31 +283,32 @@ The last row is the good news, and it is worth knowing precisely: `rustup target
 add` fetches an already-built `core` for `riscv64gc-unknown-none-elf`, so
 nothing recompiles the standard library from source on your machine. Once
 `setup.sh` has finished, a kernel edit-build-boot cycle is a couple of seconds
-end to end. If a build ever takes minutes after day 0, something is wrong —
+end to end. If a build ever takes minutes after setup day, something is wrong —
 usually a `/mnt/c` path on WSL, or `cargo` re-resolving because you deleted
 `target/`.
 
 ## Timeline: what you can defer
 
-Weeks 1 through 4 are `r00`-`r09` in the host `warmup` crate and the five Unix
-command labs in `commands/`. Every one of those is `mode = "test"` in
-`info.toml`: plain `std` Rust, on stable, graded by `cargo test` on your own
-laptop. No nightly. No QEMU. No kernel.
+Weeks 1 through 5 are `00r`–`08r` in the host `warmup` crate and the Unix
+command exercises `10c`–`13c` (plus the extra-credit `14c`) in `commands/`.
+Every one of those is `mode = "test"` in `info.toml`: plain `std` Rust, on
+stable, graded by `cargo test` on your own laptop. No nightly. No QEMU. No
+kernel.
 
-That is deliberate. A broken emulator install is a **background task for four
+That is deliberate. A broken emulator install is a **background task for five
 weeks, not a blocker** — flag it to the TA, keep doing exercises, and sort it
-out in a lab session.
+out in an exercise session.
 
-| Date | Exercise | Needs |
+| Date | Exercises | Needs |
 |---|---|---|
-| Aug 25 – Sep 17 | `r00`-`r08`, `c00`-`c04` | stable Rust only |
-| **Fri Sep 18** | `a00_asm_bridge` | **stable + RISC-V target + QEMU** |
-| Sep 22 onward | `r09`, `ex00`-`ex15` | nightly + RISC-V target + QEMU |
-| Nov onward | `ex16`-`ex22`, `oslings ship` | same, plus the stable RISC-V target for `commands/` |
+| Aug 27 – Sep 25 | `00r`–`13c` (Rust and command exercises) | stable Rust only |
+| **Thu Oct 1** | `20a_asm_bridge` | **stable + RISC-V target + QEMU** |
+| Oct 2 onward | `21r`, kernel `30k`–`48k` | nightly + RISC-V target + QEMU |
+| Dec 3 onward | `49k`–`53k`, `oslings ship` | same, plus the stable RISC-V target for `commands/` |
 
-**September 18 is the hard deadline.** `a00_asm_bridge` is `mode = "qemu"`
-(`info.toml:162-168`): it builds `asmlab/` for `riscv64gc-unknown-none-elf` and
-boots it bare-metal on the same harness every kernel exercise uses. There is no
+**October 1 is the hard deadline.** `20a_asm_bridge` is `mode = "qemu"` in
+`info.toml`: it builds `asmlab/` for `riscv64gc-unknown-none-elf` and boots it
+bare-metal on the same harness every kernel exercise uses. There is no
 host-side fallback, and nothing after that date works without QEMU either.
 
 ## Checking it by hand
@@ -344,5 +345,6 @@ oslings submit      # commit and push, pass or fail
 shipped a new version of it (`sync.rs:146-156`), so you rarely need to run
 `cargo install --path oslings-cli --force` yourself.
 
-Submit at the end of every session even when the test is still red: it is how
-attendance is recorded, and it is what you pick up from next time.
+Submit at the end of every session even when the test is still red: what is
+committed by the end of the session is what earns credit, and it is what you
+pick up from next time.
