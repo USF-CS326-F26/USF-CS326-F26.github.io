@@ -10,8 +10,9 @@ running and a character appears on your terminal. Along the way we read QEMU's
 six-instruction boot ROM, take `rv6/kernel.ld` apart to see how `_entry` is
 guaranteed to land at `0x8000_0000`, work out why the first thing any kernel
 does is set a stack pointer in assembly, and trace one byte from a
-`write_volatile` through the NS16550A UART onto the screen. This session unlocks
-**00_rust_kernel_basics** and **01_boot**; the companion references are the
+`write_volatile` through the NS16550A UART onto the screen. The exercises are
+**30k_kernel_basics** (Friday, October 2) and **31k_boot** (Thursday, October 8);
+the companion references are the
 [Memory Map](../guides/memory-map.md) and [RISC-V](../guides/riscv.md) guides.
 
 ## Learning Objectives
@@ -28,8 +29,8 @@ does is set a stack pointer in assembly, and trace one byte from a
 ## Prerequisites
 
 - **L08 RISC-V Registers and the Calling Convention** — `sp`, `ra`, `t0`, and why a prologue needs a stack.
-- **L09 Leaving `std`** and exercise `r09_unsafe_bridge` — `#![no_std]`, raw pointers, `write_volatile`.
-- **Exercise `a00_asm_bridge`** — RISC-V assembly called from Rust.
+- **L09 Leaving `std`** and exercise `21r_unsafe_bridge` (Friday, October 2) — `#![no_std]`, raw pointers, `write_volatile`.
+- **Exercise `20a_asm_bridge`** (Thursday, October 1) — RISC-V assembly called from Rust.
 - [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — raw pointers and volatile access.
 - [RISC-V](../guides/riscv.md) — "Registers" and "Privilege modes".
 - [Memory Map](../guides/memory-map.md) — this lecture is the narrative; that guide is the lookup table.
@@ -61,11 +62,11 @@ QEMU calls `riscv_virt_board.mrom`.
 
 **We are in machine mode.** Of RISC-V's three privilege modes — machine (M),
 supervisor (S), user (U) — M is the most privileged and the only one that exists
-at reset. rv6 stays there until exercise 13, when `start.rs` uses `mret` to drop
+at reset. rv6 stays there until exercise 43k, when `start.rs` uses `mret` to drop
 into S-mode so the MMU can take effect (`start.rs:54`).
 
 **Paging is off.** `satp = 0` selects Bare mode: every address reaches the bus
-untranslated. Virtual addresses do not exist until exercise 03.
+untranslated. Virtual addresses do not exist until exercise 33k.
 
 **`sp` is not a stack pointer.** QEMU zeroes the general registers; real silicon
 usually does not bother, and you get whatever the flip-flops powered up holding.
@@ -245,7 +246,7 @@ not show the symbol: `PROVIDE` emits one only if something references it.
 
 **`PROVIDE(end = .)`** sits after `.bss`, past every byte of the image — the
 *linker-computed* answer to "where does my kernel stop?", a question with no
-compile-time answer because it moves whenever you add a function. Exercise 02's
+compile-time answer because it moves whenever you add a function. Exercise 32k's
 allocator reads it:
 
 ```rust
@@ -429,8 +430,8 @@ later, at `0x1000_0000`–`0x1000_0007`.
 
 Two LSR bits carry the whole polled driver: bit 0 (`LSR_DR`, `uart.rs:14`) means
 a byte waits in RBR; bit 5 (`LSR_THRE`, `uart.rs:15`) means the transmit register
-is empty. Exercise 11's driver spins on THRE before every store
-(`uart.rs:49-50`); exercise 01's does not, and gets away with it only because
+is empty. Exercise 41k's driver spins on THRE before every store
+(`uart.rs:49-50`); exercise 31k's does not, and gets away with it only because
 QEMU's emulated UART is infinitely fast.
 
 > Key distinction: the same offset is two different registers depending on
@@ -450,7 +451,7 @@ flowchart TD
 
 The third step is the one to dwell on. Because `satp` is zero, the address the
 instruction produced *is* the address on the bus: no page table, no fault
-possible. Once exercise 03 turns on Sv39 that stops being automatic — the UART page
+possible. Once exercise 33k turns on Sv39 that stops being automatic — the UART page
 must be explicitly mapped or the very same store faults, which is why
 `memlayout.rs:17` exists. On real hardware a bus fabric routes the address to the
 chip, which shifts the byte out one bit at a time at the configured baud rate.
@@ -459,7 +460,7 @@ chip, which shifts the byte out one bit at a time at the configured baud rate.
 
 This is the most important line in `uart.rs`, easier to believe once you have seen it
 fail. Replace `write_volatile(UART0, c)` with a plain `*UART0 = c` and
-build with optimizations. The compiler analyses
+build with optimizations. The compiler analyzes
 `puts("\nrv6 is booting...\nOSLINGS:PASS\n")`, sees thirty-one stores to one
 address with no intervening read, decides thirty are dead, and emits:
 
@@ -481,7 +482,7 @@ every access, in program order, exactly as written.
 > Key distinction: `volatile` constrains the *compiler*, not the *hardware*. It
 > guarantees the instruction is emitted; it says nothing about caches, store
 > buffers, or the order another hart observes. Cross-hart ordering needs fences,
-> which arrive with spinlocks in exercise 07.
+> which arrive with spinlocks in exercise 37k.
 
 ---
 
@@ -512,7 +513,7 @@ execution must not fall off the end of a `-> !` function.
 This is a QEMU-and-SiFive convention: x86 kernels power off through ACPI, a real
 RISC-V system calls the SBI system-reset extension, and on hardware with
 neither, `wfi` in a loop is the closest thing to "stop". The finisher is what
-lets `oslings run 01_boot` capture serial output and get a real exit status back.
+lets `oslings run 31k_boot` capture serial output and get a real exit status back.
 
 The whole session:
 
@@ -535,12 +536,12 @@ sequenceDiagram
     HW-->>HW: QEMU exits, status 0
 ```
 
-Everything after today elaborates this diagram. Exercise 02 reads `end` and turns
-the RAM above it into a free list. Exercise 03 builds Sv39 page tables and turns
+Everything after today elaborates this diagram. Exercise 32k reads `end` and turns
+the RAM above it into a free list. Exercise 33k builds Sv39 page tables and turns
 `satp` on, after which the UART store works only because you mapped it. Exercise
-13 inserts `start.rs` between `_entry` and `kmain`, dropping the kernel into
-supervisor mode via `mret`. Exercise 14 programs the CLINT for a heartbeat;
-exercise 15 wires the PLIC and makes the console interrupt-driven.
+43k inserts `start.rs` between `_entry` and `kmain`, dropping the kernel into
+supervisor mode via `mret`. Exercise 44k programs the CLINT for a heartbeat;
+exercise 45k wires the PLIC and makes the console interrupt-driven.
 
 **Compared with xv6**, rv6's boot is deliberately shorter: xv6-riscv boots under
 OpenSBI, starts every hart, and gives each a stack slice, while rv6 uses `-smp 1`
@@ -799,7 +800,7 @@ past and fire a spurious interrupt.
 - [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — raw pointers, `write_volatile`, `static mut`, `extern "C"`.
 - [QEMU and GDB](../guides/qemu-gdb.md) — breaking at `_entry` and reading `mcause` when nothing prints.
 - [rv6 Architecture](../guides/rv6-architecture.md) — where `start.rs`, `trap.rs`, and the rest of the boot chain arrive.
-- [All Exercises](../assignments/exercises.md) — `00_rust_kernel_basics` and `01_boot` are unlocked by this session.
+- [All Exercises](../assignments/exercises.md) — `30k_kernel_basics` is Friday, October 2; `31k_boot` is Thursday, October 8.
 - *RISC-V Privileged Architecture* manual, Chapter 3 (machine-level ISA).
 - QEMU source, `hw/riscv/virt.c` — `virt_memmap[]` is the authoritative map; `riscv_setup_rom_reset_vec()` builds the ROM.
 - xv6-riscv `entry.S` and `kernel.ld`; Linux `arch/riscv/kernel/head.S`.
@@ -816,4 +817,4 @@ past and fire a spurious interrupt.
 5. **`end` is the linker's answer to "where does the kernel stop".** `PROVIDE(end = .)` (`kernel.ld:43`) is read at runtime by `kalloc.rs:22`, turning everything above it into free pages. It moves with every code change, which is why it is a symbol and not a constant.
 6. **The first job of any kernel is to give itself a stack.** Rust prologues dereference `sp` before anything else, so `sp` must be valid before the first Rust instruction — and the code that fixes it cannot itself use a stack. Skip it and you get a silent trap loop at `pc = 0`, not an error message.
 7. **Printing is one store to one address.** `write_volatile(0x1000_0000, byte)` reaches the NS16550A's transmit register and QEMU forwards it onward. `volatile` is load-bearing: without it the optimizer legally deletes thirty of thirty-one stores.
-8. **The board's map is the kernel's API.** UART0, the test finisher, the CLINT, the PLIC, and RAM each reappear as a `memlayout.rs` constant — and after exercise 03 each must be explicitly mapped or it stops working.
+8. **The board's map is the kernel's API.** UART0, the test finisher, the CLINT, the PLIC, and RAM each reappear as a `memlayout.rs` constant — and after exercise 33k each must be explicitly mapped or it stops working.

@@ -30,7 +30,7 @@ Re-running it with a different URL is safe: it uses `remote set-url` when
 `origin` already exists (`sync.rs:59`). If your URL does not contain
 `oslings-`, it warns you — batch grading finds your repo by name.
 
-Note what is *not* here: no per-exercise repo, no branch per lab, no pull
+Note what is *not* here: no per-exercise repo, no branch per exercise, no pull
 request. Exercises are gated by **absence** — one that has not been released
 exists in no commit you can fetch, so there is nothing to read ahead to.
 

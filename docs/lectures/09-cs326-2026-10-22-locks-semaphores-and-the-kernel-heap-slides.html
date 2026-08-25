@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L15 · October 22, 2026 · unlocks `07_spinlocks` and `08_semaphores`
+L15 · October 22, 2026 · exercises `37k_spinlocks` and `38k_semaphores` (Oct 29)
 
 ---
 
@@ -456,7 +456,7 @@ let _  = lock.lock();   // held for ZERO statements
 unsafe impl<T: Send> Sync for SpinLock<T> {}    // spinlock.rs:12
 ```
 
-- The `unsafe` is a **signature**: *I checked that the lock serialises access*
+- The `unsafe` is a **signature**: *I checked that the lock serializes access*
 - `T: Send`, not `T: Sync` — the lock hands `&mut T` to whichever hart wins
 - `const fn new` (`spinlock.rs:15`) is why `fs.rs:277` can be a plain `static`
 
@@ -519,7 +519,7 @@ count = initial + (completed V) - (completed P)      and  count >= 0
 - 1 permit → **binary semaphore**, behaves like a mutex
 - *n* permits → **counting semaphore**: buffer slots, DMA channels
 
-A mutex has an **owner**; a semaphore does not — which is why it is good at *signalling*.
+A mutex has an **owner**; a semaphore does not — which is why it is good at *signaling*.
 
 ---
 
@@ -641,12 +641,12 @@ And it is <strong>not thread-safe</strong>: <code>kalloc</code> walks a bare <co
 
 Today's exercises:
 
-- **`07_spinlocks`** — `lock` and `try_lock` on `compare_exchange`, with the guard, `UnsafeCell`, and `unsafe impl Sync` given
-- **`08_semaphores`** — `try_wait` and `post` on your lock; the heap turns on and `Arc` starts working
+- **`37k_spinlocks`** — `lock` and `try_lock` on `compare_exchange`, with the guard, `UnsafeCell`, and `unsafe impl Sync` given
+- **`38k_semaphores`** — `try_wait` and `post` on your lock; the heap turns on and `Arc` starts working
 
-Read `07_spinlocks/README.md` first — it has the API and the failure messages.
+Read `37k_spinlocks/README.md` first — it has the API and the failure messages.
 
-Later: `14_interrupts` makes preemption real, and every shared structure in the kernel needs what you built today.
+Later: `44k_interrupts` makes preemption real, and every shared structure in the kernel needs what you built today.
 
                 </textarea>
             </section>

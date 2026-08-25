@@ -1,6 +1,6 @@
 # Using OSlings
 
-OSlings is the CLI you will spend every lab session inside. It hands you one
+OSlings is the CLI you will spend every exercise session inside. It hands you one
 exercise at a time, re-runs that exercise's test every time you save, archives
 your work so nothing is lost when you move around, and pushes it to your own
 repo when the session ends. This page is the reference: what each command does,
@@ -81,7 +81,7 @@ remember this table (`tui.rs:729`).
 | `oslings lesson [ex]` | Render the lesson in the terminal |
 | `oslings goto [ex]` | Move the current pointer (no argument = next) |
 | `oslings reset [ex]` | Re-stage the pristine skeleton |
-| `oslings solution [ex]` | Reference solution — locked until you pass |
+| `oslings solution [ex]` | Reference solution — available once the next exercise is released |
 | `oslings progress [--export]` | Completion view; `--export` writes CSV |
 | `oslings submit [ex]` | Commit your work and push it to your repo |
 | `oslings doctor` | Check rustup, nightly, target, components, QEMU |
@@ -90,8 +90,9 @@ remember this table (`tui.rs:729`).
 | `oslings difficulty [level]` | Show or set the guidance level |
 | `oslings init-repo <url>` | One-time: point this clone at your own repo |
 
-Any `[ex]` argument accepts a full name or a numeric prefix — `oslings run 03`
-finds `03_paging` (`model.rs:623`).
+Any `[ex]` argument accepts a full name or a unique prefix — `oslings run 33k`
+finds `33k_paging`. An ambiguous prefix (`oslings run 3`) is refused with the
+list of candidates, so use at least the two digits and the track letter.
 
 ### The ones with surprises in them
 
@@ -103,16 +104,20 @@ brought a new CLI version, `update` reinstalls `oslings` for you
 (`sync.rs:146`). An exercise that has not been released yet exists in **no
 commit you can fetch**, so `update` is the only way to get it.
 
-`submit` stages `my-work/`, `submissions/`, `.oslings/state.toml`, `rv6/src`,
-and `warmup/src`, commits with a message like `03_paging: submit (passing)`, and
-pushes to `origin` (`sync.rs:167`). Run it at the end of **every** session,
-passing or not — there is no homework, so the push is the only record that you
-were there and working, and it is your resume point next week. See
-[Git and Submission](git-and-submission.md).
+`submit` stages `my-work/`, `submissions/`, `.oslings/state.toml`, and every
+staging root (`warmup/src`, `commands/src/bin`, `asmlab/src`, `rv6/src`),
+commits with a message like `33k_paging: submit (passing)`, and pushes to
+`origin` (`sync.rs:167`). Run it before you leave **every** session, passing or
+not — what is pushed is what is graded, and it is your resume point if you
+finish the exercise afterwards. See [Git and Submission](git-and-submission.md).
 
-`solution` refuses until `state.completed` contains that exercise
-(`main.rs:894`). This is not a lock you should try to pick; see the
-[Integrity Policy](integrity-policy.md).
+`solution` prints the reference solution for an exercise once it has been
+released. Solutions ship with the *next* exercise's release, after the deadline,
+into `exercises/<name>/solution/`, and `oslings update` fetches them; before
+that, `oslings solution 33k_paging` says "not released yet". If you have not
+passed the exercise it nudges you first, then shows it anyway — the point is to
+compare it against your own attempt. See the
+[Integrity Policy](integrity-policy.md) and [Solutions](../solutions/index.md).
 
 `progress --export` prints a CSV with one row per exercise, including the
 difficulty you solved it at, hints used, elapsed time, and how many harness runs
@@ -130,18 +135,18 @@ even means.
 | `build` | `cargo build` in `rv6/` for `riscv64gc-unknown-none-elf` | the kernel compiles | none |
 | `qemu` | that build, then boot the ELF in QEMU | serial output contains `OSLINGS:PASS` | 10 s |
 
-`test` is Module 1: the `r00`–`r09` Rust exercises in the `warmup` crate and the
-`c00`–`c04` command labs in the `commands` crate. Plain `std` Rust, no nightly,
+`test` is Module 1: the `00r`–`08r` and `21r` Rust exercises in the `warmup`
+crate and the `10c`–`14c` command exercises in the `commands` crate. Plain `std` Rust, no nightly,
 no QEMU, no cross-toolchain — which is why week 1 works while your bare-metal
 setup is still being fixed. Tests run with `--test-threads=1` so failure
 ordering is stable (`runner.rs:65`). A 60-second overrun is reported as an
 infinite loop, not a slow machine (`runner.rs:18`).
 
-`build` covers exactly one exercise, `00_rust_kernel_basics`: getting `no_std`,
+`build` covers exactly one exercise, `30k_kernel_basics`: getting `no_std`,
 the panic handler, and `no_main` right is the whole task, so compiling *is* the
 test.
 
-`qemu` covers `a00_asm_bridge` and every kernel exercise from `01_boot` on. The
+`qemu` covers `20a_asm_bridge` and every kernel exercise from `31k_boot` on. The
 harness runs:
 
 ```bash
@@ -163,7 +168,7 @@ emulator. `qemu-riscv64` (Linux user-mode emulation) is a different program, is
 not what we run, and does not exist on macOS. Bare-metal RISC-V also needs no C
 cross-compiler; `rust-lld` ships with rustup. See [QEMU and GDB](qemu-gdb.md).
 
-Part 2 exercises build with `--features harness` (`runner.rs:179`), which swaps
+Kernel exercises build with `--features harness` (`runner.rs:179`), which swaps
 the interactive OS for a boot self-check. That is why `cd rv6 && cargo run`
 drops you into the real shell while `oslings run` prints a pass marker: same
 kernel, different feature.
@@ -175,16 +180,18 @@ you edit:
 
 | Exercises | Crate | Staged into |
 |---|---|---|
-| `r00`–`r09` | `warmup` | `warmup/src/lib.rs` |
-| `c00`–`c04` | `commands` | `commands/src/bin/<name>.rs` |
-| `a00_asm_bridge` | `asmlab` | `asmlab/src` |
-| `00_rust_kernel_basics` – `22_userland` | `rv6` | `rv6/src` |
+| `00r`–`08r`, `21r` | `warmup` | `warmup/src/lib.rs` |
+| `10c`–`14c` | `commands` | `commands/src/bin/<name>.rs` |
+| `20a_asm_bridge` | `asmlab` | `asmlab/src` |
+| `30k_kernel_basics` – `54k_elf_loader` | `rv6` | `rv6/src` |
 
 `oslings watch` and the TUI watch all four roots at once (`model.rs:597`), so
 crossing from Module 1 into the kernel mid-session keeps working without a
-restart. The kernel is **cumulative**: each exercise's skeleton already contains
-everything you finished earlier, plus fresh `IMPLEMENT` markers. Module 1 is
-not — each exercise replaces its one staged file wholesale.
+restart. The kernel is **cumulative**: each exercise's skeleton is the reference
+kernel through the previous exercise, plus fresh `IMPLEMENT` markers, so every
+exercise starts from a kernel that works; your own earlier code is archived in
+`my-work/`. The Rust and command exercises are self-contained — each replaces
+its one staged file wholesale, and nothing later depends on it.
 
 ## `my-work/` versus `submissions/`
 
@@ -213,8 +220,8 @@ before staging the one you are entering. Then, when you arrive, if
 `my-work/<target>/` already exists, it restores **that** rather than the
 skeleton.
 
-So `oslings goto 05` from a half-finished `03_paging` archives your `03` work
-and gives you `05`; `oslings goto 03` afterwards archives `05` and hands `03`
+So `oslings goto 35k` from a half-finished `33k_paging` archives your `33k` work
+and gives you `35k`; `oslings goto 33k` afterwards archives `35k` and hands `33k`
 back exactly as you left it. Jump around freely.
 
 ## `reset` deliberately does not restore your archive
@@ -244,17 +251,16 @@ trimmed, never code (`model.rs:134`).
 | `standard` | the one-line task, detailed steps stripped | 2 |
 | `challenge` | a bare `TODO` marker | 1 |
 
-**This course ships `standard`.** You get the task line and two hints; the third
-hint, which is close to a walkthrough, is not released into the course repo at
-all. If `oslings difficulty` reports "(locked by the course)", local overrides
-and `OSLINGS_DIFFICULTY` are ignored (`model.rs:161`). Changing difficulty
-affects each exercise as it is staged, so a change only reaches the exercise you
-are on if you `reset` it — which discards your edits.
+**This course ships `guided` skeletons with two released hints.** You get the
+step-by-step comments and hints 1 and 2; the third hint, which is close to a
+walkthrough, is never released into the course repo at all. The level is locked
+by the course — `oslings difficulty` reports "(locked by the course)", and local
+overrides and `OSLINGS_DIFFICULTY` are ignored (`model.rs:161`).
 
 ## `oslings ship`
 
-The Module 3 payoff. `ship` compiles the commands you wrote in Module 1 for the
-kernel target and embeds them in your own OS.
+The payoff (`53k_ship_your_commands`). `ship` compiles the commands you wrote in
+Module 1 for the kernel target and embeds them in your own OS.
 
 ```bash
 oslings ship                # every command in commands/src/bin/

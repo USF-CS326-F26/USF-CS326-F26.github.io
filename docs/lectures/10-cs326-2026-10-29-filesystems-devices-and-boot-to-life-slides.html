@@ -445,7 +445,7 @@ Every polled driver: *is it ready*, *transfer*, *acknowledge*.
 - Waiting for the receiver is waiting for a **human** — "nothing yet" is an ordinary answer, so it returns `Option`
 
 <div class="highlight-box">
-87 µs is ~87,000 instructions on a 1 GHz CPU. QEMU's UART swallows bytes instantly, so exercise 01's blind write looks fine — on real hardware most of a banner vanishes.
+87 µs is ~87,000 instructions on a 1 GHz CPU. QEMU's UART swallows bytes instantly, so exercise 31k's blind write looks fine — on real hardware most of a banner vanishes.
 </div>
 
 ---
@@ -496,7 +496,7 @@ unsafe fn kinit() {                  // main.rs:87
 }
 ```
 
-Exercise 12 is the first four.
+Exercise 42k is the first four.
 
 ---
 
@@ -527,12 +527,12 @@ flowchart TD
 ## Armed, but Inert
 
 <div class="highlight-box">
-Through exercise 12 the kernel runs in <strong>machine mode</strong>, where <code>satp</code> translates nothing. The write lands, the mode field reads back as 8, and no translation happens.
+Through exercise 42k the kernel runs in <strong>machine mode</strong>, where <code>satp</code> translates nothing. The write lands, the mode field reads back as 8, and no translation happens.
 </div>
 
-- Exercise 13's `start` sets `mstatus.MPP`, points `mepc` at `kmain`, and `mret`s (`start.rs:29`-`54`)
-- **A broken page table can pass exercise 12 and hang exercise 13** — with no code change in between
-- Boot lab fine on Friday, trap lab dead on Tuesday? Suspect `kvmmake`
+- Exercise 43k's `start` sets `mstatus.MPP`, points `mepc` at `kmain`, and `mret`s (`start.rs:29`-`54`)
+- **A broken page table can pass exercise 42k and hang exercise 43k** — with no code change in between
+- `42k` boots fine, `43k` dead an hour later? Suspect `kvmmake`
 
 ---
 
@@ -573,7 +573,7 @@ Each line proves everything before it completed. Debugging a boot is binary sear
 6. **`volatile` = happens, once, in order** — and nothing else
 7. **Boot is a topological sort you write by hand**, and the log is how you debug it
 
-Next: `10_filesystem`, `11_devices`, `12_boot_to_life` &mdash; then `cargo run` boots rv6.
+Next: `40k_filesystem`, `41k_devices`, `42k_boot_to_life` &mdash; then `cargo run` boots rv6.
                 </textarea>
             </section>
         </div>

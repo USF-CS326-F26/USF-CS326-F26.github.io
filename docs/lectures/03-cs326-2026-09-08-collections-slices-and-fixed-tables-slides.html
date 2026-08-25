@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L05 &middot; September 8, 2026 &middot; exercise `r06_collections`
+L05 &middot; September 8, 2026 &middot; exercise `06r_collections`
 
 ---
 
@@ -262,7 +262,7 @@ A borrowed window onto elements somebody else owns.
 
 - No capacity: a slice cannot grow
 - No ownership: it allocated nothing, it frees nothing
-- Borrow rules from `r03` apply: `&[T]` shared, `&mut [T]` exclusive
+- Borrow rules from `03r` apply: `&[T]` shared, `&mut [T]` exclusive
 
 ---
 
@@ -364,7 +364,7 @@ pub trait Scheduler {
 |---|---|---|
 | `table[i]` | panics | `i` is yours and provably in range |
 | `table.get(i)` | returns `None` | out-of-range is a normal outcome |
-| `get_unchecked(i)` | undefined behaviour | essentially never here |
+| `get_unchecked(i)` | undefined behavior | essentially never here |
 
 And a fourth, for kernels: **check it yourself at the boundary**, once, then
 index freely downstream.
@@ -480,7 +480,7 @@ Sixty-four slots, decided when the kernel is compiled. Never sixty-five.
 
 <div class="highlight-box">
 In ordinary Rust this looks like a beginner's mistake — surely a growable
-<code>Vec&lt;Proc&gt;</code> is better? It is not, for three reasons that generalise.
+<code>Vec&lt;Proc&gt;</code> is better? It is not, for three reasons that generalize.
 </div>
 
 ---
@@ -494,7 +494,7 @@ flowchart TD
     C --> D["vm::kvminithart()\nthe MMU comes on"]
     D --> E["proc::init()\nwalk PROCS, mark slots Unused"]
     E --> F["trap::init(), fs init"]
-    F --> G["ex08: kheap registers the\nglobal allocator — NOW Vec works"]
+    F --> G["38k: kheap registers the\nglobal allocator — NOW Vec works"]
     style A fill:#e8f5e9,stroke:#00543c
     style G fill:#fff3cd,stroke:#FDBB30
 </div>
@@ -504,8 +504,8 @@ flowchart TD
 ## Reason 1: No Allocator Yet
 
 - `PROCS` is used at `proc::init()` — the fourth line of `kinit` (`main.rs:87`)
-- `Vec` calls the **global allocator**; rv6 has none until exercise 08 (`kheap.rs:40`)
-- `04_processes` has no `kheap.rs`; `08_semaphores/main.rs:18` is the first `extern crate alloc`
+- `Vec` calls the **global allocator**; rv6 has none until exercise 38k (`kheap.rs:40`)
+- `34k_processes` has no `kheap.rs`; `38k_semaphores/main.rs:18` is the first `extern crate alloc`
 
 <div class="info-box">
 This is the shape of every boot. <code>kalloc::init()</code> walks physical memory to
@@ -549,7 +549,7 @@ error, not with growth.
 
 - **xv6**: `struct proc proc[NPROC];`, `#define NPROC 64` — identical, decades older
 - **Linux**: `task_struct` from a slab cache, *but* `pid_max`, `RLIMIT_NPROC`, `file-max`, and statically reserved per-CPU interrupt stacks
-- **Power of Ten** (JPL/NASA), rule 3: no dynamic allocation after initialisation
+- **Power of Ten** (JPL/NASA), rule 3: no dynamic allocation after initialization
 - **MISRA C**: `malloc` banned outright
 - **seL4**: no kernel heap at all
 
@@ -602,7 +602,7 @@ Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
 
 - `allocproc` (`proc.rs:108`) and `fdalloc` (`syscall.rs:298`) are the same scan
 - For fds it is the **Unix contract**: `open` returns the lowest unused descriptor
-- That is why `cmd > file` = "close fd 1, then open" — you write this in **exercise 20**
+- That is why `cmd > file` = "close fd 1, then open" — you write this in **exercise 50k**
 
 ---
 
@@ -611,8 +611,8 @@ Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
 `Vec` is not bad; it is a tool with a prerequisite.
 
 - **Module 1, host commands, `cargo test`**: use it freely — the OS allocator is already running
-- **Kernel, exercise 08 onward**: legal, under two standing rules
-    - allocate at initialisation, never on the trap path
+- **Kernel, exercise 38k onward**: legal, under two standing rules
+    - allocate at initialization, never on the trap path
     - know your allocator: `KernelHeap::alloc` (`kheap.rs:23`) serves one 4096-byte page per allocation and refuses anything larger
 
 ---
@@ -622,13 +622,13 @@ Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
 1. `[T; N]` **is** the data, `Vec<T>` **owns** it, `&[T]` **points at** it
 2. A slice is a fat pointer: address + length, 16 bytes, no ownership
 3. Take `&[T]` / `&mut [T]` in signatures — one function, every table size
-4. Bounds checks are ~3 instructions, usually optimised away
+4. Bounds checks are ~3 instructions, usually optimized away
 5. Check untrusted indices at the **boundary** (`fd >= NOFILE`)
 6. Iterator adapters are lazy and allocate nothing; `collect` is the exception
 7. `PROCS: [Proc; NPROC]` — no allocator yet, no allocation on the fault path, honest failure
 8. Kernels bound resources statically: a constant and an error, not growth
 
-**Next:** exercise `r06_collections` — build the miniature process table.
+**Next:** exercise `06r_collections` — build the miniature process table.
                 </textarea>
             </section>
         </div>

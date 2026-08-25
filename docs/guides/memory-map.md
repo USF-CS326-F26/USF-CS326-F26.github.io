@@ -4,9 +4,10 @@ This page is the address reference for rv6. When you are staring at a constant
 like `0x3F_FFFF_F000` in `memlayout.rs`, or wondering why your page allocator
 handed out a page that was already holding your kernel's `.bss`, or why QEMU
 jumped to your `_entry` and not somewhere else, the answer is here. You will
-need it in exercise 01 (boot), exercise 02 (the allocator), exercise 03
-(paging), and again in exercise 18 when user address spaces appear. Everything
-below is taken from `exercises/22_userland/solution/memlayout.rs`,
+need it in exercise 31k (boot), exercise 32k (the allocator), exercise 33k
+(paging), and again in exercise 48k when user address spaces appear. Everything
+below is taken from the reference kernel's `memlayout.rs`
+(`exercises/52k_userland/solution/`),
 `rv6/kernel.ld`, and QEMU itself.
 
 ## Two maps, not one
@@ -16,10 +17,10 @@ rv6 lives in two different address spaces and you have to keep them apart:
 - **Physical addresses** are what the `virt` board wires up: RAM at one range,
   devices at others. Fixed by the board, identical for every program.
 - **Virtual addresses** are what the MMU translates, once you turn on Sv39 in
-  exercise 03. The kernel's virtual map is nearly identity; each user process
+  exercise 33k. The kernel's virtual map is nearly identity; each user process
   gets its own, starting at 0.
 
-Before exercise 03 there is only the physical map. After it, "address" always
+Before exercise 33k there is only the physical map. After it, "address" always
 needs a qualifier. See [Sv39 Paging](sv39-paging.md) for how the translation
 itself works.
 
@@ -123,7 +124,7 @@ very front of `.text`. Nothing else claims `.entry`, so `_entry` lands at
 exactly `0x8000_0000` — the address the ROM jumps to. Without it, the linker
 would order functions however it liked and the first instruction executed would
 be some arbitrary Rust function with a broken `sp`. This is also why the failure
-mode of a bad exercise 01 is a silent timeout rather than an error.
+mode of a bad exercise 31k is a silent timeout rather than an error.
 
 **`PROVIDE(etext = .)`** names the end of the text section, page-aligned. `etext`
 is the boundary you would use to map code read-execute and everything above it

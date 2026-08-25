@@ -12,8 +12,8 @@ no message; PMP is the one everybody forgets. Second the supervisor trap path:
 `stvec`, `sepc`, `scause`, `sstatus`, `stval`, the `scause` decode, and `sret`.
 We close on the CLINT timer — why it must be armed in machine mode and
 forwarded down, and why a scheduler without it can only switch when a process
-cooperates. This session unlocks **13_traps** and **14_interrupts**; the
-reference tables live in the [RISC-V](../guides/riscv.md) guide.
+cooperates. The exercises are **43k_traps** and **44k_interrupts**, both on
+Friday, November 6 after `42k_boot_to_life`; the reference tables live in the [RISC-V](../guides/riscv.md) guide.
 
 ## Learning Objectives
 
@@ -30,7 +30,7 @@ reference tables live in the [RISC-V](../guides/riscv.md) guide.
 
 - **L10 Boot: From Reset to `kmain`** — `_entry`, the M-mode start state, `-bios none`.
 - **L14 The Context Switch and the Scheduler** — `swtch`, cooperative round robin, the quantum.
-- **Exercise `a00_asm_bridge`** and exercises `00`–`12` — inline `asm!`, `global_asm!`, `extern "C"`.
+- **Exercise `20a_asm_bridge`** and exercises `30k`–`40k` (plus `42k_boot_to_life`, which opens Friday's session) — inline `asm!`, `global_asm!`, `extern "C"`.
 - [RISC-V](../guides/riscv.md) — the CSR tables and the `scause` decode; this lecture is their narrative.
 - [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — `asm!` operands, `static mut`, `options(noreturn)`.
 
@@ -46,7 +46,7 @@ hart state no instruction can read directly.
 |---|---|---|---|
 | **M** machine | `11` | `entry.rs`, `start.rs`, `timervec` | Everything: all CSRs, all physical memory, PMP, the CLINT. The mode at reset |
 | **S** supervisor | `01` | the rv6 kernel | `s*` CSRs, `satp`, delegated traps, `sret`, `sfence.vma`, `wfi`. **Cannot** touch `m*` CSRs |
-| **U** user | `00` | shell commands, `18_user_mode` on | Ordinary instructions only. **No** CSR access, and only the memory its page table grants |
+| **U** user | `00` | shell commands, `48k_user_mode` on | Ordinary instructions only. **No** CSR access, and only the memory its page table grants |
 
 **Privilege belongs to the hart, not to the code.** The same bytes behave
 differently depending on the mode executing them: `csrr t0, mstatus` is fine in
@@ -123,7 +123,7 @@ register and one cause register, which is why they get conflated — and why bit
                         pc <- stvec
 ```
 
-The split has a consequence students hit in `13_traps`. For an exception the
+The split has a consequence students hit in `43k_traps`. For an exception the
 faulting instruction has **not** completed; `sepc` points *at* it, and whether
 to re-run or step past is a per-cause decision. A page fault you repaired
 should re-run; an `ebreak` you have counted must be stepped over, or you take
@@ -280,7 +280,7 @@ the C calling convention, which already preserves `s0`–`s11`; the caller-saved
 set is exactly what a call may destroy, so that is what `kernelvec` protects.
 It also uses the **current** stack, which works only because the trap came from
 kernel code — a trap from user mode has neither a usable `sp` nor a page table
-containing the kernel, hence `18_user_mode`'s trampoline.
+containing the kernel, hence `48k_user_mode`'s trampoline.
 
 ### Decoding `scause`
 
@@ -420,7 +420,7 @@ asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs:41  SIE: the master s
 An interrupt is delivered only when its bit is set in `sie`, its bit is set in
 `sip`, and `sstatus.SIE` is 1. `csrs` — set bits, leave the rest — is the right
 instruction; `csrw` here would clear `sie.SEIE` and silently break the console
-the moment `15_console` turns it on (`console.rs:63`). One rule nobody writes
+the moment `45k_console` turns it on (`console.rs:63`). One rule nobody writes
 down: in **user** mode delegated supervisor interrupts are always enabled
 regardless of `sstatus.SIE`, which governs only the kernel.
 
@@ -440,7 +440,7 @@ per trap, forever, and from outside indistinguishable from a hang.
 
 ## 6. Why Preemption Needs a Timer
 
-Exercise `06_scheduling` built a round-robin scheduler that runs when a process
+Exercise `36k_scheduling` built a round-robin scheduler that runs when a process
 calls `yield`. It is *cooperative*: control returns to the kernel only when the
 running process gives it back. The scheduler is therefore a subroutine of the
 running program, and a process that loops forever without a system call is the
@@ -463,13 +463,13 @@ because it depends on no device — it is the kernel setting an alarm clock for
 itself before handing over the CPU. Atlas used clock interrupts for exactly
 this, and CTSS and Multics built time-sharing on them.
 
-**rv6 stays cooperative on purpose.** `14_interrupts` gets the ticks flowing and
+**rv6 stays cooperative on purpose.** `44k_interrupts` gets the ticks flowing and
 counted; it does not turn a tick into a forced context switch. A cooperative
 scheduler is deterministic, so a wrong `pick_next` gives a wrong *order* rather
 than a heisenbug. Making the tick preempt would require per-process time
 accounting, a `swtch` from inside the trap handler, and a lock on every kernel
 structure the switch could interrupt — since a switch could then happen at
-*any* instruction. `07_spinlocks` exists for that reason.
+*any* instruction. `37k_spinlocks` exists for that reason.
 
 Linux on RISC-V solves the same problem one layer up: with no M-mode code of
 its own it asks firmware for a timer through the SBI `TIME` extension, and
@@ -479,11 +479,11 @@ OpenSBI does what `timervec` does.
 
 ## 7. What This Unlocks
 
-**`13_traps`** installs `stvec`, catches an `ebreak`, and returns from it — the
-first time your kernel *survives* something going wrong. **`14_interrupts`**
+**`43k_traps`** installs `stvec`, catches an `ebreak`, and returns from it — the
+first time your kernel *survives* something going wrong. **`44k_interrupts`**
 opens the gates, receives the forwarded ticks, clears `sip.SSIP`, and counts.
-From here `15_console` reuses the identical path for `scause = 9`, a keypress,
-and `18_user_mode` for `scause = 8`, the system call.
+From here `45k_console` reuses the identical path for `scause = 9`, a keypress,
+and `48k_user_mode` for `scause = 8`, the system call.
 
 ---
 
@@ -560,7 +560,7 @@ with cause 1. It is delegated, so it vectors to `stvec` — still 0 this early i
 boot. Fetch at 0 faults, vectors to 0, loops. Total silence.
 
 **2 (delegation).** Without `medeleg` the breakpoint is taken in M-mode at
-`mtvec`, which `13_traps` never sets, so the hart jumps to 0 in machine mode.
+`mtvec`, which `43k_traps` never sets, so the hart jumps to 0 in machine mode.
 
 **3 (`mcounteren`).** Without the `TM` bit, `csrr t0, time` from S-mode is an
 illegal instruction — cause 2, on an instruction legal in the ISA.
@@ -680,7 +680,7 @@ progress per trap; the terminal looks hung — exactly like a *missing*
 
 ### Problem 6: Find the bug
 
-This handler passes `13_traps`, fails `14_interrupts` intermittently, and once
+This handler passes `43k_traps`, fails `44k_interrupts` intermittently, and once
 the console exists it corrupts input.
 
 ```rust
@@ -722,7 +722,7 @@ and returns to the faulting instruction, which faults again.
 `sie` or `sstatus` — which students do copy — disables the console's interrupt
 or the master enable. Use `& !2` (`trap.rs:63`), or `csrc`.
 
-**3. No arm for cause 9.** Once `15_console` routes the UART through the PLIC,
+**3. No arm for cause 9.** Once `45k_console` routes the UART through the PLIC,
 a supervisor external interrupt arrives with bit 63 set and low bits 9. The
 `_ => {}` swallows it without calling `console::intr()` and without the PLIC
 claim/complete handshake, so the line stays asserted and the kernel storms —
@@ -742,7 +742,7 @@ level-triggered source is always a storm.
 - [Cheatsheet](../guides/cheatsheet.md) — the M→S checklist and the timer registers on one page.
 - [QEMU and GDB](../guides/qemu-gdb.md) — `info registers` and breaking on `kerneltrap` when nothing prints.
 - [rv6 Architecture](../guides/rv6-architecture.md) — where `start.rs` and `trap.rs` sit in the kernel.
-- [All Exercises](../assignments/exercises.md) — `13_traps` and `14_interrupts` are unlocked here.
+- [All Exercises](../assignments/exercises.md) — `43k_traps` and `44k_interrupts` are Friday, November 6's exercises, after `42k_boot_to_life`.
 - *RISC-V Privileged Architecture* manual, Chapters 3 and 4. The PMP no-match rule is worth reading in the original.
 - xv6-riscv `kernel/start.c`, `kernel/kernelvec.S`, `kernel/trap.c` — rv6's direct ancestors.
 - Linux `arch/riscv/kernel/entry.S` and `drivers/clocksource/timer-riscv.c` — the same path at production scale.

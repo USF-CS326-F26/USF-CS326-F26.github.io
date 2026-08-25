@@ -12,8 +12,9 @@ integers a user program cannot forge — indexed through a per-process table int
 a system-wide one, which is where the read/write offset actually lives.
 **`fork`** duplicates the calling process so completely that the only difference
 between the two survivors is the value the call returns. The fourth call,
-`wait`, arrives Friday with `21_fork_wait`. This is the concept behind exercises
-`19_exec` and `20_file_descriptors`; see the
+`wait`, arrives Friday, December 4 with `51k_fork_wait`. This is the concept
+behind exercises `49k_exec` and `50k_file_descriptors`, on Thursday, December 3;
+see the
 [rv6 Architecture guide](../guides/rv6-architecture.md) for where the pieces sit.
 
 ## Learning Objectives
@@ -27,7 +28,7 @@ between the two survivors is the value the call returns. The fourth call,
   register state — and identify which one each line of the reference kernel
   produces.
 - **Describe** a file descriptor as an unforgeable capability, and name every
-  check the kernel makes before honouring one.
+  check the kernel makes before honoring one.
 - **Distinguish** the per-process file table from the system-wide open-file
   table, and predict what happens to the offset after `fork`, `dup`, and `close`
   under each design.
@@ -40,13 +41,13 @@ between the two survivors is the value the call returns. The fourth call,
 
 ## Prerequisites
 
-- L22 *User Mode I* and L23 *User Mode II*, plus exercise `18_user_mode` — the
+- L22 *User Mode I* and L23 *User Mode II*, plus exercise `48k_user_mode` — the
   trampoline, the trapframe, `usertrap`, and the `ecall` round trip.
-- Exercise `03_paging` and the [Sv39 Paging guide](../guides/sv39-paging.md) —
+- Exercise `33k_paging` and the [Sv39 Paging guide](../guides/sv39-paging.md) —
   `walk`, `mappages`, and what `PTE_U` means.
 - L13 *Processes and the PCB* and L14 *The Context Switch and the Scheduler* —
   `Proc`, `allocproc`, forged contexts, and the scheduler hub.
-- Exercise `10_filesystem` and `17_file_commands` — inodes, `dirlookup`, and the
+- Exercise `40k_filesystem` (and the extra-credit `47k_file_commands`) — inodes, `dirlookup`, and the
   offset-free `read(inum, buf)` the shell has been using.
 - L08 and the [RISC-V guide](../guides/riscv.md) — the argument registers
   `a0`–`a7` and the 16-byte stack alignment rule.
@@ -112,7 +113,7 @@ know anything about it.
 The alternative is a single "spawn" call told everything up front — and the
 systems that took it (`posix_spawn`, Windows `CreateProcess`) both ended up
 carrying a list of "things to arrange before the program starts" as parameters.
-Thursday's lecture makes that counting argument in full; today, take the
+L25, Thursday's reading, makes that counting argument in full; today, take the
 factoring itself as the point.
 
 > Key distinction: `fork` answers "who runs it", `exec` answers "what runs", and
@@ -389,15 +390,15 @@ and returns the first free slot. "Lowest available descriptor" is not a
 performance choice but a guarantee POSIX mandates, because `close(1)` followed by
 `open("out", O_WRONLY)` is how redirection has been implemented since 1973 — the
 second call is handed 1 precisely because 1 is now the lowest free slot, and the
-program that `exec` loads next writes to fd 1 as it always did. Thursday's
-lecture builds pipes and redirection on top of exactly that.
+program that `exec` loads next writes to fd 1 as it always did. L25
+builds pipes and redirection on top of exactly that.
 
 ### Reference counting, and when a file is really closed
 
 Once several descriptors can point at one description, and several descriptions
 at one inode, "closing" stops being a single event. xv6's `filedup` bumps
 `f->ref` and `fileclose` releases the inode only at zero; Linux does the same
-with `f_count`. Two consequences are worth memorising:
+with `f_count`. Two consequences are worth memorizing:
 
 - A file is *really* closed when its **last** descriptor closes, not its first.
 - `unlink` removes a **name**, not a file. With a descriptor still open the data
@@ -545,7 +546,7 @@ away. Three responses, in historical order:
 
 `fork` also fits badly with threads: only the calling thread exists in the child,
 so a mutex another thread held stays locked forever in the copy — hence the rule
-that only async-signal-safe calls are legal between `fork` and `exec`. Thursday
+that only async-signal-safe calls are legal between `fork` and `exec`. L25
 weighs the full case against `fork`; implement it first, so you know what you are
 being asked to give up.
 
@@ -579,9 +580,9 @@ child (`exec.rs:444`) while the parent `wait`s (`exec.rs:454`). If `exec` return
 at all the command did not exist, so the child prints `exec: not found` and
 exits — the failure case is the only one in which the instructions after that
 `ecall` are ever reached. That shell is unprivileged: user mode, its own page
-table, nothing but system calls. It is exercise `22_userland`, and the piece it
+table, nothing but system calls. It is exercise `52k_userland`, and the piece it
 still needs — `exec` as a system call rather than something only the kernel's
-`run` command can do — is Thursday.
+`run` command can do — is L25 and Friday's exercises.
 
 Notice what each call contributes. `fork` supplies a second process to sacrifice,
 so the shell survives whatever the command does, and the gap after it is where
@@ -824,12 +825,12 @@ kinds of authority.
 
 ## Further Reading
 
-- Exercise `19_exec` — `load_segment`, `build_process`, and `push_argv`; the
+- Exercise `49k_exec` — `load_segment`, `build_process`, and `push_argv`; the
   payoff is `run echo hello world`.
-- Exercise `20_file_descriptors` — `fdalloc`, `sys_open`, `sys_read`, and the
+- Exercise `50k_file_descriptors` — `fdalloc`, `sys_open`, `sys_read`, and the
   offset that makes a descriptor stateful.
-- Exercise `21_fork_wait` — Friday: `fork`, `wait`, zombies, and the scheduler
-  from `06_scheduling` finally driving real user processes.
+- Exercise `51k_fork_wait` — Friday, December 4: `fork`, `wait`, zombies, and the scheduler
+  from `36k_scheduling` finally driving real user processes.
 - [rv6 Architecture](../guides/rv6-architecture.md) — how `exec.rs`, `vm.rs`,
   `file.rs`, `syscall.rs`, and `usermode.rs` fit together.
 - [Sv39 Paging](../guides/sv39-paging.md) — `PTE_U`, `walkaddr`, and why the
@@ -884,7 +885,7 @@ kinds of authority.
 6. **The offset lives in the shared open-file description, not the fd table.**
    That placement is what makes `dup` share a cursor and inherited descriptors
    append instead of overwrite. rv6 folds the two tables into one (`file.rs:45`,
-   `proc.rs:39`) and gives up exactly that behaviour — and with no sharing there
+   `proc.rs:39`) and gives up exactly that behavior — and with no sharing there
    is nothing to reference count, which is why its `close` is one assignment
    (`syscall.rs:573`).
 

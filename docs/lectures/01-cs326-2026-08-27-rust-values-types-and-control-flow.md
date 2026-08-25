@@ -14,7 +14,7 @@ cost every one of you an afternoon; functions; `if` as an expression; the
 three loop forms; and **integer overflow**, which panics in a debug build,
 wraps in a release build, and in address arithmetic is a live kernel bug
 rather than a curiosity. Everything runs on your laptop under `cargo test`.
-This session unlocks **r00_hello_rust** and **r01_control_flow**.
+Thursday's setup session works **00r_hello_rust**; Friday works **01r_control_flow**.
 
 ## Learning Objectives
 
@@ -30,7 +30,7 @@ This session unlocks **r00_hello_rust** and **r01_control_flow**.
   one type.
 - **Trace** `loop`, `while`, and `for` over a half-open range, including a
   `loop` that returns a value through `break`.
-- **Predict** an overflowing operation's behaviour in both build profiles, and
+- **Predict** an overflowing operation's behavior in both build profiles, and
   select `wrapping_*`, `checked_*`, or `saturating_*` deliberately.
 - **Diagnose** the page-rounding overflow that returns an address below its
   input.
@@ -39,8 +39,8 @@ This session unlocks **r00_hello_rust** and **r01_control_flow**.
 
 - **L01 Building an Operating System** — what rv6 is, and the shape of the
   semester.
-- **Lab 00 setup** complete: `rustc`, `cargo`, and `oslings`
-  ([Dev Setup](../guides/dev-setup.md)).
+- **Setup complete**: `rustc`, `cargo`, and `oslings`
+  ([Setup](../assignments/setup.md), [Dev Setup](../guides/dev-setup.md)).
 - Running an exercise and reading its output
   ([Using OSlings](../guides/oslings-usage.md)).
 - Prior programming experience in any language. **No Rust and no operating
@@ -309,7 +309,7 @@ Saying so in the type lets the compiler drop the return sequence entirely, and
 lets it accept a body that is nothing but `loop {}`.
 
 You will also meet `const fn`, a function the compiler runs at compile time so
-its result can initialise a `const` (`Pte::new`, `vm.rs:30`); L04 covers it.
+its result can initialize a `const` (`Pte::new`, `vm.rs:30`); L04 covers it.
 
 ---
 
@@ -448,7 +448,7 @@ Here is the question the rest of this lecture exists for. A `u8` holds 0
 through 255. What is `255u8 + 1`?
 
 In C the unsigned answer is 0, silently; the *signed* answer is undefined
-behaviour. Either way you find out weeks later, from a symptom that looks
+behavior. Either way you find out weeks later, from a symptom that looks
 nothing like the cause.
 
 Rust's answer depends on how the code was built:
@@ -458,7 +458,7 @@ Rust's answer depends on how the code was built:
 | debug (`cargo test`, `oslings run`) | **panics**: `attempt to add with overflow` | a compare and a branch per operation |
 | release (`cargo build --release`) | **wraps** to `0` | none |
 
-Two behaviours for one piece of source is a strange bargain, argued about for
+Two behaviors for one piece of source is a strange bargain, argued about for
 years before Rust 1.0. The check is a branch on *every* arithmetic operation,
 and in a page-table walk that is real time — so the compromise ships it where
 you hunt bugs and drops it where you chase speed. The rule that follows is
@@ -584,18 +584,18 @@ in the kernel you finish in December.
 
 | Today | In rv6 | Exercise |
 |---|---|---|
-| `const … : usize = 0x…` | the memory map, `memlayout.rs:7`–`57` | ex01 |
-| `u8` for a device register | the UART driver, `uart.rs:14`–`24` | ex11 |
-| `usize` as an address | `Pte`, `walk`, `mappages`, `vm.rs` | ex03 |
-| `while p + PGSIZE <= stop`, `pgroundup` | `free_range`, `kalloc.rs:17`–`32` | ex02 |
-| `loop { }` with no break | the idle path, `console.rs:47` | ex15 |
-| `wrapping_add` | the ring buffer, `console.rs:24` | ex15 |
-| `if (scause >> 63) == 1` | the trap dispatcher, `trap.rs:55` | ex13 |
+| `const … : usize = 0x…` | the memory map, `memlayout.rs:7`–`57` | 31k |
+| `u8` for a device register | the UART driver, `uart.rs:14`–`24` | 41k |
+| `usize` as an address | `Pte`, `walk`, `mappages`, `vm.rs` | 33k |
+| `while p + PGSIZE <= stop`, `pgroundup` | `free_range`, `kalloc.rs:17`–`32` | 32k |
+| `loop { }` with no break | the idle path, `console.rs:47` | 45k |
+| `wrapping_add` | the ring buffer, `console.rs:24` | 45k |
+| `if (scause >> 63) == 1` | the trap dispatcher, `trap.rs:55` | 43k |
 
 Today's exercises are the laptop-sized version of all of it.
-**r00_hello_rust** is bindings, integer types, and hex literals — including
-`0x8000_0000`, which returns in exercise 01 as the address the kernel is
-linked at. **r01_control_flow** is `if`, the loops, and overflow; its five
+**00r_hello_rust** is bindings, integer types, and hex literals — including
+`0x8000_0000`, which returns in `31k_boot` as the address the kernel is
+linked at. **01r_control_flow** is `if`, the loops, and overflow; its five
 functions are `kalloc.rs` with the pointers removed.
 
 ---
@@ -757,7 +757,7 @@ proof obligation, not luck.
 
 ### Problem 4: Debug or release?
 
-For each expression, give the release value and the debug behaviour.
+For each expression, give the release value and the debug behavior.
 
 ```rust
 let a: u8    = 200;
@@ -848,7 +848,7 @@ Inventing a plausible wrong answer is how an allocator hands out address 0.
   ranges, and the `wrapping_*`/`checked_*`/`saturating_*` families.
 - [Memory Map](../guides/memory-map.md) — where `0x8000_0000` and
   `0x1000_0000` come from on the QEMU `virt` board.
-- [All Exercises](../assignments/exercises.md) — r00 and r01, and what they
+- [All Exercises](../assignments/exercises.md) — 00r and 01r, and what they
   lead to.
 - *The Rust Programming Language*, ch. 3:
   <https://doc.rust-lang.org/book/ch03-00-common-programming-concepts.html>

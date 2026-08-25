@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L07 &middot; September 15, 2026 &middot; exercises `c00`&ndash;`c04`
+L07 &middot; September 15, 2026 &middot; exercises `10c`&ndash;`13c` (Sep 18&ndash;25)
 
 ---
 
@@ -493,10 +493,10 @@ touching it while a returned slice is alive.
 
 <div class="mermaid">
 flowchart LR
-    A["c00 echo\nno input"] --> B["c01 cat\nstream it"]
-    B --> C["c02 wc\nstream + O(1) state"]
-    C --> D["c03 head\nstop early"]
-    D --> E["c04 grep\nmatch"]
+    A["10c echo\nno input"] --> B["11c cat\nstream it"]
+    B --> C["12c wc\nstream + O(1) state"]
+    C --> D["14c head\nstop early"]
+    D --> E["13c grep\nmatch"]
 </div>
 
 Each adds exactly one thing to the same skeleton.
@@ -616,7 +616,7 @@ Reach for a `Vec` and the file stops being able to make the trip.
 7. `wc` counts transitions; `head` stops early; `grep`'s edge cases are
    three distinct classes of bug
 
-**Next:** `c02_wc`, `c03_head`, `c04_grep` — then L08, RISC-V registers.
+**Next:** `12c_wc`, `14c_head`, `13c_grep` — then L08, RISC-V registers.
                 </textarea>
             </section>
         </div>

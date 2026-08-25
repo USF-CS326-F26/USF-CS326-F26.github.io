@@ -179,7 +179,7 @@
 
 ## CS 326 Operating Systems
 
-Week 8 &middot; October 15, 2026 &middot; exercises 05 + 06
+L14 &middot; October 13, 2026 &middot; exercises `35k` + `36k` (Oct 23)
 
 ---
 
@@ -316,7 +316,7 @@ swtch:
 
 ---
 
-## You Already Wrote This (a00)
+## You Already Wrote This (20a)
 
 ```asm
 .globl baby_swtch                 .globl swtch
@@ -340,7 +340,7 @@ Ten more registers. Same ABI, same ordering rule, same `ret`.
 
 ---
 
-## Two Rules From a00
+## Two Rules From 20a
 
 **`global_asm!`, not `asm!` inside a function**
 
@@ -566,7 +566,7 @@ The exercise is **cooperative**: the process calls `proc_yield`. A process that 
 
 - **Quantum** = max CPU held before the scheduler runs again, enforced by a timer
 - rv6 already has the hardware: `INTERVAL = 1_000_000` at `start.rs:19`, `time` CSR at 10 MHz &rarr; a tick every ~0.1 s
-- Preemption is exercise **14**; cooperative is deterministic, so a wrong `pick_next` gives a wrong *order*, not a heisenbug
+- Preemption is exercise **44k**; cooperative is deterministic, so a wrong `pick_next` gives a wrong *order*, not a heisenbug
 
 Too small &rarr; overhead dominates. Too large &rarr; round robin becomes FCFS.
 
@@ -616,7 +616,7 @@ SJF:   [J2][J3][-------- J1 (100) --------]
 ```
 
 - **Priority**: starves without **aging**; **priority inversion** (Mars Pathfinder, 1997) needs **priority inheritance**
-- **MLFQ**: approximates SJF by *learning from behaviour*. Patches: account total CPU per level (anti-gaming), periodic boost (anti-starvation)
+- **MLFQ**: approximates SJF by *learning from behavior*. Patches: account total CPU per level (anti-gaming), periodic boost (anti-starvation)
 
 ---
 
@@ -660,7 +660,7 @@ rv6 and xv6 both use plain round robin — rv6 just lifts the cursor behind a tr
 5. **A new context is forged**: `ra` = entry, `sp` = `kstack + PGSIZE`
 6. **Mechanism / policy** — the `Scheduler` trait is the seam
 7. **Round robin never starves** because the cursor advances past each pick
-8. **Now go write them**: `oslings run 05_context_switch`, then `06_scheduling`
+8. **Now go write them**: `oslings run 35k_context_switch`, then `36k_scheduling`
                 </textarea>
             </section>
         </div>

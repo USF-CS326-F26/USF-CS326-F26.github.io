@@ -1,26 +1,28 @@
 # Practice Set 1
 
-**Distributed:** Tuesday, October 6 · **Worked and reviewed in class:**
-Thursday, October 8 · **Prepares for:** Midterm 1, Tuesday, October 13.
+**Distributed:** Tuesday, October 6 · **Solutions posted:** Tuesday,
+October 13 · **Prepares for:** [Midterm 1](midterm-1.md), Thursday, October 15.
 
 This is the one piece of CS 326 work that happens outside the room, and it is
 deliberately **pencil and paper, not programming** — nothing to write, run, or
 submit. That is what makes it compatible with the
-[Integrity Policy](../guides/integrity-policy.md): the no-homework rule protects
-the rv6 exercises, and a problem about Sv39 bit positions puts none at risk.
+[Integrity Policy](../guides/integrity-policy.md): the exercises are protected
+by being worked in the room, and a problem about Sv39 bit positions puts none
+at risk.
 
-**It is ungraded — but Thursday's review assumes you attempted it.** We work
-these at the board, and the session is worth little if you are seeing the
-questions for the first time.
+**It is ungraded.** Work it before the solutions go up on October 13, and bring
+what you got wrong to office hours or to that Tuesday's lecture.
 
 **Work it the way you will sit the exam.** On paper, closed book, one reference
 open: the [Cheatsheet](../guides/cheatsheet.md), which you may print. No laptop,
 no QEMU, no calculator — every number here falls out of shifts and masks. The
 point is finding out *which* of these you cannot do without a compiler checking
 you. See [Exam Prep](../guides/exam-prep.md) for the three question shapes;
-each is labelled below.
+each is labeled below.
 
-Scope: all of Module 1, plus kernel exercises `ex00`–`ex04`.
+Scope: all of Module 1, plus kernel exercises `30k`–`33k`. Part F draws on
+L13 (the process control block), which is lecture material before the exam
+even though `34k_processes` itself is worked after it.
 
 ---
 
@@ -189,10 +191,10 @@ set, `G` and `D`; rv6 never sets them.)
 **(b)** 300 does not fit in a `u8` (max 255). **Debug**: the overflow check is
 compiled in and the program **panics** — `attempt to add with overflow`.
 **Release**: the check is compiled out and the value **wraps** to 300 − 256 =
-**44**. Same source, two behaviours, and you ship the release profile.
+**44**. Same source, two behaviors, and you ship the release profile.
 
 **(c)** `wrapping_add(100)` = **44** in both profiles — the intentional version
-of the release behaviour. `checked_add(100)` = **`None`**, since it returns
+of the release behavior. `checked_add(100)` = **`None`**, since it returns
 `Option<u8>`.
 
 **(d)** `0x8004_2000 − 0x8000_0000 = 0x4_2000` = 270,336 bytes. Dividing by
@@ -339,7 +341,7 @@ precisely *because* `s0` survives calls — and resumes with garbage, so the
 corruption surfaces arbitrarily far from its cause.
 
 **(b)** The test calls it from a tiny wrapper with nothing live in `s0`. The
-bug is not "does it compute the right sum" — it does — but "does it honour the
+bug is not "does it compute the right sum" — it does — but "does it honor the
 contract", and a test that checks only the return value cannot see that.
 
 **(c)**
@@ -376,7 +378,7 @@ iterators, `Vec`, `String`, `Box`, `println!`, `PanicInfo`?
 its return type `!`?
 
 (c) `uart::putc` is `write_volatile(UART0 as *mut u8, c)`. Rewrite it with a
-plain `*p = c` and say precisely what the optimiser is allowed to do.
+plain `*p = c` and say precisely what the optimizer is allowed to do.
 
 (d) Creating a raw pointer is safe; dereferencing one is `unsafe`. Why is that
 split the right place to draw the line?
@@ -395,7 +397,7 @@ never type `!` promises it does not return — honest, since there is no caller
 to go back to and no way to unwind. rv6 spins.
 
 **(c)** `unsafe { *(UART0 as *mut u8) = c; }` writes a byte to `0x1000_0000`
-and never reads it back, so the optimiser may conclude the write is dead and
+and never reads it back, so the optimizer may conclude the write is dead and
 **delete it**, or merge or reorder several such writes. For memory that is
 correct; for a device register the write *is* the effect, and the order of the
 writes is the order of the characters. `write_volatile` says: this access has a
@@ -687,7 +689,7 @@ PTE is where they differ.
 (`0x8004_0000`, `0x8004_5000`, `0x8004_7000`). The frames they point at,
 `0x8005_1000` and `0x8004_9000`, are mapped data, not part of the tree. Twelve
 KiB of tables to map two pages — the price of a sparse tree, and the reason
-mappings sharing a 2 MiB neighbourhood are effectively free.
+mappings sharing a 2 MiB neighborhood are effectively free.
 
 </details>
 
@@ -746,7 +748,7 @@ has nothing to do.
   process whose memory belongs to somebody else.
 - **`Unused → Running`: no.** `allocproc` produces `Runnable`; only the
   scheduler promotes `Runnable → Running`. The intermediate state matters — a
-  fresh process has no initialised context yet, so it is not safe to switch into
+  fresh process has no initialized context yet, so it is not safe to switch into
   until something finishes building it. xv6 makes this explicit with a sixth
   state, `USED`: "slot claimed, process not yet built".
 - **`Running → Unused`: only via teardown.** The normal path is
@@ -758,7 +760,7 @@ has nothing to do.
 
 ### Problem 14: `allocproc` runs out of memory
 
-**(Find the bug.)** The reference `allocproc` from exercise 04. It passes all
+**(Find the bug.)** The reference `allocproc` from exercise 34k. It passes all
 six checks.
 
 ```rust
@@ -787,7 +789,7 @@ eventually do?
 (c) Why does the exercise-04 test never catch this?
 
 (d) The exercise-22 kernel replaces the early return with `freeproc(p);
-return ptr::null_mut();`. Say why that is the fix that generalises, rather
+return ptr::null_mut();`. Say why that is the fix that generalizes, rather
 than just setting `state = Unused`.
 
 <details>
@@ -808,7 +810,7 @@ a crash somewhere else.
 ordinary condition of error paths in systems code: the branch you cannot easily
 provoke is the branch that is wrong, and reading it is the only way to test it.
 
-**(d)** Setting `state = Unused` is enough *in exercise 04*, where the page
+**(d)** Setting `state = Unused` is enough *in exercise 34k*, where the page
 table is the only thing a `Proc` owns and it is null on this path. It stops
 being enough the moment `allocproc` acquires several resources — a page table,
 a trapframe page, a kernel stack, three console fds — because failure can then
@@ -826,7 +828,7 @@ resource gets leaked.
 
 Read the solutions only afterwards. A worked answer feels like learning and
 mostly is not — the value is in the twenty minutes you spent stuck. Bring your
-wrong answers on Thursday; they are more useful to the room than the right ones.
+wrong answers to office hours; they are more useful than the right ones.
 
 If a problem exposed a gap, reread the matching guide —
 [Rust for Systems](../guides/rust-for-systems.md),

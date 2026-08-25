@@ -195,7 +195,7 @@
 
 ## Every Address So Far Has Been Real
 
-- Exercises 00-02: `0x8000_0000`, `0x1000_0000` — actual bytes of RAM and MMIO
+- Exercises 30k-32k: `0x8000_0000`, `0x1000_0000` — actual bytes of RAM and MMIO
 - `kalloc` hands out real physical pages
 - The kernel and any program it runs share one flat address space
 
@@ -545,7 +545,7 @@ Identity-mapped so printing survives the MMU (`vm.rs:132`). Translate `0x1000_00
 
 ## Worked Translation 2: The High Code Page
 
-Exercise 03 maps a page at virtual `0x0040_0000`; translate `0x0040_0123`:
+Exercise 33k maps a page at virtual `0x0040_0000`; translate `0x0040_0123`:
 
 ```text
   offset = 0x123
@@ -585,13 +585,13 @@ Map 512 *consecutive* pages instead and one level-0 table serves them all. Local
 
 <div class="mermaid">
 flowchart LR
-    subgraph BUILD["BUILDING: exercise 03_paging"]
+    subgraph BUILD["BUILDING: exercise 33k_paging"]
         direction TB
         B1["kernel Rust code\ncalls mappages"] --> B2["walk with alloc = true"]
         B2 --> B3["kallocs tables,\nwrites PTEs"]
         B3 --> B4["a tree in RAM,\ninert"]
     end
-    subgraph USE["USING: exercise 09_virtual_memory"]
+    subgraph USE["USING: exercise 39k_virtual_memory"]
         direction TB
         U1["csrw satp, root PPN\nthen sfence.vma"] --> U2["MMU reads the tree\non EVERY access"]
         U2 --> U3["hardware checks V R W X U"]
@@ -623,8 +623,8 @@ flowchart LR
 *pte = Pte::new(page as usize, PTE_V | PTE_R);   // <-- R on a BRANCH
 ```
 
-- **Exercise 03 passes.** `walk` descends on `is_valid()` alone (`vm.rs:56`) and never reads `R`/`W`/`X`. Every translation the harness checks is correct.
-- **Exercise 09 hangs.** The MMU stops at the first `R` — treats a level-2 entry as a **1 GiB superpage leaf**, finds a PPN that is not 1 GiB-aligned, faults on the instruction right after `csrw satp`. No trap handler yet, so nothing prints.
+- **Exercise 33k passes.** `walk` descends on `is_valid()` alone (`vm.rs:56`) and never reads `R`/`W`/`X`. Every translation the harness checks is correct.
+- **Exercise 39k hangs.** The MMU stops at the first `R` — treats a level-2 entry as a **1 GiB superpage leaf**, finds a PPN that is not 1 GiB-aligned, faults on the instruction right after `csrw satp`. No trap handler yet, so nothing prints.
 
 The mirror image: forget `R` on a **leaf** &rarr; hardware reads a fourth level of page table out of your data.
 
@@ -671,7 +671,7 @@ The MMU asks "is there an entry here, <em>does it stop the walk</em>, and <em>am
 
 ---
 
-## Next: Exercise `03_paging`
+## Next: Exercise `33k_paging` (Friday, October 9)
 
 You will write three things in `vm.rs`:
 

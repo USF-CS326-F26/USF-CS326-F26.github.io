@@ -8,21 +8,22 @@ tiny and uninteresting; the semantics are the whole subject, and one rule —
 when `read` returns 0 — is the most reliably mis-implemented detail in Unix.
 Once the buffer exists, `a | b` needs no new kernel feature at all: fork twice,
 `dup` the two ends onto stdin and stdout, exec both children. **The payoff**:
-the `wc` and `grep` you wrote in week 3, recompiled as `no_std` for RISC-V and
+the `wc` and `grep` you wrote in September, recompiled as `no_std` for RISC-V and
 running on the kernel you built, from source files that never contained a
 target-specific line. A working `grep` is 2,854 bytes against a 64 KiB budget.
 **Final review**: one annotated walk from power-on to the `rv6$` prompt naming
 every mechanism as it appears, a table mapping each rv6 mechanism to its Linux
 counterpart, an honest list of what rv6 does not do, and the precise scope of
-the final. Concept behind `22_userland` and the
-[extra-credit set](../assignments/extra-credit.md).
+the final. The payoff is `53k_ship_your_commands`, which you ran on Friday;
+pipes are the design-only extra-credit `55k_pipes` on the
+[extra-credit page](../assignments/extra-credit.md).
 
 ## Learning Objectives
 
 - **Describe** a pipe as a bounded ring buffer behind two file descriptors, and
   say what each cursor and each open-flag means.
 - **State** the blocking rules for pipe `read` and `write`, and **derive** the
-  end-of-file rule from them rather than memorising it.
+  end-of-file rule from them rather than memorizing it.
 - **Explain** why a pipe fd must be closed in every process that does not use
   it, and **predict** the exact failure when it is not.
 - **Construct** `a | b` from `pipe`, `fork`, `dup`, `close`, and `exec` alone,
@@ -38,13 +39,13 @@ the final. Concept behind `22_userland` and the
 
 ## Prerequisites
 
-- Exercises `20_file_descriptors` and `21_fork_wait` — the `ofile` table, the
+- Exercises `50k_file_descriptors` and `51k_fork_wait` — the `ofile` table, the
   console at fds 0/1/2, and the call that returns twice.
-- Exercise `22_userland` and last session — `exec_into`, and the shell as an
+- Exercise `52k_userland` and last session — `exec_into`, and the shell as an
   ordinary unprivileged program.
-- Exercises `07_spinlocks` and `08_semaphores` — a pipe is shared mutable state
+- Exercises `37k_spinlocks` and `38k_semaphores` — a pipe is shared mutable state
   touched by two processes, which is what those exercises were for.
-- Exercises `01_boot`, `02_physical_memory`, `03_paging`, and `12_boot_to_life`
+- Exercises `31k_boot`, `32k_physical_memory`, `33k_paging`, and `42k_boot_to_life`
   — section 4 walks all of them in order.
 - The [rv6 Architecture](../guides/rv6-architecture.md) and
   [Memory Map](../guides/memory-map.md) guides.
@@ -318,7 +319,7 @@ part that mattered.
 
 ## 3. The Payoff: Your Own Commands on Your Own Kernel
 
-In week 3 you wrote `echo`, `cat`, `wc`, `head`, and `grep` against a façade
+In September you wrote `echo`, `cat`, `wc`, and `grep` (and perhaps `head`) against a façade
 called `ulib` and ran them on your laptop under `cargo test`. At the time the
 façade looked like ceremony. This is what it was for.
 
@@ -357,7 +358,7 @@ li    a7, 16          # SYS_WRITE — the number from syscall.rs:28
 ecall
 ```
 
-and from there: the trampoline you wrote in `18_user_mode`, `usertrap`
+and from there: the trampoline you wrote in `48k_user_mode`, `usertrap`
 (`usermode.rs:385`), `dispatch` (`syscall.rs:33`), `sys_write`
 (`syscall.rs:517`), `getfile` (`syscall.rs:312`), and finally `uart::putc`
 against the NS16550A at `0x1000_0000`. Every layer between the program and the
@@ -366,7 +367,7 @@ glass is yours.
 ### From your source to a page in your address space
 
 ```text
-  commands/src/bin/grep.rs        (byte-identical to week 3)
+  commands/src/bin/grep.rs        (byte-identical to September)
         |
         |  cargo build --release --target riscv64gc-unknown-none-elf
         v
@@ -398,7 +399,7 @@ which means a shipped command cannot have a mutable global at all: its buffers
 live on the stack, which is the one `R|W|U` page. The address space is
 accidentally W^X, and the reason is that a flat image has nowhere to put a
 `.bss`. Teaching the kernel to read real ELF is exactly what fixes both, and is
-exercise `23_elf_loader`.
+exercise `54k_elf_loader`.
 
 ### The numbers
 
@@ -427,7 +428,7 @@ What removed the weight is not cleverness, it is absence: `#![no_std]` deletes
 formatting machinery and the collection types, `panic = "abort"` with the
 single panic handler in `ulib` (`ulib/src/sys/rv6.rs:66`) deletes unwinding,
 and static linking to a flat image deletes relocation and the loader. The
-lesson generalises past this course. Most of the size of ordinary software is
+lesson generalizes past this course. Most of the size of ordinary software is
 infrastructure that was linked in because it was easier to have it than to
 decide you did not need it.
 
@@ -457,19 +458,19 @@ flowchart TD
 
 | # | What happens | Mechanism being demonstrated | Where | Exercise |
 |---|---|---|---|---|
-| 0 | Reset; QEMU's ROM jumps to RAM base with `a0` = hartid, `a1` = device tree | There is no BIOS: the kernel *is* the firmware | `-bios none` | `01` |
-| 1 | `_entry` sets `sp` to the top of a 16 KiB static array, calls `start` | Rust cannot run without a stack, and the linker script puts `.entry` first | `entry.rs:18`, `kernel.ld` | `01` |
-| 2 | `start` sets `mstatus.MPP = S`, `mepc = kmain`, delegates traps, opens PMP, arms the CLINT timer, `mret` | **Dropping privilege by faking a trap return** — the only way down | `start.rs:25` | `13`, `14` |
-| 3 | `uart::init` programs the NS16550A | Memory-mapped I/O: a device is a struct at a fixed address | `uart.rs`, `memlayout.rs:17` | `01`, `11` |
-| 4 | `kalloc::init` links every 4 KiB page from `end` to `PHYSTOP` into a free list | The free list lives *in* the free pages: an allocator that needs no memory | `kalloc.rs:21` | `02` |
-| 5 | `kvmmake` builds an Sv39 tree, copies the trampoline to its own page, maps it at `MAXVA - PGSIZE`; `kvminithart` writes `satp` and `sfence.vma` | **The MMU turns on between two instructions.** The identity map is what makes the next one fetchable | `vm.rs:125`, `vm.rs:177` | `03`, `09` |
-| 6 | `proc::init` resets 64 PCB slots and `NEXTPID` | A fixed table, not a linked list: no allocator in the process layer | `proc.rs:74`, `param.rs` | `04` |
-| 7 | `trap::init` writes `stvec` | One register decides where every supervisor trap lands | `trap.rs:33` | `13` |
-| 8 | `FS.init` creates the root directory | 64 inodes, 128-byte files, all in RAM behind one `SpinLock` | `fs.rs:5`, `fs.rs:73` | `07`, `10` |
-| 9 | `console::init` enables UART RX, configures the PLIC, sets `sie.SEIE` | Interrupt routing: device → PLIC → hart → `stvec` | `console.rs:58`, `plic.rs` | `15` |
-| 10 | `intr_on` sets `sstatus.SIE` | The global enable, deliberately last: nothing may interrupt half-built state | `trap.rs:39` | `14` |
-| 11 | `shell::run` prints `rv6$ ` and calls `getc`, which loops on `wfi` | Blocking, honestly implemented: halt the core until an interrupt | `shell.rs:343`, `console.rs:47` | `16` |
-| 12 | You press a key: UART IRQ → PLIC claim → `kernelvec` → `kerneltrap` → `console::intr` pushes to the 256-byte ring → `plic::complete` | Producer/consumer across an interrupt boundary, no lock needed on one hart | `trap.rs:46`, `console.rs:68` | `15` |
+| 0 | Reset; QEMU's ROM jumps to RAM base with `a0` = hartid, `a1` = device tree | There is no BIOS: the kernel *is* the firmware | `-bios none` | `31k` |
+| 1 | `_entry` sets `sp` to the top of a 16 KiB static array, calls `start` | Rust cannot run without a stack, and the linker script puts `.entry` first | `entry.rs:18`, `kernel.ld` | `31k` |
+| 2 | `start` sets `mstatus.MPP = S`, `mepc = kmain`, delegates traps, opens PMP, arms the CLINT timer, `mret` | **Dropping privilege by faking a trap return** — the only way down | `start.rs:25` | `43k`, `44k` |
+| 3 | `uart::init` programs the NS16550A | Memory-mapped I/O: a device is a struct at a fixed address | `uart.rs`, `memlayout.rs:17` | `31k`, `41k` |
+| 4 | `kalloc::init` links every 4 KiB page from `end` to `PHYSTOP` into a free list | The free list lives *in* the free pages: an allocator that needs no memory | `kalloc.rs:21` | `32k` |
+| 5 | `kvmmake` builds an Sv39 tree, copies the trampoline to its own page, maps it at `MAXVA - PGSIZE`; `kvminithart` writes `satp` and `sfence.vma` | **The MMU turns on between two instructions.** The identity map is what makes the next one fetchable | `vm.rs:125`, `vm.rs:177` | `33k`, `39k` |
+| 6 | `proc::init` resets 64 PCB slots and `NEXTPID` | A fixed table, not a linked list: no allocator in the process layer | `proc.rs:74`, `param.rs` | `34k` |
+| 7 | `trap::init` writes `stvec` | One register decides where every supervisor trap lands | `trap.rs:33` | `43k` |
+| 8 | `FS.init` creates the root directory | 64 inodes, 128-byte files, all in RAM behind one `SpinLock` | `fs.rs:5`, `fs.rs:73` | `37k`, `40k` |
+| 9 | `console::init` enables UART RX, configures the PLIC, sets `sie.SEIE` | Interrupt routing: device → PLIC → hart → `stvec` | `console.rs:58`, `plic.rs` | `45k` |
+| 10 | `intr_on` sets `sstatus.SIE` | The global enable, deliberately last: nothing may interrupt half-built state | `trap.rs:39` | `44k` |
+| 11 | `shell::run` prints `rv6$ ` and calls `getc`, which loops on `wfi` | Blocking, honestly implemented: halt the core until an interrupt | `shell.rs:343`, `console.rs:47` | `46k` |
+| 12 | You press a key: UART IRQ → PLIC claim → `kernelvec` → `kerneltrap` → `console::intr` pushes to the 256-byte ring → `plic::complete` | Producer/consumer across an interrupt boundary, no lock needed on one hart | `trap.rs:46`, `console.rs:68` | `45k` |
 
 From `rv6$` onward the story is the one told last session: `run sh` execs a
 user-mode shell, which `fork`s, has the child `exec` your command, and `wait`s.
@@ -509,7 +510,7 @@ do not.
 Two functions transfer most directly. `ksys_read` in `fs/read_write.c` is
 `sys_read` with reference counting and an iterator; `kernel_clone` in
 `kernel/fork.c` is `sys_fork` with thirty years of flags. Open either one and
-you will recognise the shape.
+you will recognize the shape.
 
 ---
 
@@ -557,7 +558,7 @@ cannot be. Note which half is already sound: the *locks* are correct; the
 Shorter, and each roughly an afternoon: signals; `sleep`/`wakeup` instead of
 polling; kernel preemption; `chdir`/`mkdir`/`readdir` system calls, whose
 absence is exactly why `ls` cannot yet be a user program; ELF loading
-(`23_elf_loader`); `pipe` and `dup` (design-only extra credit); users and permissions; a real
+(`54k_elf_loader`); `pipe` and `dup` (design-only extra credit); users and permissions; a real
 clock; and networking. None of them is mysterious now.
 
 ---
@@ -569,7 +570,7 @@ schedule, not this page. **Format:** pencil and paper, closed book, one
 permitted reference: the [Cheatsheet](../guides/cheatsheet.md), printed. No
 devices. Worth 20% of the grade.
 
-**Scope:** cumulative, weighted toward Module 3. Anything from either midterm
+**Scope:** cumulative, weighted toward `49k`–`53k`. Anything from either midterm
 may appear as a building block, but no question rests only on old material. The
 bulk of the exam is:
 
@@ -772,7 +773,7 @@ kills the process (`usermode.rs:430`).
 
 This is a direct consequence of the flat image: with no ELF program headers
 there are no per-segment permissions and no `.bss`, so there is nowhere to put
-a mutable global. The fix is `23_elf_loader`. The workaround is what the
+a mutable global. The fix is `54k_elf_loader`. The workaround is what the
 commands already do — keep state on the stack, which is the one writable page.
 </details>
 
@@ -883,8 +884,8 @@ address space and leaves the descriptors exactly as the child arranged them.
   the one page you may bring.
 - [Final Exam](../assignments/final.md) and
   [Practice Set 3](../assignments/practice-set-03.md).
-- [Extra Credit](../assignments/extra-credit.md) — pipes, `23_elf_loader`,
-  and `25_ship_your_commands`.
+- [Extra Credit](../assignments/extra-credit.md) — pipes, `54k_elf_loader`,
+  and `53k_ship_your_commands`.
 - [ulib and Commands](../guides/ulib-and-commands.md) — the façade that made
   section 3 possible.
 - [Memory Map](../guides/memory-map.md) and

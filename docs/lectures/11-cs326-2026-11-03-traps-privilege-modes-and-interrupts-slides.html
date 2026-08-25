@@ -170,7 +170,7 @@
 
 ## CS 326 Operating Systems
 
-L18 &middot; November 3, 2026 &middot; unlocks `13_traps` and `14_interrupts`
+L18 &middot; November 3, 2026 &middot; exercises `43k_traps` and `44k_interrupts` (Nov 6)
 
 ---
 
@@ -191,7 +191,7 @@ L18 &middot; November 3, 2026 &middot; unlocks `13_traps` and `14_interrupts`
 |---|---|---|---|
 | **M** machine | `11` | `entry.rs`, `start.rs`, `timervec` | Everything: all CSRs, all memory, PMP, the CLINT |
 | **S** supervisor | `01` | the rv6 kernel | `s*` CSRs, `satp`, delegated traps, `sret`, `wfi` |
-| **U** user | `00` | programs, from `18_user_mode` | Ordinary instructions only. **No** CSR access |
+| **U** user | `00` | programs, from `48k_user_mode` | Ordinary instructions only. **No** CSR access |
 
 The mode lives in two bits of hart state that **no instruction can read**.
 
@@ -521,7 +521,7 @@ asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs:41  SIE
 An interrupt fires only when: bit set in `sie` **and** bit set in `sip` **and** `sstatus.SIE` = 1.
 
 <div class="info-box">
-Use <code>csrs</code>, not <code>csrw</code> — a blind write clears <code>sie.SEIE</code> and silently breaks the console in <code>15_console</code>. In user mode, delegated interrupts are always enabled regardless of <code>SIE</code>.
+Use <code>csrs</code>, not <code>csrw</code> — a blind write clears <code>sie.SEIE</code> and silently breaks the console in <code>45k_console</code>. In user mode, delegated interrupts are always enabled regardless of <code>SIE</code>.
 </div>
 
 ---
@@ -560,7 +560,7 @@ A cooperative scheduler is a **subroutine of the running program**. The only esc
 
 - Per-process time accounting, to tell "quantum expired" from "just arrived"
 - A `swtch` from **inside** the trap handler
-- A lock on every kernel structure the switch could interrupt — a switch can now happen at *any* instruction (`07_spinlocks`)
+- A lock on every kernel structure the switch could interrupt — a switch can now happen at *any* instruction (`37k_spinlocks`)
 
 <div class="info-box">
 rv6 stays cooperative on purpose: deterministic, so a wrong <code>pick_next</code> gives a wrong <em>order</em>, not a heisenbug. Linux asks firmware for the same tick via SBI <code>TIME</code>; Sstc hardware deletes the detour entirely.
@@ -568,12 +568,12 @@ rv6 stays cooperative on purpose: deterministic, so a wrong <code>pick_next</cod
 
 ---
 
-## What This Unlocks
+## Friday's Exercises (November 6)
 
-- **`13_traps`** — install `stvec`, catch an `ebreak`, return from it. A timeout means `sepc` never advanced
-- **`14_interrupts`** — open the gates, receive the forwarded ticks, clear `sip.SSIP`, count them
+- **`43k_traps`** — install `stvec`, catch an `ebreak`, return from it. A timeout means `sepc` never advanced
+- **`44k_interrupts`** — open the gates, receive the forwarded ticks, clear `sip.SSIP`, count them
 
-Then `15_console` reuses the identical path for `scause = 9` (a keypress) and `18_user_mode` for `scause = 8` (a system call).
+Then `45k_console` reuses the identical path for `scause = 9` (a keypress) and `48k_user_mode` for `scause = 8` (a system call).
 
 <div class="highlight-box">
 One vector, one cause register, three completely different subsystems.

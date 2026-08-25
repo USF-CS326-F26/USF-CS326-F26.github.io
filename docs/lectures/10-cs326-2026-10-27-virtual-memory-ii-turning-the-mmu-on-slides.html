@@ -195,8 +195,8 @@
 
 ## Where We Are
 
-- **`03_paging`** — you built a page table. The MMU was **off**. The tree was inert data.
-- **`09_virtual_memory`** — today. You hand the tree to the hardware.
+- **`33k_paging`** — you built a page table. The MMU was **off**. The tree was inert data.
+- **`39k_virtual_memory`** — today. You hand the tree to the hardware.
 
 <div class="highlight-box">
 Two instructions do the work. They are the most dangerous two instructions in the course.
@@ -448,8 +448,8 @@ Writing MODE `0` turns translation back off. Nobody does: by then every pointer 
 
 Translation applies to **supervisor and user** accesses. **Machine-mode accesses are never translated**, whatever `satp` says.
 
-- Exercise 09: `entry.rs:17` is `call kmain` — no `start.rs`. The hart is in **machine mode**. The `csrw` lands, and translation does not take effect.
-- Exercise 13: `entry.rs:23` is `call start`; `start.rs` clears `satp`, sets `MPP = S`, and `mret`s into `kmain`. Now the switch is real.
+- Exercise 39k: `entry.rs:17` is `call kmain` — no `start.rs`. The hart is in **machine mode**. The `csrw` lands, and translation does not take effect.
+- Exercise 43k: `entry.rs:23` is `call start`; `start.rs` clears `satp`, sets `MPP = S`, and `mret`s into `kmain`. Now the switch is real.
 
 <div class="highlight-box">
 Ex 09 asks for a <em>correct</em> table. Ex 13 is where a wrong one kills the machine. Same table — the privilege mode is what makes it load-bearing.
@@ -519,12 +519,12 @@ Printing requires:
 A broken kernel table breaks at least one, usually the first. There is no panic message, because a panic message is a print.
 
 <div class="info-box">
-This is why last Friday was the QEMU/GDB workshop. When the machine cannot tell you anything, ask the hardware.
+This is why the QEMU and GDB guide exists. When the machine cannot tell you anything, ask the hardware.
 </div>
 
 ---
 
-## The Failure Catalogue
+## The Failure Catalog
 
 | Mistake | What you see |
 |---|---|
@@ -614,7 +614,7 @@ When the failure mode is silence, add a check that runs <em>before</em> the dang
 3. **Map what the kernel will touch**: UART, test finisher, PLIC, and all of RAM — which covers text, data, stacks, *and the page tables*.
 4. **Permissions**: devices `R W` no `X`; RAM deserves W^X and rv6 gives it `R W X` for one-shot correctness.
 5. **`satp` = MODE 8 | ASID 0 | `root >> 12`** — `0x8000_0000_0008_7FFF`. Forget the shift → `scause = 1`; forget MODE → silent no-op.
-6. **Machine mode ignores `satp`** — which is why ex09 is survivable and ex13 is not.
+6. **Machine mode ignores `satp`** — which is why 39k is survivable and 43k is not.
 7. **The TLB is not coherent**; fence after `satp`, after any live PTE change, and after invalid → valid.
 8. **When the failure mode is silence, verify before you commit.** `pc`, `satp`, `scause`, `stval`, in that order.
                 </textarea>

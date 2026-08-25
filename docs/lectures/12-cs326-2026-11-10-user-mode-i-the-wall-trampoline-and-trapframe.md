@@ -13,8 +13,8 @@ at all. Then the two structures that make crossing the wall possible — the
 **trampoline**, one page mapped at the same virtual address in every address
 space so `satp` can change without the CPU losing its footing, and the
 **trapframe**, the parking lot for 31 user registers that `sscratch` bootstraps
-access to. This is the concept behind exercise `18_user_mode`; the system-call
-ABI on top of it is L23. See the
+access to. This is the concept behind exercise `48k_user_mode` (Friday,
+November 13); the system-call ABI on top of it is L23, next Tuesday. See the
 [Sv39 paging guide](../guides/sv39-paging.md) for the page-table mechanics
 assumed throughout.
 
@@ -41,12 +41,12 @@ assumed throughout.
 - L12 *Virtual Memory I* and the
   [Sv39 paging guide](../guides/sv39-paging.md) — three-level walks, PTE flags,
   `satp`, `sfence.vma`. This lecture is unreadable without them.
-- L18 *Traps, Privilege Modes, and Interrupts* and exercise `13_traps` — `stvec`,
+- L18 *Traps, Privilege Modes, and Interrupts* and exercise `43k_traps` — `stvec`,
   `sepc`, `scause`, `sstatus`, and the `mret` that dropped M → S.
-- L13 *Processes and the PCB* and exercise `04_processes` — `Proc`, the fixed
+- L13 *Processes and the PCB* and exercise `34k_processes` — `Proc`, the fixed
   `PROCS` table, and the per-process page table you have been allocating since
   then but never used.
-- L14 *The Context Switch* and exercise `05_context_switch` — `swtch`, which
+- L14 *The Context Switch* and exercise `35k_context_switch` — `swtch`, which
   rv6 reuses to enter and leave a running user program.
 - The [RISC-V guide](../guides/riscv.md) for the register file, and
   [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) for `global_asm!`
@@ -67,8 +67,8 @@ Two hardware mechanisms do that, and you have already built both halves.
 
 | Mechanism | What it restricts | Where you met it |
 |---|---|---|
-| Privilege levels | Which *instructions* are legal | exercise `13_traps` |
-| The MMU + page tables | Which *addresses* exist at all | exercises `03_paging`, `09_virtual_memory` |
+| Privilege levels | Which *instructions* are legal | exercise `43k_traps` |
+| The MMU + page tables | Which *addresses* exist at all | exercises `33k_paging`, `39k_virtual_memory` |
 
 Neither suffices alone. Privilege levels without paging leave a program able to
 read the kernel's data with an ordinary `ld` — no privileged instruction needed.
@@ -93,7 +93,7 @@ case that really needed a fourth. Today you meet the last one.
 
 ## 2. The Third Privilege Level
 
-In exercise `13_traps` your kernel dropped from M-mode to S-mode with an `mret`,
+In exercise `43k_traps` your kernel dropped from M-mode to S-mode with an `mret`,
 after setting `mstatus.MPP` to say where it was going. Dropping to user mode is
 the same move one level down: clear `sstatus.SPP` (bit 8) to 0, put the target
 address in `sepc`, and execute `sret`. rv6 does exactly this in `usertrapret`
@@ -147,7 +147,7 @@ decides *when*.
 
 Privilege alone still leaves the kernel readable, so each process gets its own
 page table. You have been allocating one per process since exercise
-`04_processes` (`proc.rs:116`); this is the exercise where `satp` finally points
+`34k_processes` (`proc.rs:116`); this is the exercise where `satp` finally points
 at it.
 
 The layout in `memlayout.rs:29-75` is deliberately spartan:
@@ -192,7 +192,7 @@ hand*, through the user's page table, and refuses anything without `PTE_U`
 **Address 0 is an ordinary address.** In a fresh, private address space nothing
 is sacred about zero, and it is where xv6 loads programs. Hosted Unix leaves the
 first page unmapped so null-pointer dereferences fault; rv6 gets that luxury in
-exercise `19_exec`, not here.
+exercise `49k_exec`, not here.
 
 **`MAXVA` is `1 << 38`, not `1 << 39`** (`memlayout.rs:49`). Sv39 gives 39 bits,
 but bits 63:39 of any valid virtual address must all equal bit 38 — the
@@ -356,7 +356,7 @@ any Rust, deposited on the way out by `usertrapret` so they are waiting on the
 way in.
 
 > Key distinction: a trapframe is not a context. `Context` (exercise
-> `05_context_switch`) holds 14 callee-saved registers, because `swtch` is an
+> `35k_context_switch`) holds 14 callee-saved registers, because `swtch` is an
 > ordinary function call and the ABI already spilled the rest. A trapframe holds
 > 31, because a trap is *not* a function call — it can strike between any two
 > instructions, and the ABI has promised nothing about that moment.
@@ -486,7 +486,7 @@ the swap that both restores `a0` and re-arms `sscratch` (line 180) before
 There is exactly one way out of the kernel. Every return to user mode — first
 entry, a system-call return, a timer-interrupt return, the child's first breath
 after `fork` — goes through `usertrapret` and then `userret`. That
-single path is why the `sscratch` invariant holds, and why `21_fork_wait` gets a
+single path is why the `sscratch` invariant holds, and why `51k_fork_wait` gets a
 working child by copying the parent's trapframe and zeroing one field.
 
 > Where this goes next: L23 picks up at `usertrap`, where `scause == 8` means a
@@ -629,7 +629,7 @@ has to be a *rule* precisely because violating it is silent.
 U-mode with `pc = 0`, and the very first fetch hits a PTE without `PTE_U`:
 **instruction page fault, `scause = 12`, `stval = 0`**. rv6's `usertrap` takes
 the `else` branch (`usermode.rs:428-433`), records `FAULTED`, and kills the
-process. This is the most common failure in exercise `18_user_mode` and the
+process. This is the most common failure in exercise `48k_user_mode` and the
 error message names the address: `0`.
 </details>
 

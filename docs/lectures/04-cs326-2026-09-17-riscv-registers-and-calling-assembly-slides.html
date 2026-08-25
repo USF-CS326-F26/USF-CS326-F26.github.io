@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L08 · September 17, 2026 · unlocks `a00_asm_bridge`
+L08 · September 17, 2026 · exercise `20a_asm_bridge` (Oct 1)
 
 ---
 
@@ -389,7 +389,7 @@ myfunc:
     ret
 ```
 
-A **leaf** function calls nothing, so it needs no saved `ra` and no frame. All three routines in `a00` are leaves.
+A **leaf** function calls nothing, so it needs no saved `ra` and no frame. All three routines in `20a` are leaves.
 
 ---
 
@@ -660,23 +660,23 @@ Same shape. Same argument. Same punchline.
 
 `init_context` (`swtch.rs:38-44`) forges a first context the same way the harness does — `ra` = the function a new process should start in, `sp` = top of its kernel stack.
 
-`05_context_switch` writes it. `06_scheduling` calls it in a loop, and one CPU starts pretending to be many.
+`35k_context_switch` writes it. `36k_scheduling` calls it in a loop, and one CPU starts pretending to be many.
 
 ---
 
-## Today's Exercise
+## The Exercise: Thursday, October 1
 
-**`a00_asm_bridge`** — three routines in RISC-V assembly, called from Rust, running on the bare machine.
+**`20a_asm_bridge`** — three routines in RISC-V assembly, called from Rust, running on the bare machine.
 
 - `add3` — does the calling convention work the way you think it does?
 - `bytecopy` — loads, stores, a loop, and the `n == 0` case
-- `baby_swtch` — exercise 05 in miniature
+- `baby_swtch` — exercise 35k in miniature
 
 ```bash
-oslings run a00_asm_bridge
+oslings run 20a_asm_bridge
 ```
 
-Builds for `riscv64gc-unknown-none-elf` and boots it in QEMU. Passes when the console prints `OSLINGS:PASS`. Due **Friday, September 18**.
+Builds for `riscv64gc-unknown-none-elf` and boots it in QEMU. Passes when the console prints `OSLINGS:PASS`. Worked in class **Thursday, October 1** — also the hard deadline for a working QEMU.
 
 ---
 

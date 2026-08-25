@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L13 · October 6, 2026 · unlocks `04_processes`
+L13 · October 6, 2026 · exercise `34k_processes` (Oct 22)
 
 ---
 
@@ -291,7 +291,7 @@ A `*mut Proc` is the slot *address* — it has exactly the same hazard.
 pub pagetable: *mut Pte,   // physical address of the Sv39 root
 ```
 
-- The root you built in exercise `03_paging`
+- The root you built in exercise `33k_paging`
 - Hardware translates **every** user load and store through whatever root `satp` holds
 - Two processes with different roots cannot see each other's memory
 - The process **owns** this page and everything reachable from it
@@ -505,7 +505,7 @@ static mut NEXTPID: usize = 1;
 4. **No allocation on the fork path** — failing because the table is *full* is far easier to reason about than failing because it could not *grow*
 5. **Deterministic worst case** — O(64) scan, no indirection, a handful of cache lines
 
-The cost is a hard ceiling. That is exactly what check 3 in `04_processes` verifies.
+The cost is a hard ceiling. That is exactly what check 3 in `34k_processes` verifies.
 
 ---
 
@@ -654,15 +654,15 @@ The `Proc` you build today: four fields, 40 bytes, 2.5 KiB of table.
 
 | Field | Becomes load-bearing in |
 |---|---|
-| `context` | `05_context_switch` — `swtch` needs somewhere to save |
-| `state` (as a policy input) | `06_scheduling` — your round-robin reads a snapshot |
-| `trapframe`, `kstack` | `13_traps`, `18_user_mode` — once there is a user mode |
-| `ofile` | `20_file_descriptors` |
-| `parent`, `xstate` | `21_fork_wait` |
+| `context` | `35k_context_switch` — `swtch` needs somewhere to save |
+| `state` (as a policy input) | `36k_scheduling` — your round-robin reads a snapshot |
+| `trapframe`, `kstack` | `43k_traps`, `48k_user_mode` — once there is a user mode |
+| `ofile` | `50k_file_descriptors` |
+| `parent`, `xstate` | `51k_fork_wait` |
 
 Today: the skeleton, plus **claim a slot** and **give it back**.
 
-`oslings run 04_processes` checks allocation, pid uniqueness, the `NPROC` ceiling, refusal when full, and clean reuse after a free. Its `README.md` has the how.
+`oslings run 34k_processes` checks allocation, pid uniqueness, the `NPROC` ceiling, refusal when full, and clean reuse after a free. Its `README.md` has the how.
 
 ---
 

@@ -7,13 +7,14 @@ is in use. This session builds the first real kernel service: a **physical page
 allocator**. We start from granularity — why kernels hand out fixed-size
 4096-byte pages instead of arbitrary byte ranges — and then build the allocator
 that xv6, early Linux, and rv6 all use: the **intrusive free list**. It is the
-most elegant structure in the kernel, and the reason is worth savouring: a free
+most elegant structure in the kernel, and the reason is worth savoring: a free
 page contains nothing by definition, so the "next free page" pointer is stored
 *inside the free page itself*. The bookkeeping lives in the very memory it
 describes, at zero extra cost. We cover `kfree` as a push, `kalloc` as a pop,
 the LIFO order that falls out, where the initial list comes from, and what the
 design gives up next to a buddy allocator or `malloc`. Exercise
-`02_physical_memory` is where you write it; see also the
+`32k_physical_memory` is where you write it, on Thursday, October 8 alongside
+`31k_boot`; see also the
 [Memory Map](../guides/memory-map.md) guide.
 
 ## Learning Objectives
@@ -29,8 +30,8 @@ design gives up next to a buddy allocator or `malloc`. Exercise
 
 ## Prerequisites
 
-- **L10 Boot: From Reset to `kmain`** and exercise `01_boot` — how the kernel image is laid out and how control reaches `kmain`.
-- **L09 Leaving `std`** and exercise `r09_unsafe_bridge` — raw pointers, `unsafe`, `static mut`.
+- **L10 Boot: From Reset to `kmain`** and exercise `31k_boot` (the same session) — how the kernel image is laid out and how control reaches `kmain`.
+- **L09 Leaving `std`** and exercise `21r_unsafe_bridge` — raw pointers, `unsafe`, `static mut`.
 - The [Memory Map](../guides/memory-map.md) guide — `KERNBASE`, `PHYSTOP`, and the linker symbol `end`.
 - The [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) guide — `*mut T`, `ptr::null_mut()`, dereferencing raw pointers.
 - Linked lists: push-front, pop-front, and what breaks when the order is wrong.
@@ -64,7 +65,7 @@ the entire job of a physical allocator. It answers exactly two questions:
 2. `kfree(pa)` — I am done with this page; someone else may have it.
 
 > **Key distinction:** the physical allocator is not virtual memory. It hands
-> out *real RAM at real addresses*. Virtual memory (L12, exercise `03`) is a
+> out *real RAM at real addresses*. Virtual memory (L12, exercise `33k`) is a
 > translation layer on top, and page tables are themselves pages that came from
 > `kalloc`. The allocator has to exist first.
 
@@ -108,7 +109,7 @@ entry for each.
 
 Now the software reason, which is the more interesting one. `malloc` is hard
 because its blocks are all different sizes: ask for 40 bytes and it must
-*search*; free a block and it must check the neighbours and coalesce; it must
+*search*; free a block and it must check the neighbors and coalesce; it must
 record each block's size so `free(p)` can work with no length argument. That
 machinery exists purely because the blocks are not interchangeable.
 
@@ -416,7 +417,7 @@ exercise to two functions. Every one of these mistakes is therefore silent.
 **It is not thread-safe.** `FREELIST` is a `static mut` (`kalloc.rs:11`), so two
 harts in `kalloc` at once can both read the same head and both return it. The
 fix is a spinlock around both functions — xv6 keeps one in its `kmem` struct —
-which you build in exercise `07`. rv6 runs one hart, so `kalloc.rs` in the
+which you build in exercise `37k`. rv6 runs one hart, so `kalloc.rs` in the
 finished exercise-22 kernel is still 46 lines with no lock.
 
 ---
@@ -539,7 +540,7 @@ Every one checks for null and unwinds on failure, and every one gives its pages
 back with `kfree` on teardown (`vm.rs:364`, `proc.rs:143`). Two functions,
 forty-six lines, and the whole kernel rests on them.
 
-**Exercise `02_physical_memory`** is where you write `kfree` and `kalloc`. `Run`,
+**Exercise `32k_physical_memory`** is where you write `kfree` and `kalloc`. `Run`,
 `FREELIST`, `pgroundup`, `init`, and `free_range` are given; the two list
 operations are not. Its `README.md` has the mechanics and the Rust.
 
@@ -812,4 +813,4 @@ indivisible step. Every intrusive container in every kernel obeys this rule.
 
 7. **Order the two stores in `kfree` correctly or you leak all of RAM at boot.** `(*r).next = FREELIST` before `FREELIST = r`. Reversed, every node points at itself, 32,718 pages become unreachable during `init`, and two allocations return the same page.
 
-8. **This allocator refuses four things on purpose.** No contiguous multi-page allocation, no zeroing (callers do it — `vm.rs:66`), no validation, no locking. Each refusal buys simplicity now and is paid for later: by a buddy allocator in Linux, by callers in rv6, by the spinlock you write in exercise `07`.
+8. **This allocator refuses four things on purpose.** No contiguous multi-page allocation, no zeroing (callers do it — `vm.rs:66`), no validation, no locking. Each refusal buys simplicity now and is paid for later: by a buddy allocator in Linux, by callers in rv6, by the spinlock you write in exercise `37k`.

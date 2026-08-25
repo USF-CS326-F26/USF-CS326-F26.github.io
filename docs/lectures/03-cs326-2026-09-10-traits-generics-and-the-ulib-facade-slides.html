@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L06 &middot; Thursday, September 10, 2026 &middot; unlocks `r07_traits`, `r08_errors`
+L06 &middot; Thursday, September 10, 2026 &middot; exercises `07r_traits` (Sep 17), `08r_errors` (Sep 18)
 
 ---
 
@@ -389,7 +389,7 @@ The last row decides most cases. Neither is the "advanced" one.
 ## rv6 #1: the `Scheduler` Trait
 
 ```rust
-// sched.rs:5 — exercise 06
+// sched.rs:5 — exercise 36k
 pub trait Scheduler {
     fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
 }
@@ -529,7 +529,7 @@ The collapse belongs in **one** place: the boundary. Everything behind it speaks
 
 ## `ulib`: the Design Problem
 
-- Week 3: you write `cat.rs` on a laptop; `cargo test` grades it
+- September: you write `cat.rs` on a laptop; `cargo test` grades it
 - December: you have a RISC-V kernel with files, fds, `exec`, user mode
 - Goal: the **same source file** &mdash; same bytes, not a port &mdash; runs on both
 
@@ -552,7 +552,7 @@ flowchart TD
     U --> C{"target_os == none ?"}
     C -->|no| H["sys/host.rs\nstd::fs, std::io,\nor a capture buffer"]
     C -->|yes| R["sys/rv6.rs\necall, a7 = syscall number"]
-    H --> HOST["cargo test, week 3"]
+    H --> HOST["cargo test, September"]
     R --> K["your rv6 kernel, December"]
 </div>
 
@@ -617,14 +617,14 @@ assert_eq!(out.out(), "hello\nworld\n");
 
 ---
 
-## Today's Work Block
+## The Exercises: September 17 and 18
 
-**`r07_traits`** &mdash; build both kernel abstractions: `Out` with two sinks, `Scheduler` with two policies, and one generic function driving every combination.
+**`07r_traits`** (Thursday, September 17) &mdash; build both kernel abstractions: `Out` with two sinks, `Scheduler` with two policies, and one generic function driving every combination.
 
-**`r08_errors`** &mdash; a tiny filesystem: `find` (absence), `lookup` (failure), `read`, `read_file` chained with `?`, and the boundary that turns it all into one integer.
+**`08r_errors`** (Friday, September 18) &mdash; a tiny filesystem: `find` (absence), `lookup` (failure), `read`, `read_file` chained with `?`, and the boundary that turns it all into one integer.
 
 ```bash
-oslings run r07_traits
+oslings run 07r_traits
 oslings watch          # re-runs on every save
 oslings hint           # when stuck
 ```

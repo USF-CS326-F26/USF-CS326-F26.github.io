@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every program you have written so far called functions that always did what you asked. This session is about the layer where that stops being true. `read` is permitted to hand you fewer bytes than you asked for, `write` is permitted to accept fewer than you gave it, and neither is an error — they are the contract. The loop that copes with that is the only difference between a `cat` that works on a 40-byte test file and one that works on a 40 MB log. From there the session builds outward: why a fixed buffer beats an allocator, how to choose its size, why the kernel boundary is defined in **bytes** rather than characters, and how to split a byte stream into lines without ever allocating. Those pieces then explain the shape of the five Module 1 command labs — [`c00_echo` through `c04_grep`](../assignments/exercises.md) — as one idea told five times: no input, stream it, stream it with O(1) state, stop early, match. That discipline is also what lets these exact files run on your own kernel in December.
+Every program you have written so far called functions that always did what you asked. This session is about the layer where that stops being true. `read` is permitted to hand you fewer bytes than you asked for, `write` is permitted to accept fewer than you gave it, and neither is an error — they are the contract. The loop that copes with that is the only difference between a `cat` that works on a 40-byte test file and one that works on a 40 MB log. From there the session builds outward: why a fixed buffer beats an allocator, how to choose its size, why the kernel boundary is defined in **bytes** rather than characters, and how to split a byte stream into lines without ever allocating. Those pieces then explain the shape of the Module 1 command exercises — [`10c_echo` (Friday, September 18), `11c_cat` (Thursday, September 24), `12c_wc` and `13c_grep` (Friday, September 25), and the extra-credit `14c_head`](../assignments/exercises.md) — as one idea told five times: no input, stream it, stream it with O(1) state, stop early, match. That discipline is also what lets these exact files run on your own kernel in December.
 
 ## Learning Objectives
 
@@ -19,7 +19,7 @@ Every program you have written so far called functions that always did what you 
 
 - **L05 (Collections, Slices, and Fixed Tables)** — `[T; N]`, `&[T]`, and why a kernel prefers a fixed array to a `Vec`.
 - **L06 (Traits and the `ulib` Façade)** — `Result`, `?`, and how `#[cfg(target_os = "none")]` selects `ulib`'s backend.
-- **`c00_echo` and `c01_cat`** — due at the start of this session; `cat`'s read loop is the worked example throughout.
+- **`08r_errors`** — `Result` and `?`; it shares Friday, September 18 with `10c_echo`. `cat`'s read loop, which you write on Thursday, September 24, is the worked example throughout.
 - **[ulib and Commands](../guides/ulib-and-commands.md)** — the full `ulib` API surface and the `oslings ship` workflow.
 - **[Rust for Systems](../guides/rust-for-systems.md)** — slices, byte-string literals, and pattern matching on `u8`.
 - **[The Memory Map](../guides/memory-map.md)** — where a user program's image and its single stack page live.
@@ -55,7 +55,7 @@ flowchart TD
     H --> I["return byte count in a0"]
 ```
 
-Everything between the `ecall` and the return is machinery you build later: the trampoline in exercise 18, the descriptor table in exercise 20, the filesystem in exercise 10, the console driver in exercise 15. Today you are the caller, and what matters is what the caller is promised.
+Everything between the `ecall` and the return is machinery you build later: the trampoline in exercise 48k, the descriptor table in exercise 50k, the filesystem in exercise 40k, the console driver in exercise 45k. Today you are the caller, and what matters is what the caller is promised.
 
 > Key distinction: `read` and `write` are not function calls that happen to be slow. They are *requests* — you state a maximum and the kernel answers with an actual. Confusing the request with the result is the single most common I/O bug in every language.
 
@@ -94,7 +94,7 @@ Two details in three lines carry all the weight. The loop repeats until `read` s
 The same file read through a 512-byte buffer, on the host and on rv6:
 
 ```text
-file: 1500 bytes                     (this is c01_cat's largest test)
+file: 1500 bytes                     (this is 11c_cat's largest test)
 
 host (macOS/Linux, regular file):
   read #1 -> 512   write 512
@@ -148,7 +148,7 @@ pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
 
 Three things are worth reading closely. The parameter is `mut buf: &[u8]` — the *binding* is mutable, not the data; each iteration re-points the slice past what was written, which costs nothing because a slice is a pointer and a length. The return type is `Result<(), Error>` with no count, because "all of it" is the only success there is. And the `n == 0` guard turns a stalled descriptor into an error rather than an infinite loop that writes zero bytes forever.
 
-Use `write_all` always. There is no case in these five labs where a bare `write` is correct, and the host harness cannot catch you: `host.rs:33` accepts the whole buffer every time, so a `write`-based program is green on your laptop and truncates on rv6. That is one of two places where passing tests is not the same as being correct; the other is forgetting `close`, since the host harness has a growable descriptor table and rv6 has a small fixed one.
+Use `write_all` always. There is no case in these five commands where a bare `write` is correct, and the host harness cannot catch you: `host.rs:33` accepts the whole buffer every time, so a `write`-based program is green on your laptop and truncates on rv6. That is one of two places where passing tests is not the same as being correct; the other is forgetting `close`, since the host harness has a growable descriptor table and rv6 has a small fixed one.
 
 !!! warning
     A green `cargo test` run proves your logic, not your system-call hygiene. The two things the harness structurally cannot check are short writes and descriptor leaks. Both are free today and both cost you a debugging session in December, when the only diagnostic rv6 offers is the six-line panic handler at `ulib/src/sys/rv6.rs:66`, which prints the single word `panic`.
@@ -235,7 +235,7 @@ Most text processing is line-oriented, and a line is defined by a separator rath
 
 Splitting a stream into lines with a heap is trivial: read a chunk, find newlines, allocate a `String` per line, keep a growable remainder. Without a heap you have one fixed buffer and a problem, because lines do not align with reads. A 1024-byte buffer may end mid-line, and the next `read` has to be appended to the fragment already there — which means moving the fragment to the front first.
 
-`ulib::Lines` (`ulib/src/lines.rs:10`) does that, and is given to you so `c03_head` and `c04_grep` are labs about heads and greps rather than about ring buffers. Its whole state is six fields:
+`ulib::Lines` (`ulib/src/lines.rs:10`) does that, and is given to you so `14c_head` and `13c_grep` are exercises about heads and greps rather than about ring buffers. Its whole state is six fields:
 
 ```rust
 pub struct Lines<'b> {
@@ -279,14 +279,14 @@ One more property: `next_line` **reads only when it must**. Cases 1 and 2 issue 
 
 ## 7. Five Commands, One Idea
 
-The five labs are a progression rather than five unrelated programs: each adds exactly one thing to the same skeleton.
+The five commands are a progression rather than five unrelated programs: each adds exactly one thing to the same skeleton.
 
 ```mermaid
 flowchart LR
-    A["c00 echo\nno input at all\nargv &rarr; stdout"] --> B["c01 cat\nstream it\nread/write loop"]
-    B --> C["c02 wc\nstream + O(1) state\none bool, three counters"]
-    C --> D["c03 head\nstop early\nthe loop bound is the point"]
-    D --> E["c04 grep\nmatch\n+ three edge cases"]
+    A["10c echo\nno input at all\nargv &rarr; stdout"] --> B["11c cat\nstream it\nread/write loop"]
+    B --> C["12c wc\nstream + O(1) state\none bool, three counters"]
+    C --> D["14c head\nstop early\nthe loop bound is the point"]
+    D --> E["13c grep\nmatch\n+ three edge cases"]
 ```
 
 **`echo` has no input.** It reads `argv` and writes bytes, the smallest program that still has the full job description: arguments in, bytes out, an exit status back. Its one subtlety is that a separator is not a terminator — `n` arguments take `n-1` spaces between them — and that pattern reappears in `wc`'s columns, in the shell's prompt, and in every kernel routine that prints a table.
@@ -305,7 +305,7 @@ words:      0     0     1     1     1     2      2
 
 One `bool` is everything you need to remember about the past, and two properties fall out for free rather than as special cases: a run of ten spaces still separates exactly one pair of words, because only the first non-space after them is a transition; and a final word with no trailing newline is already counted, because it was counted when it *started*. Word counting needs no end-of-file handling at all.
 
-That shape recurs for the rest of the semester: the UART driver in exercise 15 is a state machine over arriving bytes, the shell's tokenizer in exercise 16 is the same word-boundary machine with an action attached, and the ELF parser in exercise 19 walks a header with fixed state. "Streaming with O(1) state" is not a lab constraint; it is what code on a trap path looks like, because there is no allocator to call there and no sensible way to handle its failure if there were.
+That shape recurs for the rest of the semester: the UART driver in exercise 45k is a state machine over arriving bytes, the shell's tokenizer in exercise 46k is the same word-boundary machine with an action attached, and the ELF parser in exercise 49k walks a header with fixed state. "Streaming with O(1) state" is not an exercise constraint; it is what code on a trap path looks like, because there is no allocator to call there and no sensible way to handle its failure if there were.
 
 **`head` stops early.** This is the first command whose correctness includes *not* doing work. `head -n 5 /var/log/huge.log` must not read a gigabyte to print five lines, and `slow_program | head -n 1` must not wait for `slow_program` to finish. Because `Lines::next_line` reads lazily, the stopping lives entirely in the loop bound — `head.rs:43` is `while printed < limit`, not a loop over every line with a counter deciding whether to print. Both versions pass every test; only one is `head`. It is also your first encounter with **backpressure**: a reader that stops reading eventually blocks the writer, which is how `yes | head -n 1` terminates instead of filling your disk.
 
@@ -417,7 +417,7 @@ Ok(())
 
 **(a)** Name each defect in one sentence.
 **(b)** For a 1500-byte file, a 512-byte buffer, and a host kernel that always fills the buffer when it can, which of A–D produce correct output?
-**(c)** Which defects does the `c01_cat` test suite catch, and which does it structurally miss?
+**(c)** Which defects does the `11c_cat` test suite catch, and which does it structurally miss?
 **(d)** Rank A–D by how long the bug would survive in production, worst first, and justify the top entry.
 
 <details>
@@ -469,7 +469,7 @@ Chunk 1: two spaces (no change), `t` is a transition → words 1, `h`/`e` alread
 
 **(b)** **1 line, 3 words, 21 bytes.**
 
-**(c)** Because a word is counted at its *transition*, and `brown` has exactly one transition — at `b`, in chunk 3. When `n` arrives in chunk 4, `in_word` is still true, so the second rule fires and nothing is counted. The fact that makes this buffer-size independent is that `in_word` summarises everything the algorithm needs to know about all preceding bytes; the chunk boundary is invisible to it. Change 6 to 512 or 1 and the answer is identical.
+**(c)** Because a word is counted at its *transition*, and `brown` has exactly one transition — at `b`, in chunk 3. When `n` arrives in chunk 4, `in_word` is still true, so the second rule fires and nothing is counted. The fact that makes this buffer-size independent is that `in_word` summarizes everything the algorithm needs to know about all preceding bytes; the chunk boundary is invisible to it. Change 6 to 512 or 1 and the answer is identical.
 
 **(d)** Because the last word was counted when it *began*, at the `b` in chunk 3, not when it ended. Nothing about a word's end is ever needed. A "count words by looking for the end of each" formulation would need an end-of-file flush; the transition formulation does not, which is the simplification the state machine buys.
 </details>
@@ -570,11 +570,11 @@ You are choosing the buffer size for a filter that will run both on your laptop 
 
 ## Further Reading
 
-- [All Exercises](../assignments/exercises.md) — `c02_wc`, `c03_head`, and `c04_grep` follow this session; `c00_echo` and `c01_cat` are due at its start.
+- [All Exercises](../assignments/exercises.md) — `10c_echo` is Friday, September 18; `11c_cat` Thursday, September 24; `12c_wc` and `13c_grep` Friday, September 25; `14c_head` is extra credit.
 - [ulib and Commands](../guides/ulib-and-commands.md) — the complete `ulib` API, the portability rules, and the measured image budget.
 - [L06 Traits and the `ulib` Façade](03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md) — `Result`, `?`, and why the backend is chosen by target triple.
 - [L05 Collections, Slices, and Fixed Tables](03-cs326-2026-09-08-collections-slices-and-fixed-tables.md) — slices as fat pointers, and fixed arrays over `Vec`.
-- [L12 File Commands over a Filesystem API](12-cs326-2026-11-12-file-commands-over-a-filesystem-api.md) — the same commands, later, against the filesystem you write.
+- [L12 File Commands over a Filesystem API](14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md) — the same commands, later, against the filesystem you write.
 - [The Memory Map](../guides/memory-map.md) and [rv6 Architecture](../guides/rv6-architecture.md) — the 64 KiB image and the one stack page, in context.
 - [Rust for Systems](../guides/rust-for-systems.md), [Unsafe Rust and `no_std`](../guides/rust-unsafe-nostd.md), [Using OSlings](../guides/oslings-usage.md), [Cheatsheet](../guides/cheatsheet.md), [Key Concepts](../guides/key-concepts.md), [Exam Prep](../guides/exam-prep.md).
 - `read(2)` and `write(2)` on Linux — read the RETURN VALUE paragraphs in full; the short-transfer sentence is the whole lesson.
@@ -592,4 +592,4 @@ You are choosing the buffer size for a filter that will run both on your laptop 
 5. **Buffering amortises the trap, and the first order of magnitude is most of the win.** A 512-byte buffer removes 99.95 % of the syscalls a byte-at-a-time loop would make; past that you meet diminishing returns, a 128-byte ceiling inside rv6, and a 4 KiB stack page (`memlayout.rs:72`) that makes an 8 KiB buffer a page fault rather than a slowdown.
 6. **The kernel boundary is bytes, because bytes are what it has.** `char` is a 4-byte scalar and `&str` carries a validity invariant; a disk block carries neither. Validation costs image space out of 64 KiB, and UTF-8's ASCII transparency makes byte-wise copying, newline splitting, and substring search correct on UTF-8 text anyway.
 7. **Lines come out of a fixed buffer by compacting and refilling.** `ulib::Lines` returns slices into a buffer you declared, refills only when it must, and reports truncation rather than growing (`lines.rs:52`). The `'b` lifetime makes the returned slice safe by construction — a discipline C leaves to your memory.
-8. **The five commands are one idea told five times.** `echo` has no input; `cat` streams; `wc` streams with O(1) state by counting whitespace-to-word transitions instead of splitting; `head` stops early, a correctness property rather than an optimisation; `grep` matches, and its three edge cases are three distinct classes of bug. All five together fit in under 9 KiB, which is why they can run on your kernel in December.
+8. **The five commands are one idea told five times.** `echo` has no input; `cat` streams; `wc` streams with O(1) state by counting whitespace-to-word transitions instead of splitting; `head` stops early, a correctness property rather than an optimization; `grep` matches, and its three edge cases are three distinct classes of bug. All five together fit in under 9 KiB, which is why they can run on your kernel in December.

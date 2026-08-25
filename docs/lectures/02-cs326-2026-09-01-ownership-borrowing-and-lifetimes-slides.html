@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L03 &middot; September 1, 2026 &middot; Exercises `r02_ownership`, `r03_borrowing`
+L03 &middot; September 1, 2026 &middot; Exercises `02r_ownership`, `03r_borrowing`
 
 ---
 
@@ -315,7 +315,7 @@ fn consume(text: String) { }   // `text` owns it, drops it at the `}`
 - If the caller still needs it, the callee must **return** it
 
 <div class="info-box">
-That is why <code>r02_ownership</code> looks clumsy on purpose: while <code>take_page</code> runs it is the <em>only</em> owner of the free list.
+That is why <code>02r_ownership</code> looks clumsy on purpose: while <code>take_page</code> runs it is the <em>only</em> owner of the free list.
 </div>
 
 ---
@@ -619,15 +619,15 @@ pub unsafe fn proc_at(i: usize) -> *mut Proc {
 
 ---
 
-## Today's Exercises
+## This Week's Exercises
 
-- **`r02_ownership`** — a page allocator built from nothing but a `Vec<usize>`
+- **`02r_ownership`** (Thursday, September 3) — a page allocator built from nothing but a `Vec<usize>`
   and move semantics. "Handed out is not free" enforced by signatures.
-- **`r03_borrowing`** — `&`, `&mut`, slices, and a `Guard<'a>` holding a
+- **`03r_borrowing`** (Friday, September 4) — `&`, `&mut`, slices, and a `Guard<'a>` holding a
   `&'a mut u64`.
 
 ```bash
-oslings run r02_ownership
+oslings run 02r_ownership
 oslings watch          # re-runs on every save
 oslings hint
 ```

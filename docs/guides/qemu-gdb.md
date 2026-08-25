@@ -1,7 +1,7 @@
 # Debugging rv6 with QEMU and GDB
 
 This is the page you open when your kernel prints nothing, hangs, faults, or
-"worked until I turned the MMU on." From `01_boot` onward, `oslings` runs your
+"worked until I turned the MMU on." From `31k_boot` onward, `oslings` runs your
 kernel inside QEMU and shows you a serial log; when that log is empty, or ends
 mid-sentence, the only way forward is to stop the machine and look at it. QEMU
 has a GDB server built in, and attaching to it takes two commands. Everything
@@ -60,8 +60,7 @@ With `gdb-multiarch`, if it does not infer the architecture from the ELF, say
 on connecting it prints `This version of LLDB has no plugin for the language
 "rust". Inspection of frame variables will be limited.` — which is exactly the
 capability page-table debugging needs, since you spend the whole time printing
-`(*p).pagetable` and dereferencing `*mut Pte`. Every command on this page, and
-in the Oct 23 workshop, is GDB syntax.
+`(*p).pagetable` and dereferencing `*mut Pte`. Every command on this page is GDB syntax.
 
 ## The two-terminal loop
 
@@ -96,7 +95,7 @@ qemu-system-riscv64: -s: Failed to find an available port: Address already in us
 qemu-system-riscv64: -s: gdbstub: couldn't create chardev
 ```
 
-`oslings` builds Part 2 exercises with `--features harness`, which makes the
+`oslings` builds kernel exercises with `--features harness`, which makes the
 kernel run its self-check and then power off (`main.rs:106-114`). A plain
 `cargo build` gives you the interactive kernel instead. Debug whichever one is
 failing — they take different paths through `kmain`.
@@ -199,7 +198,7 @@ there is nowhere to return to.
 | `x/s addr` | A NUL-terminated string |
 | `info files` | Section addresses and the entry point |
 
-`x` format letters are worth memorising: `i` instructions, `x` hex, `d`
+`x` format letters are worth memorizing: `i` instructions, `x` hex, `d`
 decimal, `s` string, `c` char; sizes are `b` 1, `h` 2, `w` 4, `g` 8. `x/8gx` is
 "eight giant words in hex" — the right shape for page tables, which are 512
 eight-byte entries.
@@ -262,7 +261,7 @@ Value returned is $4 = (*mut rv6::vm::Pte) 0x87ffd000
 
 ## Walking a page table by hand
 
-**This is the highest-value technique on this page.** From `03_paging` to the
+**This is the highest-value technique on this page.** From `33k_paging` to the
 end of the course, most kernel bugs are one wrong bit in one PTE, and the only
 way to see it is to follow the pointers the hardware follows. Your kernel's own
 `walk` (`vm.rs:52-73`) is often the thing under suspicion, so you cannot use it

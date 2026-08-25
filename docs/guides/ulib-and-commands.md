@@ -1,14 +1,15 @@
 # ulib and the Command Set
 
 This page is the reference for `ulib`, the tiny I/O façade the five Module 1
-command labs (`c00_echo` through `c04_grep`) are written against, and for
-`oslings ship`, the step in Module 3 that takes those same source files and
-runs them on the kernel you built. Open it when you are mid-lab and need the
+command exercises (`10c_echo` through `14c_head`) are written against, and for
+`oslings ship`, the step at the end of Module 2 (`53k_ship_your_commands`) that
+takes those same source files and runs them on the kernel you built. Open it
+when you are mid-exercise and need the
 exact function signature, when the compiler is refusing something you would
 normally reach for (`Vec`, `format!`, `println!`), or when `oslings ship`
 rejects your image. Everything below is read out of `ulib/src/`,
-`commands/`, `oslings-cli/src/ship.rs`, and the reference kernel in
-`exercises/22_userland/solution/`.
+`commands/`, `oslings-cli/src/ship.rs`, and the reference kernel
+(`exercises/52k_userland/solution/`, in your tree once `53k` is released).
 
 ## The one-sentence version
 
@@ -95,7 +96,7 @@ want text, and `prog()` for `argv[0]`.
 has. `next_line() -> Option<&[u8]>` returns each line without its `\n`. If a
 line is longer than the buffer it hands back what it has and sets
 `truncated()`. It is given, not implemented by you — without it, `grep` turns
-into a lab about ring buffers instead of a lab about matching.
+into an exercise about ring buffers instead of an exercise about matching.
 
 Note what is **absent**: no `fork`, `exec`, `wait`, `getpid`, `dup`, `mkdir`,
 `unlink`, no seeking, no directory reading. Your kernel grows some of those
@@ -150,7 +151,7 @@ kernel's trap path can touch memory on your behalf.
 | `write(fd, buf, len)` | 16 | fd | buf ptr | len |
 | `close(fd)` | 21 | fd | — | — |
 
-The numbers match `exercises/22_userland/solution/syscall.rs:21-29`, which
+The numbers match the reference kernel's `syscall.rs:21-29`, which
 match xv6's. Two details worth knowing: `sys_open` (`rv6.rs:41`) copies your
 path into a fixed `[u8; MAX_PATH + 1]` scratch buffer to NUL-terminate it,
 which is why `MAX_PATH` is a hard 63 (`lib.rs:150`) — and why the kernel's own

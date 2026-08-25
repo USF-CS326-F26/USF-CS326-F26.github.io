@@ -12,10 +12,10 @@ trap handler, so nothing prints, nothing exits, and QEMU sits there until the
 harness times out. This session covers the
 resolution (identity mapping), the kernel address space `kvmmake` builds region
 by region and the permission each region earns, the exact encoding of `satp`,
-what `sfence.vma` and the TLB have to do with correctness, and a catalogue of the
+what `sfence.vma` and the TLB have to do with correctness, and a catalog of the
 ways this goes wrong. Nearly all of them look like total silence, which is why
-last Friday's GDB workshop came first. Exercise `09_virtual_memory` is the
-switch; the [Sv39 Paging](../guides/sv39-paging.md) guide is the reference card.
+the [QEMU and GDB](../guides/qemu-gdb.md) guide comes first. Exercise
+`39k_virtual_memory`, on Friday, October 30, is the switch; the [Sv39 Paging](../guides/sv39-paging.md) guide is the reference card.
 
 ## Learning Objectives
 
@@ -30,11 +30,11 @@ switch; the [Sv39 Paging](../guides/sv39-paging.md) guide is the reference card.
 
 ## Prerequisites
 
-- **L12 Virtual Memory I: Sv39 Page Tables** and exercise `03_paging` — `Pte`, `walk`, `mappages`, and the leaf/branch rule.
-- **L11 Physical Memory and the Free List** and exercise `02_physical_memory` — `kalloc` supplies the root table and every table page below it.
+- **L12 Virtual Memory I: Sv39 Page Tables** and exercise `33k_paging` — `Pte`, `walk`, `mappages`, and the leaf/branch rule.
+- **L11 Physical Memory and the Free List** and exercise `32k_physical_memory` — `kalloc` supplies the root table and every table page below it.
 - **L10 Boot: From Reset to kmain** and the [Memory Map](../guides/memory-map.md) guide — `kernel.ld`, the `end` symbol, and where the `virt` machine's devices live.
 - The [Sv39 Paging](../guides/sv39-paging.md) guide — the `satp` and `sfence.vma` reference tables, and five worked translations.
-- The [QEMU and GDB](../guides/qemu-gdb.md) guide — last Friday's workshop: `p/x $satp`, `info registers`, `monitor info mem`.
+- The [QEMU and GDB](../guides/qemu-gdb.md) guide — read it before Friday: `p/x $satp`, `info registers`, `monitor info mem`.
 - The [RISC-V](../guides/riscv.md) guide — CSRs, `csrw`, and the machine/supervisor privilege split.
 
 ---
@@ -91,7 +91,7 @@ nanosecond ago. Now they are virtual addresses that must translate to something.
 If the fetch of `pc+4` fails, the hardware raises an instruction page fault and
 jumps to the trap vector. At this point in boot, in rv6, the trap vector has never
 been set: `trap::init` runs *after* `kvminithart` in `kinit` (`main.rs:87-94` in
-the reference kernel; `main.rs:63-68` in exercise 13). So `stvec` is still zero,
+the reference kernel; `main.rs:63-68` in exercise 43k). So `stvec` is still zero,
 and the trap jumps to virtual address `0`.
 
 Virtual address `0` is not mapped either, so the fetch there faults, traps to
@@ -188,7 +188,7 @@ bits for a reason.
 
 **Read and write, because MMIO registers are read and written.** `uart::putc`
 does `write_volatile(0x1000_0000, c)` — a store. The console driver you write in
-exercise 15 will *load* from the UART's line-status register to see whether a
+exercise 45k will *load* from the UART's line-status register to see whether a
 byte has arrived. Deny either bit and the driver faults on its first access.
 
 **Not executable, deliberately.** There are no instructions at `0x1000_0000`.
@@ -278,7 +278,7 @@ The kernel page table has no CLINT entry and needs none.
 **Anything above `PHYSTOP`.** There is no RAM there. Leaving it unmapped means a
 runaway pointer faults instead of silently reading a nonexistent physical address.
 
-Here is the full ex09 map, and what it costs:
+Here is the full 39k map, and what it costs:
 
 ```text
   virtual                              physical           perms   pages of table
@@ -300,7 +300,7 @@ pages.
 
 ### 2.6 One non-identity mapping, later
 
-From exercise 18 on, `kvmmake` gains a fifth region that is *not* identity-mapped:
+From exercise 48k on, `kvmmake` gains a fifth region that is *not* identity-mapped:
 the trampoline (`vm.rs:169`), one page of assembly at `TRAMPOLINE`
 (`memlayout.rs:53`, the top page of the address space) with `PTE_R | PTE_X`. It
 sits at the same virtual address in the kernel's table and in every user table, so
@@ -390,19 +390,19 @@ Address translation applies to instruction fetches and data accesses made in
 **supervisor** and **user** mode. Machine mode accesses are never translated, no
 matter what `satp` contains.
 
-Now look at how the kernel is entered in exercise 09. `entry.rs:17` says
+Now look at how the kernel is entered in exercise 39k. `entry.rs:17` says
 `call kmain`. There is no `start.rs` in this exercise — it first appears in
-`13_traps` — so the hart is still in **machine mode** when `kvminithart` runs. The
+`43k_traps` — so the hart is still in **machine mode** when `kvminithart` runs. The
 `csrw satp` executes, the register takes the value, and translation does not
 actually take effect. Your identity map is installed and unused.
 
-From exercise 13 on, `entry.rs:23` says `call start` instead. `start.rs` clears
+From exercise 43k on, `entry.rs:23` says `call start` instead. `start.rs` clears
 `satp` (`start.rs:37`), sets `mstatus.MPP` to supervisor, points `mepc` at `kmain`,
 and executes `mret` (`start.rs:54`). Now `kmain` — and the `kvminithart` inside
 `kinit` — runs in supervisor mode, and the switch is real.
 
-> Key distinction: exercise 09 asks you to build a *correct* kernel page table and
-> install it. Exercise 13 is where a wrong one kills the machine. The table is the
+> Key distinction: exercise 39k asks you to build a *correct* kernel page table and
+> install it. Exercise 43k is where a wrong one kills the machine. The table is the
 > same table; the privilege mode is what makes it load-bearing.
 
 This is not a cheat. It is the reason the exercise is survivable: rv6 has you
@@ -506,7 +506,7 @@ someone copies the function elsewhere.
 
 ---
 
-## 5. The Failure Catalogue
+## 5. The Failure Catalog
 
 This is the practical heart of the session. Enabling paging is unusual among
 kernel operations in that most of its failure modes produce **no diagnostic
@@ -520,11 +520,12 @@ mapped read-write). A broken kernel page table breaks at least one of those,
 usually the first. There is no panic message available, because a panic message is
 a print.
 
-That is precisely why last Friday's session was the QEMU/GDB workshop. When the
-machine cannot tell you anything, you attach a debugger and ask the hardware:
+That is precisely why the [QEMU and GDB](../guides/qemu-gdb.md) guide exists.
+When the machine cannot tell you anything, you attach a debugger and ask the
+hardware:
 `p/x $satp`, `info registers pc sepc scause stval`, `monitor info mem`.
 
-### 5.2 The catalogue
+### 5.2 The catalog
 
 | Mistake | What the machine does | How you tell |
 |---|---|---|
@@ -556,7 +557,7 @@ and students conflate them:
 
 Because the failure mode is silence, rv6 inverts the usual order: prove the table
 correct while a mistake is still printable, then flip the switch. The exercise
-harness (`09_virtual_memory`, `main.rs:76-124`) does exactly that. With the MMU
+harness (`39k_virtual_memory`, `main.rs:76-124`) does exactly that. With the MMU
 still off it calls `walk` on each required region and checks that the leaf exists,
 that its physical address equals its own page base (identity), and that the needed
 permission bits are set — `main.rs:85` for the UART, `:89` for the test finisher,
@@ -792,7 +793,7 @@ run past `0x8800_0000`.
 ### Problem 4: Predict what QEMU prints
 
 A student's `kvmmake` maps the test finisher and `KERNBASE..PHYSTOP` correctly but
-omits the UART entirely. Predict the console output (a) in exercise 09, and (b) in
+omits the UART entirely. Predict the console output (a) in exercise 39k, and (b) in
 the exercise-13 kernel, where `kmain` runs in supervisor mode and `kinit` is
 `uart::init(); kalloc::init(); kvminithart(kvmmake()); proc::init(); trap::init();`
 followed by `uart::puts(BANNER)`.
@@ -800,10 +801,10 @@ followed by `uart::puts(BANNER)`.
 <details>
 <summary>Click to reveal solution</summary>
 
-**(a) Exercise 09.** The harness never reaches the dangerous step:
+**(a) Exercise 39k.** The harness never reaches the dangerous step:
 
 ```text
-rv6 booting (exercise 09: virtual memory)...
+rv6 booting (exercise 39k: virtual memory)...
   [fail] UART page not identity-mapped read+write
 OSLINGS:FAIL
 ```
@@ -813,7 +814,7 @@ false)`, which returns null because no level-0 table exists for `VPN[1] = 128`.
 QEMU then exits normally via the test finisher. This is §5.3 working as designed:
 a precise sentence instead of a hang.
 
-**(b) Exercise 13.** Nothing. Not one character.
+**(b) Exercise 43k.** Nothing. Not one character.
 
 `uart::init()` runs before the switch and works. `kvminithart` installs the table;
 the RAM map is correct, so the fetch after `csrw satp` succeeds and the kernel
@@ -920,7 +921,7 @@ that the size argument is `PHYSTOP - KERNBASE`.
 ## Further Reading
 
 - [Sv39 Paging](../guides/sv39-paging.md) — the `satp` field table, the three `sfence.vma` forms, the predicted allocation order of the kernel's 74 table pages, and five worked translations.
-- [QEMU and GDB](../guides/qemu-gdb.md) — last Friday's workshop: attaching, `p/x $satp`, walking a page table by hand with `x/gx`, `monitor info mem`, and the full diagnostic playbook.
+- [QEMU and GDB](../guides/qemu-gdb.md) — attaching, `p/x $satp`, walking a page table by hand with `x/gx`, `monitor info mem`, and the full diagnostic playbook.
 - [Memory Map](../guides/memory-map.md) — `kernel.ld` line by line, `etext` and `end`, the `virt` physical map, and the kernel's virtual address space as a table.
 - [RISC-V](../guides/riscv.md) — CSR access, `csrw`, and the machine/supervisor/user privilege split that §3.4 turns on.
 - [Key Concepts](../guides/key-concepts.md) — the running glossary.
@@ -943,7 +944,7 @@ that the size argument is `PHYSTOP - KERNBASE`.
 
 5. **`satp` is MODE, ASID, and a page number.** MODE 8 means Sv39 (`SATP_SV39 = 8 << 60`, `vm.rs:104`); ASID is 0 in rv6; the PPN field is `root >> 12`, not `root`. The kernel's value is `0x8000_0000_0008_7FFF`. Forgetting the shift produces an access fault (`scause` 1); forgetting the MODE produces a silent no-op.
 
-6. **Machine mode ignores `satp`, which is why exercise 09 is survivable.** Through exercise 12 `entry.rs` calls `kmain` directly, the hart stays in machine mode, and translation never takes effect. From exercise 13 `start.rs` `mret`s into supervisor mode and the same table becomes load-bearing. Build it as if your life depended on it; in three exercises it will.
+6. **Machine mode ignores `satp`, which is why exercise 39k is survivable.** Through exercise 42k `entry.rs` calls `kmain` directly, the hart stays in machine mode, and translation never takes effect. From exercise 43k `start.rs` `mret`s into supervisor mode and the same table becomes load-bearing. Build it as if your life depended on it; in three exercises it will.
 
 7. **The TLB is not coherent with memory, and `sfence.vma` is how you say so.** Flush after writing `satp` (`vm.rs:180`), after changing any live PTE, and — RISC-V specifically — after making an invalid entry valid. QEMU is more forgiving than real hardware, so this is the bug class that passes every test you can run.
 
@@ -951,8 +952,8 @@ that the size argument is `PHYSTOP - KERNBASE`.
 
 ---
 
-**Next:** exercise `09_virtual_memory` builds the kernel page table and turns the
-MMU on — `make_satp` and `kvmmake`, verified before the switch. Read its
+**Next:** exercise `39k_virtual_memory` (Friday, October 30) builds the kernel
+page table and turns the MMU on — `make_satp` and `kvmmake`, verified before the switch. Read its
 `README.md` first; it tells you what to write, and this page tells you why the
-machine either keeps running or goes quiet. Thursday's L17 takes the booted,
-paging kernel and gives it a filesystem and devices.
+machine either keeps running or goes quiet. L17, Thursday's reading, takes the
+booted, paging kernel and gives it a filesystem and devices.

@@ -1,18 +1,18 @@
 # Practice Set 2
 
-**Handed out Tuesday, November 17. Worked and reviewed in class Friday,
-November 20. Preparation for [Midterm 2](midterm-2.md), Tuesday, November 24.**
+**Handed out Tuesday, November 10 · Solutions posted Tuesday, November 17 ·
+Preparation for [Midterm 2](midterm-2.md), Thursday, November 19.**
 
 This set is **ungraded**, and it is the one piece of work in this course you do
-outside of class. Friday is a *review*, not a lecture: it assumes you attempted
-these and arrive with specific questions.
+outside of class. The November 17 lecture doubles as the review: attempt these
+before it and arrive with specific questions.
 
 **Do it on paper, with no computer** — that is the exam condition: closed book,
 by hand, one permitted reference, the [Cheatsheet](../guides/cheatsheet.md),
 printed. Wanting to run something in QEMU is the signal you do not yet
 understand it; write the prediction down first.
 
-Each problem is labelled with its shape — **Trace it**, **Decode it**,
+Each problem is labeled with its shape — **Trace it**, **Decode it**,
 **Order it**, **Explain it** — the same four the exam uses. Problem 8 is
 genuinely hard; budget twenty minutes.
 
@@ -182,7 +182,7 @@ between them:
    returns a guard           returns a guard        <- BOTH hold it
 ```
 
-Both hand out `&mut T` to the same data — exercise 07's `busy`-flag race in
+Both hand out `&mut T` to the same data — exercise 37k's `busy`-flag race in
 atomic clothing. An `AtomicBool` does not help if you use it with two separate
 operations.
 
@@ -309,7 +309,7 @@ three zero digits. MODE `0` means paging off.
 **The classic error** is forgetting the `>> 12`: `0x8000_0000_8021_5000` still
 fits the 44-bit PPN field, so nothing complains and the MMU looks for the root
 table about 8 TiB up, far past `PHYSTOP`. The kernel dies with no message — which
-is why exercise 09 checks `make_satp` *before* switching the MMU on.
+is why exercise 39k checks `make_satp` *before* switching the MMU on.
 
 </details>
 
@@ -456,13 +456,13 @@ rv6 computes `scause >> 63` (1 = interrupt) and `scause & 0xff` (the code).
 | 1 | exception | 8 | ecall from U-mode | every syscall; `usertrap` dispatches on `a7` | **yes** |
 | 2 | interrupt | 1 | supervisor software | the forwarded timer tick; clear `sip.SSIP` | no |
 | 3 | interrupt | 9 | supervisor external | a device via the PLIC → `console::intr` | no |
-| 4 | exception | 3 | breakpoint (`ebreak`) | the exercise 13 trap test | **yes** |
+| 4 | exception | 3 | breakpoint (`ebreak`) | the exercise 43k trap test | **yes** |
 | 5 | exception | 15 | store page fault | bad user write: kill the process | no |
 | 6 | exception | 2 | illegal instruction | user code touching a CSR: kill it | no |
 
 **The `+4` rule.** For a trap caused by deliberately executing an instruction —
 `ecall`, `ebreak` — `sepc` points **at** that instruction, which has done its
-job; returning without advancing re-executes it forever (exercise 13 fails as a
+job; returning without advancing re-executes it forever (exercise 43k fails as a
 timeout, not a crash). For an **interrupt**, `sepc` points at an instruction that
 has *not* run, so `+4` skips real work; for a **fault**, at the instruction that
 failed, which a kernel able to fix the mapping would retry.
@@ -655,7 +655,7 @@ those two would own the machine.
 
 ## After you have tried these
 
-Compare answers with someone before Friday: explaining a wrong answer out loud
+Compare answers with someone before the solutions go up: explaining a wrong answer out loud
 finds the misunderstanding faster than rereading a solution. If a whole part felt
 shaky, reread the source rather than the notes — `swtch.rs` and `usermode.rs`
 hold most of what this set asks about. See

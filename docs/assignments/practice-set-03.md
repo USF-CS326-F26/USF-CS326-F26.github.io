@@ -1,16 +1,18 @@
 # Practice Set 3
 
-**Distributed:** Friday, December 4 · **Worked and reviewed in class:** Tuesday,
+**Distributed:** Friday, December 4 · **Solutions posted:** Tuesday,
 December 8 · **Prepares for:** the [Final Exam](final.md), December 11–17.
 
-This set is **ungraded**, but the December 8 review session assumes you have
-attempted it — we work the problems, we do not derive them from scratch.
+This set is **ungraded**, but the final review that closes L26 on December 8
+assumes you have attempted it — we work the problems, we do not derive them
+from scratch.
 
 **Do it on paper, with no computer.** That is the exam condition: closed book,
 by hand, with one permitted reference, the printed
 [Cheatsheet](../guides/cheatsheet.md). Every solution shows its arithmetic.
 
-Cumulative, weighted toward Module 3. Each problem is labelled with its shape:
+Cumulative, weighted toward `49k`–`53k`; pipes appear at the design level
+only. Each problem is labeled with its shape:
 **trace it**, **decode it**, or **order it / explain it**.
 
 ---
@@ -237,7 +239,7 @@ having two tables.
 
 ### Problem 6: Find the bug (explain it)
 
-`oslings run 20_file_descriptors` reports a **timeout** on the `cat` step. Find
+`oslings run 50k_file_descriptors` reports a **timeout** on the `cat` step. Find
 the bug, explain the mechanism, and name a second bug in the same excerpt.
 
 ```rust

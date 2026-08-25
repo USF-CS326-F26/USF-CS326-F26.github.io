@@ -3,8 +3,8 @@
 **This is the reference you are permitted to bring to the midterm and the
 final.** Print it, write on it, bring it in. Every bit position, magic address
 and constant rv6 is built from is on this one page, cited to the file and line
-in `exercises/22_userland/solution/` so you can check it against the real
-kernel. It is not a tutorial — it is what you look at when you cannot remember
+in the reference kernel (`exercises/52k_userland/solution/`, in your tree once
+`53k` is released) so you can check it against the real kernel. It is not a tutorial — it is what you look at when you cannot remember
 whether `PTE_U` is bit 4 or bit 5. For the *why*, see
 [Sv39 Paging](sv39-paging.md), [The Memory Map](memory-map.md), and
 [rv6 Architecture](rv6-architecture.md).
@@ -208,10 +208,10 @@ Top bit: 1 = interrupt, 0 = exception; low bits say which. rv6 reads
 
 | Code | Meaning | rv6 |
 |---|---|---|
-| 1 | supervisor software | the forwarded timer tick (ex14) |
+| 1 | supervisor software | the forwarded timer tick (44k) |
 | 5 | supervisor timer | unused; we forward via software instead |
 | 7 | machine timer | handled in M-mode by `timervec` |
-| 9 | supervisor external | a device via the PLIC (ex15) |
+| 9 | supervisor external | a device via the PLIC (45k) |
 
 **Exceptions** (`scause >> 63 == 0`):
 
@@ -219,7 +219,7 @@ Top bit: 1 = interrupt, 0 = exception; low bits say which. rv6 reads
 |---|---|---|
 | 1 | instruction access fault | a faulting user program |
 | 2 | illegal instruction | a faulting user program |
-| 3 | **breakpoint** (`ebreak`) | the ex13 trap test |
+| 3 | **breakpoint** (`ebreak`) | the 43k trap test |
 | 5, 7 | load / store access fault | fault |
 | 8 | **ecall from U-mode** | every system call |
 | 9, 11 | ecall from S-mode, M-mode | unused |

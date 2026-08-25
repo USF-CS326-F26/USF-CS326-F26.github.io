@@ -6,13 +6,13 @@ Everything so far has run exactly once, start to finish: `kmain` boots, sets up
 memory, builds a process table, and stops. This session is where one CPU starts
 pretending to be many. The first half is **mechanism** — `swtch`, fourteen stores
 and fourteen loads and a `ret` that returns into a different thread of execution.
-You already wrote a four-register version of it as `baby_swtch` in `a00_asm_bridge`;
+You already wrote a four-register version of it as `baby_swtch` in `20a_asm_bridge`;
 today we read the real one line by line, then the double switch (process → scheduler
 → process) that rv6 routes every transition through. The second half is **policy** —
 who runs next, and why that question is kept out of the assembly. We build round
 robin, then survey FCFS, SJF, priority, MLFQ, and CFS precisely enough to compare
-them numerically. This is the concept behind exercises `05_context_switch` and
-`06_scheduling`; see also the [RISC-V guide](../guides/riscv.md).
+them numerically. This is the concept behind exercises `35k_context_switch` and
+`36k_scheduling`, both on Friday, October 23; see also the [RISC-V guide](../guides/riscv.md).
 
 ## Learning Objectives
 
@@ -21,7 +21,7 @@ them numerically. This is the concept behind exercises `05_context_switch` and
 - **Trace** `swtch` instruction by instruction, naming what is in every register
   at entry, at the midpoint, and after `ret`.
 - **Describe** what `#[repr(C)]` guarantees, what breaks silently without it, and
-  what changed between a00's `baby_swtch` and rv6's `swtch`.
+  what changed between 20a's `baby_swtch` and rv6's `swtch`.
 - **Justify** routing every switch through a per-CPU scheduler context rather than
   switching process to process directly.
 - **Distinguish** mechanism from policy, and explain how the `Scheduler` trait
@@ -32,16 +32,17 @@ them numerically. This is the concept behind exercises `05_context_switch` and
 
 ## Prerequisites
 
-- `a00_asm_bridge` — `baby_swtch`, `global_asm!`, `extern "C"`, the RV64 register
+- `20a_asm_bridge` — `baby_swtch`, `global_asm!`, `extern "C"`, the RV64 register
   file. This lecture assumes you wrote it.
 - L08 *RISC-V Registers and the Calling Convention* and the
   [RISC-V guide](../guides/riscv.md).
-- L13 *Processes and the PCB* and exercises `04_processes` and `02_physical_memory` —
+- L13 *Processes and the PCB* and exercises `34k_processes` (Thursday, October 22)
+  and `32k_physical_memory` —
   `Proc`, `ProcState`, the `PROCS` table, and the `kalloc` page each process uses as
   a kernel stack.
 - The [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md) — raw pointers,
   `addr_of_mut!`, why calling assembly is `unsafe`.
-- Rust traits (`r07_traits`), which is how the policy plugs in.
+- Rust traits (`07r_traits`), which is how the policy plugs in.
 
 ---
 
@@ -81,7 +82,7 @@ it resumes at is `ra`. The switch gets `pc` for free by hijacking the return.
 
 > Key distinction: a **context** is not a **trap frame**. A context is the small
 > set of registers a *kernel thread* needs to resume from a voluntary call. A trap
-> frame (exercise `18_user_mode`) is the much larger set a *user process* needs
+> frame (exercise `48k_user_mode`) is the much larger set a *user process* needs
 > when hardware interrupts it at an arbitrary instruction — no calling convention
 > protects anything there, so all 31 registers plus `pc` and several CSRs go.
 
@@ -175,7 +176,7 @@ later passes that first context as `new`.
 
 ### `baby_swtch` and `swtch`, side by side
 
-You have already written this. In `a00_asm_bridge`, `baby_swtch` saves and restores
+You have already written this. In `20a_asm_bridge`, `baby_swtch` saves and restores
 four registers through a four-field `Ctx`:
 
 ```asm
@@ -199,11 +200,11 @@ baby_swtch:                       swtch:
 ```
 
 Ten more registers, and a `Context` living inside a `Proc` (`proc.rs:33`) instead of a
-test harness. Same argument registers, same ordering constraint, same `ret`. a00's
+test harness. Same argument registers, same ordering constraint, same `ret`. 20a's
 version was not a model of a context switch; it *was* one, for a machine that only
 used four registers.
 
-Two details a00 also established. **`global_asm!`, not `asm!` inside a function:** a
+Two details 20a also established. **`global_asm!`, not `asm!` inside a function:** a
 Rust function gets a prologue and epilogue that adjust `sp`, and `swtch` is *about*
 `sp`. `global_asm!` emits the routine with no wrapper; the `extern "C"` block at
 `swtch.rs:34` declares the symbol, and calling it is `unsafe` because Rust cannot
@@ -324,7 +325,7 @@ pub unsafe fn ready(p: *mut Proc) {
 }
 ```
 
-Exercise 05's `init_context` (`swtch.rs:38`–`swtch.rs:44`) is the same three lines
+Exercise 35k's `init_context` (`swtch.rs:38`–`swtch.rs:44`) is the same three lines
 in general form. Two fields matter. **`ra` is the entry function's address** — the
 first `swtch` into this process `ret`s to it, so `ret` *becomes* the call. In rv6
 the entry is `forkret` (`usermode.rs:356`), which calls the `-> !` function
@@ -424,7 +425,7 @@ rv6 already has the hardware. `start.rs:19` sets `INTERVAL = 1_000_000`, and the
 `time` CSR ticks at 10 MHz on QEMU `virt`, so the machine timer fires about every
 0.1 s; `timervec` (`start.rs:83`) forwards it as a supervisor software interrupt,
 counted at `trap.rs:64`. Turning that tick into a forced yield is preemption:
-exercise `14_interrupts`. Today's scheduler is cooperative on purpose, because it is
+exercise `44k_interrupts`. Today's scheduler is cooperative on purpose, because it is
 deterministic — a wrong `pick_next` gives a wrong *order* rather than a heisenbug.
 
 Quantum length is a real tradeoff. Near the switch cost, overhead dominates: a 1 µs
@@ -488,7 +489,7 @@ long jobs**: a steady stream of short arrivals means the long job's turn never c
 Each process carries a priority; always run the highest. FCFS, SJF, and round robin
 are special cases (priority = arrival time, remaining time, constant). Priorities
 are **static** — standard in hard real-time systems, where rate-monotonic analysis
-assigns priority by period — or **dynamic**, recomputed from behaviour.
+assigns priority by period — or **dynamic**, recomputed from behavior.
 
 Starvation is the defining hazard, and the classic fix is **aging**: raise a waiting
 process's priority over time so it eventually reaches the top. The other hazard is
@@ -496,13 +497,13 @@ process's priority over time so it eventually reaches the top. The other hazard 
 low-priority process, which is preempted by a medium-priority one, so it waits
 behind work it outranks. The Mars Pathfinder rover rebooted repeatedly in flight in
 1997 for exactly this; the fix is **priority inheritance**, where the lock holder
-inherits its highest waiter's priority. The lock side is `07_spinlocks`.
+inherits its highest waiter's priority. The lock side is `37k_spinlocks`.
 
 ### MLFQ
 
 MLFQ descends from CTSS (1962) and Multics and survives in BSD, Windows, and macOS.
 It answers "how do you get SJF's latency without knowing the future?" — **learn it
-from behaviour.** A job that keeps blocking early is probably interactive; one that
+from behavior.** A job that keeps blocking early is probably interactive; one that
 burns full quanta is probably batch.
 
 ```text
@@ -559,7 +560,7 @@ virtual deadline — shorter, more frequent slices without a larger share.
 | SJF | No | Smallest service time | Avg turnaround (optimal) | Yes — long jobs | Future burst |
 | Round robin | With a quantum | Next in rotation | Response time, fairness | No | Nothing |
 | Priority | Either | Highest priority | Whatever priority encodes | Yes — needs aging | Priority assignment |
-| MLFQ | Yes | Top non-empty queue | Latency *and* throughput | Yes — needs boosting | Observed behaviour |
+| MLFQ | Yes | Top non-empty queue | Latency *and* throughput | Yes — needs boosting | Observed behavior |
 | CFS | Yes | Smallest `vruntime` | Proportional fairness | No | Accumulated runtime |
 
 rv6 uses plain round robin, and so does xv6: its scheduler sweeps the process table,
@@ -571,10 +572,10 @@ object behind a trait, so the policy is swappable.
 
 ## 7. What This Unlocks
 
-**Preemption** (`14_interrupts`): the timer already ticks, and making the tick force a
+**Preemption** (`44k_interrupts`): the timer already ticks, and making the tick force a
 yield turns cooperative round robin into preemptive. **Locking**
-(`07_spinlocks`): once a switch can happen at an arbitrary instruction, every shared
-kernel structure needs mutual exclusion. **Blocking** (`08_semaphores`): `Sleeping`
+(`37k_spinlocks`): once a switch can happen at an arbitrary instruction, every shared
+kernel structure needs mutual exclusion. **Blocking** (`38k_semaphores`): `Sleeping`
 exists in `ProcState` (`proc.rs:18`) but nothing puts a process there yet.
 
 ---
@@ -586,7 +587,7 @@ exists in `ProcState` (`proc.rs:18`) but nothing puts a process there yet.
 | Context | Register state needed to resume a suspended kernel thread | `ra`, `sp`, `s0`–`s11` — 14 `usize`, 112 bytes (`swtch.rs:7`) |
 | Callee-saved | Registers a called function must return unchanged | `ra`, `sp`, `s0`–`s11`; the only ones `swtch` saves |
 | `#[repr(C)]` | Forces declaration-order, C-rule field layout | Locks `ra` at 0, `sp` at 8, `s11` at 104 (`swtch.rs:5`) |
-| `swtch` | Save 14 registers, load 14, `ret` | `swtch.rs:46`–`swtch.rs:82`; a00's `baby_swtch` plus ten |
+| `swtch` | Save 14 registers, load 14, `ret` | `swtch.rs:46`–`swtch.rs:82`; 20a's `baby_swtch` plus ten |
 | Double switch | Every handover goes process → scheduler → process | In at `usermode.rs:297`, out at `usermode.rs:365` |
 | Per-CPU scheduler context | The hub context each hart switches through | `static mut SCHED_CTX` (`usermode.rs:204`) |
 | `Scheduler` trait | The seam that makes a policy replaceable | `pick_next(&mut self, &[ProcState]) -> Option<usize>` (`sched.rs:5`) |
@@ -656,7 +657,7 @@ The forward switch still works — `ra` and `sp` are correctly loaded from `new`
 target's entry again on a stale `sp`. In a scheduler loop that looks like one process
 running forever, or an immediate fault — both far from the real bug.
 
-The a00 rule is exactly this: **save all fourteen before loading any.**
+The 20a rule is exactly this: **save all fourteen before loading any.**
 
 </details>
 
@@ -778,8 +779,8 @@ to go — it would return into a process that just declared itself not running.
 
 ## Further Reading
 
-- Exercise `05_context_switch` `README.md` — the `global_asm!` body and `volatile`.
-- Exercise `06_scheduling` `README.md` — the `Scheduler` trait, the iterator adapters,
+- Exercise `35k_context_switch` `README.md` — the `global_asm!` body and `volatile`.
+- Exercise `36k_scheduling` `README.md` — the `Scheduler` trait, the iterator adapters,
   and the interleaving the test checks.
 - [RISC-V guide](../guides/riscv.md) — register table and calling convention.
 - [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md) — `global_asm!`,
@@ -809,7 +810,7 @@ to go — it would return into a process that just declared itself not running.
    context, so `swtch` returns into a different thread of execution on a different
    stack. Everything else is bookkeeping around that one jump.
 
-4. **You already wrote this.** rv6's `swtch` is a00's `baby_swtch` with ten more
+4. **You already wrote this.** rv6's `swtch` is 20a's `baby_swtch` with ten more
    registers: same argument registers, same save-then-load constraint, same `ret`.
 
 5. **rv6 switches twice per handover, through a per-CPU hub.** Process → scheduler →
@@ -829,5 +830,5 @@ to go — it would return into a process that just declared itself not running.
 8. **Round robin trades turnaround for latency and never starves.** The cursor
    advancing past each selection (`sched.rs:26`) is the whole proof. FCFS convoys; SJF
    is turnaround-optimal but starves long jobs; priority needs aging; MLFQ infers job
-   type from behaviour; CFS orders by weighted virtual runtime. Exercises
-   `05_context_switch` and `06_scheduling` are the mechanism and the policy.
+   type from behavior; CFS orders by weighted virtual runtime. Exercises
+   `35k_context_switch` and `36k_scheduling` are the mechanism and the policy.

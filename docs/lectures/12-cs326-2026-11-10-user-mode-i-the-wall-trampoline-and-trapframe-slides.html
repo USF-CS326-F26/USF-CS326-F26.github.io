@@ -179,7 +179,7 @@
 
 ## CS 326 Operating Systems
 
-Nov 17, 2026 · exercise `18_user_mode`
+L22 · November 10, 2026 · exercise `48k_user_mode` (Nov 13)
 
 ---
 
@@ -211,8 +211,8 @@ The hardware has to refuse **on the kernel's behalf, every cycle, at zero cost**
 
 | Mechanism | Restricts | Where you met it |
 |---|---|---|
-| Privilege levels | Which **instructions** are legal | `13_traps` |
-| MMU + page tables | Which **addresses** exist | `03_paging`, `09_virtual_memory` |
+| Privilege levels | Which **instructions** are legal | `43k_traps` |
+| MMU + page tables | Which **addresses** exist | `33k_paging`, `39k_virtual_memory` |
 
 <div class="highlight-box">
 Neither suffices alone. Privilege without paging → an ordinary <code>ld</code> reads
@@ -247,7 +247,7 @@ stateDiagram-v2
     S --> S: kernel trap
 </div>
 
-Dropping S → U is exercise 13's `mret` one level down: clear `sstatus.SPP`,
+Dropping S → U is exercise 43k's `mret` one level down: clear `sstatus.SPP`,
 set `sepc`, `sret` (`usermode.rs:455`, `:459`).
 
 ---
@@ -298,7 +298,7 @@ same vector, same <code>sepc</code>, same bookkeeping as a page fault.
  0x0000_0000 (unmapped)          0x0000_0000  program image R X U
 ```
 
-One page table per process since `04_processes` — today `satp` finally points at it.
+One page table per process since `34k_processes` — today `satp` finally points at it.
 
 ---
 
@@ -320,7 +320,7 @@ pointer by accident. Hence `walkaddr` (`vm.rs:252-261`), which translates by han
 - **`MAXVA = 1 << 38`** (`memlayout.rs:49`) — Sv39 gives 39 bits, but bits 63:39 must
   sign-extend bit 38. Stop one bit short and never think about it again.
 - **Address 0 is ordinary.** Nothing sacred about zero in a private space; it is
-  where xv6 loads programs. Null-pointer traps are a luxury of `19_exec`.
+  where xv6 loads programs. Null-pointer traps are a luxury of `49k_exec`.
 - **The guard gap** between the image and the stack at `0x1_0000` turns a runaway
   into a clean page fault.
 
@@ -388,7 +388,7 @@ graph TB
 ## It Gets Its Own Physical Page
 
 The assembly is linked into the kernel image, sharing a page with unrelated
-code. Mapping *that* page would expose the neighbours.
+code. Mapping *that* page would expose the neighbors.
 
 ```rust
 let tramp = kalloc::kalloc();                    // vm.rs:158
@@ -598,7 +598,7 @@ return, a forked child's first breath — goes through
 That single path is why:
 
 - the `sscratch` invariant holds
-- `21_fork_wait` gets a working child by **copying the parent's trapframe and
+- `51k_fork_wait` gets a working child by **copying the parent's trapframe and
   zeroing one field**
 
 ---
@@ -642,13 +642,13 @@ That single path is why:
 
 ## Next
 
-- **Today's lab:** exercise `18_user_mode` — `map_user_pages`, `usertrap`'s
+- **Friday's exercise (November 13):** `48k_user_mode` — `map_user_pages`, `usertrap`'s
   ecall branch, `dispatch`, `copyin`
-- **Thursday (L23):** User Mode II — the system-call ABI, `epc += 4`, and reading
+- **Next Tuesday (L23):** User Mode II — the system-call ABI, `epc += 4`, and reading
   a buffer that exists only in someone else's address space
 - **Read:** the lecture page, and `usermode.rs` top to bottom
 
-`oslings run 18_user_mode`
+`oslings run 48k_user_mode`
                 </textarea>
             </section>
         </div>

@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L19 · November 5, 2026 · unlocks `15_console`
+L19 · November 5, 2026 · exercise `45k_console` (Nov 12)
 
 ---
 
@@ -201,7 +201,7 @@ Either the CPU **asks** the device, or the device **tells** the CPU.
 
 - That is the whole design space
 - The choice is *quantitative*, not aesthetic
-- Exercise 11 polled the UART; today the UART interrupts us
+- Exercise 41k polled the UART; today the UART interrupts us
 - Same pattern for a disk, a NIC, anything memory-mapped
 
 <div class="info-box">
@@ -551,7 +551,7 @@ Erase takes three bytes: backspace, space, backspace.
 | Linux | a **pluggable** line discipline — `drivers/tty/n_tty.c` |
 
 xv6's ring holds *edited* text, so every program gets cooked input free.
-rv6's holds raw bytes — Module 3's `read(0, ...)` returns **one byte**.
+rv6's holds raw bytes — `48k`'s `read(0, ...)` returns **one byte**.
 
 ---
 
@@ -583,20 +583,20 @@ sequenceDiagram
 
 ---
 
-## Module 2 Is Finished
+## The Kernel Is Built
 
-Seven weeks, one missing function at a time:
+Six weeks, one missing function at a time:
 
 boot → allocator → page tables → processes → context switch → scheduler → locks →
 filesystem → devices → traps → interrupts → **console**
 
-- From here you *receive* the finished kernel and **extend** it
+- From here you *receive* the reference kernel and **extend** it
 - Nobody starts a kernel; everybody reads one
 - Next: shell, user mode, syscalls, `exec`, fds, `fork`/`wait`
 
 ---
 
-## Today's Exercise: `15_console`
+## The Exercise: `45k_console` (Thursday, November 12)
 
 One function — `console::intr` — in the shape you have now seen three times.
 
@@ -605,7 +605,7 @@ One function — `console::intr` — in the shape you have now seen three times.
 3. `plic::complete(irq)` — release the gateway
 
 ```bash
-oslings run 15_console
+oslings run 45k_console
 cd rv6 && cargo run      # then type. Ctrl-A X to quit.
 ```
 

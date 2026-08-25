@@ -176,7 +176,7 @@ Structs, `impl`, `const fn`, and Enums &middot; L04
 
 ## Learning Objectives
 
-- Define a struct and give it behaviour in an `impl` block
+- Define a struct and give it behavior in an `impl` block
 - Distinguish a method from an associated function; `&self` vs `&mut self` vs `self`
 - Explain why the **newtype** pattern catches bugs a `typedef` cannot
 - Evaluate a `const fn` by hand and name the contexts that force it
@@ -410,10 +410,10 @@ flowchart LR
 static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65
 ```
 
-- 64 PCBs, each with a 14-field `Context` and a 16-entry file table — fully initialised
+- 64 PCBs, each with a 14-field `Context` and a 16-entry file table — fully initialized
 - At the kernel's first Rust function: no heap, no allocator, nothing to run a loop
 - C has static initializers, but they cannot call a function &rarr; a pile of `xxx_init()`
-- C++ answered with `constexpr` (2011); Rust's `const fn` stabilised in 2018
+- C++ answered with `constexpr` (2011); Rust's `const fn` stabilized in 2018
 
 `[const { ... }; N]` because the plain repeat form needs `Copy`, and `Proc` is not.
 
@@ -443,7 +443,7 @@ is why `walk` and `mappages` are ordinary functions
 ```
 
 - Not field order, not padding, not that two identical declarations agree
-- The compiler may sort fields to minimise padding, and does
+- The compiler may sort fields to minimize padding, and does
 - For pure Rust data, that reordering is a free win
 
 `#[repr(C)]` gives it up: source order, C alignment rules. Needed when something
@@ -488,7 +488,7 @@ Same argument for `Trapframe` (`usermode.rs:33`): `sd sp, 48(a0)` matches `pub s
 
 | Attribute | Guarantee | rv6 uses it for |
 |---|---|---|
-| `repr(Rust)` | None; optimise freely | Everything internal |
+| `repr(Rust)` | None; optimize freely | Everything internal |
 | `#[repr(C)]` | Source order, C alignment | `Context`, `Trapframe`, `Run` |
 | `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs:25`) |
 | `#[repr(packed)]` | No padding at all | Nothing — refs to unaligned fields are UB |
@@ -633,13 +633,13 @@ Guards compose with tuple patterns: `match (state, event)`.
 
 ---
 
-## Today's Exercises
+## Next Week's Exercises
 
-- **`r04_structs_impl`** — `MemRegion`, and a working `Pte` with `new` / `pa` / `flags`
-- **`r05_enums_match`** — a process state machine from an enum, a `match`, and an `Option`
+- **`04r_structs_impl`** (Thursday, September 10) — `MemRegion`, and a working `Pte` with `new` / `pa` / `flags`
+- **`05r_enums_match`** (Friday, September 11) — a process state machine from an enum, a `match`, and an `Option`
 
 ```sh
-oslings run r04_structs_impl
+oslings run 04r_structs_impl
 oslings watch          # re-runs on every save
 oslings hint           # when stuck
 ```

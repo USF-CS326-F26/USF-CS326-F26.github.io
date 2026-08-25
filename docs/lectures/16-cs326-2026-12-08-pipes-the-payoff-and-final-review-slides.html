@@ -179,14 +179,14 @@
 
 ## CS 326 Operating Systems
 
-Dec 8, 2026 · exercise `22_userland` + extra credit
+L26 · December 8, 2026 · the payoff (`53k`) + final review
 
 ---
 
 ## Learning Objectives
 
 - Describe a pipe as a bounded ring buffer behind two file descriptors
-- Derive the end-of-file rule from the blocking rules, rather than memorising it
+- Derive the end-of-file rule from the blocking rules, rather than memorizing it
 - Construct `a | b` from `pipe`, `fork`, `dup`, `close`, and `exec` alone
 - Explain how one command source compiles for a laptop *and* for bare-metal RISC-V
 - Walk rv6 from the first instruction after reset to a blocked `getc`
@@ -464,7 +464,7 @@ The symptom appears in <code>b</code> — a process with no bug in it, on a data
 ## One Line, Two Worlds
 
 ```rust
-ulib::write_all(STDOUT, line)?;     // grep.rs, unchanged since week 3
+ulib::write_all(STDOUT, line)?;     // grep.rs, unchanged since September
 ```
 
 On your laptop → `write(2)`. On `riscv64gc-unknown-none-elf` →
@@ -483,7 +483,7 @@ ecall
 ## From Your Source to a Page
 
 ```text
-  commands/src/bin/grep.rs      byte-identical to week 3
+  commands/src/bin/grep.rs      byte-identical to September
         |  cargo build --release --target riscv64gc-unknown-none-elf
   grep                          ELF64, e_machine = 243, ET_EXEC
         |  flatten PT_LOAD segments, zero-fill the p_memsz tail
@@ -585,10 +585,10 @@ Shorter: signals, `sleep`/`wakeup`, kernel preemption, `chdir`/`mkdir`/`readdir`
 ## The Final Exam
 
 - **Dec 11–17**, registrar's slot · paper, closed book · the printed Cheatsheet only · 20%
-- **Cumulative, weighted toward Module 3**:
+- **Cumulative, weighted toward `49k`–`53k`**:
   `exec` and program loading · file descriptors · `fork`/`exit`/`wait` ·
   why the split exists · userland and pid 1 · pipes
-- Pipes are examinable **exactly as today presents them** — semantics and construction. `24_pipes` is extra credit; no question depends on it.
+- Pipes are examinable **exactly as today presents them** — semantics and construction. `55k_pipes` is extra credit; no question depends on it.
 
 <div class="info-box">
 Expect one long question that walks a single operation through every layer. Prepare by narrating <code>rv6$ ls</code> — and today's boot walk — out loud.

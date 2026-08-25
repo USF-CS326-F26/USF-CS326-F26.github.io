@@ -6,16 +6,17 @@ This is the session where the kernel becomes a Unix. Three system calls finish
 the job: `exit` parks a finished process as a **zombie** so its status can
 outlive it, `wait` reaps that zombie and hands the status to the parent, and
 `exec` throws away a process's memory and replaces it with a different program.
-With `fork` from last week, that trio is the complete Unix answer to "run a
+With `fork` from Tuesday's lecture, that trio is the complete Unix answer to "run a
 program," and it is enough to lift the shell out of the kernel entirely. Along
-the way the round-robin policy written back in exercise `06_scheduling` finally
+the way the round-robin policy written back in exercise `36k_scheduling` finally
 schedules two genuinely independent processes instead of one. The central
 argument of the lecture is not mechanical but design-level: **why** Unix splits
 process creation into `fork` and `exec` rather than offering one `spawn`, what
 that split buys, what it costs, and what `posix_spawn` and Windows'
 `CreateProcess` gave up by taking the other road. We close by tracing `rv6$ ls`
-through every layer built this term. Concept behind exercises `21_fork_wait`
-and `22_userland`; see also [rv6 Architecture](../guides/rv6-architecture.md).
+through every layer built this term. Concept behind Friday, December 4's
+exercises — `51k_fork_wait`, `52k_userland`, and `53k_ship_your_commands` —
+plus the extra-credit `54k_elf_loader`; see also [rv6 Architecture](../guides/rv6-architecture.md).
 
 ## Learning Objectives
 
@@ -38,13 +39,13 @@ and `22_userland`; see also [rv6 Architecture](../guides/rv6-architecture.md).
 
 ## Prerequisites
 
-- Exercise `21_fork_wait` and the `fork` half of last session — `allocproc`,
+- The `fork` half of L24 (exercise `51k_fork_wait` is Friday) — `allocproc`,
   `uvmcopy`, and the child whose `a0` is zero.
-- Exercise `19_exec` and `20_file_descriptors` — `load_segment`, `push_argv`,
+- Exercises `49k_exec` and `50k_file_descriptors` (today) — `load_segment`, `push_argv`,
   the per-process `ofile` table.
-- Exercise `18_user_mode` and the trap lecture — the trampoline, the trapframe,
+- Exercise `48k_user_mode` and the trap lecture — the trampoline, the trapframe,
   `usertrap` / `usertrapret`.
-- Exercises `05_context_switch` and `06_scheduling` — `swtch` and
+- Exercises `35k_context_switch` and `36k_scheduling` — `swtch` and
   `RoundRobin::pick_next`, both of which finally get a real workload today.
 - The [Sv39 Paging](../guides/sv39-paging.md) and
   [Memory Map](../guides/memory-map.md) guides — `exec` is an address-space
@@ -146,7 +147,7 @@ parent burns a scheduler round per failed attempt.
 > address as a wait channel and `exit` calls `wakeup(p->parent)`, so the parent
 > is never scheduled with nothing to collect; Linux queues it on a wait queue
 > and delivers `SIGCHLD`. Both replace "look again later" with "someone will
-> tell me" — and the semaphores from exercise `08` are the tool for doing the
+> tell me" — and the semaphores from exercise `38k` are the tool for doing the
 > same in rv6.
 
 ### Reaping is what frees the slot
@@ -235,9 +236,9 @@ that are looked up rather than pointed at.
 
 ## 4. Two Processes, Really: the Scheduler Wakes Up
 
-Exercises 18 through 20 ran exactly one user process at a time: `run` switched
+Exercises 48k through 50k ran exactly one user process at a time: `run` switched
 into it, its `exit` switched straight back, and there was no scheduling
-decision to make — so the policy written in exercise `06` sat unused for six
+decision to make — so the policy written in exercise `36k` sat unused for six
 weeks. `fork` changes that in one instruction: after `sys_fork` returns there
 are two `Runnable` processes and a genuine choice.
 
@@ -246,7 +247,7 @@ every slot's state, hands the array to `RoundRobin::pick_next` (`sched.rs:20`),
 marks the winner `Running`, sets `CURPROC`, and `swtch`-es into it; control
 returns to the next line when that process yields or exits.
 
-The policy itself is unchanged from exercise 06 — a rotation cursor and a
+The policy itself is unchanged from exercise 36k — a rotation cursor and a
 scan:
 
 ```rust
@@ -295,7 +296,7 @@ sequenceDiagram
 
 Two details are worth staring at. First, "parent" prints before "child" even
 though the child was created first: the parent keeps the CPU until it blocks,
-because rv6 is **cooperative**. The timer from exercise `14` still ticks and is
+because rv6 is **cooperative**. The timer from exercise `44k` still ticks and is
 still forwarded to user mode (`usermode.rs:265`), but its handler only clears
 the pending bit (`usermode.rs:411`) — turning that tick into a `proc_yield` is
 all preemption would take, and rv6 deliberately stops one line short. Second,
@@ -336,7 +337,7 @@ calls made by the child before it stops being the shell:
 The trick is that `fdalloc` (`syscall.rs:295`) returns the **lowest free**
 descriptor. Close 1, and the next `open` is handed 1. `ls` is written to print
 on fd 1 and never learns anything changed. Everything needed for this already
-exists in your kernel: the fd table from exercise `20`, and the two lines that
+exists in your kernel: the fd table from exercise `50k`, and the two lines that
 make it survive the transition —
 
 - `fork` copies the table wholesale: `(*child).ofile = (*parent).ofile;`
@@ -615,7 +616,7 @@ flowchart TD
     O --> S["rv6$ prompt again"]
 ```
 
-Underneath sits the boot path from exercises `01`, `02`, `03`, and `12`
+Underneath sits the boot path from exercises `31k`, `32k`, `33k`, and `42k`
 (`main.rs:89-95`): `entry.s` and `start.rs` dropping from machine to supervisor
 mode, `kalloc::init` building the free list, `kvmmake` and `kvminithart`
 installing the kernel page table in `satp`, `proc::init` zeroing the process
@@ -928,7 +929,7 @@ that need the window, offer `posix_spawn` for the ones that do not.
 3. **One parent pointer makes the process tree.** It gives every process a
    unique collector; real Unix hands orphans to `init`, while rv6 tears each
    run's tree down with `cleanup_except` (`usermode.rs:344`).
-4. **The round-robin policy from exercise 06 finally has a real workload.**
+4. **The round-robin policy from exercise 36k finally has a real workload.**
    `fork` creates genuinely independent runnable processes, and the rotation
    cursor is what keeps neither from starving (`sched.rs:20`).
 5. **The `fork`/`exec` split exists to create a window.** In it the child runs

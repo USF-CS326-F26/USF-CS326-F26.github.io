@@ -13,8 +13,9 @@ memory-mapped I/O is not merely slow but meaningless. Then the cliff itself:
 `#![no_std]`, `#![no_main]`, `#[panic_handler]`, and the `core`/`alloc`/`std`
 split. We finish by reading
 `riscv64gc-unknown-none-elf` field by field and explaining why its
-operating-system field is literally `none`. Today's exercises are
-`r09_unsafe_bridge` and `00_rust_kernel_basics`; the companion reference is
+operating-system field is literally `none`. The exercises are
+`21r_unsafe_bridge` and `30k_kernel_basics`, both on Friday, October 2; the
+companion reference is
 [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md).
 
 ## Learning Objectives
@@ -40,10 +41,10 @@ operating-system field is literally `none`. Today's exercises are
 
 - L03 *Ownership, Borrowing, and Lifetimes* — you must know what a reference
   guarantees to appreciate what a raw pointer does not.
-- L07 *Buffers, Bytes, and Line-Oriented I/O* and exercises `c00`–`c04`: the
-  last code you write with an OS underneath you.
-- L08 *RISC-V Registers and the Calling Convention* and exercise `a00`, for
-  `extern "C"` and why layout matters to assembly.
+- L07 *Buffers, Bytes, and Line-Oriented I/O* and exercises `10c`–`13c` (this
+  week and last): the last code you write with an OS underneath you.
+- L08 *RISC-V Registers and the Calling Convention*, and exercise `20a` on
+  Thursday, October 1, for `extern "C"` and why layout matters to assembly.
 - [RISC-V](../guides/riscv.md) for registers and ISA extension letters;
   [Memory Map](../guides/memory-map.md) for the `virt` board's address space.
 - [Rust for Systems](../guides/rust-for-systems.md) for Module 1's safe Rust —
@@ -336,7 +337,7 @@ speed — the access itself is part of the program's observable behavior.
 
 Volatile is not synchronization: it gives you no atomicity, no ordering against
 *non-volatile* memory, and nothing at all between harts — that is what
-`core::sync::atomic` (`spinlock.rs:5`) and the locks of exercise 07 are for.
+`core::sync::atomic` (`spinlock.rs:5`) and the locks of exercise 37k are for.
 Nor does it license a null or misaligned pointer; the address must still be
 valid for `T`.
 
@@ -380,7 +381,7 @@ people, `HashMap`, whose default hasher seeds itself from OS entropy
 
 You will have a heap eventually, because you write it: `kheap.rs` registers a
 `#[global_allocator]` (`kheap.rs:40-41`) built on the page allocator from
-exercise 02, and `extern crate alloc;` (`main.rs:26`) lights up `Box`, `Vec`,
+exercise 32k, and `extern crate alloc;` (`main.rs:26`) lights up `Box`, `Vec`,
 and `Arc`. `no_std` does not forbid a heap; it refuses to invent one for you.
 
 ### The skeleton, line by line
@@ -407,7 +408,7 @@ fn panic(_info: &PanicInfo) -> ! {
 ```
 
 The `!` return type is the **never type**: a promise that control never comes
-back — the honest signature for a kernel panic. Exercise 00's version spins;
+back — the honest signature for a kernel panic. Exercise 30k's version spins;
 the finished kernel prints and powers the machine off.
 
 `#[no_mangle]` and `extern "C"` come as a pair on every symbol the outside
@@ -452,7 +453,7 @@ which ABI to follow, and which libraries can exist. Ours is set once in
      riscv64  gc      -unknown  -none    -elf
         |     |          |        |        |
         |     |          |        |        +-- environment / object format:
-        |     |          |        |            bare ELF objects, no libc flavour
+        |     |          |        |            bare ELF objects, no libc flavor
         |     |          |        |            (contrast: -gnu, -musl, -msvc)
         |     |          |        +----------- OPERATING SYSTEM: none.
         |     |          |                     There is no OS. You are about to be it.
@@ -469,7 +470,7 @@ it out as `+m,+a,+f,+d,+c,+zicsr,+zifencei`:
 |---|---|---|
 | `I` | base integer | loads, stores, branches, ALU |
 | `M` | multiply/divide | `mul`, `div`, `rem` |
-| `A` | atomics | `lr`/`sc`, `amoswap` — your spinlock in exercise 07 |
+| `A` | atomics | `lr`/`sc`, `amoswap` — your spinlock in exercise 37k |
 | `F`, `D` | single/double float | plus the `lp64d` ABI: doubles in `f` registers |
 | `C` | compressed | 16-bit forms of common instructions; smaller kernels |
 | `Zicsr` | CSR access | `csrr`, `csrw` — `satp`, `mstatus`, `mepc` |
@@ -517,7 +518,7 @@ point, and a panic handler because no one above you catches a fall.
 
 ## 7. What You Are Signing Up For
 
-From next Thursday, `oslings` stops running `cargo test` on your laptop and
+From Thursday, October 1, `oslings` stops running `cargo test` on your laptop and
 starts booting a kernel in QEMU. The failure modes change character:
 
 | Before | After |
@@ -534,10 +535,10 @@ path; the shell, filesystem, and scheduler bookkeeping above them are ordinary
 safe Rust — the architecture Rust-for-Linux uses for drivers, and what makes a
 kernel auditable at all.
 
-Today's exercises split the cliff in half on purpose. **`r09_unsafe_bridge`**
+Today's exercises split the cliff in half on purpose. **`21r_unsafe_bridge`**
 gives you raw pointers, `unsafe`, `.add`, volatile register access, and a safe
 wrapper, with `cargo test` still catching mistakes on your laptop.
-**`00_rust_kernel_basics`** then takes `std` away: two inner attributes and a
+**`30k_kernel_basics`** then takes `std` away: two inner attributes and a
 panic handler, and the reward is a binary that compiles for
 `riscv64gc-unknown-none-elf`. No QEMU yet — booting is L10.
 
@@ -842,4 +843,4 @@ Answer from the triple and the compiler's output, not from memory.
    `IMAFD`+`C`+`Zicsr`+`Zifencei`, unspecified vendor, ELF objects, and an OS
    field of `none` — no `target_family`, no libc, no prebuilt `std`. That field
    is empty because you are about to be the thing that fills it. Today:
-   `r09_unsafe_bridge`, then `00_rust_kernel_basics`.
+   `21r_unsafe_bridge`, then `30k_kernel_basics`.

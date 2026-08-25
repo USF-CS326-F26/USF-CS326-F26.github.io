@@ -9,10 +9,11 @@ garbage collector. Handing a value to somebody else is a **move**, and the
 original name goes dead. Lending it instead is a **borrow**, written `&` or
 `&mut`, and borrows obey one rule: many readers or one writer, never both. A
 **lifetime** is the compiler's name for how long a borrow stays valid. The
-motivating object is the one you build in exercise 02 — a physical page
+motivating object is the one you build in exercise 32k — a physical page
 allocator, whose whole correctness argument is "a page that has been handed out
 is no longer free." Ownership is how you say that in a type system instead of a
-comment. Exercises `r02_ownership` and `r03_borrowing` are the hands-on half;
+comment. Exercises `02r_ownership` (Thursday, September 3) and `03r_borrowing`
+(Friday, September 4) are the hands-on half;
 [Rust for Systems Programmers](../guides/rust-for-systems.md) is the
 reference.
 
@@ -38,7 +39,7 @@ reference.
 - **L01 Building an Operating System** — what a kernel is; what rv6 becomes.
 - **L02 Rust I: Values, Types, Control Flow** — bindings, `mut`, integers,
   `if`/`loop`/`match`.
-- **Exercises `r00_hello_rust`, `r01_control_flow`** — writing a Rust function
+- **Exercises `00r_hello_rust`, `01r_control_flow`** — writing a Rust function
   and reading a test failure.
 - **[Rust for Systems Programmers](../guides/rust-for-systems.md)** and
   **[Using OSlings](../guides/oslings-usage.md)** — the C-to-Rust table, and
@@ -172,7 +173,7 @@ fn consume(text: String) { }   // `text` owns it, and drops it at the `}`
 ```
 
 If the caller still needs the value the callee must return it. That is clumsy,
-and it is what `r02_ownership` looks like on purpose. Notice what the clumsiness
+and it is what `02r_ownership` looks like on purpose. Notice what the clumsiness
 buys: while `take_page` runs it is the *only* owner of the list, and the page
 number it returns is by construction no longer in the list it returns. The
 Section 1 invariant is not a comment; it is the shape of the signature.
@@ -393,7 +394,7 @@ process's stack, and `Args` is a window onto them.
 
 ### 6.1 The destination: `SpinLockGuard<'a, T>`
 
-Everything above converges on one type, built in exercise 07 — `spinlock.rs:22`,
+Everything above converges on one type, built in exercise 37k — `spinlock.rs:22`,
 `:54`, `:71`:
 
 ```rust
@@ -426,7 +427,7 @@ while you hold the lock" stops being a rule people remember and becomes one the
 compiler enforces. See `semaphore.rs:17` and `fs.rs:277`, where the whole
 filesystem is a `SpinLock<FileSystem>`. In xv6 the equivalent code can read the
 structure after `release()` and nothing complains. The `Guard<'a>` in
-`r03_borrowing` is this idea with the atomics removed.
+`03r_borrowing` is this idea with the atomics removed.
 
 ---
 
@@ -492,9 +493,9 @@ That last row is the real claim. Every kernel has a region where the programmer
 is the only thing between the code and disaster; Rust does not remove it, it
 makes it small enough to audit and marks it with a keyword you can grep for.
 
-Your two exercises are the ground floor of that argument: `r02_ownership` builds
+Your two exercises are the ground floor of that argument: `02r_ownership` builds
 a page allocator from nothing but a `Vec<usize>` and move semantics, and
-`r03_borrowing` gives `&` and `&mut` back, adds slices, and ends with a
+`03r_borrowing` gives `&` and `&mut` back, adds slices, and ends with a
 `Guard<'a>`.
 
 ---
@@ -616,7 +617,7 @@ kfree(1)
 
 - `consume(b)` **moves** `b` in, so its parameter — the new owner — dies at the
   function's closing brace and `kfree(2)` prints *before* `inner end`. The drop
-  travelled with the ownership; nothing drops for `b` later.
+  traveled with the ownership; nothing drops for `b` later.
 - The inner block drops its own locals in reverse declaration order: `kfree(3)`.
 - `drop(d)` takes `d` by value and does nothing, so `d` dies inside it —
   `kfree(4)` before `main end`.
@@ -677,7 +678,7 @@ println!("{}", count);       // fine
 ```
 
 That is the test `the_borrow_ends_when_the_guard_goes_out_of_scope` in
-`r03_borrowing`, and it is exactly the discipline a lock guard imposes: while
+`03r_borrowing`, and it is exactly the discipline a lock guard imposes: while
 the guard lives, the data is unreachable except through it.
 </details>
 
@@ -799,7 +800,7 @@ common way a working rv6 kernel stops booting in Module 2.
 - [Key Concepts](../guides/key-concepts.md) and
   [Cheatsheet](../guides/cheatsheet.md) — one-line definitions and the
   error-code table for review.
-- [Using OSlings](../guides/oslings-usage.md) — `oslings run r02_ownership`,
+- [Using OSlings](../guides/oslings-usage.md) — `oslings run 02r_ownership`,
   `oslings watch`, `oslings hint`.
 - *The Rust Programming Language*, chapter 4, "Understanding Ownership" — the
   canonical treatment; then *The Rustonomicon*, "Ownership and Lifetimes", for
@@ -847,4 +848,4 @@ common way a working rv6 kernel stops booting in Module 2.
 8. **The guard pattern turns a locking convention into a checked fact.** The
    data reference cannot outlive the guard, the guard cannot outlive the lock,
    and dropping the guard unlocks — the argument you start building in
-   `r02_ownership` and `r03_borrowing`.
+   `02r_ownership` and `03r_borrowing`.

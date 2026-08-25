@@ -14,7 +14,7 @@ Worth 20% of the course grade.
 
 ## Scope
 
-**Cumulative, weighted toward Module 3.** Everything from both midterms may
+**Cumulative, weighted toward `49k`–`53k`.** Everything from both midterms may
 appear as a building block. The new material — and the bulk of the exam — is:
 
 - **`exec` and program loading**: building a fresh address space, copying the
@@ -31,8 +31,9 @@ appear as a building block. The new material — and the bulk of the exam — is
   what that split makes possible that a single `spawn` would not
 - **Userland**: `init` as pid 1, and what it means for the shell to be an
   ordinary unprivileged program
-- **Pipes**: a bounded ring buffer behind two descriptors; blocking; how `a | b`
-  falls out of fork + dup + exec
+- **Pipes**, at the design level only: a bounded ring buffer behind two
+  descriptors; blocking; how `a | b` falls out of fork + dup + exec. `55k_pipes`
+  is extra credit and no question depends on having built it
 
 ## The question you should expect
 

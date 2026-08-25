@@ -179,7 +179,7 @@
 
 ## CS 326 Operating Systems
 
-L24 · December 1, 2026 · exercises `19_exec`, `20_file_descriptors`
+L24 · December 1, 2026 · exercises `49k_exec`, `50k_file_descriptors` (Dec 3)
 
 ---
 
@@ -261,7 +261,7 @@ perror("exec");        /* reached only if exec failed — no `if` needed */
 | Unix `fork` + `exec` | two calls and ordinary code in between |
 
 <div class="highlight-box">
-A spawn call must enumerate every adjustment in advance; the window needs zero parameters, because it is not an API — it is a place to run code. <strong>Thursday: the counting argument in full.</strong>
+A spawn call must enumerate every adjustment in advance; the window needs zero parameters, because it is not an API — it is a place to run code. <strong>L25, Thursday's reading: the counting argument in full.</strong>
 </div>
 
 ---
@@ -502,7 +502,7 @@ open("out", O_WRONLY);    /* therefore this returns 1         */
 exec("cat", argv);        /* cat writes to fd 1 = the file    */
 ```
 
-"Lowest available descriptor" is a POSIX **guarantee**, not an optimisation —
+"Lowest available descriptor" is a POSIX **guarantee**, not an optimization —
 `fdalloc` scans from 0 (`syscall.rs:295`).
 
 ---
@@ -635,12 +635,12 @@ sequenceDiagram
 
 - `exec.rs:354` is that loop in assembly: prompt, read fd 0 to newline, split
   into `argv`, `fork` (`:439`), `exec` in the child (`:444`), `wait` (`:454`) —
-  unprivileged, user mode, nothing but system calls. That is `22_userland`.
-- **`19_exec`** — `load_segment`, then `build_process`
-- **`20_file_descriptors`** — `fdalloc`, `sys_open`, `sys_read`
+  unprivileged, user mode, nothing but system calls. That is `52k_userland`.
+- **`49k_exec`** — `load_segment`, then `build_process`
+- **`50k_file_descriptors`** — `fdalloc`, `sys_open`, `sys_read`
 
 ```bash
-oslings run 19_exec
+oslings run 49k_exec
 oslings watch
 cd rv6 && cargo run     # then: run echo hello world
 ```

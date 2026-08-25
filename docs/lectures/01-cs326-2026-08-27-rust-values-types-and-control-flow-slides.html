@@ -182,7 +182,7 @@
 
 Thursday, August 27, 2026 &middot; Week 1
 
-Unlocks **r00_hello_rust** and **r01_control_flow**
+Thursday works **00r_hello_rust**; Friday works **01r_control_flow**
 
 ---
 
@@ -516,8 +516,8 @@ let pages = loop {
 | debug — `cargo test`, `oslings run` | **panics**: `attempt to add with overflow` | a branch per operation |
 | release — `cargo build --release` | **wraps** to `0` | none |
 
-- C: 0 silently if unsigned, **undefined behaviour** if signed
-- Two behaviours for one source file is a real bargain, argued for years
+- C: 0 silently if unsigned, **undefined behavior** if signed
+- Two behaviors for one source file is a real bargain, argued for years
 - The rule: **never let wrapping happen by accident**
 
 ---
@@ -604,26 +604,26 @@ match addr.checked_add(PGSIZE - 1) {
 
 | Today | In the kernel | Exercise |
 |---|---|---|
-| `const … : usize` | the memory map, `memlayout.rs` | ex01 |
-| `u8` registers | the UART driver, `uart.rs:14`–`24` | ex11 |
-| `usize` addresses | `Pte`, `walk`, `mappages`, `vm.rs` | ex03 |
-| `while p + PGSIZE <= stop` | `free_range`, `kalloc.rs:26` | ex02 |
-| `loop { }` | the idle path, `console.rs:47` | ex15 |
-| `wrapping_add` | the ring buffer, `console.rs:24` | ex15 |
+| `const … : usize` | the memory map, `memlayout.rs` | 31k |
+| `u8` registers | the UART driver, `uart.rs:14`–`24` | 41k |
+| `usize` addresses | `Pte`, `walk`, `mappages`, `vm.rs` | 33k |
+| `while p + PGSIZE <= stop` | `free_range`, `kalloc.rs:26` | 32k |
+| `loop { }` | the idle path, `console.rs:47` | 45k |
+| `wrapping_add` | the ring buffer, `console.rs:24` | 45k |
 
 ---
 
 ## This Session's Exercises
 
-**r00_hello_rust** — bindings, integer types, hex literals. Including
-`0x8000_0000`, which returns in exercise 01 as the address the kernel is
+**00r_hello_rust** — bindings, integer types, hex literals. Including
+`0x8000_0000`, which returns in `31k_boot` as the address the kernel is
 linked at.
 
-**r01_control_flow** — `if`, the loops, and overflow. Its five functions
+**01r_control_flow** — `if`, the loops, and overflow. Its five functions
 are `kalloc.rs` with the pointers removed.
 
 ```bash
-oslings run r00_hello_rust
+oslings run 00r_hello_rust
 oslings watch          # re-runs on every save
 oslings hint           # when stuck
 ```

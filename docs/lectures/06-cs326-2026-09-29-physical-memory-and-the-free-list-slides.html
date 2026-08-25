@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L11 · Module 2 · Exercise `02_physical_memory`
+L11 · Module 2 · Exercise `32k_physical_memory`
 
 ---
 
@@ -262,7 +262,7 @@ An unaligned frame is not an error the hardware can report. It cannot perceive i
 | Search for a fitting block | Takes the first; they are identical |
 | Store each block's size | Stores nothing; always `PGSIZE` |
 | Split and coalesce | Never splits, never merges |
-| Honour alignment | Always 4096-aligned |
+| Honor alignment | Always 4096-aligned |
 
 Both operations become **a single pointer swap** — same cost with 1 free page as with 32,719.
 
@@ -549,7 +549,7 @@ Also `vm.rs:130`, `proc.rs:98`, `proc.rs:123`. An un-zeroed page handed to a use
 - Free outside RAM → a store into MMIO space
 - xv6 adds cheap checks and poisons freed pages; rv6 does not
 
-**No locking.** `FREELIST` is a `static mut` (`kalloc.rs:11`). One hart only — the spinlock arrives in exercise `07`.
+**No locking.** `FREELIST` is a `static mut` (`kalloc.rs:11`). One hart only — the spinlock arrives in exercise `37k`.
 
 ---
 
@@ -660,7 +660,7 @@ Two functions, forty-six lines, and the whole kernel rests on them.
 5. **`kfree` = push, `kalloc` = pop, and `kfree` cannot fail**
 6. **LIFO** falls out of the design and keeps pages cache-warm
 7. **Order the two stores** or leak all of RAM at boot
-8. **Now go write it**: exercise `02_physical_memory`
+8. **Now go write it**: exercise `32k_physical_memory`
                 </textarea>
             </section>
         </div>

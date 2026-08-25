@@ -6,18 +6,20 @@ Everything interesting in a kernel is a type somebody invented. A process is a
 struct; a saved register set is a struct; a page table entry is a 64-bit word
 that must never be confused with the physical address inside it. This session
 builds those types and makes the compiler enforce what they mean. We define
-structs, give them behaviour with `impl` blocks, separate methods from associated
+structs, give them behavior with `impl` blocks, separate methods from associated
 functions, and choose among `&self`, `&mut self`, and `self` using the ownership
 rules from L03. Then three ideas rv6 leans on: the **newtype** pattern, which
 turns a `u64` into a `Pte` so that handing over a physical address where an entry
 belongs is a compile error; `const fn`, which builds page table entries and a
 64-slot process table before a single instruction executes; and `#[repr(C)]`, the
 only reason assembly may store the stack pointer at `Context + 8`. The second
-half is enums, `match`, exhaustiveness, and `Option`.
+half is enums, `match`, exhaustiveness, and `Option`. The exercises are
+`04r_structs_impl` (Thursday, September 10) and `05r_enums_match` (Friday,
+September 11).
 
 ## Learning Objectives
 
-- **Define** a struct with fields and give it behaviour in an `impl` block.
+- **Define** a struct with fields and give it behavior in an `impl` block.
 - **Distinguish** a method from an associated function, and `&self` from `&mut self` from `self`.
 - **Explain** why the newtype pattern catches bugs a `typedef` cannot.
 - **Evaluate** a `const fn` by hand and name the contexts that force compile-time evaluation.
@@ -30,7 +32,7 @@ half is enums, `match`, exhaustiveness, and `Option`.
 
 - **L02 Rust I: Values, Types, Control Flow** — `usize`, bit operators, expressions.
 - **L03 Ownership, Borrowing, and Lifetimes** — moves, `&T` versus `&mut T`, one-writer rule.
-- Exercises `r02_ownership` and `r03_borrowing`, passing.
+- Exercises `02r_ownership` (today) and `03r_borrowing` (Friday).
 - [Rust for Systems](../guides/rust-for-systems.md) — types and integer widths.
 - [Using OSlings](../guides/oslings-usage.md) — `oslings run`, `watch`, `hint`.
 
@@ -51,7 +53,7 @@ thing: sixty-four bits. Swap `va` and `pa` at a call site and the program
 compiles, links, boots, and maps the wrong page — with the symptom surfacing far
 from the transposed argument that caused it.
 
-xv6, the C kernel this course is modelled on, has the same problem everywhere:
+xv6, the C kernel this course is modeled on, has the same problem everywhere:
 `typedef uint64 pte_t;` names an entry, `typedef uint64 *pagetable_t;` names 512
 of them. But `typedef` creates an **alias**, not a type: `pte_t` and `uint64` are
 interchangeable in every expression. Rust's `type Pte = u64;` is equally
@@ -116,11 +118,11 @@ static mut PROCS: [Proc; NPROC]                        NPROC = 64
 
 No `malloc`, no free list: the linker put the array in the kernel image, and
 allocating a process means finding a slot whose `state` is `Unused`. That is only
-possible because the whole array is initialised at compile time — §5.
+possible because the whole array is initialized at compile time — §5.
 
 ---
 
-## 3. `impl`: Giving a Type Behaviour
+## 3. `impl`: Giving a Type Behavior
 
 ```rust
 impl MemRegion {
@@ -269,17 +271,17 @@ static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:6
 ```
 
 Sixty-four process control blocks, each with a fourteen-field `Context`, a
-sixteen-entry file table, and a name, fully initialised — with no code running.
+sixteen-entry file table, and a name, fully initialized — with no code running.
 That matters because of *when* the data must be valid: when the kernel's first
 Rust function is entered there is no heap, no allocator, and nothing that could
-have run an initialisation loop. Anything a static needs is already in the image
+have run an initialization loop. Anything a static needs is already in the image
 or in the zeroed `.bss` the boot code clears.
 
 C solves this with **static initializers**, restricted to constant expressions:
 `= {0}` or `= 4096` are legal, a function call is not — hence the pile of
 `xxx_init()` routines in every C kernel whose only job is to fill in what the
 language could not. C++ answered with `constexpr` in 2011; Rust's `const fn`
-stabilised in 2018 and lets an ordinary, typed, checked *function* go where only
+stabilized in 2018 and lets an ordinary, typed, checked *function* go where only
 a literal used to be allowed. (Note `[const { Proc::new() }; NPROC]`: the plain
 repeat form requires the element type to be `Copy`, and `Proc` is not.)
 
@@ -296,7 +298,7 @@ function, or (on stable Rust) dereference a raw pointer — which is why `walk` 
 
 By default a struct has representation `repr(Rust)`, and the language promises
 **nothing** about layout: not field order, not padding, not that two identical
-declarations agree. The compiler may sort fields to minimise padding, and does —
+declarations agree. The compiler may sort fields to minimize padding, and does —
 `struct { flags: u8, addr: u64, count: u16 }` takes 24 bytes under C's rules
 (7 bytes of padding to align `addr`, 6 more at the tail) and may take 16 under
 Rust's, by putting the most-aligned field first.
@@ -342,7 +344,7 @@ that it breaks — it is that nothing *promises* it will not.
 
 | Attribute | Guarantee | Used in rv6 for |
 |---|---|---|
-| `repr(Rust)` | None; optimise freely | Everything internal |
+| `repr(Rust)` | None; optimize freely | Everything internal |
 | `#[repr(C)]` | Source order, C alignment | `Context`, `Trapframe`, `Run` (`kalloc.rs:6`) |
 | `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs:25`) |
 | `#[repr(packed)]` | No padding at all | Nothing — refs to unaligned fields are UB |
@@ -404,7 +406,7 @@ status to reach.
 
 In memory such an enum is a **discriminant** (a tag saying which variant) plus
 space for the largest payload, rounded for alignment; `RunOutcome` is 16 bytes.
-Rust also applies **niche optimisation**: when a payload has bit patterns it can
+Rust also applies **niche optimization**: when a payload has bit patterns it can
 never take, the tag hides in those — which is why `Option<&T>` is one pointer
 wide, with `None` as the null pattern a `&T` can never hold.
 
@@ -426,7 +428,7 @@ so it can. rv6 uses this wherever an answer might not exist: `getfile` returns
 ## 8. `match`, Exhaustiveness, and Guards
 
 ```rust
-let ticks = match state {                    // r05's data-carrying ProcState
+let ticks = match state {                    // 05r's data-carrying ProcState
     ProcState::Unused                        => 0,
     ProcState::Runnable | ProcState::Running => 1,
     ProcState::Sleeping { .. }               => 2,
@@ -495,10 +497,10 @@ shape kernel code is full of.
 
 ## 9. Where This Lands
 
-`Pte` drives a real three-level Sv39 walk in exercise 03; `Proc` and `ProcState`
-are exercise 04; `Context` and the assembly indexing it are exercise 05;
-`#[repr(C)]` on `Trapframe` makes user mode possible in exercise 18.
-`r04_structs_impl` builds `MemRegion` and a working `Pte`; `r05_enums_match`
+`Pte` drives a real three-level Sv39 walk in exercise 33k; `Proc` and `ProcState`
+are exercise 34k; `Context` and the assembly indexing it are exercise 35k;
+`#[repr(C)]` on `Trapframe` makes user mode possible in exercise 48k.
+`04r_structs_impl` builds `MemRegion` and a working `Pte`; `05r_enums_match`
 builds a process state machine from an enum, a `match`, and an `Option`. Both run
 under `cargo test` — no QEMU, no kernel. Read the tests at the bottom of each
 `warmup/src/lib.rs` first: they are the contract.
@@ -552,7 +554,7 @@ bits come from the virtual address at translation time.
 
 **4.** All of them; `new`, `pa`, and `flags` are `const fn` (`vm.rs:30`, `:33`,
 `:36`). But the arithmetic runs in the compiler only if the result is demanded in
-a const context. In an ordinary `let` the optimiser usually folds it anyway;
+a const context. In an ordinary `let` the optimizer usually folds it anyway;
 `const` *guarantees* it and errors if it cannot.
 
 </details>
@@ -593,7 +595,7 @@ did not edit, with a fault address naming no function.
 
 **4.** Probably not, today: all fourteen fields are `usize`, so rustc has no
 reason to reorder them. That is the **worst** outcome — the code would depend on
-unspecified behaviour that happens to hold, and would break silently on a
+unspecified behavior that happens to hold, and would break silently on a
 compiler upgrade, or the day someone changes `ra` to a `u32`.
 
 **5.** `#[repr(transparent)]` (`vm.rs:25`) makes a `Pte` exactly its `usize` — no
@@ -669,7 +671,7 @@ fn label(s: ProcState) -> &'static str {
 ```
 
 1. Which fail to compile?
-2. For each that compiles, is its behaviour correct for `Stopped`?
+2. For each that compiles, is its behavior correct for `Stopped`?
 3. What single change to B would have made the compiler flag it?
 4. State the general rule.
 
@@ -692,7 +694,7 @@ Adding `Stopped` then breaks the build and forces a decision.
 **4.** Exhaustiveness only protects the matches that let it: one arm per variant
 for closed domains you own, `_` only for open ones such as syscall numbers
 (`syscall.rs:44`). C adds a second lesson — `==` bypasses the check, so a chain
-of `if`s over an enum buys back the C behaviour in full.
+of `if`s over an enum buys back the C behavior in full.
 
 </details>
 
@@ -727,7 +729,7 @@ a `Sleeping`, so `_` answers. That is the whole point: a wakeup on the disk's
 channel must not wake a process waiting on the console. `None` — no arm covers
 `(Running, Reap)`. `Some(Running)` — arm 3.
 
-**2.** `=> if c == w { Some(State::Running) } else { None }`. Behaviourally the
+**2.** `=> if c == w { Some(State::Running) } else { None }`. Behaviorally the
 same *here*, structurally worse: once the pattern matches, the `match` is
 committed to that arm, so the `else` must reproduce what the fall-through would
 have done. In a real transition table every guard failure restates the default by
@@ -757,7 +759,7 @@ and I do not need them"; `{ status }` would bind an unread variable and earn an
 - [Cheatsheet](../guides/cheatsheet.md), [Key Concepts](../guides/key-concepts.md) — exam lookup.
 - *The Rust Programming Language*, ch. 5–6 — the chapters this session compresses.
 - *The Rust Reference*, "Type layout" — what each `repr` does and does not guarantee.
-- *The Rustonomicon*, "Data Representation in Rust" — field reordering, niche optimisation.
+- *The Rustonomicon*, "Data Representation in Rust" — field reordering, niche optimization.
 - *RISC-V Privileged Architecture*, §4.4 — the Sv39 page table entry from the source.
 - Cox, Kaashoek, Morris, *xv6: a simple, Unix-like teaching operating system*, ch. 2–3 — read `proc.h` beside `proc.rs`.
 - C. A. R. Hoare, "Null References: The Billion Dollar Mistake" (QCon London, 2009).

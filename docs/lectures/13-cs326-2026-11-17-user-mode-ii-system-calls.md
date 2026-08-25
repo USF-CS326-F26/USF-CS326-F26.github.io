@@ -13,8 +13,9 @@ not just a program counter; and — the part that takes half this lecture — th
 callee cannot trust a single bit that arrived from the caller, pointers least of
 all. We cover `ecall` as a *deliberate* trap, the `a7`/`a0`-`a2`/`a0` ABI, the
 dispatch table, the `sepc += 4` that separates "done" from "retry",
-`copyin`/`copyout`, and the return path through `sret`. This is the concept
-behind exercise `18_user_mode`; see also the
+`copyin`/`copyout`, and the return path through `sret`. This is the rest of the
+concept behind exercise `48k_user_mode`, which you wrote last Friday, and the
+last material on Midterm 2, this Thursday; see also the
 [RISC-V guide](../guides/riscv.md) and the
 [Sv39 paging guide](../guides/sv39-paging.md).
 
@@ -40,11 +41,11 @@ behind exercise `18_user_mode`; see also the
 
 ## Prerequisites
 
-- L22 *User Mode I* and exercise `18_user_mode` — the trampoline, the
+- L22 *User Mode I* and exercise `48k_user_mode` — the trampoline, the
   trapframe, `PTE_U`, and the drop into U-mode with `sret`.
 - L18 *Traps, Privilege Modes, and Interrupts* — `stvec`, `scause`, `sepc`,
   `sstatus`, and rv6's `kerneltrap`.
-- Exercise `03_paging` / `09_virtual_memory` and the
+- Exercise `33k_paging` / `39k_virtual_memory` and the
   [Sv39 paging guide](../guides/sv39-paging.md) — `walk`, PTE flags, and what a
   page table actually is.
 - L08 *RISC-V Registers and the Calling Convention*, plus the
@@ -59,7 +60,7 @@ behind exercise `18_user_mode`; see also the
 ## 1. Two Kinds of Trap
 
 A trap is any event that yanks the CPU out of its instruction stream and into
-the kernel's trap vector. rv6 has been taking traps since exercise 13; what is
+the kernel's trap vector. rv6 has been taking traps since exercise 43k; what is
 new is that they now arrive from *user mode*, and that one of them is on
 purpose.
 
@@ -157,7 +158,7 @@ means the kernel-side ABI and the user-side C ABI *agree on the arguments*: a
 libc wrapper for `write(fd, buf, len)` finds its three arguments already in the
 right registers, loads a constant into `a7`, and executes `ecall`.
 
-Here is exercise 18's first user program doing exactly that by hand
+Here is exercise 48k's first user program doing exactly that by hand
 (`usermode.rs:249`–`262` in the exercise-18 tree):
 
 ```asm
@@ -345,7 +346,7 @@ Real kernels have a third case. When a signal interrupts a blocked system call,
 Linux returns `-ERESTARTSYS` internally and rewinds the user program counter by
 the width of the `syscall` instruction so the call re-executes after the handler
 returns: `sepc -= 4`, deliberately — the mirror image of the line you write in
-exercise 18.
+exercise 48k.
 
 ---
 
@@ -688,7 +689,7 @@ exceptions, only the deliberate ones (8, 3) advance `sepc`.
 
 ### Problem 2: The missing line
 
-A student's `usertrap` omits `(*tf).epc += 4`. They run exercise 18's user
+A student's `usertrap` omits `(*tf).epc += 4`. They run exercise 48k's user
 program:
 
 ```asm

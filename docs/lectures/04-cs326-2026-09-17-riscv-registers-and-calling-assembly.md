@@ -14,8 +14,9 @@ switch costs fourteen stores rather than thirty-one; pin down the calling
 convention that `extern "C"` names; and build the bridge — `global_asm!` to
 emit instructions, `extern "C"` to declare them, `#[repr(C)]` to freeze the
 struct offsets they index. We finish by reading `baby_swtch` one instruction at
-a time and naming what it is. Unlocks
-[`a00_asm_bridge`](../assignments/exercises.md); the
+a time and naming what it is. The exercise is
+[`20a_asm_bridge`](../assignments/exercises.md), on Thursday, October 1 — also
+the hard deadline for a working QEMU; the
 [RISC-V guide](../guides/riscv.md) holds the lookup tables.
 
 ## Learning Objectives
@@ -32,9 +33,9 @@ a time and naming what it is. Unlocks
 ## Prerequisites
 
 - **L04 (Structs, `impl`, and `const fn`)** — a struct is fields at fixed offsets; today those offsets become load-bearing.
-- **L07 (Buffers, Bytes, and Line-Oriented I/O)** — bytes, slices, and pointers into them; `c02`–`c04` should be passing.
+- **L07 (Buffers, Bytes, and Line-Oriented I/O)** — bytes, slices, and pointers into them.
 - **[RISC-V](../guides/riscv.md)** — the register table, instruction list, and calling-convention rules in reference form.
-- **[Dev Setup](../guides/dev-setup.md)** — you need the `riscv64gc-unknown-none-elf` target and a working `qemu-system-riscv64` before Friday.
+- **[Dev Setup](../guides/dev-setup.md)** — you need the `riscv64gc-unknown-none-elf` target and a working `qemu-system-riscv64` before Thursday, October 1.
 - **[Unsafe Rust and `no_std`](../guides/rust-unsafe-nostd.md)** — `unsafe`, raw pointers, and `extern` blocks.
 
 ---
@@ -265,7 +266,7 @@ is why `add3` is three instructions long.
 ### 4.1 Prologue and epilogue
 
 A **leaf** function can often run entirely out of `a` and `t` registers and
-never touch the stack; all three routines you write on Friday are leaves. A
+never touch the stack; all three routines you write in `20a` are leaves. A
 non-leaf function must build a **stack frame**: a region it owns for the
 duration of the call, holding its saved `ra`, any callee-saved registers it
 wants, and its spilled locals.
@@ -479,7 +480,7 @@ stable, documented, and computable by hand — so the two sides agree.
 ```
 
 Every struct assembly touches in this course carries the attribute for this
-reason: `Ctx` on Friday, `Context` (`swtch.rs:5-7`), and `Trapframe`
+reason: `Ctx` in `20a`, `Context` (`swtch.rs:5-7`), and `Trapframe`
 (`usermode.rs:34`), whose byte offsets are written into its comments because
 two assembly routines index them by hand.
 
@@ -634,8 +635,8 @@ store four registers, load the same four back, change nothing.
 
 The real thing (`swtch.rs:46-82`) is this function with ten more registers:
 fourteen `sd`s at offsets 0 through 104, fourteen `ld`s at the same offsets,
-`ret`. Same shape, same argument, same punchline. Exercise `05_context_switch`
-writes it; `06_scheduling` calls it in a loop, and one CPU starts pretending to
+`ret`. Same shape, same argument, same punchline. Exercise `35k_context_switch`
+writes it; `36k_scheduling` calls it in a loop, and one CPU starts pretending to
 be many. Forging a first context generalizes too: `init_context`
 (`swtch.rs:38-44`) sets `ra` to the function a new process should begin
 executing and `sp` to the top of its kernel stack, so `swtch` can "resume" a
@@ -878,7 +879,7 @@ let y = unsafe { asm::other_routine(7) };   // some other extern fn
 let z = unsafe { asm::add3(1, 2) };
 ```
 
-Does this compile? What are `x` and `z`? Is the behaviour deterministic? What
+Does this compile? What are `x` and `z`? Is the behavior deterministic? What
 tool would catch it?
 
 <details>
@@ -908,7 +909,7 @@ when you remove it.
 
 **No tool catches it.** Not the type checker, the borrow checker, the linker,
 or `unsafe` — `unsafe` checks nothing; it marks the region where you have taken
-the checking on yourself. Miri cannot see into assembly. The only defences are
+the checking on yourself. Miri cannot see into assembly. The only defenses are
 reading the declaration against the assembly, and tests that tell 30 apart from
 30-plus-garbage — which is why the harness calls `add3` twice and checks
 `add3(u64::MAX, 1, 0) == 0`.
@@ -975,10 +976,10 @@ two sides must agree on the *meaning* of `a0`, not just its width.
 - [RISC-V](../guides/riscv.md) — the register table, full instruction list, pseudo-instruction expansions, and the CSRs you meet later.
 - [Unsafe Rust and `no_std`](../guides/rust-unsafe-nostd.md) — `unsafe`, raw pointers, `extern` blocks, and `asm!` operand syntax.
 - [Memory Map](../guides/memory-map.md) — why `0x8000_0000`, and what else lives in the `virt` board's address space.
-- [Dev Setup](../guides/dev-setup.md) — installing the RISC-V target and QEMU; the September 18 hard deadline.
+- [Dev Setup](../guides/dev-setup.md) — installing the RISC-V target and QEMU; the October 1 hard deadline.
 - [QEMU and GDB](../guides/qemu-gdb.md) — `info registers`, single-stepping, and watching `ra` change under you.
 - [Cheatsheet](../guides/cheatsheet.md) and [Key Concepts](../guides/key-concepts.md) — the register table and the caller/callee split are Midterm 1 material.
-- [All Exercises](../assignments/exercises.md) — `a00_asm_bridge` is unlocked by this session and due Friday.
+- [All Exercises](../assignments/exercises.md) — `20a_asm_bridge` is the exercise for Thursday, October 1 — the QEMU deadline.
 - *RISC-V Instruction Set Manual, Volume I* — Chapter 2 (the RV32I base) and the assembly programmer's reference, where the pseudo-instruction table lives.
 - *RISC-V ELF psABI Specification* (`riscv-non-isa/riscv-elf-psabi-doc`) — the document that actually says `a0` is the first argument. Short and readable.
 - Patterson and Hennessy, *Computer Organization and Design, RISC-V Edition*, §2.8 — the same material at book length.

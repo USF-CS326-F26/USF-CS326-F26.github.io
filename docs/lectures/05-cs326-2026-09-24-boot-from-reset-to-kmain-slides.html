@@ -180,7 +180,7 @@
 
 ## CS 326 Operating Systems
 
-L10 &middot; September 24, 2026 &middot; unlocks `00_rust_kernel_basics`, `01_boot`
+L10 &middot; September 24, 2026 &middot; exercises `30k_kernel_basics` (Oct 2), `31k_boot` (Oct 8)
 
 ---
 
@@ -581,7 +581,7 @@ flowchart TD
     F --> G["chardev (-serial mon:stdio) → your terminal"]
 </div>
 
-After exercise 03 turns on Sv39, the UART page must be **explicitly mapped** or
+After exercise 33k turns on Sv39, the UART page must be **explicitly mapped** or
 this very same store faults.
 
 ---
@@ -608,7 +608,7 @@ A missing <code>volatile</code> can pass in debug and fail in release.
 
 `volatile` constrains the **compiler**, not the hardware: it guarantees the
 instruction is emitted, and says nothing about caches or what another hart
-observes. Cross-hart ordering needs fences — exercise 07.
+observes. Cross-hart ordering needs fences — exercise 37k.
 
 ---
 
@@ -627,7 +627,7 @@ pub fn exit_failure(code: u16) -> ! {
 
 A kernel has nowhere to return to — hence `-> !`. x86 powers off through ACPI;
 real RISC-V calls the SBI reset extension. The finisher is what lets
-`oslings run 01_boot` get a real exit status back.
+`oslings run 31k_boot` get a real exit status back.
 
 ---
 
@@ -700,15 +700,15 @@ Everything after today elaborates one sequence diagram.
 
 ---
 
-## Start `00_rust_kernel_basics` and `01_boot`
+## The Exercises: `30k_kernel_basics` (Oct 2), `31k_boot` (Oct 8)
 
 ```bash
-oslings run 00_rust_kernel_basics
+oslings run 30k_kernel_basics
 oslings watch
 ```
 
-- `00` passes when the crate **compiles** for `riscv64gc-unknown-none-elf`
-- `01` passes when QEMU prints `OSLINGS:PASS` on the serial console
+- `30k` passes when the crate **compiles** for `riscv64gc-unknown-none-elf`
+- `31k` passes when QEMU prints `OSLINGS:PASS` on the serial console
 - A timeout with no output means `sp` never got set up
 
 Read the exercise `README.md` first &mdash; it teaches the *how*.

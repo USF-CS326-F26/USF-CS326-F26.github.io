@@ -5,27 +5,27 @@ when you know what you want the machine to do but the compiler will not let you
 say it — and for the week before the midterm, when you need the Rust half of the
 material in one place. Every rule here is illustrated with a line from the rv6
 sources you are building, not with a toy example, because the toy examples are
-never the ones that bite. Part 0 (`r00`–`r09`) teaches these ideas one at a
+never the ones that bite. Module 1 (`00r`–`21r`) teaches these ideas one at a
 time in the `warmup` crate; this page is where they live afterwards. For the
 `unsafe`, raw-pointer, and `no_std` half of the language, see
 [Unsafe Rust and no_std](rust-unsafe-nostd.md).
 
 ## The map
 
-Each Part 0 exercise exists because one kernel exercise cannot be written
+Each Module 1 Rust exercise exists because one kernel exercise cannot be written
 without it. If you are stuck on a kernel exercise, the row tells you which
 warmup to reread.
 
-| Part 0 | Idea | First kernel exercise that needs it |
+| Module 1 | Idea | First kernel exercise that needs it |
 |---|---|---|
-| `r02_ownership` | ownership, moves, `Copy`, drop | `ex02` — the physical page allocator |
-| `r03_borrowing` | `&`, `&mut`, the aliasing rule, lifetimes | `ex07` — spinlock guards |
-| `r04_structs_impl` | `struct`, `impl`, `const fn`, newtypes, `repr` | `ex03` `Pte`, `ex05` `Context` |
-| `r05_enums_match` | `enum`, `Option`, exhaustive `match` | `ex04` `ProcState`, `ex10` `InodeKind` |
-| `r06_collections` | arrays, slices, `Vec`, iteration | the `PROCS` table, the fd table |
-| `r07_traits` | traits, generics, `impl Trait`, dispatch | `ex06` `Scheduler`, `ex16` `Out` |
-| `r08_errors` | `Result`, `?`, error enums | `ex10` `dirlookup`, `ex19` `exec` |
-| `r09_unsafe_bridge` | `unsafe`, raw pointers, MMIO | `ex01` onward — see [Unsafe Rust and no_std](rust-unsafe-nostd.md) |
+| `02r_ownership` | ownership, moves, `Copy`, drop | `32k` — the physical page allocator |
+| `03r_borrowing` | `&`, `&mut`, the aliasing rule, lifetimes | `37k` — spinlock guards |
+| `04r_structs_impl` | `struct`, `impl`, `const fn`, newtypes, `repr` | `33k` `Pte`, `35k` `Context` |
+| `05r_enums_match` | `enum`, `Option`, exhaustive `match` | `34k` `ProcState`, `40k` `InodeKind` |
+| `06r_collections` | arrays, slices, `Vec`, iteration | the `PROCS` table, the fd table |
+| `07r_traits` | traits, generics, `impl Trait`, dispatch | `36k` `Scheduler`, `46k` `Out` |
+| `08r_errors` | `Result`, `?`, error enums | `40k` `dirlookup`, `49k` `exec` |
+| `21r_unsafe_bridge` | `unsafe`, raw pointers, MMIO | `31k` onward — see [Unsafe Rust and no_std](rust-unsafe-nostd.md) |
 
 All rv6 code is Rust **edition 2021**. Line references below are to the
 reference kernel sources (`rv6/src/*.rs`); your files will differ by a few lines
@@ -144,7 +144,7 @@ safe *because* this one module is not. See
 [Unsafe Rust and no_std](rust-unsafe-nostd.md) for the rules that apply inside
 those blocks.
 
-> **Where you need this:** `ex02` — the physical page allocator (`kalloc.rs`).
+> **Where you need this:** `32k` — the physical page allocator (`kalloc.rs`).
 
 ---
 
@@ -290,8 +290,8 @@ pub fn try_wait(&self) -> bool {   // semaphore.rs:16
               ^ any &mut i64 taken here is tied to 'a
 ```
 
-> **Where you need this:** `ex07` — spinlocks and their guards (`spinlock.rs`),
-> then `ex08` semaphores and every `FS.lock()` in the filesystem.
+> **Where you need this:** `37k` — spinlocks and their guards (`spinlock.rs`),
+> then `38k` semaphores and every `FS.lock()` in the filesystem.
 
 ---
 
@@ -416,8 +416,8 @@ show up as a compile error and will not show up as a clean crash either. The
 the trampoline stores `ra` at offset 40 and `a7` at 168, and those numbers are
 correct only because of one attribute.
 
-> **Where you need this:** `ex03` — the `Pte` newtype and the Sv39 walk
-> (`vm.rs`); `ex05` — the `Context` struct that `swtch` reads by offset
+> **Where you need this:** `33k` — the `Pte` newtype and the Sv39 walk
+> (`vm.rs`); `35k` — the `Context` struct that `swtch` reads by offset
 > (`swtch.rs`).
 
 ---
@@ -548,8 +548,8 @@ The system call dispatcher is one big `match` on a number (syscall.rs:34), which
 is the one place the enum-less form is right: the numbers come from user mode
 and must match xv6's.
 
-> **Where you need this:** `ex04` — `ProcState` and the process table
-> (`proc.rs`); `ex10` — `InodeKind` and `FsError` in the filesystem (`fs.rs`).
+> **Where you need this:** `34k` — `ProcState` and the process table
+> (`proc.rs`); `40k` — `InodeKind` and `FsError` in the filesystem (`fs.rs`).
 
 ---
 
@@ -577,7 +577,7 @@ inodes: [Inode; NINODE],                                            // fs.rs:69,
 a heap. The cost is a hard limit, and rv6 accepts it, as every real kernel does
 for its core tables.
 
-`Vec` is available only after `ex08` installs the kernel heap
+`Vec` is available only after `38k` installs the kernel heap
 (`kheap.rs` registers a `#[global_allocator]`, which is what turns on
 `Box`/`Vec`/`String`). The kernel shell uses it because a command line is
 genuinely unbounded:
@@ -665,9 +665,9 @@ The adapters rv6 actually uses:
 Choosing `into_iter()` in `lookup` is what lets it return an owned `Program`
 rather than a borrow of a temporary table.
 
-> **Where you need this:** the fixed `PROCS` table in `ex04` (`proc.rs`), the
-> `states` array the scheduler builds each pass in `ex06` (`usermode.rs:285`),
-> and the per-process `ofile` fd table in `ex20` (`file.rs`, `syscall.rs`).
+> **Where you need this:** the fixed `PROCS` table in `34k` (`proc.rs`), the
+> `states` array the scheduler builds each pass in `36k` (`usermode.rs:285`),
+> and the per-process `ofile` fd table in `50k` (`file.rs`, `syscall.rs`).
 
 ---
 
@@ -703,7 +703,7 @@ impl Out for ConsoleOut {                // shell.rs:335
 ```
 
 A trait may supply **default methods** (a body in the trait definition), which
-implementers get for free and may override. `r07` uses this; the kernel's traits
+implementers get for free and may override. `07r` uses this; the kernel's traits
 are small enough not to need it.
 
 ### Generics and monomorphization
@@ -802,8 +802,8 @@ must be `FnMut` and not `Fn`.
 | `GlobalAlloc` | `KernelHeap` (kheap.rs:22) | turns on `Box`, `Vec`, `String` |
 | `Clone`, `Copy`, `PartialEq`, `Eq` | derived on `Pte`, `File`, `ProcState`, `InodeKind`, ... | duplication and `==` |
 
-> **Where you need this:** `ex06` — the `Scheduler` trait and `RoundRobin`
-> (`sched.rs`); `ex16` — the `Out` trait and the shell's `&mut dyn Out`
+> **Where you need this:** `36k` — the `Scheduler` trait and `RoundRobin`
+> (`sched.rs`); `46k` — the `Out` trait and the shell's `&mut dyn Out`
 > (`shell.rs`).
 
 ---
@@ -939,8 +939,8 @@ match fsg.dircreate(dir, name.as_bytes(), InodeKind::File) {   // shell.rs:133
 
 Neither is possible if the error is an `int`.
 
-> **Where you need this:** `ex10` — `dirlookup`, `dircreate` and `FsError`
-> (`fs.rs`); `ex19` — `exec`, `ExecError`, and the `map_err` chain in
+> **Where you need this:** `40k` — `dirlookup`, `dircreate` and `FsError`
+> (`fs.rs`); `49k` — `exec`, `ExecError`, and the `map_err` chain in
 > `fill_addrspace` (`exec.rs`).
 
 ---
@@ -981,7 +981,7 @@ where you touched it afterwards. The fix depends on what you meant:
 
 - you wanted to keep it → change `take_page(free: Vec<usize>)` to
   `take_page(free: &mut Vec<usize>)`;
-- you wanted the callee to hand it back → return it, as `r02`'s
+- you wanted the callee to hand it back → return it, as `02r`'s
   `take_page` does with a tuple;
 - the value is small and plain → `#[derive(Clone, Copy)]`, which is exactly why
   `File` and `Pte` are `Copy`.
@@ -1120,6 +1120,30 @@ Three habits that save the most time:
 - **Reach for `unsafe` last, and confine it.** `kalloc.rs` and the MMIO drivers
   are unsafe so that `fs.rs` and `sched.rs` do not have to be.
 
+## Practice beyond the exercises
+
+The in-class exercises are deliberately short. If you finish early, or want more
+reps on an idea before it shows up in the kernel, two free collections cover the
+same ground and are recommended, not required:
+
+- [Rustlings](https://github.com/rust-lang/rustlings) — small compiler-driven
+  exercises, one file each, run with `rustlings run`. Many of you met it in
+  CS 272.
+- [100 Exercises to Learn Rust](https://rust-exercises.com/100-exercises/) —
+  a longer sequence with a test per exercise, closer in shape to OSlings.
+
+The mapping to Module 1:
+
+| Rustlings sections | OSlings exercises |
+|---|---|
+| `variables`, `functions`, `if`, `primitive_types` | `00r_hello_rust`, `01r_control_flow` |
+| `move_semantics` | `02r_ownership`, `03r_borrowing` |
+| `structs`, `enums`, `options` | `04r_structs_impl`, `05r_enums_match` |
+| `vecs`, `traits`, `generics`, `error_handling` | `06r_collections`, `07r_traits`, `08r_errors` |
+
+Rustlings has no `unsafe` or `no_std` track; for `21r_unsafe_bridge` and the
+kernel, the reference is [Unsafe Rust and no_std](rust-unsafe-nostd.md).
+
 ## See also
 
 - [Unsafe Rust and no_std](rust-unsafe-nostd.md) — raw pointers, `static mut`,
@@ -1129,5 +1153,5 @@ Three habits that save the most time:
 - [Sv39 Paging](sv39-paging.md) — what the bits inside `Pte` mean.
 - [Cheatsheet](cheatsheet.md) — the one-page version of this page.
 - [Exam Prep](exam-prep.md) — what the midterm asks about this material.
-- [Using OSlings](oslings-usage.md) — running the Part 0 exercises with
+- [Using OSlings](oslings-usage.md) — running the Module 1 exercises with
   `cargo test`.

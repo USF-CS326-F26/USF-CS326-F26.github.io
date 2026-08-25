@@ -1,6 +1,7 @@
 # Midterm 1
 
-**Tuesday, October 13 — in class, full period**
+**Thursday, October 15 — in class, full period.** No exercise session on
+Friday, October 16.
 
 ## Format
 
@@ -14,7 +15,8 @@ is arranged the way it is.
 
 ## Scope
 
-Everything through **exercise 04**, plus the concepts of exercise 05.
+Everything through **exercise `33k_paging`**: Module 1 (`00r`–`21r`) and the
+first four kernel exercises (`30k`–`33k`). Worth 15% of the course grade.
 
 **Module 1 — Rust**
 
@@ -51,15 +53,16 @@ Everything through **exercise 04**, plus the concepts of exercise 05.
 - Physical page allocation and the intrusive free list
 - Sv39: the address split, the PTE bit layout, the three-level walk,
   **translation by hand**
-- The process control block, the state machine, the fixed process table
+- The process control block as L13 presents it — what a `Proc` must hold and
+  why — but not the code of `34k_processes`, which comes after the exam
 
-**Not on this exam**: turning the MMU on (`ex09`), locks and semaphores beyond
-the concept of a race, traps and interrupts, user mode, system calls,
-filesystems.
+**Not on this exam**: the context switch and scheduling (`35k`, `36k`),
+turning the MMU on (`39k`), locks and semaphores, traps and interrupts, user
+mode, system calls, filesystems.
 
 ## What the questions look like
 
-Three shapes recur. Each appears on the exam and each is practised in
+Three shapes recur. Each appears on the exam and each is practiced in
 [Practice Set 1](practice-set-01.md).
 
 **Trace the registers.** Given a short assembly routine or a `swtch`-style
@@ -74,19 +77,19 @@ to.
 **Order the steps, and justify.** Given the pieces of a boot sequence in the
 wrong order, put them right and say what constraint forces each position.
 
-There will also be short "explain why" questions — why a kernel disables
-interrupts around a spinlock, why `#[repr(C)]` is required on `Context`, why
-the free list can live inside the free pages.
+There will also be short "explain why" questions — why MMIO needs
+`write_volatile`, why `#[repr(C)]` is required on a struct that assembly
+indexes, why the free list can live inside the free pages.
 
 ## How to prepare
 
 1. **Reread your own code.** You wrote it; you will remember it better than
-   anything you read. Open `r02`, `r04`, `ex02`, `ex03` and follow them.
+   anything you read. Open `02r`, `04r`, `20a`, `32k`, `33k` and follow them.
 2. **Redraw the diagrams from memory** — the Sv39 split, the PTE layout, the
    free list, the boot chain. If you can draw it, you understand it.
 3. **Do [Practice Set 1](practice-set-01.md) on paper** before looking at the
    solutions. Reading a solution feels like learning and mostly is not.
 4. Skim [Key Concepts](../guides/key-concepts.md) last, as a checklist.
 
-Bring your printed [Cheatsheet](../guides/cheatsheet.md). Practise with it, so
+Bring your printed [Cheatsheet](../guides/cheatsheet.md). Practice with it, so
 you know where things are on it before the exam rather than during.

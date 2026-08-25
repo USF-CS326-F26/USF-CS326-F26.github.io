@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shells, and the Module 2 to 3 Handoff - CS 326</title>
+    <title>Shells, and the Reference Kernel - CS 326</title>
 
     <!-- Reveal.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
@@ -176,11 +176,11 @@
             <!-- Title Slide -->
             <section data-markdown>
                 <textarea data-template>
-# Shells, and the Module 2 &rarr; 3 Handoff
+# Shells, and the Reference Kernel
 
 ## CS 326 Operating Systems
 
-L20 &middot; November 10, 2026 &middot; exercise `16_shell`
+L20 &middot; November 12, 2026 &middot; exercise `46k_shell`
 
 ---
 
@@ -197,7 +197,7 @@ L20 &middot; November 10, 2026 &middot; exercise `16_shell`
 
 ## First: what is in your tree today
 
-Exercise `16_shell` stages **20 files** into `rv6/src`.
+Exercise `46k_shell` stages **20 files** into `rv6/src`.
 
 - **17 are byte-identical** to the exercise-15 *reference* solution
 - `fs.rs` = the exercise-10 filesystem + `is_dir` (`fs.rs:169`) and `for_each_entry` (`fs.rs:175`)
@@ -212,14 +212,14 @@ The kernel underneath your shell is the <strong>reference</strong> kernel — no
 
 ## This is the mechanic, not a judgment
 
-It has worked this way since exercise `00`:
+It has worked this way since exercise `30k`:
 
 - Every skeleton contains the **reference version of everything before it**
 - `archive_work` (`model.rs:712`) copies your whole staging directory into `my-work/<exercise>/` before *any* overwrite
 - `stage_exercise` (`model.rs:740`) restores from `my-work/<target>/` when it exists
 
 <div class="info-box">
-A hard session in October costs you that session's test — and nothing else. It cannot cost you December.
+The kernel you extend today is the reference one; your own code is archived in <code>my-work/</code> and one command away.
 </div>
 
 ---
@@ -228,13 +228,13 @@ A hard session in October costs you that session's test — and nothing else. It
 
 <div class="mermaid">
 flowchart LR
-    A["you are at 16_shell"] -->|"oslings goto 13"| B["archive_work:\nrv6/src to my-work/16_shell/"]
-    B --> C{"my-work/13_traps\nexists?"}
-    C -->|yes| D["restore YOUR 13 code"]
-    C -->|no| E["stage the 13 skeleton"]
+    A["you are at 46k_shell"] -->|"oslings goto 43k"| B["archive_work:\nrv6/src to my-work/46k_shell/"]
+    B --> C{"my-work/43k_traps\nexists?"}
+    C -->|yes| D["restore YOUR 43k code"]
+    C -->|no| E["stage the 43k skeleton"]
     D --> F["edit, run, learn"]
     E --> F
-    F -->|"oslings goto 16"| G["archive 13 work,\nrestore my-work/16_shell/"]
+    F -->|"oslings goto 46k"| G["archive 43k work,\nrestore my-work/46k_shell/"]
 </div>
 
 Two caveats: `my-work/<ex>/` is **one snapshot per exercise**, and `oslings reset` always stages the pristine skeleton. Git is the durable record — `oslings submit` every session, red or green.
@@ -260,13 +260,13 @@ That is what almost all real kernel work is.
 
 | Exercise | What it adds | The wall |
 |---|---|---|
-| `16_shell` | a REPL and four commands, in the kernel | none yet |
-| `17_file_commands` | `touch`, `cat`, `rm`, `rmdir`, `echo >` | none yet |
-| `18_user_mode` | U-mode, `PTE_U`, trampoline, trapframe | **built here** |
-| `19_exec` | load a program image, push `argv` | behind it |
-| `20_file_descriptors` | per-process fd table | behind it |
-| `21_fork_wait` | make a process, reap it | behind it |
-| `22_userland` | the shell moves into user mode | behind it |
+| `46k_shell` | a REPL and four commands, in the kernel | none yet |
+| `47k_file_commands` | `touch`, `cat`, `rm`, `rmdir`, `echo >` | none yet |
+| `48k_user_mode` | U-mode, `PTE_U`, trampoline, trapframe | **built here** |
+| `49k_exec` | load a program image, push `argv` | behind it |
+| `50k_file_descriptors` | per-process fd table | behind it |
+| `51k_fork_wait` | make a process, reap it | behind it |
+| `52k_userland` | the shell moves into user mode | behind it |
 
 ---
 
@@ -499,7 +499,7 @@ pub trait Out {                 // shell.rs:17
 - the harness's `BufOut` &rarr; a 512-byte array a test can read back
 
 <div class="info-box">
-Same idea as file descriptor 1: a program does not know where its output goes. <code>Out</code> is the kernel-sized version — and exercise 20 replaces it with the real thing.
+Same idea as file descriptor 1: a program does not know where its output goes. <code>Out</code> is the kernel-sized version — and exercise 50k replaces it with the real thing.
 </div>
 
 ---
@@ -544,7 +544,7 @@ xv6 `sh.c`: *"Chdir must be called by the parent, not the child."* The rule: **a
 - **rv6 cannot walk upward**: no `.` or `..` entries exist, so `cd ..` is a `Vec::pop` (`shell.rs:94`) — the stack is the only record of the parent chain
 - **Nothing stops `rmdir` freeing the inode you are standing in.** In Unix a cwd is a *reference*; the inode survives until the last one goes — which is why deleting an open file works
 
-rv6 has **no `chdir`** at all (`syscall.rs:21`-`29`), so the ex22 user shell has no `cd`.
+rv6 has **no `chdir`** at all (`syscall.rs:21`-`29`), so the 52k user shell has no `cd`.
 
 ---
 
@@ -564,7 +564,7 @@ rv6 has **no `chdir`** at all (`syscall.rs:21`-`29`), so the ex22 user shell has
 
 ## What that costs
 
-| Property | Kernel shell (today) | User shell (ex22) |
+| Property | Kernel shell (today) | User shell (52k) |
 |---|---|---|
 | A bad index | panics the kernel | faults the process |
 | Blast radius | the whole machine | one address space |
@@ -580,11 +580,11 @@ The last row is the deep one: the wall is what forces the kernel to have an <str
 
 ## The fix, by exercise number
 
-- **`18_user_mode`** builds the wall: `sstatus.SPP` + `sret`, `PTE_U`, trampoline, trapframe, the first `ecall`
-- **`19_exec`** loads a program image and pushes `argv`
-- **`20_file_descriptors`** makes `write(1, ...)` mean something
-- **`21_fork_wait`** makes and reaps processes
-- **`22_userland`** moves the shell across: `sh` (`exec.rs:354`) prompts `$ `, reads with `read(0, ...)`, and runs commands with `fork` + `exec` + `wait` (`exec.rs:437`-`458`)
+- **`48k_user_mode`** builds the wall: `sstatus.SPP` + `sret`, `PTE_U`, trampoline, trapframe, the first `ecall`
+- **`49k_exec`** loads a program image and pushes `argv`
+- **`50k_file_descriptors`** makes `write(1, ...)` mean something
+- **`51k_fork_wait`** makes and reaps processes
+- **`52k_userland`** moves the shell across: `sh` (`exec.rs:354`) prompts `$ `, reads with `read(0, ...)`, and runs commands with `fork` + `exec` + `wait` (`exec.rs:437`-`458`)
 
 Why write the privileged one at all? Because you cannot write the unprivileged one yet.
 
@@ -602,22 +602,22 @@ Why write the privileged one at all? Because you cannot write the unprivileged o
 
 ## Summary
 
-1. **Your tree holds the reference Module 2 kernel** — 17 of 20 files byte-identical to ex15; `shell.rs` is the only `IMPLEMENT`
+1. **Your tree holds the reference kernel** — 17 of 20 files byte-identical to 45k; `shell.rs` is the only `IMPLEMENT`
 2. **Nothing you wrote is gone** — `my-work/` + `oslings goto`, lossless both ways
 3. **The job is now extending, not building** — read for interfaces
 4. **A shell is a loop**: read, evaluate, print, repeat (`shell.rs:343`)
 5. **Tokens borrow, they do not allocate** (`shell.rs:40`)
 6. **Dispatch belongs in a table** (`shell.rs:47`) — and the second branch is fork/exec/wait
 7. **cwd is process state**, which is why `cd` is a built-in
-8. **This shell has powers no shell should have** — ex18 builds the wall, ex22 moves the shell behind it
+8. **This shell has powers no shell should have** — 48k builds the wall, 52k moves the shell behind it
 
 ---
 
-## Today's guided start
+## Today's exercise
 
 ```sh
 oslings update
-oslings run 16_shell      # or: oslings watch
+oslings run 46k_shell      # or: oslings watch
 cd rv6 && cargo run       # boots to a rv6$ prompt
 ```
 

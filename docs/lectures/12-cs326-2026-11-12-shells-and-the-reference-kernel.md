@@ -1,21 +1,22 @@
-# Shells, and the Module 2 → 3 Handoff
+# Shells, and the Reference Kernel
 
 ## Overview
 
-Module 2 ends today and Module 3 begins, so the first thing to say out loud is
-what happened to your kernel. The tree you pulled this morning holds the
-**reference** Module 2 kernel — boot, allocator, page tables, processes,
-scheduler, locks, filesystem, traps, interrupts, console — all present, all
-working, and not necessarily the code you typed. That is how OSlings has staged
-every exercise since `00`, and it is precisely why a hard session in October
-cannot cost you December. Your own code is archived and one command away. What
-you build on top of that finished kernel is a **shell**: a loop that reads a
+The first thing to say out loud is what is in your tree. The kernel you pulled
+this morning is the **reference** kernel — boot, allocator, page tables,
+processes, scheduler, locks, filesystem, traps, interrupts, console — all
+present, all working, and not necessarily the code you typed. That is how
+OSlings has staged every kernel exercise since `30k`: each one starts from the
+reference version of everything before it, and your own code is archived and
+one command away. What you build on top of that finished kernel is a **shell**: a loop that reads a
 line, decides which command it names, runs it, prints, and repeats. That really
 is all a shell is. We take the loop apart — where the bytes come from, how a
 line becomes tokens without allocating, why dispatch belongs in a table, why the
 current directory is *process* state and not shell state — and then name the
 design smell we are deliberately shipping, and the exercise that fixes it. The
-exercise is `16_shell`; the map is the [rv6 Architecture guide](../guides/rv6-architecture.md).
+exercise is `46k_shell`, today (Thursday, November 12) right after `45k_console`;
+`47k_file_commands`, released the same day, is extra credit. The map is the
+[rv6 Architecture guide](../guides/rv6-architecture.md).
 
 ## Learning Objectives
 
@@ -38,13 +39,13 @@ exercise is `16_shell`; the map is the [rv6 Architecture guide](../guides/rv6-ar
 
 ## Prerequisites
 
-- Exercise `15_console` and L19 *Device Interrupts, the PLIC, and the Console* —
+- Exercise `45k_console` (this session's first exercise) and L19 *Device Interrupts, the PLIC, and the Console* —
   interrupt-driven input and the byte ring buffer the shell reads from.
-- Exercise `10_filesystem` and L17 *Filesystems, Devices, and the Boot Sequence*
+- Exercise `40k_filesystem` and L17 *Filesystems, Devices, and the Boot Sequence*
   — inodes, inode numbers, directory entries, `dirlookup`.
-- Exercise `08_semaphores` — the kernel heap, which is why `Vec` and `String`
+- Exercise `38k_semaphores` — the kernel heap, which is why `Vec` and `String`
   exist inside the kernel at all.
-- Exercise `r07_traits` and L06 *Traits and the ulib façade* — trait objects and
+- Exercise `07r_traits` and L06 *Traits and the ulib façade* — trait objects and
   `&mut dyn Trait`, which is how the shell's output is redirected.
 - The [Using OSlings guide](../guides/oslings-usage.md), sections on `my-work/`
   and `goto` — the mechanic described in section 1.
@@ -53,11 +54,11 @@ exercise is `16_shell`; the map is the [rv6 Architecture guide](../guides/rv6-ar
 
 ---
 
-## 1. The Handoff
+## 1. The Reference Kernel
 
 ### 1.1 What is actually in your tree
 
-Exercise `16_shell` stages twenty files into `rv6/src`. Seventeen of them —
+Exercise `46k_shell` stages twenty files into `rv6/src`. Seventeen of them —
 `entry.rs`, `start.rs`, `uart.rs`, `memlayout.rs`, `kalloc.rs`, `vm.rs`,
 `param.rs`, `proc.rs`, `swtch.rs`, `sched.rs`, `spinlock.rs`, `semaphore.rs`,
 `kheap.rs`, `trap.rs`, `plic.rs`, `console.rs`, `testdev.rs` — are
@@ -68,7 +69,7 @@ is new, and it is the **only file in the exercise carrying an `IMPLEMENT`
 marker**.
 
 So: the kernel underneath your shell is the reference kernel. If your
-`06_scheduling` round-robin never went green, the scheduler in your tree today
+`36k_scheduling` round-robin never went green, the scheduler in your tree today
 is the one that does.
 
 ### 1.2 The mechanic, stated honestly
@@ -77,29 +78,29 @@ This is not a punishment and it is not a reset. It is how the course has worked
 from the first exercise, in both directions:
 
 - Every exercise's skeleton contains the reference version of everything before
-  it: exercise 07's has reference `06` code, exercise 16's has reference `15`
-  code. That is what makes the sequence survivable — one bad session costs you
-  that session's test and nothing else.
+  it: exercise 37k's has reference `36k` code, exercise 46k's has reference `45k`
+  code. That is what keeps the sequence moving: every exercise starts from a
+  kernel that works.
 - Before *any* staging directory is overwritten, `archive_work` (`model.rs:712`)
   copies the whole directory, every file including scratch modules you added,
   into `my-work/<exercise>/`.
 - On arrival, `stage_exercise` (`model.rs:740`) restores from `my-work/<target>/`
   when it exists and falls back to the skeleton only when it does not.
 
-Which means `oslings goto 13` drops you back into `13_traps` with your own
-half-finished trap handler exactly as you left it, and `oslings goto 16` brings
+Which means `oslings goto 43k` drops you back into `43k_traps` with your own
+half-finished trap handler exactly as you left it, and `oslings goto 46k` brings
 you straight back here with today's work intact. Jump around freely; nothing you
 typed is lost.
 
 ```mermaid
 flowchart LR
-    A["you are at 16_shell"] -->|"oslings goto 13"| B["archive_work:\nrv6/src -> my-work/16_shell/"]
-    B --> C{"my-work/13_traps\nexists?"}
-    C -->|yes| D["restore YOUR 13 code"]
-    C -->|no| E["stage the 13 skeleton"]
+    A["you are at 46k_shell"] -->|"oslings goto 43k"| B["archive_work:\nrv6/src -> my-work/46k_shell/"]
+    B --> C{"my-work/43k_traps\nexists?"}
+    C -->|yes| D["restore YOUR 43k code"]
+    C -->|no| E["stage the 43k skeleton"]
     D --> F["edit, run, learn"]
     E --> F
-    F -->|"oslings goto 16"| G["archive 13 work,\nrestore my-work/16_shell/"]
+    F -->|"oslings goto 46k"| G["archive 43k work,\nrestore my-work/46k_shell/"]
 ```
 
 Two caveats. `my-work/<ex>/` is a **single snapshot per exercise**, overwritten
@@ -135,13 +136,13 @@ asked three questions:
 
 | Exercise | What it adds | The wall |
 |---|---|---|
-| `16_shell` | a REPL and four commands, in the kernel | none yet |
-| `17_file_commands` | `touch`, `cat`, `rm`, `rmdir`, `echo >` | none yet |
-| `18_user_mode` | U-mode, `PTE_U`, trampoline, trapframe, the first `ecall` | **built here** |
-| `19_exec` | loading a program image into a fresh address space, argv | behind it |
-| `20_file_descriptors` | a per-process fd table; `write(1, ...)` means something | behind it |
-| `21_fork_wait` | making a process and reaping it | behind it |
-| `22_userland` | the shell moves into user mode; your Module 1 commands ship | behind it |
+| `46k_shell` | a REPL and four commands, in the kernel | none yet |
+| `47k_file_commands` | `touch`, `cat`, `rm`, `rmdir`, `echo >` | none yet |
+| `48k_user_mode` | U-mode, `PTE_U`, trampoline, trapframe, the first `ecall` | **built here** |
+| `49k_exec` | loading a program image into a fresh address space, argv | behind it |
+| `50k_file_descriptors` | a per-process fd table; `write(1, ...)` means something | behind it |
+| `51k_fork_wait` | making a process and reaping it | behind it |
+| `52k_userland` | the shell moves into user mode; your Module 1 commands ship | behind it |
 
 Today's shell is on the wrong side of that wall. Section 6 is about why, and
 about the fact that we are doing it on purpose.
@@ -186,7 +187,7 @@ is only how hard the "evaluate" step works.
 ### 2.2 Where the bytes come from
 
 `getc` (`console.rs:47`) is the entire read step, and underneath it are
-exercises 11, 13, 14, and 15 arriving at once.
+exercises 41k, 43k, 44k, and 45k arriving at once.
 
 ```text
   you press 'k'
@@ -281,7 +282,7 @@ line: String   "mkdir   docs\0..."
         no allocation, no copy, no NUL bytes written
 ```
 
-In a kernel that is not a micro-optimisation. This heap hands out *one whole
+In a kernel that is not a micro-optimization. This heap hands out *one whole
 4 KiB page per allocation* (`kheap.rs:26`–`kheap.rs:30`), and it can fail. A
 parser that allocates per token can fail on a long command line — a spectacular
 failure mode for the one piece of code the user talks to.
@@ -347,7 +348,7 @@ shell with pipes.
 
 ### 3.4 Why `echo >` has to cheat
 
-Exercise 17 adds `echo TEXT > FILE`, and its handler is instructive: `cmd_echo`
+Exercise 47k adds `echo TEXT > FILE`, and its handler is instructive: `cmd_echo`
 (`shell.rs:212`) ignores the token iterator entirely and re-parses the **raw
 line**:
 
@@ -361,13 +362,13 @@ match rest.split_once('>') {
 
 Why can it not use the words? Because `split_whitespace` already destroyed the
 information a redirect needs: where each word ended, whether `>` was attached to
-a neighbouring word, and where the text stops and the target begins. Words are
+a neighboring word, and where the text stops and the target begins. Words are
 a lossy representation of a command line.
 
 Hence the two phases every real shell has: a tokenizer emitting *typed* tokens
 — `WORD`, `IO_NUMBER`, `>`, `|`, `;` — and a parser turning them into a tree.
 rv6 skips the tree because with a dozen commands and one redirect it can. When
-file descriptors arrive in exercise 20 and redirection becomes general, the
+file descriptors arrive in exercise 50k and redirection becomes general, the
 tokenizer is where the change lands.
 
 ---
@@ -390,7 +391,7 @@ match cmd {
 }
 ```
 
-You could write the same behaviour as eleven `if cmd == "..." { ... } else if`
+You could write the same behavior as eleven `if cmd == "..." { ... } else if`
 clauses. The reason not to is not performance; it is four structural properties.
 
 - **One point of truth.** Every command name in the language sits in one
@@ -431,10 +432,10 @@ flowchart TD
 ```
 
 Everything in today's shell takes the left branch, because rv6 has no way to
-start a process at all. That changes in stages: exercise 19 adds
+start a process at all. That changes in stages: exercise 49k adds
 `run PROGRAM [args...]` (`shell.rs:256`), which looks a name up in a compiled-in
 program table (`exec.rs:574`), builds a process, runs it, and reports how it
-ended (`shell.rs:288`–`shell.rs:297`). Exercise 22 adds the user-mode `sh`
+ended (`shell.rs:288`–`shell.rs:297`). Exercise 52k adds the user-mode `sh`
 (`exec.rs:354`), which has exactly **one** built-in — `exit` (`exec.rs:433`) —
 and runs everything else with `fork` (`exec.rs:438`), `exec` (`exec.rs:443`),
 and `wait` (`exec.rs:455`).
@@ -456,8 +457,8 @@ pub trait Out {
 
 Two implementations exist. `ConsoleOut` (`shell.rs:334`) forwards to the UART;
 the harness supplies a `BufOut` that appends into a 512-byte array so a test can
-read back what was printed (exercise 16's `main.rs:111`–`main.rs:139`). Same
-commands, two destinations — which is how `oslings run 16_shell` checks a shell
+read back what was printed (exercise 46k's `main.rs:111`–`main.rs:139`). Same
+commands, two destinations — which is how `oslings run 46k_shell` checks a shell
 with no terminal attached.
 
 Handlers take `&mut dyn Out`: a trait object, one code path for both sinks. In a
@@ -468,7 +469,7 @@ no allocation.
 > Key distinction: this is the same idea as file descriptor 1. Unix programs do
 > not know where their output goes; they write to fd 1 and the shell decides
 > whether that is a terminal, a file, or a pipe. `Out` is a two-line,
-> kernel-sized version of that indirection — and in exercise 20 it is replaced
+> kernel-sized version of that indirection — and in exercise 50k it is replaced
 > by the real thing.
 
 ---
@@ -557,7 +558,7 @@ examinable:
   lookup; the shell's stack is the only record of the parent chain, and popping
   at the root is a silent no-op.
 - **An inum is an index, not a reference.** Nothing stops `rm`/`rmdir` (exercise
-  17) from freeing an inode the shell is standing in; the shell keeps using the
+  47k) from freeing an inode the shell is standing in; the shell keeps using the
   number, which now names whatever the next `dircreate` allocates. In Unix a cwd
   is a *reference*: the directory may be unlinked while you are in it and the
   inode survives until the last reference goes. That reference counting is why
@@ -571,7 +572,7 @@ examinable:
 
 Look at the system call table (`syscall.rs:21`–`syscall.rs:29`): `fork`, `exit`,
 `wait`, `read`, `exec`, `getpid`, `open`, `write`, `close`. There is **no
-`chdir`**. So the user-mode shell of exercise 22 has no `cd` at all, and every
+`chdir`**. So the user-mode shell of exercise 52k has no `cd` at all, and every
 path it hands to `open` resolves from the root.
 
 That is a clean extension if you want one: add a `cwd: usize` field to `Proc`,
@@ -590,7 +591,7 @@ calls `FS.lock()` and reaches into the inode table directly (`shell.rs:79`).
 Nothing checks anything, because at S-mode there is nothing to check *against*.
 Today's shell can:
 
-- read and write **any** page the kernel page table maps — after exercise 09,
+- read and write **any** page the kernel page table maps — after exercise 39k,
   essentially all of RAM, including every process's memory;
 - write any CSR: disable interrupts, replace `stvec`, change `satp`;
 - touch every device register, including the one that halts QEMU;
@@ -607,7 +608,7 @@ hart or a re-entrant caller (Problem 5).
 
 ### 6.2 What that costs
 
-| Property | Kernel shell (today) | User shell (exercise 22) |
+| Property | Kernel shell (today) | User shell (exercise 52k) |
 |---|---|---|
 | A bad index | panics the kernel; QEMU exits | faults the process; prompt returns |
 | Blast radius | the whole machine | one address space |
@@ -627,18 +628,18 @@ the interface real.
 Say it exactly, because this is the answer to "so why are we writing it this
 way?":
 
-- **`18_user_mode` builds the wall.** Drop to U-mode by clearing `sstatus.SPP`
+- **`48k_user_mode` builds the wall.** Drop to U-mode by clearing `sstatus.SPP`
   and executing `sret`; give the process its own page table with `PTE_U` on user
   pages (that single bit *is* the wall); map a trampoline at the same virtual
   address in both address spaces so `satp` can change mid-instruction-stream;
   park 31 registers in a trapframe; take the first `ecall`. After 18 there is
   somewhere to stand that is not inside the kernel.
-- **`19_exec`** loads a program image into a fresh address space, pushes `argv`
+- **`49k_exec`** loads a program image into a fresh address space, pushes `argv`
   onto its stack, and puts `run` at the `rv6$` prompt.
-- **`20_file_descriptors`** gives each process a small-integer table, so
+- **`50k_file_descriptors`** gives each process a small-integer table, so
   `write(1, buf, n)` means something — the honest version of `Out`.
-- **`21_fork_wait`** lets a process make another one and reap it.
-- **`22_userland` moves the shell across.** `sh` (`exec.rs:354`) is a user
+- **`51k_fork_wait`** lets a process make another one and reap it.
+- **`52k_userland` moves the shell across.** `sh` (`exec.rs:354`) is a user
   program with no privileges: it prompts with `$ ` rather than `rv6$ `, reads
   keystrokes with `read(0, ...)` (`exec.rs:369`), tokenizes in place, and runs a
   command with `fork` + `exec` + `wait` (`exec.rs:437`–`exec.rs:458`). If it
@@ -669,7 +670,7 @@ Because it is unprivileged, permission checks belong to the kernel — the shell
 *asks*, the kernel *decides* — which is why `chmod` and setuid are enforced
 below the shell and cannot be argued out of by a clever command line.
 
-That is what rv6 acquires in exercise 22. Today's shell is the before-picture:
+That is what rv6 acquires in exercise 52k. Today's shell is the before-picture:
 write it, use it, and notice what it can do that it should not.
 
 ---
@@ -815,7 +816,7 @@ POSIX-like than the whitespace splitter would have been.
 
 ### Problem 4: `cd` as a program
 
-Assume exercise 22 plus a new `SYS_CHDIR` system call, and a user program
+Assume exercise 52k plus a new `SYS_CHDIR` system call, and a user program
 `cdprog` that calls `chdir(argv[1])` and then `exit(0)`. At the user shell's
 `$ ` prompt someone types:
 
@@ -839,7 +840,7 @@ field we just added. `cdprog` therefore changes the child's cwd to `/docs`, then
 exits; the child is reaped and its state is freed. The shell's own cwd was never
 touched, so the next command resolves `notes.txt` from the root.
 
-**Minimal change:** the shell must recognise `cd` *before* the fork and call
+**Minimal change:** the shell must recognize `cd` *before* the fork and call
 `chdir` in its own process — that is, `cd` must be a built-in, exactly like the
 existing `exit` built-in (`exec.rs:433`), which is checked before the fork for
 the same reason. xv6 says so in a comment: "Chdir must be called by the parent,
@@ -947,7 +948,7 @@ without going through the trampoline.
 **The caveat on C.** The parent *calls* `wait` right after `fork` returns,
 before the child necessarily reaches `exec`; only the *return* of `wait` is
 pinned to the child's exit. Ordering two processes' steps against each other is
-well defined only where they synchronise — the first thing that becomes true the
+well defined only where they synchronize — the first thing that becomes true the
 moment you have more than one process.
 
 **Bonus:** where in this list would `cd` appear? Nowhere — it would be handled
@@ -958,7 +959,7 @@ entirely before step G, in the shell's own process, or it would not work at all.
 
 ## Further Reading
 
-- The `16_shell` exercise README — the `Out` trait, the given command handlers,
+- The `46k_shell` exercise README — the `Out` trait, the given command handlers,
   and the one function you write. Read it before you start coding.
 - [rv6 Architecture](../guides/rv6-architecture.md), "Two shells" and "The
   program table" — the kernel shell and the user shell side by side, with the
@@ -970,7 +971,7 @@ entirely before step G, in the shell's own process, or it would not work at all.
   [Exam Prep](../guides/exam-prep.md) — the vocabulary in the table above is
   examinable on Midterm 2.
 - [ulib and Commands](../guides/ulib-and-commands.md) — where your Module 1
-  `echo`, `cat`, `wc`, `head`, and `grep` end up in exercise 22.
+  `echo`, `cat`, `wc`, `head`, and `grep` end up in exercise 53k.
 - Cox, Kaashoek, Morris, *xv6: a simple, Unix-like teaching operating system*,
   chapter 1 and `user/sh.c` — a 400-line shell with pipes, redirection, and a
   real recursive-descent parser. The single best thing to read alongside today.
@@ -985,15 +986,15 @@ entirely before step G, in the shell's own process, or it would not work at all.
 
 ## Summary
 
-1. **Your tree holds the reference Module 2 kernel, and that is the design.**
-   Seventeen of exercise 16's twenty files are byte-identical to the exercise-15
+1. **Your tree holds the reference kernel, and that is the design.**
+   Seventeen of exercise 46k's twenty files are byte-identical to the `45k_console`
    reference solution, and `shell.rs` is the only file with an `IMPLEMENT`
    marker. Every exercise stages from the reference version of what came before.
 
 2. **Nothing you wrote is gone.** `archive_work` (`model.rs:712`) copies your
    whole staging directory to `my-work/<exercise>/` before any overwrite, and
    `stage_exercise` (`model.rs:740`) restores it on the way back. `oslings goto
-   13` returns you to your own trap handler; `oslings goto 16` returns you here.
+   43k` returns you to your own trap handler; `oslings goto 46k` returns you here.
 
 3. **The job changes from building to extending.** Read for interfaces — what a
    module promises, what it requires, what invariant it protects — rather than
@@ -1022,6 +1023,6 @@ entirely before step G, in the shell's own process, or it would not work at all.
 
 8. **This shell has powers no shell should have, and we know which exercise
    takes them away.** It runs in S-mode, calls `FS.lock()` directly, and can
-   corrupt any memory in the machine. Exercise `18_user_mode` builds the wall —
-   U-mode, `PTE_U`, trampoline, trapframe — and exercise `22_userland` moves the
+   corrupt any memory in the machine. Exercise `48k_user_mode` builds the wall —
+   U-mode, `PTE_U`, trampoline, trapframe — and exercise `52k_userland` moves the
    shell behind it (`exec.rs:354`), where a bug kills only the program.

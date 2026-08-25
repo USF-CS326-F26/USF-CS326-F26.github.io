@@ -14,8 +14,8 @@ the hardware provides; then enough memory ordering to justify the
 into a rule the compiler enforces. The second half is counting semaphores, the
 lost-wakeup problem, and the bounded buffer. We close with the kernel heap
 coming online: `#[global_allocator]`, and what `Box`, `Vec`, and `Arc` cost.
-This is the concept behind exercises `07_spinlocks` and `08_semaphores`; see
-also the [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md).
+This is the concept behind exercises `37k_spinlocks` and `38k_semaphores`, both
+on Thursday, October 29; see also the [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md).
 
 ## Learning Objectives
 
@@ -38,12 +38,12 @@ also the [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md).
 
 ## Prerequisites
 
-- L11 *Physical Memory and the Free List* and `02_physical_memory` —
+- L11 *Physical Memory and the Free List* and `32k_physical_memory` —
   `kalloc`/`kfree`, what the kernel heap is built on.
 - L14 *The Context Switch and the Scheduler* — once control can leave a function
   part-way through, shared state needs protecting.
 - L04 *Structs, impl, and const fn* — why a lock can live in a plain `static`.
-- `r03_borrowing` and `r07_traits` — `&`/`&mut` aliasing, `Deref`, `Drop`.
+- `03r_borrowing` and `07r_traits` — `&`/`&mut` aliasing, `Deref`, `Drop`.
 - The [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md) — raw
   pointers, `UnsafeCell`, and what an `unsafe impl` claims.
 - The [rv6 Architecture guide](../guides/rv6-architecture.md).
@@ -306,14 +306,14 @@ rejected outright. `spinlock.rs:12` overrides that:
 unsafe impl<T: Send> Sync for SpinLock<T> {}
 ```
 
-Read it as a signed statement: *I have checked that the lock serialises access,
+Read it as a signed statement: *I have checked that the lock serializes access,
 so sharing this is safe.* The `unsafe` is the signature. The bound is `T: Send`,
 not `T: Sync`, for a precise reason: the lock hands `&mut T` to whichever hart
 wins, so `T` is effectively passed between threads; it never hands out two `&T`
 at once, so `Sync` is not needed.
 
 `SpinLock::new` is a `const fn` (`spinlock.rs:15`), which is what lets a lock
-live in a `static` with no lazy initialisation: `fs.rs:277` is
+live in a `static` with no lazy initialization: `fs.rs:277` is
 `pub static FS: SpinLock<FileSystem> = SpinLock::new(FileSystem::new());`.
 
 ---
@@ -376,7 +376,7 @@ single-producer/single-consumer ring with separate head and tail
 ### Never sleep holding a spinlock
 
 Waiters burn CPU. If the holder blocks, every waiter spins for the duration, and
-on one hart nobody can run the holder again. rv6's scheduler recognises the
+on one hart nobody can run the holder again. rv6's scheduler recognizes the
 shape: the `None` arm at `usermode.rs:300`, reached when nothing is runnable,
 comments "either the root finished, or we deadlocked." Hence two lock types —
 **spinlocks** for short sections with interrupts off, and **sleeping locks**
@@ -396,13 +396,13 @@ post**, which increments and wakes a waiter.
    count = initial + (completed V) - (completed P)      and    count >= 0
 ```
 
-Initialised to 1 it is a **binary semaphore**, behaving like a mutex; at *n* it
+Initialized to 1 it is a **binary semaphore**, behaving like a mutex; at *n* it
 is a **counting semaphore**, metering *n* interchangeable units — buffer slots,
 DMA channels, "at most 8 processes in this region."
 
 > Key distinction: a mutex has an **owner**, and that is checkable. A semaphore
 > does not: `V` may be called by a thread that never called `P`. That is what
-> makes semaphores right for *signalling* and poor for mutual exclusion, where
+> makes semaphores right for *signaling* and poor for mutual exclusion, where
 > the ownership check is the point.
 
 ### rv6's semaphore
@@ -496,7 +496,7 @@ operations is load-bearing; that is Problem 4.
 
 Everything rv6 has allocated so far has been a `static` or a stack slot, size
 fixed at compile time; `PROCS` is a fixed array because there was no
-alternative. That changes in `08_semaphores`, and the change is one file.
+alternative. That changes in `38k_semaphores`, and the change is one file.
 
 ### `GlobalAlloc` and `#[global_allocator]`
 
@@ -565,7 +565,7 @@ now built both halves.
 **Late, because of the dependency chain.** The heap allocates from `kalloc`,
 whose free list is only populated by `kalloc::init()` (`main.rs:89`), walking
 from the linker symbol `end` (`kalloc.rs:14`) to `PHYSTOP`. Nothing may allocate
-before that. Pedagogically, forcing exercises `00`–`07` to work without dynamic
+before that. Pedagogically, forcing exercises `30k`–`37k` to work without dynamic
 memory is what makes the fixed `PROCS` table comprehensible — and it mirrors
 practice: xv6 has no kernel `malloc` at all, only pages and fixed arrays.
 
@@ -577,7 +577,7 @@ compete, since the shell's `Vec<(String, usize)>` (`shell.rs:24`) and a few
 One more reason closes the loop: **rv6's heap is not thread-safe.** `kalloc`
 manipulates a bare `static mut FREELIST` (`kalloc.rs:11`) with no lock, so two
 harts allocating at once would corrupt it. Fixing that means wrapping the free
-list in a `SpinLock` — the type you build in `07_spinlocks`. The exercises come
+list in a `SpinLock` — the type you build in `37k_spinlocks`. The exercises come
 in this order for a reason.
 
 ---
@@ -796,8 +796,8 @@ free; the failure is purely the one-page ceiling.
 
 ## Further Reading
 
-- Exercise `07_spinlocks` `README.md` — the API you will call — and
-  `08_semaphores` `README.md`, with its `Arc` walk-through.
+- Exercise `37k_spinlocks` `README.md` — the API you will call — and
+  `38k_semaphores` `README.md`, with its `Arc` walk-through.
 - [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — `UnsafeCell`, raw
   pointers, and what a soundness obligation is.
 - [Rust for Systems](../guides/rust-for-systems.md) — `Deref`, `Drop`, aliasing.
@@ -856,6 +856,6 @@ free; the failure is purely the one-page ceiling.
 8. **The heap is one page per allocation, arriving as late as it can.**
    `#[global_allocator]` (`kheap.rs:40`) installs `KernelHeap`; every `Box`,
    `Vec`, and `Arc` routes to `kalloc` (`kalloc.rs:40`), so a 32-byte `Arc` costs
-   4096 bytes and anything over a page fails outright. It stays unsynchronised
-   because `kalloc` has no lock — exactly what `07_spinlocks` and `08_semaphores`
+   4096 bytes and anything over a page fails outright. It stays unsynchronized
+   because `kalloc` has no lock — exactly what `37k_spinlocks` and `38k_semaphores`
    give you the tools to fix.

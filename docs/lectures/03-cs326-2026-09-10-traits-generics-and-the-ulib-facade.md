@@ -2,7 +2,7 @@
 
 ## Overview
 
-This session is about building abstractions in a language that ships no runtime with them. A kernel has no garbage collector, no exception unwinder, and no dynamic loader, so every abstraction must compile down to instructions you could have written by hand. Rust's answer is the **trait**: a named contract types promise to satisfy, plus generics that let one function be written against the name instead of the type. The compiler stamps out a specialised copy per type — **monomorphization** — so a trait call on the scheduling path costs nothing at run time. The second half applies the same discipline to failure: `Option`, `Result`, `?`, and `From`, because a `no_std` kernel has nowhere to throw an exception. Both meet in **`ulib`**, the I/O façade that lets one `cat.rs` run on your laptop in week 3 and on your own kernel in December. Unlocks [`r07_traits` and `r08_errors`](../assignments/exercises.md).
+This session is about building abstractions in a language that ships no runtime with them. A kernel has no garbage collector, no exception unwinder, and no dynamic loader, so every abstraction must compile down to instructions you could have written by hand. Rust's answer is the **trait**: a named contract types promise to satisfy, plus generics that let one function be written against the name instead of the type. The compiler stamps out a specialized copy per type — **monomorphization** — so a trait call on the scheduling path costs nothing at run time. The second half applies the same discipline to failure: `Option`, `Result`, `?`, and `From`, because a `no_std` kernel has nowhere to throw an exception. Both meet in **`ulib`**, the I/O façade that lets one `cat.rs` run on your laptop in September and on your own kernel in December. The exercises are [`07r_traits` (Thursday, September 17) and `08r_errors` (Friday, September 18)](../assignments/exercises.md).
 
 ## Learning Objectives
 
@@ -19,7 +19,7 @@ This session is about building abstractions in a language that ships no runtime 
 
 - **L03 (Ownership, Borrowing, Lifetimes)** — `&mut T` appears in every trait method today.
 - **L04 (Structs, `impl`, `const fn`)** — `impl Trait for Type` is the sibling of plain `impl Type`.
-- **L05 (Collections, Traits, Errors)** — `enum`, `match` exhaustiveness, `Option`; `r05` and `r06` passing.
+- **L05 (Collections, Slices, and Fixed Tables)** — `[T; N]`, `&[T]`, `Option`, and exhaustive `match`; `05r` is Friday, September 11 and `06r` shares Thursday, September 17 with `07r`.
 - **[Rust for Systems](../guides/rust-for-systems.md)** — generic syntax and the library types used here.
 - **[Unsafe Rust and `no_std`](../guides/rust-unsafe-nostd.md)** — what `#![no_std]` removes, and why `panic = "abort"` is the only sane kernel setting.
 
@@ -31,7 +31,7 @@ A **runtime** is code shipped alongside your program that does work you never wr
 
 That is why C kernels are blunt. C has no interfaces, so a project needing one builds it from a struct of function pointers — Linux's `struct file_operations` is thirty-odd of them — and it checks nothing: a null slot, a wrong slot, a pointer to the wrong struct are compile-time-detectable mistakes that C detects at 3 a.m. instead.
 
-Rust's trait is that idea with the checking restored, and in its common form it compiles to a direct call. Two places in rv6 need it. In **the scheduler (exercise 06)** which process runs next is policy, while handing over the CPU is mechanism — assembly you touch once; policies change, the loop must not. In **the shell (exercise 16)** commands print to the UART when rv6 boots and to a buffer the harness reads back, and must not know which.
+Rust's trait is that idea with the checking restored, and in its common form it compiles to a direct call. Two places in rv6 need it. In **the scheduler (exercise 36k)** which process runs next is policy, while handing over the CPU is mechanism — assembly you touch once; policies change, the loop must not. In **the shell (exercise 46k)** commands print to the UART when rv6 boots and to a buffer the harness reads back, and must not know which.
 
 ```mermaid
 flowchart LR
@@ -99,7 +99,7 @@ pub trait Out {
 }
 ```
 
-`write_line` is a **default method**: written once, inherited free by every implementer. It calls `write_str` on a `self` whose concrete type is not yet known and *cannot* be, since implementers that do not exist yet also get this body — which is why a fifth sink costs zero lines. The pattern is load-bearing in exercise 06: `Scheduler` requires only `pick_next`, and a default built on it drives a scheduling loop every future policy inherits.
+`write_line` is a **default method**: written once, inherited free by every implementer. It calls `write_str` on a `self` whose concrete type is not yet known and *cannot* be, since implementers that do not exist yet also get this body — which is why a fifth sink costs zero lines. The pattern is load-bearing in exercise 36k: `Scheduler` requires only `pick_next`, and a default built on it drives a scheduling loop every future policy inherits.
 
 ---
 
@@ -142,7 +142,7 @@ Forms 1, 2, and 3 mean the same thing and compile to the same code: use `where` 
 
 ## 4. Monomorphization: What the Compiler Actually Emits
 
-The compiler does *not* emit one clever function that copes with every `O`. It emits **a separate, specialised copy per type actually used**, with method calls resolved at compile time and usually inlined away. That duplication is **monomorphization** — "make it single-shaped".
+The compiler does *not* emit one clever function that copes with every `O`. It emits **a separate, specialized copy per type actually used**, with method calls resolved at compile time and usually inlined away. That duplication is **monomorphization** — "make it single-shaped".
 
 ```text
  one source function       what the compiler emits
@@ -331,7 +331,7 @@ The collapse belongs in one place: the boundary. `syscall.rs:403` is representat
 
 ## 7. `ulib`: One Seam, Two Implementations
 
-In week 3 you write `cat` on your laptop and `cargo test` grades it. In December you will have a RISC-V kernel with a filesystem, file descriptors, `exec`, and user mode, and the goal is that the *same source file* — the same bytes, not a port — runs on both.
+In September you write `cat` on your laptop and `cargo test` grades it. In December you will have a RISC-V kernel with a filesystem, file descriptors, `exec`, and user mode, and the goal is that the *same source file* — the same bytes, not a port — runs on both.
 
 The two environments share nothing. On your laptop `read` is a libc function trapping into macOS or Linux, with `std` and a heap; on rv6 there is no `std`, no allocator, no libc, and no operating system but the one you wrote, so `read` must be an `ecall` with its number in `a7`. A **façade** is one API with the difference underneath it.
 
@@ -342,7 +342,7 @@ flowchart TD
     U --> C{"target_os == none ?"}
     C -->|"no: aarch64-apple-darwin,\nx86_64-unknown-linux-gnu"| H["sys/host.rs\nstd::fs and std::io,\nor a capture buffer"]
     C -->|"yes: riscv64gc-unknown-none-elf"| R["sys/rv6.rs\necall, a7 = syscall number"]
-    H --> HOST["cargo test on your laptop\nweek 3"]
+    H --> HOST["cargo test on your laptop\nSeptember"]
     R --> K["your own rv6 kernel\nDecember"]
 ```
 
@@ -391,7 +391,7 @@ The host backend then has a third mode: `testing::run` (`testing.rs:28`) install
 | Trait | Named set of method signatures a type promises to provide; not itself a type | `pub trait Out { fn puts(&mut self, s: &str); }` at `shell.rs:17` |
 | Required / default method | Signature only, which implementers must supply; or a body in the trait, inherited free | `pick_next` is required; `write_line` is a default |
 | Trait bound | Constraint granting the body that trait's methods | `fn log_all<O: Out>(out: &mut O, ...)` |
-| Monomorphization | One specialised copy compiled per concrete type used | `trace::<Priority, StringOut>` |
+| Monomorphization | One specialized copy compiled per concrete type used | `trace::<Priority, StringOut>` |
 | Static dispatch | Target resolved at compile time; direct call, inlinable | `&mut impl Out`, `<O: Out>` |
 | Dynamic dispatch | Target looked up in a vtable at run time; one indirect call | `&mut dyn Out` at `shell.rs:39` |
 | `Option<T>` | Absence: the honest answer may be "nothing" | `pick_next` returns `None` when nothing is runnable |
@@ -512,7 +512,7 @@ Written once, it serves both `?`s here and every future one.
 
 **(c)** `lookup` checks length before scanning, so a 20-character name yields `Err(FsError::NameTooLong)`; the `?` converts it once and `cat_file` returns `Err(ShellError::Fs(FsError::NameTooLong))` — **one** conversion, cause intact.
 
-**(d)** Because inner and outer types are identical and the blanket `impl<T> From<T> for T` is the identity: the desugaring still calls `From::from`, but selects a conversion that does nothing and the optimiser removes it. So `?` between same-typed errors is free.
+**(d)** Because inner and outer types are identical and the blanket `impl<T> From<T> for T` is the identity: the desugaring still calls `From::from`, but selects a conversion that does nothing and the optimizer removes it. So `?` between same-typed errors is free.
 </details>
 
 ### Problem 4: Order the checks
@@ -580,10 +580,10 @@ Suppose `ulib` selected its backend with `#[cfg(feature = "rv6")]` instead of `t
 
 ## Further Reading
 
-- [All Exercises](../assignments/exercises.md) — `r07_traits` and `r08_errors`, due at the end of this session.
+- [All Exercises](../assignments/exercises.md) — `07r_traits` (Thursday, September 17) and `08r_errors` (Friday, September 18).
 - [Rust for Systems](../guides/rust-for-systems.md) — generic syntax, `where` clauses, library traits.
 - [Unsafe Rust and `no_std`](../guides/rust-unsafe-nostd.md) — `#[panic_handler]` and `panic = "abort"`.
-- [ulib and Commands](../guides/ulib-and-commands.md) — the full `ulib` API and command-lab workflow.
+- [ulib and Commands](../guides/ulib-and-commands.md) — the full `ulib` API and command workflow.
 - [rv6 Architecture](../guides/rv6-architecture.md) — where `sched.rs`, `shell.rs`, `syscall.rs` sit.
 - [Using OSlings](../guides/oslings-usage.md), [Cheatsheet](../guides/cheatsheet.md), [Key Concepts](../guides/key-concepts.md), [Exam Prep](../guides/exam-prep.md).
 - *The Rust Programming Language*, ch. 9 and ch. 10 — <https://doc.rust-lang.org/book/>
@@ -597,7 +597,7 @@ Suppose `ulib` selected its backend with `#[cfg(feature = "rv6")]` instead of `t
 1. **A kernel has no runtime, so abstractions must be assembled at compile time.** That is why C kernels build interfaces from function-pointer structs and get no checking back.
 2. **A trait is a named contract; types implement it, and it is not itself a type.** Required methods must be supplied; defaults are written once against them and inherited free.
 3. **A trait bound is a contract in both directions:** what the body may assume, what the caller must prove. `<T: Trait>`, `where`, and `impl Trait` are three spellings of one thing.
-4. **Monomorphization emits one specialised copy per combination of types actually used.** Calls are direct and usually inlined, so a trait on the scheduling path costs nothing at run time; the price is code size.
+4. **Monomorphization emits one specialized copy per combination of types actually used.** Calls are direct and usually inlined, so a trait on the scheduling path costs nothing at run time; the price is code size.
 5. **`dyn Trait` trades an indirect call for one copy and the ability to store the thing.** rv6 uses static dispatch for `Scheduler` and `dyn` for `Out`.
 6. **Failure is a value because there is nowhere to throw.** Mid-trap no stack runs back into the caller, and `panic = "abort"` leaves no unwinder in the image. `Option` reports absence, `Result` reports failure with a reason, `#[must_use]` stops you ignoring it.
 7. **`?` early-returns `Err(From::from(e))`, which makes `From` the joint between error layers.** Same-typed errors convert through a free identity impl, layered ones through one `impl From` per pair, and the rich error collapses to an integer at one place: the system-call boundary.

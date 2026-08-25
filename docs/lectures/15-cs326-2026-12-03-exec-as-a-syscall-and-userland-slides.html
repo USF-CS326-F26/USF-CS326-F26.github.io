@@ -179,7 +179,7 @@
 
 ## CS 326 Operating Systems
 
-L25 &middot; December 3, 2026 &middot; Exercises `21_fork_wait`, `22_userland`
+L25 &middot; December 3, 2026 &middot; Friday's exercises `51k_fork_wait`, `52k_userland`, `53k_ship_your_commands`
 
 ---
 
@@ -198,9 +198,9 @@ L25 &middot; December 3, 2026 &middot; Exercises `21_fork_wait`, `22_userland`
 
 | Call | Question it answers | Status |
 |------|---------------------|--------|
-| `fork` | make another process | exercise 21 |
-| `exit` | I am done, here is my result | exercise 21 |
-| `wait` | tell me when a child finishes | exercise 21 |
+| `fork` | make another process | exercise 51k |
+| `exit` | I am done, here is my result | exercise 51k |
+| `wait` | tell me when a child finishes | exercise 51k |
 | `exec` | become a *different* program | **today** |
 
 <div class="info-box">
@@ -342,11 +342,11 @@ unsafe fn cleanup_except(root: *mut Proc) {
 
 ## The Scheduler Finally Wakes Up
 
-- Exercises 18–20 ran exactly **one** process: no decision to make
+- Exercises 48k–50k ran exactly **one** process: no decision to make
 - After `sys_fork` returns there are two `Runnable` processes and a real choice
 
 ```rust
-// sched.rs:20 — exercise 06, unchanged, finally load-bearing
+// sched.rs:20 — exercise 36k, unchanged, finally load-bearing
 fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
     let n = states.len();
     (0..n).map(|off| (self.next + off) % n)

@@ -3,10 +3,10 @@
 This is the RV64 lookup page for CS 326. It covers the registers, the calling
 convention, the handful of instructions rv6 actually uses, the three privilege
 modes, and every control and status register the kernel touches. You will need
-it in `a00_asm_bridge` (your first assembly), in `ex05` (context switch), in
-`ex13`–`ex15` (traps, interrupts, console), and constantly in `ex18`–`ex22`
+it in `20a_asm_bridge` (your first assembly), in `35k` (context switch), in
+`43k`–`45k` (traps, interrupts, console), and constantly in `48k`–`52k`
 (user mode, exec, fork). It is a reference, not a tutorial: open it when you
-hit a specific `csrw` or an `scause` value you do not recognise, find the row,
+hit a specific `csrw` or an `scause` value you do not recognize, find the row,
 close it again. Every constant and line number below was read out of the
 reference kernel in `rv6/src/`, not remembered.
 
@@ -82,7 +82,7 @@ understand the calling convention.
 | System calls | Number in `a7`, arguments in `a0`–`a2`, result back in `a0` |
 
 `extern "C"` on the Rust side means exactly this convention. From
-`a00_asm_bridge`:
+`20a_asm_bridge`:
 
 ```rust
 extern "C" {
@@ -189,7 +189,7 @@ as you like, and references say which *direction* to look.
 - `1b` — the nearest `1:` **b**ackward. Loops.
 - `2f` — the nearest `2:` **f**orward. Skipping ahead.
 
-From the `bytecopy` solution in `a00_asm_bridge`:
+From the `bytecopy` solution in `20a_asm_bridge`:
 
 ```asm
 bytecopy:
@@ -245,7 +245,7 @@ RISC-V defines three modes. rv6 uses all three, in this order.
 |---|---|---|
 | **M** (machine) | `entry.rs`, `start.rs`, `timervec` | Everything: all CSRs, all physical memory, physical memory protection, the CLINT timer. The mode QEMU starts in |
 | **S** (supervisor) | the rv6 kernel | `s*` CSRs, page tables via `satp`, take delegated traps, execute `sret`, `sfence.vma`, `wfi`. Cannot touch `m*` CSRs |
-| **U** (user) | shell commands, `sh`, everything under `ex18`+ | Ordinary instructions only. **No** CSR access at all, no `satp`, no privileged instructions. Its only way to reach the kernel is `ecall` or a fault |
+| **U** (user) | shell commands, `sh`, everything under `48k`+ | Ordinary instructions only. **No** CSR access at all, no `satp`, no privileged instructions. Its only way to reach the kernel is `ecall` or a fault |
 
 The boot path walks down the ladder and stays there:
 
@@ -293,9 +293,9 @@ instructions. The name prefix says which mode owns it: `m*` is machine-only,
 | `sip` | S | Which supervisor interrupts are pending. `timervec` *sets* bit 1 (`start.rs:100`) to forward a tick; the handler clears it (`trap.rs:63`, `usermode.rs:415`) so it does not refire forever |
 | `sscratch` | S | Holds the trapframe address while user code runs. `uservec` starts with `csrrw a0, sscratch, a0` (`usermode.rs:94`) — one instruction that gets a usable register *and* saves the user's `a0` |
 | `stval` | S | Set by hardware to the faulting address on a page fault or misaligned access. **rv6 never reads it.** It is still worth knowing about: when a user program dies with `scause` 13 or 15 and you want to know *which* address it touched, `stval` in GDB is the answer |
-| `time` | S (read-only) | A free-running counter, 10 MHz on QEMU `virt`. Used by the exercise 22 test harness watchdog (`usermode.rs:232`) and by exercise 14 |
+| `time` | S (read-only) | A free-running counter, 10 MHz on QEMU `virt`. Used by the exercise 52k test harness watchdog (`usermode.rs:232`) and by exercise 44k |
 
-### Bit fields worth memorising
+### Bit fields worth memorizing
 
 | Field | Location | Meaning |
 |---|---|---|
@@ -317,7 +317,7 @@ sit at odd-looking bit positions — they are carved out of the machine layout.
 An interrupt only fires when three conditions hold at once: its bit is set in
 `sie`, its bit is set in `sip`, and `sstatus.SIE` is 1 (or the hart is in user
 mode, where supervisor interrupts are always enabled). Forgetting the third is
-the single most common "my timer never fires" bug in `ex14`.
+the single most common "my timer never fires" bug in `44k`.
 
 ## Decoding `scause`
 
@@ -348,7 +348,7 @@ if (scause >> 63) == 1 {
 | 0 | Instruction address misaligned | Fault → process killed |
 | 1 | Instruction access fault | Fault → process killed |
 | 2 | Illegal instruction | Fault. A user program executing `csrr` lands here |
-| 3 | Breakpoint (`ebreak`) | **Used.** Exercise 13 counts these and steps `sepc` past the instruction |
+| 3 | Breakpoint (`ebreak`) | **Used.** Exercise 43k counts these and steps `sepc` past the instruction |
 | 4 | Load address misaligned | Fault |
 | 5 | Load access fault | Fault |
 | 6 | Store/AMO address misaligned | Fault |

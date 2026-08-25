@@ -13,7 +13,7 @@ threshold, claim/complete — and the sequence a handler must follow, including 
 two opposite ways to get it wrong: an interrupt storm, and a device that goes
 silent forever with no error message. Then the console: a ring buffer between a
 handler and a reader, and the **line discipline** that turns bytes into lines. The
-exercise is `15_console`, the last in Module 2. See the
+exercise is `45k_console`, on Thursday, November 12, paired with `46k_shell`. See the
 [Memory Map guide](../guides/memory-map.md) for where the PLIC lives.
 
 ## Learning Objectives
@@ -36,13 +36,14 @@ exercise is `15_console`, the last in Module 2. See the
 
 ## Prerequisites
 
-- Exercise `11_devices` — the NS16550A register map, `LSR.DR`, `LSR.THRE`, and
-  the polled `uart::getc`/`uart::putc` you wrote.
-- Exercises `13_traps` and `14_interrupts` — `stvec`, `kernelvec`, `kerneltrap`,
+- L17 and the NS16550A register map — `LSR.DR`, `LSR.THRE`, and the polled
+  `uart::getc`/`uart::putc` (the extra-credit `41k_devices` writes them; `42k`
+  carries them finished).
+- Exercises `43k_traps` and `44k_interrupts` (Friday, November 6) — `stvec`, `kernelvec`, `kerneltrap`,
   the `scause` interrupt/exception split, `sie` and `sstatus.SIE`.
-- Exercise `09_virtual_memory` and the [Sv39 Paging guide](../guides/sv39-paging.md)
+- Exercise `39k_virtual_memory` and the [Sv39 Paging guide](../guides/sv39-paging.md)
   — why a device region must be mapped before the kernel can touch it.
-- Exercise `07_spinlocks` — so you can appreciate a structure that needs no lock.
+- Exercise `37k_spinlocks` — so you can appreciate a structure that needs no lock.
 - The [Memory Map guide](../guides/memory-map.md) — the `virt` address table,
   including the PLIC block at `0x0c00_0000`.
 - The [Unsafe Rust and no_std guide](../guides/rust-unsafe-nostd.md) —
@@ -133,7 +134,7 @@ interrupts.
 
 ## 2. The PLIC
 
-The timer of exercise `14_interrupts` was easy to route because it had nowhere to
+The timer of exercise `44k_interrupts` was easy to route because it had nowhere to
 go: the CLINT is *core-local*, one timer per hart, wired into `mip.MTIP`. Devices
 are not. A board has a UART, virtio slots, an RTC, PCIe — dozens of lines and, on
 a bigger machine, several harts that could take them. Something must arbitrate: on
@@ -460,7 +461,7 @@ drops every byte that is not printable, backspace, or newline — and Up sends
 xv6's is the classical Unix choice: because the discipline lives in the handler,
 its ring holds *edited* text and `read` returns a whole line, so every program gets
 cooked input free. rv6's ring holds raw bytes, so cooked input exists only for
-whoever implements it — and when Module 3 gives you `read(0, ...)` as a system call
+whoever implements it — and when `48k_user_mode` gives you `read(0, ...)` as a system call
 (`syscall.rs:489`), it returns one byte and the user-mode shell redoes echo and
 erase itself.
 
@@ -506,23 +507,23 @@ sequence repeats forever.
 
 ---
 
-## 7. Module 2 Is Finished
+## 7. The Kernel Is Built
 
-`15_console` closes Module 2. For seven weeks the kernel was something you
-*built*, one missing function at a time, each piece carrying one new idea: boot,
+`45k_console` completes the kernel you build one subsystem at a time. For six
+weeks the kernel was something you *built*, one missing function at a time, each piece carrying one new idea: boot,
 allocator, page tables, processes, context switch, scheduler, locks, filesystem,
 devices, traps, interrupts, console. It manages its own memory, switches between
 threads of control, and now responds to the outside world. That is a kernel.
 
-From here you receive the finished Module 2 kernel and *extend* it — a different
+From here you receive the reference kernel and *extend* it — a different
 skill, and the one you will actually use: nobody starts a kernel, and everybody
-reads one. The next six exercises add layers on top (a shell, user mode, system
+reads one. The remaining exercises add layers on top (a shell, user mode, system
 calls, `exec`, file descriptors, `fork` and `wait`), each fitting code into a
 system it did not write. L20 covers the mechanics of that handoff.
 
 The console is what makes the rest possible: every exercise from here is judged by
 typing something and seeing what comes back. Until today, the kernel could only
-talk. The exercise is **`15_console`** — one function, `console::intr`, in the
+talk. The exercise is **`45k_console`** — one function, `console::intr`, in the
 shape you have now seen three times. When it passes, run `cargo run` in `rv6/` and
 type something.
 
@@ -736,8 +737,8 @@ mechanism, decides.
   `console.rs`, and `uart.rs` sit.
 - [QEMU and GDB guide](../guides/qemu-gdb.md) — breaking on `console::intr` and
   reading `sip`, `sie`, `scause` as an interrupt lands.
-- [Shells, and the Module 2 → 3 Handoff](12-cs326-2026-11-10-shells-and-the-module-3-handoff.md)
-  — the next session, built directly on `console::getc`.
+- [Shells, and the Reference Kernel](12-cs326-2026-11-12-shells-and-the-reference-kernel.md)
+  — Thursday, November 12's reading, built directly on `console::getc`.
 - *The RISC-V Instruction Set Manual, Volume II: Privileged Architecture*, §4.1 —
   why `SEIP` is read-only to supervisor software.
 - *RISC-V PLIC Specification* — the register layout in section 2.1, gateway
@@ -777,4 +778,4 @@ mechanism, decides.
 8. **Cooked input is a kernel service.** Echo, erase, `\r`→`\n` translation, and
    line delimiting are software decisions; the terminal is a dumb byte pipe. rv6
    puts them in the shell, xv6 in the handler, Linux in a pluggable line
-   discipline — and `15_console` makes all of it reachable.
+   discipline — and `45k_console` makes all of it reachable.

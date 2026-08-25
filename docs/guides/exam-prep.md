@@ -11,12 +11,13 @@ constants, the [Cheatsheet](cheatsheet.md).
 
 | Exam | When | Covers | Weight |
 |---|---|---|---|
-| **Midterm 1** | Tue **Oct 13**, in class, full period | Module 1 (`r00`–`r09`, `c00`–`c04`, `a00`) plus `ex00`–`ex04` | 10% |
-| **Midterm 2** | Tue **Nov 24**, in class, full period | the rest of Module 2 (`ex05`–`ex15`) plus `ex16`–`ex18` | 15% |
-| **Final** | **Dec 11–17**, registrar's assigned slot | cumulative, weighted toward Module 3 (`ex19`–`ex21`, plus userland and pipes) | 20% |
+| **Midterm 1** | Thu **Oct 15**, in class, full period | Module 1 (`00r`–`21r`) plus `30k`–`33k` | 15% |
+| **Midterm 2** | Thu **Nov 19**, in class, full period | `34k`–`48k` — processes through user mode | 15% |
+| **Final** | **Dec 11–17**, registrar's assigned slot | cumulative, weighted toward `49k`–`53k` (pipes at the design level only) | 20% |
 
 The final's exact date, time, and room are set by the registrar, not by the
-course — check the official final exam schedule. Later exams are cumulative in
+course — check the official final exam schedule. Midterms fall on Thursdays,
+and there is no Friday exercise session in an exam week. Later exams are cumulative in
 *concepts*: anything earlier may reappear as a building block, but no question
 rests only on old material. You must average C or better across the three to
 pass the course.
@@ -34,7 +35,7 @@ pass the course.
   decode bit layouts, order steps, and explain why something is arranged the way
   it is.
 
-Because the cheatsheet is permitted, no question rewards memorising a constant
+Because the cheatsheet is permitted, no question rewards memorizing a constant
 that is printed on it. Questions reward knowing what to *do* with the constant.
 
 ## Shape 1 — trace the registers
@@ -171,9 +172,9 @@ device caused it.
 ## How to prepare
 
 1. **Reread your own code.** You wrote it, so you will recover it faster than
-   anything you merely read. Midterm 1: `r02`, `r04`, `a00`, `ex02`, `ex03`.
-   Midterm 2: `ex05`, `ex07`, `ex09`, `ex13`, `ex18`. Final: `ex19`, `ex20`,
-   `ex21`.
+   anything you merely read. Midterm 1: `02r`, `04r`, `20a`, `32k`, `33k`.
+   Midterm 2: `35k`, `37k`, `39k`, `43k`, `48k`. Final: `49k`, `50k`,
+   `51k`, `52k`.
 2. **Redraw the diagrams from memory**, then check them: the Sv39 address split
    and PTE layout; the free list threaded through the free pages themselves;
    `_entry` → `start` → `mret` → `kmain`; the double switch between a process
@@ -183,7 +184,7 @@ device caused it.
 3. **Do the practice set on paper, before looking at the solutions.** Reading a
    worked solution feels like learning and mostly is not. Sit with a blank page
    and a timer, get it wrong, then read.
-4. **Practise with the printed cheatsheet in front of you**, so that on the day
+4. **Practice with the printed cheatsheet in front of you**, so that on the day
    you already know where the PTE table is rather than hunting for it.
 5. **Narrate one path out loud, end to end** — a keystroke to a character on
    screen, or `fork` through `exec` to `wait`. If you can tell the story without

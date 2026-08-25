@@ -12,8 +12,9 @@ register, its flag masks, its poll-then-transfer loop, and `volatile` one last
 time. **Booting** is calling those subsystems' `init` functions in an order where
 each one's dependencies are already satisfied — a topological sort you do by hand,
 get wrong, and then debug by reading a boot log. Concept behind exercises
-`10_filesystem`, `11_devices`, and `12_boot_to_life`; after Friday's lab,
-`cargo run` boots rv6 for real. See the
+`40k_filesystem` (Thursday, November 5), `42k_boot_to_life` (Friday, November 6),
+and the extra-credit `41k_devices`; after Friday, November 6, `cargo run` boots
+rv6 for real. See the
 [rv6 Architecture guide](../guides/rv6-architecture.md).
 
 ## Learning Objectives
@@ -36,15 +37,15 @@ get wrong, and then debug by reading a boot log. Concept behind exercises
 
 ## Prerequisites
 
-- Exercise `02_physical_memory` and L11 *Physical Memory and the Free List* —
+- Exercise `32k_physical_memory` and L11 *Physical Memory and the Free List* —
   `kalloc`, the free list, and what a null return means.
-- Exercise `03_paging`, L16 *Virtual Memory II*, and the
+- Exercise `33k_paging`, L16 *Virtual Memory II*, and the
   [Sv39 Paging guide](../guides/sv39-paging.md) — `satp`, `kvmmake`, identity
   mapping, `sfence.vma`.
-- Exercise `01_boot` and [Boot: From Reset to `kmain`](05-cs326-2026-09-24-boot-from-reset-to-kmain.md)
+- Exercise `31k_boot` and [Boot: From Reset to `kmain`](05-cs326-2026-09-24-boot-from-reset-to-kmain.md)
   — MMIO, `_entry`, and the blind-write console this session replaces.
-- Exercise `07_spinlocks` — the whole filesystem lives behind one lock.
-- Exercise `r08_errors` — `Result`, `?`, and matching a specific variant.
+- Exercise `37k_spinlocks` — the whole filesystem lives behind one lock.
+- Exercise `08r_errors` — `Result`, `?`, and matching a specific variant.
 - The [Unsafe Rust and `no_std` guide](../guides/rust-unsafe-nostd.md) — raw
   pointers, and why every register access is `unsafe`.
 
@@ -263,7 +264,7 @@ is harmless.
 > Key distinction: the log makes an operation **atomic**, not **durable**.
 > Durability is `fsync`.
 
-None of that is denied, only deferred: Module 3 builds `open` and file descriptors
+None of that is denied, only deferred: `50k_file_descriptors` builds `open` and file descriptors
 on the same `Inode`, using offset primitives that already exist (`fs.rs:231`,
 `fs.rs:249`), where `read_at` returning `Ok(0)` (`fs.rs:238`) is how `cat` learns
 to stop.
@@ -272,7 +273,7 @@ to stop.
 
 ## 5. Devices: The Register File Is the Interface
 
-In exercise `01_boot` you "printed" by storing a byte to `0x1000_0000` and
+In exercise `31k_boot` you "printed" by storing a byte to `0x1000_0000` and
 hoping. That works in QEMU and is not a driver. A driver talks to a device through
 its **registers**, checking its **status** before every transfer.
 
@@ -408,8 +409,8 @@ unsafe fn kinit() {
     kalloc::init();                  // physical pages
     vm::kvminithart(vm::kvmmake());  // build the kernel page table, arm the MMU
     proc::init();                    // the process table
-    trap::init();                    // the trap vector (exercise 13)
-    fs::FS.lock().init();            // create the root directory (exercise 16)
+    trap::init();                    // the trap vector (exercise 43k)
+    fs::FS.lock().init();            // create the root directory (exercise 46k)
 }
 ```
 
@@ -448,16 +449,16 @@ entries.
 array. The skill is not memorizing the order; it is telling a load-bearing edge
 from a conventional one.
 
-### The confusing part: at exercise 12 the MMU is armed but inert
+### The confusing part: at exercise 42k the MMU is armed but inert
 
-Up through exercise 12, `_entry` calls `kmain` directly (`entry.rs:18`), so the
+Up through exercise 42k, `_entry` calls `kmain` directly (`entry.rs:18`), so the
 kernel runs in **machine mode**, where `satp` does not translate anything: the
 write lands, the mode field reads back as 8, and nothing is being translated.
 
-From exercise 13 on, `_entry` goes through `start`, which sets `mstatus.MPP` to
+From exercise 43k on, `_entry` goes through `start`, which sets `mstatus.MPP` to
 supervisor (`start.rs:29`), points `mepc` at `kmain` (`start.rs:34`), and `mret`s
 (`start.rs:54`). Only then does the page table take effect — so **a broken page
-table can pass exercise 12 and hang exercise 13**, with no code change in between.
+table can pass exercise 42k and hang exercise 43k**, with no code change in between.
 
 ### The same problem at Linux scale
 
@@ -716,8 +717,8 @@ unsafe fn kinit() {
 ```
 
 (a) Which call fails first, and what value ends up in `satp`?
-(b) What does `oslings run 12_boot_to_life` print?
-(c) What happens on exercise 13, and why is it different?
+(b) What does `oslings run 42k_boot_to_life` print?
+(c) What happens on exercise 43k, and why is it different?
 (d) What does this say about the boot self-check?
 
 <details>
@@ -729,12 +730,12 @@ page table (`vm.rs:126`–`vm.rs:131`). `FREELIST` is still null (`kalloc.rs:11`
 `kvminithart` computes `make_satp(null) = SATP_SV39 | 0` = `0x8000_0000_0000_0000`
 (`vm.rs:106`–`vm.rs:108`) — mode Sv39, root page number 0 — and writes it.
 
-(b) It **passes**. Through exercise 12 the kernel runs in machine mode, where
+(b) It **passes**. Through exercise 42k the kernel runs in machine mode, where
 `satp` translates nothing, so nothing faults: the remaining three calls run, the
 banner prints, and the self-check finds a working allocator, a `satp` whose mode
 field is 8, and a process table that hands out a `Proc`.
 
-(c) From exercise 13, `start` `mret`s into supervisor mode with that `satp` loaded
+(c) From exercise 43k, `start` `mret`s into supervisor mode with that `satp` loaded
 (`start.rs:29`–`start.rs:54`). Translation is now live against a page table at
 physical address 0. The first fetch faults, no handler exists yet, and the machine
 hangs or resets before printing anything — the same bug, invisible for one
@@ -761,8 +762,9 @@ MMU, processes.
   satp`, and `-d int,mmu`.
 - [Boot: From Reset to `kmain`](05-cs326-2026-09-24-boot-from-reset-to-kmain.md)
   — `_entry`, the stack, and the blind-write console this session upgrades.
-- [File Commands over a Filesystem API](12-cs326-2026-11-12-file-commands-over-a-filesystem-api.md)
-  — the Module 3 session that builds `touch`, `cat`, and `rm` on today's API.
+- [File Commands over a Filesystem API](14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md)
+  — the November 24 lecture behind the extra-credit `47k_file_commands`, which
+  builds `touch`, `cat`, and `rm` on today's API.
 - [Key Concepts](../guides/key-concepts.md) and
   [Exam Prep](../guides/exam-prep.md) — the section 4 terminology is examinable.
 - Ritchie and Thompson, *The UNIX Time-Sharing System* (CACM, 1974), section 3 —

@@ -2,18 +2,19 @@
 
 ## Overview
 
-Last session gave rv6 a shell that moves around a namespace: `pwd`, `ls`, `cd`,
+Exercise `46k_shell` gave rv6 a shell that moves around a namespace: `pwd`, `ls`, `cd`,
 `mkdir`. Today it learns to work on the things inside it. Creation, writing,
 reading, and removal are the four verbs of the file life cycle, and in rv6 each
 is three or four lines over the filesystem you wrote in exercise
-`10_filesystem`. That thinness is the lesson: a good API makes its clients
+`40k_filesystem`. That thinness is the lesson: a good API makes its clients
 boring. But the boring code hides four decisions that took Unix a decade to
 settle, and those are the session — why removing a *name* is not the same as
 removing a *file*, why `rmdir` refuses to recurse, what happens to a program
 still reading a file whose last name just vanished, and why `.` and `..` are
 entries on disk rather than syntax. We close with an inventory of what rv6's
 in-memory filesystem does *not* do — no persistence, no journal, no buffer cache.
-Concept behind exercise `17_file_commands`; see the
+Concept behind the extra-credit exercise `47k_file_commands`, released on
+November 12 with the shell and worked in office hours; see the
 [rv6 Architecture guide](../guides/rv6-architecture.md).
 
 ## Learning Objectives
@@ -36,14 +37,14 @@ Concept behind exercise `17_file_commands`; see the
 
 ## Prerequisites
 
-- Exercise `10_filesystem` — inodes, directory entries, `dirlookup`,
+- Exercise `40k_filesystem` — inodes, directory entries, `dirlookup`,
   `dircreate`, `read`, `write`, and `Result`-based error handling.
-- Exercise `16_shell` and L20 *Shells, and the Module 2 → 3 handoff* — the REPL,
+- Exercise `46k_shell` and [L20 *Shells, and the Reference Kernel*](12-cs326-2026-11-12-shells-and-the-reference-kernel.md) — the REPL,
   `exec` dispatch, and the current-directory stack.
 - L17 *Filesystems, Devices, and the Boot Sequence* — where `FS` is initialized.
 - [L06 Traits and the `ulib` Façade](03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md)
   — the `Out` trait these commands write through.
-- Exercise `07_spinlocks` — every command here runs holding one lock, and where
+- Exercise `37k_spinlocks` — every command here runs holding one lock, and where
   it is taken and dropped matters.
 - The [ulib and Commands guide](../guides/ulib-and-commands.md) — your Module 1
   `cat` was this command against a different back end.
@@ -199,7 +200,7 @@ if e.used && e.len == name.len() && &e.name[..e.len] == name {
 It frees the inode unconditionally, in the same breath as the entry. With no
 `nlink` field, rv6 assumes every inode has exactly one name and zero open
 references — assumptions enforced only by the absence of the features that would
-break them. There is no `link` command, and until exercise `20_file_descriptors`
+break them. There is no `link` command, and until exercise `50k_file_descriptors`
 nothing holds a reference to an inode across a command.
 
 > Key distinction: by real-Unix standards rv6's `unlink` is misnamed — it does
@@ -373,7 +374,7 @@ fall out of that one rule:
 Now rv6. `unlink` sets `self.inodes[e.inum] = Inode::new()` (`fs.rs:197`),
 marking the inode `Free`, and `alloc` takes the first free slot scanning up from
 `ROOT` (`fs.rs:87`–`fs.rs:92`). Put those next to the file descriptor table
-arriving in exercise `20_file_descriptors`, where a `File` stores a bare `inum`
+arriving in exercise `50k_file_descriptors`, where a `File` stores a bare `inum`
 and an offset:
 
 ```text
@@ -659,7 +660,7 @@ Lines 1–4 are silent: handlers print only on error
 
 ### Problem 4: Stale bytes
 
-The offset-based API from exercise `20_file_descriptors` adds `truncate`
+The offset-based API from exercise `50k_file_descriptors` adds `truncate`
 (`fs.rs:266`) and `write_at` (`fs.rs:249`). For a file at inode 2:
 
 ```rust
@@ -775,10 +776,10 @@ than something userspace assembles.
   to the shell, the console, and the process table.
 - [ulib and Commands](../guides/ulib-and-commands.md) — your Module 1 `cat` and
   `echo`, which will be re-targeted onto this filesystem in exercise
-  `22_userland`.
+  `52k_userland`.
 - [Rust for Systems](../guides/rust-for-systems.md) — `Result`, `match`, `?`, and
   why `&self` versus `&mut self` on a handler is a semantic claim.
-- Exercise `10_filesystem` and `20_file_descriptors` READMEs.
+- Exercise `40k_filesystem` and `50k_file_descriptors` READMEs.
 - Ritchie and Thompson, *The UNIX Time-Sharing System*, CACM 1974 — section 3
   introduces the name/inode split and "link" in its original sense.
 - xv6 book, chapter 8 (*File system*) — read `fs.c` (`dirlink`, `isdirempty`,
@@ -795,7 +796,7 @@ than something userspace assembles.
 
 1. **The file life cycle is four verbs, each one filesystem call.** `dircreate`
    makes a file, `write` fills it, `read` empties it into a buffer, `unlink`
-   removes its name. Every command in exercise `17_file_commands` is a
+   removes its name. Every command in exercise `47k_file_commands` is a
    two-to-four line composition of those.
 
 2. **Thin clients mean a good API.** `cmd_touch` is three lines. If your handlers

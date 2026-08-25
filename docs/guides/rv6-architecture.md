@@ -1,16 +1,17 @@
 # The rv6 Kernel Architecture
 
-This is the map of the kernel you are handed at the start of Module 3:
+This is the map of the reference kernel you are handed from `46k_shell` on:
 twenty-four source files, about 4,400 lines. Nineteen of them you already
-built in `ex00`–`ex15`; the other five — `shell.rs`, `syscall.rs`,
-`usermode.rs`, `exec.rs`, `file.rs` — are the ones `ex16`–`ex22` fill in. Open
+built in `30k`–`45k`; the other five — `shell.rs`, `syscall.rs`,
+`usermode.rs`, `exec.rs`, `file.rs` — are the ones `46k`–`52k` fill in. Open
 this page when you need to know *which file owns a thing*: who allocates a
 page, where a trap lands, what runs before what at boot, which lock protects
 the filesystem. Then go read that file.
 
-Every constant and line number below was read out of the finished `ex22`
-reference kernel (`exercises/22_userland/solution/`), which is what `oslings`
-stages into `rv6/src` by the last exercise. The kernel is cumulative, so an
+Every constant and line number below was read out of the finished `52k`
+reference kernel (`exercises/52k_userland/solution/`, in your tree once `53k`
+is released), which is what `oslings` stages into `rv6/src` for the last
+exercises. The kernel is cumulative, so an
 earlier exercise has a shorter version of the same file and your line numbers
 will be smaller than the ones cited here — the structure is identical.
 
@@ -18,30 +19,30 @@ will be smaller than the ones cited here — the structure is identical.
 
 | File | What it owns | Introduced | Grown in |
 |---|---|---|---|
-| `main.rs` | `kmain`, the boot order in `kinit` (`main.rs:87`), the panic handler (`main.rs:282`), the module list | `ex00` | `ex12` (real boot), every exercise after |
-| `entry.rs` | `_entry` — the first instruction QEMU executes, the 16 KiB boot stack `STACK0` (`entry.rs:14`) | `ex01` | `ex13` (calls `start` instead of `kmain`) |
-| `start.rs` | Machine-mode setup: drop to S-mode via `mret`, delegate traps, open PMP, and the CLINT timer plus `timervec` (`start.rs:84`) | `ex13` | `ex14` (the timer, 45 → 108 lines) |
-| `trap.rs` | S-mode trap vector `kernelvec` (`trap.rs:90`), `kerneltrap` (`trap.rs:46`), `stvec` setup, `intr_on` | `ex13` | `ex14` (timer ticks), `ex15` (external interrupts) |
-| `usermode.rs` | The trampoline (`uservec`/`userret`), the `Trapframe` layout, `usertrap`/`usertrapret`, the scheduler loop, `proc_yield`, `exit_current` | `ex18` | `ex21` (scheduler replaces one-process `run`) |
-| `syscall.rs` | Syscall numbers, `dispatch` (`syscall.rs:33`), and every handler: fork, exit, wait, exec, getpid, read, write, open, close | `ex18` | `ex20` (fds), `ex21` (fork/wait), `ex22` (exec) |
-| `exec.rs` | The program table (12 hand-written user binaries), the loader `build_addrspace`, `push_argv`, and `exec_into` | `ex19` | `ex21`, `ex22` (`sh`, `exec` as a syscall; 345 → 843 lines) |
-| `vm.rs` | Sv39: PTE flags, `walk`, `mappages`, the kernel page table `kvmmake`, user loading/teardown, `copyin`/`copyout`/`copyinstr`, `uvmcopy` | `ex03` | `ex09`, `ex18`, `ex19`, `ex21` (90 → 419 lines) |
-| `kalloc.rs` | The physical page allocator: one free list of 4 KiB pages from `end` to `PHYSTOP` | `ex02` | — |
-| `kheap.rs` | `#[global_allocator]` — one page per allocation, so `Box`/`Vec`/`Arc` work | `ex08` | — |
-| `proc.rs` | `Proc` (the PCB), the fixed `PROCS` table, `allocproc`, `freeproc`, `proc_pagetable`, `has_children` | `ex04` | `ex18`, `ex20` (`ofile`), `ex21` (`parent`, `xstate`) |
-| `sched.rs` | The scheduling *policy* only: the `Scheduler` trait and `RoundRobin::pick_next` (`sched.rs:20`) | `ex06` | — |
-| `swtch.rs` | `Context` (14 callee-saved registers) and the `swtch` assembly that swaps them | `ex05` | — |
-| `spinlock.rs` | `SpinLock<T>` + RAII `SpinLockGuard`, built on `AtomicBool::compare_exchange` | `ex07` | — |
-| `semaphore.rs` | A counting semaphore over a `SpinLock<i64>` | `ex08` | — |
-| `fs.rs` | The in-memory filesystem: 64 inodes, 16 directory entries each, 128 bytes per file, and the global `FS` lock (`fs.rs:277`) | `ex10` | `ex17` (`unlink`, `for_each_entry`), `ex20` (`read_at`/`write_at`/`truncate`) |
-| `file.rs` | The open-file abstraction: `File`, `FileKind`, `NOFILE = 16`, and the `O_*` flags | `ex20` | — |
-| `shell.rs` | The **kernel** shell (`rv6$`): `pwd`, `ls`, `cd`, `mkdir`, `touch`, `cat`, `rm`, `rmdir`, `echo`, `run`, `progs` | `ex16` | `ex17` (file commands), `ex19` (`run`, `progs`) |
-| `console.rs` | Interrupt-driven input: a 256-byte ring buffer, the blocking `getc` (`console.rs:47`), and `intr` (`console.rs:68`) | `ex15` | — |
-| `uart.rs` | The polled NS16550A driver: register offsets, `putc`, `getc`, `puts`, `enable_rx_interrupt` | `ex01` | `ex11` (full driver, 33 → 65 lines) |
-| `plic.rs` | The interrupt controller: enable a source, set the threshold, `claim`, `complete` | `ex15` | — |
-| `testdev.rs` | The SiFive test finisher at `0x10_0000` — how the kernel powers QEMU off with a pass/fail status | `ex01` | — |
-| `memlayout.rs` | Every address constant: `PGSIZE`, `KERNBASE`, `PHYSTOP`, `UART0`, `PLIC`, `MAXVA`, `TRAMPOLINE`, `TRAPFRAME`, `USER_STACK` | `ex02` | `ex15` (PLIC), `ex18`–`ex19` (user layout, 19 → 75 lines) |
-| `param.rs` | `NPROC = 64`. That is the entire file | `ex04` | — |
+| `main.rs` | `kmain`, the boot order in `kinit` (`main.rs:87`), the panic handler (`main.rs:282`), the module list | `30k` | `42k` (real boot), every exercise after |
+| `entry.rs` | `_entry` — the first instruction QEMU executes, the 16 KiB boot stack `STACK0` (`entry.rs:14`) | `31k` | `43k` (calls `start` instead of `kmain`) |
+| `start.rs` | Machine-mode setup: drop to S-mode via `mret`, delegate traps, open PMP, and the CLINT timer plus `timervec` (`start.rs:84`) | `43k` | `44k` (the timer, 45 → 108 lines) |
+| `trap.rs` | S-mode trap vector `kernelvec` (`trap.rs:90`), `kerneltrap` (`trap.rs:46`), `stvec` setup, `intr_on` | `43k` | `44k` (timer ticks), `45k` (external interrupts) |
+| `usermode.rs` | The trampoline (`uservec`/`userret`), the `Trapframe` layout, `usertrap`/`usertrapret`, the scheduler loop, `proc_yield`, `exit_current` | `48k` | `51k` (scheduler replaces one-process `run`) |
+| `syscall.rs` | Syscall numbers, `dispatch` (`syscall.rs:33`), and every handler: fork, exit, wait, exec, getpid, read, write, open, close | `48k` | `50k` (fds), `51k` (fork/wait), `52k` (exec) |
+| `exec.rs` | The program table (12 hand-written user binaries), the loader `build_addrspace`, `push_argv`, and `exec_into` | `49k` | `51k`, `52k` (`sh`, `exec` as a syscall; 345 → 843 lines) |
+| `vm.rs` | Sv39: PTE flags, `walk`, `mappages`, the kernel page table `kvmmake`, user loading/teardown, `copyin`/`copyout`/`copyinstr`, `uvmcopy` | `33k` | `39k`, `48k`, `49k`, `51k` (90 → 419 lines) |
+| `kalloc.rs` | The physical page allocator: one free list of 4 KiB pages from `end` to `PHYSTOP` | `32k` | — |
+| `kheap.rs` | `#[global_allocator]` — one page per allocation, so `Box`/`Vec`/`Arc` work | `38k` | — |
+| `proc.rs` | `Proc` (the PCB), the fixed `PROCS` table, `allocproc`, `freeproc`, `proc_pagetable`, `has_children` | `34k` | `48k`, `50k` (`ofile`), `51k` (`parent`, `xstate`) |
+| `sched.rs` | The scheduling *policy* only: the `Scheduler` trait and `RoundRobin::pick_next` (`sched.rs:20`) | `36k` | — |
+| `swtch.rs` | `Context` (14 callee-saved registers) and the `swtch` assembly that swaps them | `35k` | — |
+| `spinlock.rs` | `SpinLock<T>` + RAII `SpinLockGuard`, built on `AtomicBool::compare_exchange` | `37k` | — |
+| `semaphore.rs` | A counting semaphore over a `SpinLock<i64>` | `38k` | — |
+| `fs.rs` | The in-memory filesystem: 64 inodes, 16 directory entries each, 128 bytes per file, and the global `FS` lock (`fs.rs:277`) | `40k` | `47k` (`unlink`, `for_each_entry`), `50k` (`read_at`/`write_at`/`truncate`) |
+| `file.rs` | The open-file abstraction: `File`, `FileKind`, `NOFILE = 16`, and the `O_*` flags | `50k` | — |
+| `shell.rs` | The **kernel** shell (`rv6$`): `pwd`, `ls`, `cd`, `mkdir`, `touch`, `cat`, `rm`, `rmdir`, `echo`, `run`, `progs` | `46k` | `47k` (file commands), `49k` (`run`, `progs`) |
+| `console.rs` | Interrupt-driven input: a 256-byte ring buffer, the blocking `getc` (`console.rs:47`), and `intr` (`console.rs:68`) | `45k` | — |
+| `uart.rs` | The polled NS16550A driver: register offsets, `putc`, `getc`, `puts`, `enable_rx_interrupt` | `31k` | `41k` (full driver, 33 → 65 lines) |
+| `plic.rs` | The interrupt controller: enable a source, set the threshold, `claim`, `complete` | `45k` | — |
+| `testdev.rs` | The SiFive test finisher at `0x10_0000` — how the kernel powers QEMU off with a pass/fail status | `31k` | — |
+| `memlayout.rs` | Every address constant: `PGSIZE`, `KERNBASE`, `PHYSTOP`, `UART0`, `PLIC`, `MAXVA`, `TRAMPOLINE`, `TRAPFRAME`, `USER_STACK` | `32k` | `45k` (PLIC), `48k`–`49k` (user layout, 19 → 75 lines) |
+| `param.rs` | `NPROC = 64`. That is the entire file | `34k` | — |
 
 Three files are pure assembly wearing a Rust coat: `entry.rs`, `swtch.rs`, and
 the `global_asm!` blocks in `start.rs`, `trap.rs`, `usermode.rs`, and `exec.rs`.
@@ -140,13 +141,13 @@ The one-way edges matter more than the cycles. `vm.rs` depends on `kalloc.rs`
 and never the other way round: page tables are built out of physical pages, and
 the physical allocator knows nothing about paging. `sched.rs` depends only on
 `proc::ProcState` — the policy sees an array of states and returns an index
-(`sched.rs:20`), which is exactly why the round-robin you wrote for `ex06` on
+(`sched.rs:20`), which is exactly why the round-robin you wrote for `36k` on
 the host still compiles into the kernel unchanged.
 
 ## The boot sequence
 
 Every step below is forced into its position by something. That is what makes
-boot order the hardest part of `ex12`: there is essentially one correct
+boot order the hardest part of `42k`: there is essentially one correct
 sequence, and most wrong ones fail silently.
 
 1. **QEMU jumps to `_entry` at `0x8000_0000`, in machine mode.**
@@ -182,8 +183,8 @@ sequence, and most wrong ones fail silently.
    `mret` is an access fault, before it can print anything to say so.
 
 7. **`mcounteren` ← `0xffffffff` (`start.rs:47`).**
-   *Constraint:* before S-mode reads the `time` CSR — which `ex14` does directly
-   and the `ex22` harness watchdog does at `usermode.rs:232`.
+   *Constraint:* before S-mode reads the `time` CSR — which `44k` does directly
+   and the `52k` harness watchdog does at `usermode.rs:232`.
 
 8. **`timerinit` (`start.rs:59-75`): read `mtime`, set `mtimecmp0` one interval
    ahead, fill `TIMER_SCRATCH`, point `mtvec` at `timervec`, set `mie.MTIE`.**
@@ -242,7 +243,7 @@ sequence, and most wrong ones fail silently.
     *Constraint:* after `kvmmake`, because `plic::init` writes MMIO at
     `PLIC + 0x2080` and `PLIC + 0x20_1000` (`plic.rs:17-28`) and the PLIC's
     4 MiB window is only mapped at `vm.rs:138`. Also after `trap::init`, or the
-    first keystroke traps through an uninitialised `stvec`.
+    first keystroke traps through an uninitialized `stvec`.
 
 18. **`trap::intr_on()` (`main.rs:120` → `trap.rs:39-42`): `sie.SSIE`, then
     `sstatus.SIE`.**
@@ -497,15 +498,15 @@ number returns -1 rather than killing the process.
 
 | # | Call | Handler | Added in |
 |---|---|---|---|
-| 1 | `fork()` → child pid / 0 | `syscall.rs:92` | `ex21` |
-| 2 | `exit(status)` → never returns | `syscall.rs:119` | `ex18` |
-| 3 | `wait(&status)` → pid | `syscall.rs:141` | `ex21` |
-| 5 | `read(fd, buf, len)` → bytes | `syscall.rs:468` | `ex20` |
-| 7 | `exec(path, argv)` → argc / -1 | `syscall.rs:237` | `ex22` |
-| 11 | `getpid()` → pid | `syscall.rs:171` | `ex18` |
-| 15 | `open(path, flags)` → fd | `syscall.rs:380` | `ex20` |
-| 16 | `write(fd, buf, len)` → bytes | `syscall.rs:517` | `ex18` |
-| 21 | `close(fd)` → 0 | `syscall.rs:567` | `ex20` |
+| 1 | `fork()` → child pid / 0 | `syscall.rs:92` | `51k` |
+| 2 | `exit(status)` → never returns | `syscall.rs:119` | `48k` |
+| 3 | `wait(&status)` → pid | `syscall.rs:141` | `51k` |
+| 5 | `read(fd, buf, len)` → bytes | `syscall.rs:468` | `50k` |
+| 7 | `exec(path, argv)` → argc / -1 | `syscall.rs:237` | `52k` |
+| 11 | `getpid()` → pid | `syscall.rs:171` | `48k` |
+| 15 | `open(path, flags)` → fd | `syscall.rs:380` | `50k` |
+| 16 | `write(fd, buf, len)` → bytes | `syscall.rs:517` | `48k` |
+| 21 | `close(fd)` → 0 | `syscall.rs:567` | `50k` |
 
 Only three arguments cross the boundary: `usertrap` reads `a0`, `a1`, `a2` out
 of the trapframe and nothing more (`usermode.rs:402-407`). That is a real
@@ -613,7 +614,7 @@ binaries: no ELF header, no relocation, no linker involved at load time.
 | `execfail` | execs a missing program, checks `exec` returned -1, exits 7 | `exec.rs:542` |
 
 Type `progs` at the `rv6$` prompt to print this list from the running kernel
-(`shell.rs:303`). In `ex22`'s final step, `oslings ship` replaces several of
+(`shell.rs:303`). In `52k`'s final step, `oslings ship` replaces several of
 these with the commands you wrote in Module 1 — see
 [ulib and Commands](ulib-and-commands.md).
 
@@ -626,7 +627,7 @@ has instead is a set of rules about when it is safe to hold that lock.
 | Lock | Protects | Taken by |
 |---|---|---|
 | `FS: SpinLock<FileSystem>` (`fs.rs:277`) | all 64 inodes and every directory entry | `syscall.rs:393`, `syscall.rs:498`, `syscall.rs:551`, `main.rs:93`, and every `shell.rs` file command |
-| `Semaphore.count: SpinLock<i64>` (`semaphore.rs:6`) | one counter | `semaphore.rs:17`, `semaphore.rs:27` — used by `ex08`'s tests, not on any kernel path |
+| `Semaphore.count: SpinLock<i64>` (`semaphore.rs:6`) | one counter | `semaphore.rs:17`, `semaphore.rs:27` — used by `38k`'s tests, not on any kernel path |
 
 The rules that matter:
 

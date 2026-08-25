@@ -13,8 +13,8 @@ then draw the five-state lifecycle (`Unused`, `Runnable`, `Running`, `Sleeping`,
 put `NPROC` of these blocks in a fixed static array and defend that choice
 against the linked list you would reach for in userspace. Finally we set rv6's
 `Proc` beside xv6's `struct proc` and Linux's `task_struct`, so you can see which
-fields are *essential* and which are *scale*. This session unlocks exercise
-`04_processes`; see also [rv6 Architecture](../guides/rv6-architecture.md) and
+fields are *essential* and which are *scale*. The exercise is
+`34k_processes`, on Thursday, October 22 — after Midterm 1 and fall break; see also [rv6 Architecture](../guides/rv6-architecture.md) and
 [Sv39 Paging](../guides/sv39-paging.md).
 
 ## Learning Objectives
@@ -30,11 +30,11 @@ fields are *essential* and which are *scale*. This session unlocks exercise
 
 ## Prerequisites
 
-- **L11 Physical Memory** and exercise `02_physical_memory` — `kalloc`/`kfree` hand out the pages a process owns.
-- **L12 Virtual Memory I: Sv39 Page Tables** and exercise `03_paging` — a process's `pagetable` is the root you built there.
-- **Exercises `r04`, `r05`** — `struct`, `impl`, `const fn`, `enum`, `match`; `ProcState` is the payoff for `r05`.
+- **L11 Physical Memory** and exercise `32k_physical_memory` (Thursday, October 8) — `kalloc`/`kfree` hand out the pages a process owns.
+- **L12 Virtual Memory I: Sv39 Page Tables** and exercise `33k_paging` (Friday, October 9) — a process's `pagetable` is the root you built there.
+- **Exercises `04r`, `05r`** — `struct`, `impl`, `const fn`, `enum`, `match`; `ProcState` is the payoff for `05r`.
 - **L09 Leaving std** and [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — `static mut`, raw pointers, `addr_of_mut!`.
-- **L08 RISC-V Registers** and exercise `a00_asm_bridge` — `baby_swtch` already saved and restored a context by hand.
+- **L08 RISC-V Registers** and exercise `20a_asm_bridge` — `baby_swtch` already saved and restored a context by hand.
 - The [Memory Map](../guides/memory-map.md) guide for `PGSIZE` and the QEMU `virt` layout.
 
 ---
@@ -117,7 +117,7 @@ occupies the slot; a stale pid refers to nothing.
 ### Address space: `pagetable`
 
 One `*mut Pte`: the physical address of the root Sv39 page table you built in
-exercise `03_paging`. This single pointer *is* the isolation — two processes with
+exercise `33k_paging`. This single pointer *is* the isolation — two processes with
 different roots cannot see each other's memory, because the hardware translates
 every user load and store through whatever root `satp` holds. The process
 **owns** this page and everything reachable from it (§5).
@@ -343,7 +343,7 @@ In userspace you would reach for a growable list. In a kernel an array wins:
 5. **Deterministic worst case.** An O(NPROC) scan with no indirection — for 64
    entries, a handful of cache lines.
 
-The cost is a hard ceiling — exactly what check 3 in exercise `04_processes`
+The cost is a hard ceiling — exactly what check 3 in exercise `34k_processes`
 verifies.
 
 ### What happens when the table is full
@@ -438,7 +438,7 @@ Order matters too. `freeproc` releases the owned pages *first* and sets
 claim it; flip the state first and a concurrent `allocproc` could take the slot,
 install a fresh page table, and have your trailing `free_pagetable` free *its*
 page. On a single hart with interrupts off the wrong order is survivable — until
-exercise `07_spinlocks`. xv6 solves it generally with a per-process
+exercise `37k_spinlocks`. xv6 solves it generally with a per-process
 `struct spinlock lock` held across every state change.
 
 ### The dangling `parent` pointer
@@ -514,20 +514,20 @@ Different mechanisms, same contract at the boundary.
 
 ## 7. What Is Not in the PCB Yet
 
-The `Proc` you build in exercise `04_processes` is smaller than the one quoted
+The `Proc` you build in exercise `34k_processes` is smaller than the one quoted
 here. It grows on a schedule:
 
-- **`context`** arrives with exercise `05_context_switch`, when `swtch` gives the
+- **`context`** arrives with exercise `35k_context_switch`, when `swtch` gives the
   kernel something to save into.
-- **The scheduler's use of `state`** arrives with `06_scheduling`, where your
+- **The scheduler's use of `state`** arrives with `36k_scheduling`, where your
   round-robin policy reads a `[ProcState; NPROC]` snapshot.
-- **`trapframe` and `kstack`** matter from `13_traps` and `18_user_mode` onward,
+- **`trapframe` and `kstack`** matter from `43k_traps` and `48k_user_mode` onward,
   once there is a user mode to trap out of.
-- **`ofile`** fills in at `20_file_descriptors`.
-- **`parent` and `xstate`** become load-bearing at `21_fork_wait`.
+- **`ofile`** fills in at `50k_file_descriptors`.
+- **`parent` and `xstate`** become load-bearing at `51k_fork_wait`.
 
 Today's job is the skeleton and the two operations that manage it: claim a slot,
-give it back. `oslings run 04_processes` checks allocation, pid uniqueness, the
+give it back. `oslings run 34k_processes` checks allocation, pid uniqueness, the
 `NPROC` ceiling, refusal when full, and clean reuse after a free. Read its
 `README.md` for the how; this page was the why.
 
@@ -627,7 +627,7 @@ page table, and have the trailing `free_pagetable` free the new process's root.
 
 Bug 2 is worse: bug 1 needs a double `freeproc`, but bug 2 needs only a
 badly-timed interrupt, and it is invisible on a single hart with interrupts off —
-it passes every test today and fails after exercise `07_spinlocks`. Compare
+it passes every test today and fails after exercise `37k_spinlocks`. Compare
 `proc.rs:139-158`: every release guarded, every pointer nulled immediately after
 its `kfree`, `state = Unused` **last**.
 
@@ -635,7 +635,7 @@ its `kfree`, `state = Unused` **last**.
 
 ### Problem 3: The abandoned slot
 
-An `allocproc` written like this passes exercise `04_processes`:
+An `allocproc` written like this passes exercise `34k_processes`:
 
 ```rust
 (*p).pid = alloc_pid();
@@ -767,7 +767,7 @@ Note what dominates: `ofile` is 512 of the 696 bytes — 74% of the PCB is the
 open-file table. That is exactly why xv6 and Linux store `struct file *`
 *pointers* instead of inline structs, and why Linux factors the table into a
 refcounted `files_struct` that threads share. Contrast the `Proc` you build in
-exercise `04_processes`: four fields, 40 bytes, 2.5 KiB of table. The PCB grows
+exercise `34k_processes`: four fields, 40 bytes, 2.5 KiB of table. The PCB grows
 about 17× over the semester, and every byte answers a requirement.
 
 </details>
@@ -834,7 +834,7 @@ works only because rv6 has no long-running process tree.
 - [Memory Map](../guides/memory-map.md) — `PGSIZE`, `KERNBASE`, and where `.bss` (and therefore `PROCS`) lives.
 - [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — `static mut`, `addr_of_mut!`, and why raw pointers instead of `&mut`.
 - [Key Concepts](../guides/key-concepts.md) and [Exam Prep](../guides/exam-prep.md) — the PCB and the state machine are Midterm 1 material.
-- Exercise `04_processes` `README.md` — the implementation walkthrough for `allocproc` and `freeproc`.
+- Exercise `34k_processes` `README.md` — the implementation walkthrough for `allocproc` and `freeproc`.
 - xv6-riscv, `kernel/proc.h` and `kernel/proc.c` — read `allocproc`, `freeproc`, `reparent`, and `wait` side by side with rv6's.
 - *xv6: a simple, Unix-like teaching operating system* (Cox, Kaashoek, Morris), chapter 1 ("Operating system interfaces") and chapter 7 ("Scheduling").
 - Linux `include/linux/sched.h` — find `struct task_struct` and count how many of its fields you can place in the three buckets from §1.
@@ -875,4 +875,4 @@ works only because rv6 has no long-running process tree.
    agree on identity, state, address space, saved registers, kernel stack,
    parent, and exit status. Everything Linux adds — namespaces, cgroups,
    scheduling classes, RCU teardown, per-task locks — answers a requirement rv6
-   does not have. Exercise `04_processes` builds the seven.
+   does not have. Exercise `34k_processes` builds the seven.

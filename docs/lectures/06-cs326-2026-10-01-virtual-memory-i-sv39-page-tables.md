@@ -13,8 +13,8 @@ indices plus a 12-bit offset, what all 64 bits of a page-table entry mean, how
 the leaf/branch distinction is encoded in the permission bits, and how the
 three-level walk turns a virtual address into a physical one. It also separates
 two things students conflate constantly: *building* a page table in software
-(exercise `03_paging`) and the *hardware using* one after you write `satp`
-(exercise `09_virtual_memory`). The [Sv39 Paging](../guides/sv39-paging.md) guide
+(exercise `33k_paging`, Friday, October 9) and the *hardware using* one after
+you write `satp` (exercise `39k_virtual_memory`, Friday, October 30). The [Sv39 Paging](../guides/sv39-paging.md) guide
 holds the reference tables.
 
 ## Learning Objectives
@@ -30,8 +30,8 @@ holds the reference tables.
 
 ## Prerequisites
 
-- **L11 Physical Memory and the Free List** and exercise `02_physical_memory` — `kalloc` is what `walk` calls when it needs a new table page.
-- **L10 Boot: From Reset to kmain** and exercise `01_boot` — where the kernel image sits in RAM.
+- **L11 Physical Memory and the Free List** and exercise `32k_physical_memory` (Thursday, October 8) — `kalloc` is what `walk` calls when it needs a new table page.
+- **L10 Boot: From Reset to kmain** and exercise `31k_boot` (also Thursday, October 8) — where the kernel image sits in RAM.
 - **L09 Leaving std** and the [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) guide — raw pointers, `unsafe`, `ptr::write_bytes`.
 - The [Memory Map](../guides/memory-map.md) guide — `KERNBASE`, `PHYSTOP`, `UART0`, and the QEMU `virt` device addresses.
 - The [RISC-V](../guides/riscv.md) guide — CSRs, supervisor mode, and `csrw`.
@@ -140,7 +140,7 @@ Two consequences follow, and both appear in code you will read:
    always zero and the hardware need not store them. It stores `pa >> 12`, the
    **physical page number** (PPN).
 2. Rebuilding a full physical address from a leaf is `pte.pa() | (va & 0xFFF)` —
-   what the software `translate` helper in `03_paging` does, and what the MMU
+   what the software `translate` helper in `33k_paging` does, and what the MMU
    does in silicon.
 
 ---
@@ -282,9 +282,9 @@ That is why `walk` links new intermediate tables with `PTE_V` and nothing else �
 *pte = Pte::new(page as usize, PTE_V);
 ```
 
-Write `PTE_V | PTE_R` there and the software walk in exercise 03 still works (it
+Write `PTE_V | PTE_R` there and the software walk in exercise 33k still works (it
 only checks `is_valid()`, `vm.rs:56`), your tests pass, and then the hardware in
-exercise 09 reads the same entry, sees `R`, concludes "leaf," and translates a
+exercise 39k reads the same entry, sees `R`, concludes "leaf," and translates a
 1 GiB region to garbage. Hold that thought for §6.
 
 The inverse test is used for real in `free_pt`, `vm.rs:358`:
@@ -493,7 +493,7 @@ question only because `kvmmake` passed the same address as both `va` and `pa`.
 
 ### 5.5 Worked translation 2: the high code page
 
-Exercise 03's harness maps a fresh physical page at virtual `0x0040_0000`
+Exercise 33k's harness maps a fresh physical page at virtual `0x0040_0000`
 read-execute and translates `0x0040_0123`.
 
 ```text
@@ -571,13 +571,13 @@ about virtual memory turns out to be a confusion between these two activities.
 
 ```mermaid
 flowchart LR
-    subgraph BUILD["BUILDING — exercise 03_paging"]
+    subgraph BUILD["BUILDING — exercise 33k_paging"]
         direction TB
         B1["kernel Rust code\ncalls mappages"] --> B2["mappages calls walk\nwith alloc = true"]
         B2 --> B3["walk kallocs tables,\nwrites PTEs"]
         B3 --> B4["a tree of pages\nsitting in RAM, inert"]
     end
-    subgraph USE["USING — exercise 09_virtual_memory"]
+    subgraph USE["USING — exercise 39k_virtual_memory"]
         direction TB
         U1["csrw satp, root PPN\nthen sfence.vma"] --> U2["MMU reads the tree\non EVERY access"]
         U2 --> U3["hardware checks V, R, W, X, U"]
@@ -586,14 +586,14 @@ flowchart LR
     B4 -.->|"the same bytes in RAM"| U2
 ```
 
-In `03_paging` the MMU is **off**: `satp` still says Bare mode, every address in
+In `33k_paging` the MMU is **off**: `satp` still says Bare mode, every address in
 the kernel is physical, and the page table you build is inert — a tree of
 4096-byte arrays of 64-bit integers that nothing in the machine interprets. The
 harness's `translate` helper is *software pretending to be an MMU*: it calls
 `walk` and ORs in the offset, the arithmetic of §5.4 done in Rust instead of
 silicon.
 
-In `09_virtual_memory` you write the root PPN into `satp` (`make_satp`,
+In `39k_virtual_memory` you write the root PPN into `satp` (`make_satp`,
 `vm.rs:106-108`; `kvminithart`, `vm.rs:177-181`) and from the next instruction on
 the hardware walks that tree for every access — including the fetch of the
 instruction right after the `csrw`.
@@ -622,7 +622,7 @@ your data page.
 
 > Key distinction: `walk` asks "is there an entry here?" The MMU asks "is there
 > an entry here, does it stop the walk, and am I allowed to do this?" The second
-> question is strictly harder, and exercise 03 never asks it.
+> question is strictly harder, and exercise 33k never asks it.
 
 ### 6.3 Why we separate them
 
@@ -631,8 +631,8 @@ currently executing instruction is not mapped, the CPU faults on the very next
 fetch, and with no trap handler installed the machine wedges silently. There is
 nothing to debug because nothing prints.
 
-So rv6 splits the risk. Exercise 03 gets the data structure exactly right while
-mistakes are cheap and printable. Exercise 09 adds identity mapping, `satp`, and
+So rv6 splits the risk. Exercise 33k gets the data structure exactly right while
+mistakes are cheap and printable. Exercise 39k adds identity mapping, `satp`, and
 `sfence.vma`, and its harness verifies every required mapping *with `walk`, while
 the MMU is still off*, before flipping the switch. By the time `csrw satp` runs,
 the tree has already been proven correct in software.
@@ -746,7 +746,7 @@ done with it?
 
 Check the shift by hand: `0x87654 << 8 = 0x8765400`, then `<< 2 = 0x21D95000`.
 Decode to verify: `0x21D95007 >> 10 = 0x87654`, `<< 12 = 0x8765_4000`. ✓ This is
-exactly check 0 in exercise 03's harness.
+exactly check 0 in exercise 33k's harness.
 
 **(b)**
 
@@ -803,7 +803,7 @@ virtual address space is locality in the page table.
 
 ### Problem 4: Find the bug
 
-A student's `walk` passes every check in exercise 03. In exercise 09, the instant
+A student's `walk` passes every check in exercise 33k. In exercise 39k, the instant
 `kvminithart` runs QEMU goes silent — no output, no trap message. The relevant
 line of their `walk`:
 
@@ -894,7 +894,7 @@ pub const fn pa(self) -> usize {
 }
 ```
 
-leaving `Pte::new` correct. Exercise 03's harness starts by building
+leaving `Pte::new` correct. Exercise 33k's harness starts by building
 `Pte::new(0x8765_4000, PTE_R | PTE_W | PTE_V)` and asserting
 `e.pa() == 0x8765_4000`. What does QEMU print, and what value is returned?
 
@@ -912,7 +912,7 @@ shifts right by 12 instead of 10:
 It returns `0x21D9_5000`, not `0x8765_4000`, so the first check fails:
 
 ```text
-rv6 booting (exercise 03: paging)...
+rv6 booting (exercise 33k: paging)...
   [fail] Pte::pa did not recover the address
 OSLINGS:FAIL
 ```
@@ -936,7 +936,7 @@ inconsistency; only the bit table in §4.1 proves you match the hardware.
 
 - [Sv39 Paging](../guides/sv39-paging.md) — the reference tables for this lecture: address layouts, the PTE bit map, and the walk, in one place.
 - [Memory Map](../guides/memory-map.md) — `KERNBASE`, `PHYSTOP`, `UART0`, `PLIC`, and the `virt` device addresses these mappings target.
-- [RISC-V](../guides/riscv.md) — CSRs and supervisor mode, background for `satp` next session.
+- [RISC-V](../guides/riscv.md) — CSRs and supervisor mode, background for `satp` in L16.
 - [Unsafe Rust and no_std](../guides/rust-unsafe-nostd.md) — why `walk` and `mappages` are `unsafe fn` taking raw pointers.
 - [Key Concepts](../guides/key-concepts.md) — the running glossary; every paging term above is in it.
 - [QEMU and GDB](../guides/qemu-gdb.md) — dumping a page table from the QEMU monitor and single-stepping the instruction after `csrw satp`.
@@ -961,13 +961,13 @@ inconsistency; only the bit table in §4.1 proves you match the hardware.
 
 6. **The walk is three indexed lookups.** `px` (`vm.rs:44-46`) extracts an index, `walk` (`vm.rs:52-73`) descends levels 2 and 1 and returns a pointer to the level-0 slot, and `mappages` (`vm.rs:75-98`) loops over `walk` to install one leaf per page. Every higher-level routine is written in terms of `mappages`.
 
-7. **Building a page table and having the hardware use one are different activities.** Your `walk` checks only `V` and follows anything valid; the MMU also enforces `R`/`W`/`X`/`U` and stops at the first leaf. A table that passes every software test can still hang the machine — which is why rv6 builds and verifies tables in `03_paging` before turning the MMU on in `09_virtual_memory`.
+7. **Building a page table and having the hardware use one are different activities.** Your `walk` checks only `V` and follows anything valid; the MMU also enforces `R`/`W`/`X`/`U` and stops at the first leaf. A table that passes every software test can still hang the machine — which is why rv6 builds and verifies tables in `33k_paging` before turning the MMU on in `39k_virtual_memory`.
 
 8. **The tree charges for spread, not volume.** Two scattered pages can cost four table pages; 512 consecutive ones cost three. rv6's whole 128 MiB kernel identity map fits in 66 pages (264 KiB), about 0.2% overhead — the standard price of 4 KiB pages.
 
 ---
 
-**Next:** exercise `03_paging` builds this — `Pte::new`, `Pte::pa`, and the
+**Next:** exercise `33k_paging` builds this — `Pte::new`, `Pte::pa`, and the
 three-level `walk` — and verifies it with a software MMU while the real one is
 still switched off. Read its `README.md` first; it tells you what to type, and
-this page tells you what the bits mean. Friday's lab is the walk itself.
+this page tells you what the bits mean. Friday, October 9 is the walk itself.

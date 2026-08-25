@@ -2,9 +2,9 @@
 
 This is the reference for address translation on RISC-V, the thing your kernel
 does several million times a second and that you will be asked to do by hand on
-paper. You need it for `03_paging` (where you build the page table), for
-`09_virtual_memory` (where you turn the MMU on), and for every exercise from
-`18_user_mode` onward (where a wrong permission bit is the difference between a
+paper. You need it for `33k_paging` (where you build the page table), for
+`39k_virtual_memory` (where you turn the MMU on), and for every exercise from
+`48k_user_mode` onward (where a wrong permission bit is the difference between a
 working program and a page fault). The last third of the page is five fully
 worked translations; if you are studying for an exam, do those with a pencil
 before you read the explanations. Related pages: [Memory Map](memory-map.md) for
@@ -260,7 +260,7 @@ pub fn make_satp(root: *mut Pte) -> usize { SATP_SV39 | ((root as usize) >> 12) 
 
 rv6 always leaves ASID at 0. A nonzero ASID lets the hardware tag TLB entries by
 address space and keep several alive at once, so a process switch need not throw
-everything away — an optimisation we skip.
+everything away — an optimization we skip.
 
 Installing a table is two instructions (`vm.rs:177-181`):
 
@@ -532,6 +532,6 @@ digits differ from the input's you lost the offset.
 - **Setting `PTE_U` on a kernel mapping.** No fault, no symptom, no isolation.
 - **Changing a live page table without `sfence.vma`.** Works until it doesn't.
 
-For practice, `03_paging`'s self-check reports which check failed rather than
+For practice, `33k_paging`'s self-check reports which check failed rather than
 just failing, so a wrong shift shows up precisely; [Exam Prep](exam-prep.md) has
 more.

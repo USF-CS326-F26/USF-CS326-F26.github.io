@@ -206,7 +206,7 @@ Everything so far ran **as a process**: something loaded it, gave it a stack, ca
 | the debugger is `println!` | the debugger is GDB attached to QEMU |
 | the OS catches your bad pointer | your bad pointer **is** the OS |
 
-Today's exercises: **r09_unsafe_bridge**, then **00_rust_kernel_basics**.
+Today's exercises: **21r_unsafe_bridge**, then **30k_kernel_basics**.
 
 ---
 
@@ -463,7 +463,7 @@ Some reads *do something*: the PLIC claim register returns the pending IRQ **and
 The rule is mechanical: **device register → volatile; ordinary memory → plain `*p`.** Every MMIO touch in rv6 obeys it — `uart.rs:19`, `plic.rs:24-28`, `start.rs:61-62`, `testdev.rs:19`.
 
 <div class="info-box">
-Not atomicity. Not ordering against normal memory. Not synchronization between harts — that is <code>core::sync::atomic</code> and exercise 07's locks.
+Not atomicity. Not ordering against normal memory. Not synchronization between harts — that is <code>core::sync::atomic</code> and exercise 37k's locks.
 </div>
 
 ---
@@ -502,7 +502,7 @@ extern crate alloc;                             // main.rs:26
 ```
 
 - `no_std` does not forbid a heap — it refuses to invent one for you
-- rv6's heap is built on the page allocator you write in exercise 02
+- rv6's heap is built on the page allocator you write in exercise 32k
 - `HashMap` still never returns: it seeds its hasher from OS entropy
 
 ---
@@ -562,7 +562,7 @@ Set once in `rv6/.cargo/config.toml:4`.
 |---|---|---|
 | `I` | base integer | loads, stores, branches, ALU |
 | `M` | mul/div | `mul`, `div`, `rem` |
-| `A` | atomics | `lr`/`sc`, `amoswap` — exercise 07 |
+| `A` | atomics | `lr`/`sc`, `amoswap` — exercise 37k |
 | `F`, `D` | float/double | plus the `lp64d` ABI |
 | `C` | compressed | 16-bit encodings |
 | `Zicsr` | CSR access | `csrr`/`csrw` — `satp`, `mstatus`, `mepc` |
@@ -605,11 +605,11 @@ target_vendor="unknown"
 
 ---
 
-## Today's Exercises
+## Friday, October 2: Two Exercises
 
-**r09_unsafe_bridge** — raw pointers, `unsafe`, `.add`, volatile register access, and a safe wrapper. Still `cargo test` on your laptop.
+**21r_unsafe_bridge** — raw pointers, `unsafe`, `.add`, volatile register access, and a safe wrapper. Still `cargo test` on your laptop.
 
-**00_rust_kernel_basics** — two inner attributes and a panic handler; the reward is a binary that compiles for `riscv64gc-unknown-none-elf`. No QEMU yet — booting is L10, on Thursday.
+**30k_kernel_basics** — two inner attributes and a panic handler; the reward is a binary that compiles for `riscv64gc-unknown-none-elf`. No QEMU yet — booting is `31k_boot` on Thursday, October 8; L10, Thursday's reading, tells the story.
 
 <div class="info-box">
 rv6's <code>unsafe</code> stays concentrated in the allocator, page-table walk, drivers, context switch, and trap path. Before you write it: <strong>name the promise in one sentence.</strong>

@@ -13,7 +13,8 @@ and it is an array rather than a `Vec` for reasons that have nothing to do
 with taste. No allocator exists when the table is first needed, the trap path
 may not allocate, and a hard limit fails honestly — a principle that recurs in
 the file table, the inode table, and the console buffer. The exercise is
-`r06_collections`; see the [exercise list](../assignments/exercises.md).
+`06r_collections`, on Thursday, September 17 alongside `07r_traits`; see the
+[exercise list](../assignments/exercises.md).
 
 ## Learning Objectives
 
@@ -28,9 +29,9 @@ the file table, the inode table, and the console buffer. The exercise is
 
 ## Prerequisites
 
-- **L03 Ownership, Borrowing, and Lifetimes** and exercises `r02`, `r03`: moves, `&`, `&mut`, the aliasing rule.
-- **L04 Structs, `impl`, and `const fn`** and exercise `r04`: struct layout, and what `const fn` buys you.
-- Exercise `r05`: `Option<T>`, `Some`/`None`, exhaustive `match`.
+- **L03 Ownership, Borrowing, and Lifetimes** and exercises `02r`, `03r`: moves, `&`, `&mut`, the aliasing rule.
+- **L04 Structs, `impl`, and `const fn`** and exercise `04r` (Thursday): struct layout, and what `const fn` buys you.
+- Exercise `05r` (Friday): `Option<T>`, `Some`/`None`, exhaustive `match`.
 - [Rust for Systems](../guides/rust-for-systems.md), the sections on types and references.
 - [rv6 Architecture](../guides/rv6-architecture.md), for where `proc.rs` and `param.rs` sit.
 
@@ -73,7 +74,7 @@ individual `push` may be slow, and may fail.
 A **slice** is a borrowed window onto a run of elements somebody else owns: a
 pointer and a length, 16 bytes, and nothing else. No capacity, because a slice
 cannot grow; no ownership, because it allocated nothing and will free nothing.
-A slice borrows under the rules from `r03` — `&[T]` shared, `&mut [T]`
+A slice borrows under the rules from `03r` — `&[T]` shared, `&mut [T]`
 exclusive.
 
 > Key distinction: an array *is* the data, a `Vec` *owns* the data, a slice
@@ -191,7 +192,7 @@ branch that is never taken and so is predicted perfectly. The compare is
 *unsigned* on purpose: a negative index reinterpreted as unsigned is enormous,
 so `bgeu` catches both ends at once.
 
-In practice the cost is near zero: the optimiser deletes most checks.
+In practice the cost is near zero: the optimizer deletes most checks.
 `for x in table.iter()` emits none, and `for i in 0..table.len()` usually has
 its bound proved. What survives is what the compiler could not prove —
 exactly the checks you wanted.
@@ -202,7 +203,7 @@ exactly the checks you wanted.
 |---|---|---|
 | `table[i]` | panics | `i` is yours and provably in range |
 | `table.get(i)` | returns `None` | out-of-range is a normal outcome |
-| `unsafe { table.get_unchecked(i) }` | undefined behaviour | essentially never here |
+| `unsafe { table.get_unchecked(i) }` | undefined behavior | essentially never here |
 
 For the kernel there is a fourth: check it yourself and return an error. That
 is not the same as `get`, because the check happens at the *boundary*, once,
@@ -306,7 +307,7 @@ remember to resume after it next time.
 The important property is that this **allocates nothing and builds nothing**.
 Rust's iterators are lazy: `map` does not produce a list of eight indices, it
 produces something that computes one index each time `find` asks, and `find`
-stops asking the moment it succeeds. The optimised code is the loop you would
+stops asking the moment it succeeds. The optimized code is the loop you would
 have written by hand, which is why the style is legal in a kernel with no heap
 at all. `collect()` is the one adapter that breaks the rule, because it has to
 put the results *somewhere*.
@@ -324,7 +325,7 @@ static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];
 with `pub const NPROC: usize = 64;` at `param.rs:7`. Sixty-four slots, decided
 when the kernel is compiled, never sixty-five. In ordinary Rust that looks
 like a beginner's mistake — surely a `Vec<Proc>` that grows is better. It is
-not, and the reasons generalise.
+not, and the reasons generalize.
 
 ### Reason 1: there is no allocator yet
 
@@ -337,16 +338,16 @@ flowchart TD
     C --> D["vm::kvminithart()\nthe MMU comes on"]
     D --> E["proc::init()\nwalk PROCS, mark slots Unused"]
     E --> F["trap::init(), fs init"]
-    F --> G["ex08: kheap registers the\nglobal allocator — NOW Vec works"]
+    F --> G["38k: kheap registers the\nglobal allocator — NOW Vec works"]
     style A fill:#e8f5e9,stroke:#00543c
     style G fill:#fff3cd,stroke:#FDBB30
 ```
 
 The table is used at `proc::init()`, the fourth line of `kinit`. A `Vec<Proc>`
-calls the **global allocator**, and rv6 has none until exercise 08, where
+calls the **global allocator**, and rv6 has none until exercise 38k, where
 `kheap.rs` provides a `GlobalAlloc` impl and `#[global_allocator]` registers
 it (`kheap.rs:40`). Before that, `extern crate alloc` does not even compile:
-`04_processes` has no `kheap.rs`, and `08_semaphores/main.rs:18` is the first
+`34k_processes` has no `kheap.rs`, and `38k_semaphores/main.rs:18` is the first
 file in the course to declare it.
 
 That is the shape of every boot, not an accident of our ordering. The
@@ -401,7 +402,7 @@ Linux is also full of static bounds — `pid_max` caps process IDs,
 per-CPU interrupt stacks are statically reserved precisely because the trap
 path cannot allocate. The difference is where the boundary sits, not whether
 one exists. At the far end the choice disappears: the JPL/NASA "Power of Ten"
-rules make it rule 3 — *no dynamic allocation after initialisation* — MISRA C
+rules make it rule 3 — *no dynamic allocation after initialization* — MISRA C
 bans `malloc`, and seL4 has no kernel heap at all.
 
 ---
@@ -459,7 +460,7 @@ For the file table this is not convenience but the Unix contract: `open` must
 return the lowest unused descriptor. Shell redirection depends on it — `cmd >
 file` is "close fd 1, then open the file", and the open is guaranteed to land
 in slot 1, so the child's output goes to the file without the child knowing.
-You write `fdalloc` in **exercise 20**; its body is the scan you write today,
+You write `fdalloc` in **exercise 50k**; its body is the scan you write today,
 over a different table.
 
 ---
@@ -470,12 +471,12 @@ None of this makes `Vec` bad. It makes `Vec` a tool with a prerequisite.
 
 Use it freely in Module 1, in the host-side commands, and under `cargo test`:
 there the allocator is the operating system's, already running, and failure
-aborts one test. Exercise `r06` has one function return a `Vec<u32>` for
+aborts one test. Exercise `06r` has one function return a `Vec<u32>` for
 exactly that reason — the same data is a fixed array in one context and a
 growable list in another, and knowing which you are in is the skill.
 
-Inside the kernel `Vec` becomes legal at exercise 08, under two standing
-rules. Allocate at initialisation, never on the trap path. And know what your
+Inside the kernel `Vec` becomes legal at exercise 38k, under two standing
+rules. Allocate at initialization, never on the trap path. And know what your
 allocator does: `KernelHeap::alloc` (`kheap.rs:23`) hands out one whole
 4096-byte page per allocation and refuses anything larger, so a `Vec` of eight
 `usize`s costs a page and one that grows past 4096 bytes fails.
@@ -489,13 +490,13 @@ allocator does: `KernelHeap::alloc` (`kheap.rs:23`) hands out one whole
 | Array `[T; N]` | N values inline; length in the type, size fixed at compile time | `static mut PROCS: [Proc; NPROC]` (`proc.rs:65`) |
 | Slice `&[T]` | Borrowed view: pointer plus length, 16 bytes, owns nothing | `pick_next(states: &[ProcState])` (`sched.rs:6`) |
 | Mutable slice `&mut [T]` | Exclusive borrowed view; writable through the borrow | `ulib::read(fd, &mut buf)` (`lib.rs:104`) |
-| `Vec<T>` | Heap-owning growable buffer: ptr, len, cap — 24 bytes | `live_pids()` in `r06`, host code only |
+| `Vec<T>` | Heap-owning growable buffer: ptr, len, cap — 24 bytes | `live_pids()` in `06r`, host code only |
 | Fat pointer | A reference carrying metadata beside the address | `size_of::<&[u32]>() == 16` vs `size_of::<&u32>() == 8` |
 | Unsized type | Size unknown at compile time; usable only behind a pointer | `[T]`, `str` |
 | Bounds check | Compare-and-branch inserted before an indexed load | `bgeu a1, t0, .Lpanic` |
 | Boundary validation | Range-checking an untrusted index once, where it enters | `if fd >= NOFILE { return None }` (`syscall.rs:313`) |
 | Iterator adapter | Lazy wrapper; transforms without materialising a list | `.map(..).find(..)` (`sched.rs:22`) |
-| `.bss` | Zero-initialised static region reserved by the linker | Where `PROCS` lives before code runs |
+| `.bss` | Zero-initialized static region reserved by the linker | Where `PROCS` lives before code runs |
 | Global allocator | The `GlobalAlloc` impl `Box`/`Vec` call; absent until ex 08 | `KernelHeap` (`kheap.rs:40`) |
 | Static resource bound | Compile-time cap with a defined failure | `NPROC = 64`; `fork` returns -1 when full |
 
@@ -522,7 +523,7 @@ core::mem::size_of::<Vec<Option<u32>>>()
 |---|---|---|
 | `size_of::<Option<u32>>()` | **8** | `u32` uses all 2³² bit patterns, so `None` needs a tag byte: 4 + 1 = 5, rounded to the 4-byte alignment. |
 | `size_of::<[Option<u32>; 8]>()` | **64** | Always `N × size_of::<T>()` — no header, no padding between elements. |
-| `size_of::<Option<&u32>>()` | **8** | A reference is never null, so all-zeroes serves as `None`: the **niche optimisation**. |
+| `size_of::<Option<&u32>>()` | **8** | A reference is never null, so all-zeroes serves as `None`: the **niche optimization**. |
 | `size_of::<&[Option<u32>]>()` | **16** | Fat pointer: address plus length, whatever the element type. |
 | `size_of::<Vec<Option<u32>>>()` | **24** | ptr + len + cap; elements on the heap. |
 
@@ -730,7 +731,7 @@ from "does not compile" to "compiles, runs, and is still wrong".
 <summary>Click to reveal solution</summary>
 
 1. **It does not compile in Module 2.** `Vec` lives in `alloc`, which needs a
-   `#[global_allocator]`; rv6 gains one only in exercise 08 (`kheap.rs:40`),
+   `#[global_allocator]`; rv6 gains one only in exercise 38k (`kheap.rs:40`),
    so the type is unavailable when the table is needed.
 
 2. **Even with an allocator, the sizes do not work.** A 64-slot `Vec<Proc>`
@@ -792,7 +793,7 @@ promises never to exceed it.
 
 5. **Untrusted indices are checked at the boundary.** `getfile` rejects
    `fd >= NOFILE` before touching `ofile` (`syscall.rs:313`), so downstream
-   code may index directly. In C the missing check reads into a neighbouring
+   code may index directly. In C the missing check reads into a neighboring
    process control block.
 
 6. **Iterator adapters are lazy and allocate nothing.** `map`, `find`,
@@ -807,5 +808,5 @@ promises never to exceed it.
 8. **Kernels bound resources statically.** `NPROC`, `NOFILE`, `NINODE`,
    `NAMELEN`, `BUF_LEN` — each a compile-time constant with a defined failure.
    "We might need more than N" is answered with a bigger constant and a
-   recompile. `r06_collections` builds a miniature process table on this
-   pattern; exercise 20 builds the file-descriptor table on the same one.
+   recompile. `06r_collections` builds a miniature process table on this
+   pattern; exercise 50k builds the file-descriptor table on the same one.

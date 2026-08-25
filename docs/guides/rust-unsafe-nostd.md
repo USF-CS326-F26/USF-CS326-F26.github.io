@@ -1,7 +1,7 @@
 # Unsafe Rust and no_std
 
 This is the page to reread before every Module 2 exercise. Once you cross into
-`ex00`, the compiler stops being able to prove your code correct: you are
+`30k`, the compiler stops being able to prove your code correct: you are
 talking to hardware at fixed physical addresses, building page tables out of
 raw memory, and handing registers to assembly. Everything on this page is the
 vocabulary you need for that — raw pointers, what `unsafe` actually means,
@@ -33,7 +33,7 @@ This is the part students get wrong, so it gets its own table. Read it twice.
 | Disable lifetimes | A reference that outlives its data is still a compile error. |
 | Disable type checking | You still need `as` casts; there is no implicit conversion. |
 | Turn off bounds checks | `v[i]` still panics on overflow. Use `get_unchecked` (itself `unsafe`) if you truly mean to skip it. |
-| Make undefined behaviour legal | It makes UB *possible*. The compiler simply stops stopping you. |
+| Make undefined behavior legal | It makes UB *possible*. The compiler simply stops stopping you. |
 | Mean "this code is dangerous" | It means "I have checked the thing the compiler cannot check." |
 
 `unsafe` is a **promise you make to the compiler**, and the compiler believes
@@ -143,7 +143,7 @@ look redundant, so one gets deleted.
 
 `read_volatile` and `write_volatile` tell the compiler: this access is
 observable, do not remove it, do not duplicate it, do not reorder it past
-another volatile access, do not merge it with a neighbour.
+another volatile access, do not merge it with a neighbor.
 
 ```rust
 unsafe fn reg_read(off: usize) -> u8 {
@@ -280,7 +280,7 @@ of `FS.lock()` (`fs.rs:277`) write ordinary safe Rust.
 
 ## `Send` and `Sync`
 
-Two marker traits, automatically derived, that describe thread behaviour:
+Two marker traits, automatically derived, that describe thread behavior:
 
 | Trait | Meaning | Auto-derived when |
 |-------|---------|-------------------|
