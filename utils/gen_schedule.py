@@ -31,17 +31,22 @@ def stamp(date_str):
 
 def prep_links(date_str):
     """[("Prep", url)] for the prep page written for `date_str`, if any."""
-    return [("Prep", f"/prep/{md.stem}/")
+    return [("Prep", f"prep/{md.stem}/")
             for md in sorted(PREP.glob(f"*-cs326-{stamp(date_str)}-prep-*.md"))]
+
+
+def rel(url):
+    """Site-root-relative form of an internal URL; external URLs pass through."""
+    return url if url.startswith("http") else url.lstrip("/")
 
 
 def lecture_links(date_str, label="Lecture"):
     """[(text, url), ...] for the lecture page dated `date_str` and its deck."""
     out = []
     for md in sorted(LECTURES.glob(f"*-cs326-{stamp(date_str)}-*.md")):
-        out.append((label, f"/lectures/{md.stem}/"))
+        out.append((label, f"lectures/{md.stem}/"))
         if (LECTURES / f"{md.stem}-slides.html").exists():
-            out.append(("Slides", f"/lectures/{md.stem}-slides.html"))
+            out.append(("Slides", f"lectures/{md.stem}-slides.html"))
     return out
 
 
@@ -225,7 +230,11 @@ def main():
             # "Reading" on exercise rows) and its deck, then the manual links.
             reading = "Reading" if s["type"] == "exercise" else "Lecture"
             auto = prep_links(s["date"]) + lecture_links(s["date"], reading)
-            links = [{"text": t, "url": u} for t, u in auto] + s["links"]
+            # Internal links are written relative to the site root (no leading
+            # slash): docs/index.md sits at the root, so they resolve whether
+            # the site is served at a domain root or under a repo subpath.
+            links = [{"text": t, "url": rel(u)} for t, u in auto] + \
+                    [{"text": l["text"], "url": rel(l["url"])} for l in s["links"]]
             out.append(f'    {s["day"]}:')
             out.append(f'      date: {q(s["date"])}')
             out.append(f'      type: {q(s["type"])}')

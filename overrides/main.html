@@ -10,7 +10,8 @@
       <div class="md-header-nav__links">
         {% if config.extra.external_links %}
           {% for link in config.extra.external_links %}
-            <a href="{{ link.url }}" class="md-header-nav__link" target="_blank" rel="noopener" title="{{ link.name }}">
+            {% set internal = not link.url.startswith('http') %}
+            <a href="{% if internal %}{{ base_url }}/{{ link.url.lstrip('/') }}{% else %}{{ link.url }}{% endif %}" class="md-header-nav__link"{% if not internal %} target="_blank" rel="noopener"{% endif %} title="{{ link.name }}">
               {% if link.icon %}
                 <span class="twemoji">
                   {% set icon_path = ".icons/" + link.icon + ".svg" %}

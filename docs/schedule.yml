@@ -16,15 +16,15 @@ weeks:
       topic: "L01 Building an Operating System"
       links:
         - text: "Lecture"
-          url: "/lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is/"
+          url: "lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is/"
         - text: "Slides"
-          url: "/lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is-slides.html"
+          url: "lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is-slides.html"
         - text: "Syllabus"
-          url: "/syllabus/"
+          url: "syllabus/"
         - text: "Setup"
-          url: "/assignments/setup/"
+          url: "assignments/setup/"
         - text: "Dev Setup"
-          url: "/guides/dev-setup/"
+          url: "guides/dev-setup/"
 
     thursday:
       date: "Aug 27"
@@ -34,17 +34,17 @@ weeks:
       due: "00r"
       links:
         - text: "Prep"
-          url: "/prep/01-cs326-2026-08-27-prep-setup-and-hello-rust/"
+          url: "prep/01-cs326-2026-08-27-prep-setup-and-hello-rust/"
         - text: "Reading"
-          url: "/lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow/"
+          url: "lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow/"
         - text: "Slides"
-          url: "/lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow-slides.html"
+          url: "lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow-slides.html"
         - text: "Setup"
-          url: "/assignments/setup/"
+          url: "assignments/setup/"
         - text: "Dev Setup"
-          url: "/guides/dev-setup/"
+          url: "guides/dev-setup/"
         - text: "Using OSlings"
-          url: "/guides/oslings-usage/"
+          url: "guides/oslings-usage/"
 
     friday:
       date: "Aug 28"
@@ -54,9 +54,9 @@ weeks:
       due: "01r"
       links:
         - text: "Prep"
-          url: "/prep/01-cs326-2026-08-28-prep-control-flow/"
+          url: "prep/01-cs326-2026-08-28-prep-control-flow/"
         - text: "Rust for Systems"
-          url: "/guides/rust-for-systems/"
+          url: "guides/rust-for-systems/"
 
 
 # === WEEK 2 ===
@@ -67,9 +67,9 @@ weeks:
       topic: "L03 Ownership, Borrowing, and Lifetimes"
       links:
         - text: "Lecture"
-          url: "/lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes/"
+          url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes/"
         - text: "Slides"
-          url: "/lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html"
+          url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html"
 
     thursday:
       date: "Sep 3"
@@ -79,11 +79,11 @@ weeks:
       due: "02r"
       links:
         - text: "Prep"
-          url: "/prep/02-cs326-2026-09-03-prep-ownership/"
+          url: "prep/02-cs326-2026-09-03-prep-ownership/"
         - text: "Reading"
-          url: "/lectures/02-cs326-2026-09-03-structs-impl-and-const-fn/"
+          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn/"
         - text: "Slides"
-          url: "/lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html"
+          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html"
 
     friday:
       date: "Sep 4"
@@ -93,7 +93,7 @@ weeks:
       due: "03r"
       links:
         - text: "Prep"
-          url: "/prep/02-cs326-2026-09-04-prep-borrowing/"
+          url: "prep/02-cs326-2026-09-04-prep-borrowing/"
 
 
 # === WEEK 3 ===
@@ -104,9 +104,9 @@ weeks:
       topic: "L05 Collections, Traits, and Errors"
       links:
         - text: "Lecture"
-          url: "/lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables/"
+          url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables/"
         - text: "Slides"
-          url: "/lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html"
+          url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html"
 
     thursday:
       date: "Sep 10"
@@ -116,11 +116,11 @@ weeks:
       due: "04r"
       links:
         - text: "Prep"
-          url: "/prep/03-cs326-2026-09-10-prep-structs-and-impl/"
+          url: "prep/03-cs326-2026-09-10-prep-structs-and-impl/"
         - text: "Reading"
-          url: "/lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade/"
+          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade/"
         - text: "Slides"
-          url: "/lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html"
+          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html"
 
     friday:
       date: "Sep 11"
@@ -130,7 +130,7 @@ weeks:
       due: "05r"
       links:
         - text: "Prep"
-          url: "/prep/03-cs326-2026-09-11-prep-enums-and-match/"
+          url: "prep/03-cs326-2026-09-11-prep-enums-and-match/"
 
 
 # === WEEK 4 ===
@@ -141,9 +141,9 @@ weeks:
       topic: "L07 Buffers, Bytes, and Line-Oriented I/O"
       links:
         - text: "Lecture"
-          url: "/lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io/"
+          url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io/"
         - text: "Slides"
-          url: "/lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html"
+          url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html"
 
     thursday:
       date: "Sep 17"
@@ -153,11 +153,11 @@ weeks:
       due: "06r, 07r"
       links:
         - text: "Prep"
-          url: "/prep/04-cs326-2026-09-17-prep-collections-and-traits/"
+          url: "prep/04-cs326-2026-09-17-prep-collections-and-traits/"
         - text: "Reading"
-          url: "/lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly/"
+          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly/"
         - text: "Slides"
-          url: "/lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html"
+          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html"
 
     friday:
       date: "Sep 18"
@@ -167,9 +167,9 @@ weeks:
       due: "08r, 10c"
       links:
         - text: "Prep"
-          url: "/prep/04-cs326-2026-09-18-prep-errors-and-echo/"
+          url: "prep/04-cs326-2026-09-18-prep-errors-and-echo/"
         - text: "ulib and Commands"
-          url: "/guides/ulib-and-commands/"
+          url: "guides/ulib-and-commands/"
 
 
 # === WEEK 5 ===
@@ -180,11 +180,11 @@ weeks:
       topic: "L09 Leaving std: no_std and Bare-Metal Rust"
       links:
         - text: "Lecture"
-          url: "/lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust/"
+          url: "lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust/"
         - text: "Slides"
-          url: "/lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust-slides.html"
+          url: "lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust-slides.html"
         - text: "Unsafe Rust and no_std"
-          url: "/guides/rust-unsafe-nostd/"
+          url: "guides/rust-unsafe-nostd/"
 
     thursday:
       date: "Sep 24"
@@ -194,11 +194,11 @@ weeks:
       due: "11c"
       links:
         - text: "Prep"
-          url: "/prep/05-cs326-2026-09-24-prep-cat/"
+          url: "prep/05-cs326-2026-09-24-prep-cat/"
         - text: "Reading"
-          url: "/lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain/"
+          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain/"
         - text: "Slides"
-          url: "/lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html"
+          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html"
 
     friday:
       date: "Sep 25"
@@ -209,9 +209,9 @@ weeks:
       due: "12c, 13c · 14c extra credit"
       links:
         - text: "Prep"
-          url: "/prep/05-cs326-2026-09-25-prep-wc-and-grep/"
+          url: "prep/05-cs326-2026-09-25-prep-wc-and-grep/"
         - text: "Extra Credit"
-          url: "/assignments/extra-credit/"
+          url: "assignments/extra-credit/"
 
 
 # === WEEK 6 ===
@@ -222,9 +222,9 @@ weeks:
       topic: "L11 Physical Memory and the Free List"
       links:
         - text: "Lecture"
-          url: "/lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list/"
+          url: "lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list/"
         - text: "Slides"
-          url: "/lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list-slides.html"
+          url: "lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list-slides.html"
 
     thursday:
       date: "Oct 1"
@@ -234,15 +234,15 @@ weeks:
       due: "20a"
       links:
         - text: "Prep"
-          url: "/prep/06-cs326-2026-10-01-prep-asm-bridge/"
+          url: "prep/06-cs326-2026-10-01-prep-asm-bridge/"
         - text: "Reading"
-          url: "/lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
+          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
         - text: "Slides"
-          url: "/lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html"
+          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html"
         - text: "RISC-V"
-          url: "/guides/riscv/"
+          url: "guides/riscv/"
         - text: "QEMU and GDB"
-          url: "/guides/qemu-gdb/"
+          url: "guides/qemu-gdb/"
 
     friday:
       date: "Oct 2"
@@ -252,9 +252,9 @@ weeks:
       due: "21r, 30k"
       links:
         - text: "Prep"
-          url: "/prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics/"
+          url: "prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics/"
         - text: "Memory Map"
-          url: "/guides/memory-map/"
+          url: "guides/memory-map/"
 
 
 # === WEEK 7 ===
@@ -265,11 +265,11 @@ weeks:
       topic: "L13 Processes and the PCB"
       links:
         - text: "Lecture"
-          url: "/lectures/07-cs326-2026-10-06-processes-and-the-process-control-block/"
+          url: "lectures/07-cs326-2026-10-06-processes-and-the-process-control-block/"
         - text: "Slides"
-          url: "/lectures/07-cs326-2026-10-06-processes-and-the-process-control-block-slides.html"
+          url: "lectures/07-cs326-2026-10-06-processes-and-the-process-control-block-slides.html"
         - text: "Practice Set 1"
-          url: "/assignments/practice-set-01/"
+          url: "assignments/practice-set-01/"
 
     thursday:
       date: "Oct 8"
@@ -279,7 +279,7 @@ weeks:
       due: "31k, 32k"
       links:
         - text: "Prep"
-          url: "/prep/07-cs326-2026-10-08-prep-boot-and-physical-memory/"
+          url: "prep/07-cs326-2026-10-08-prep-boot-and-physical-memory/"
 
     friday:
       date: "Oct 9"
@@ -289,9 +289,9 @@ weeks:
       due: "33k"
       links:
         - text: "Prep"
-          url: "/prep/07-cs326-2026-10-09-prep-paging/"
+          url: "prep/07-cs326-2026-10-09-prep-paging/"
         - text: "Sv39 Paging"
-          url: "/guides/sv39-paging/"
+          url: "guides/sv39-paging/"
 
 
 # === WEEK 8 ===
@@ -302,13 +302,13 @@ weeks:
       topic: "L14 The Context Switch and the Scheduler"
       links:
         - text: "Lecture"
-          url: "/lectures/08-cs326-2026-10-13-context-switch-and-scheduling/"
+          url: "lectures/08-cs326-2026-10-13-context-switch-and-scheduling/"
         - text: "Slides"
-          url: "/lectures/08-cs326-2026-10-13-context-switch-and-scheduling-slides.html"
+          url: "lectures/08-cs326-2026-10-13-context-switch-and-scheduling-slides.html"
         - text: "Exam Prep"
-          url: "/guides/exam-prep/"
+          url: "guides/exam-prep/"
         - text: "Practice Set 1"
-          url: "/assignments/practice-set-01/"
+          url: "assignments/practice-set-01/"
 
     thursday:
       date: "Oct 15"
@@ -316,9 +316,9 @@ weeks:
       topic: "MIDTERM 1 — Module 1 + kernel through 33k paging"
       links:
         - text: "Midterm 1"
-          url: "/assignments/midterm-1/"
+          url: "assignments/midterm-1/"
         - text: "Exam Prep"
-          url: "/guides/exam-prep/"
+          url: "guides/exam-prep/"
 
     friday:
       date: "Oct 16"
@@ -341,11 +341,11 @@ weeks:
       due: "34k"
       links:
         - text: "Prep"
-          url: "/prep/09-cs326-2026-10-22-prep-processes/"
+          url: "prep/09-cs326-2026-10-22-prep-processes/"
         - text: "Reading"
-          url: "/lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
+          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
         - text: "Slides"
-          url: "/lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
+          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
 
     friday:
       date: "Oct 23"
@@ -355,7 +355,7 @@ weeks:
       due: "35k, 36k"
       links:
         - text: "Prep"
-          url: "/prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling/"
+          url: "prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling/"
 
 
 # === WEEK 10 ===
@@ -366,9 +366,9 @@ weeks:
       topic: "L16 Virtual Memory II: Turning the MMU On"
       links:
         - text: "Lecture"
-          url: "/lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on/"
+          url: "lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on/"
         - text: "Slides"
-          url: "/lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on-slides.html"
+          url: "lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on-slides.html"
 
     thursday:
       date: "Oct 29"
@@ -378,11 +378,11 @@ weeks:
       due: "37k, 38k"
       links:
         - text: "Prep"
-          url: "/prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores/"
+          url: "prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores/"
         - text: "Reading"
-          url: "/lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life/"
+          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life/"
         - text: "Slides"
-          url: "/lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html"
+          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html"
 
     friday:
       date: "Oct 30"
@@ -392,9 +392,9 @@ weeks:
       due: "39k"
       links:
         - text: "Prep"
-          url: "/prep/10-cs326-2026-10-30-prep-virtual-memory/"
+          url: "prep/10-cs326-2026-10-30-prep-virtual-memory/"
         - text: "QEMU and GDB"
-          url: "/guides/qemu-gdb/"
+          url: "guides/qemu-gdb/"
 
 
 # === WEEK 11 ===
@@ -405,9 +405,9 @@ weeks:
       topic: "L18 Traps, Privilege Modes, and Interrupts"
       links:
         - text: "Lecture"
-          url: "/lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts/"
+          url: "lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts/"
         - text: "Slides"
-          url: "/lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts-slides.html"
+          url: "lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts-slides.html"
 
     thursday:
       date: "Nov 5"
@@ -418,13 +418,13 @@ weeks:
       due: "40k · 41k extra credit"
       links:
         - text: "Prep"
-          url: "/prep/11-cs326-2026-11-05-prep-filesystem/"
+          url: "prep/11-cs326-2026-11-05-prep-filesystem/"
         - text: "Reading"
-          url: "/lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console/"
+          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console/"
         - text: "Slides"
-          url: "/lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html"
+          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html"
         - text: "Extra Credit"
-          url: "/assignments/extra-credit/"
+          url: "assignments/extra-credit/"
 
     friday:
       date: "Nov 6"
@@ -434,9 +434,9 @@ weeks:
       due: "42k, 43k, 44k"
       links:
         - text: "Prep"
-          url: "/prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/"
+          url: "prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/"
         - text: "Withdraw deadline"
-          url: "/syllabus/"
+          url: "syllabus/"
 
 
 # === WEEK 12 ===
@@ -447,13 +447,13 @@ weeks:
       topic: "L22 User Mode I: The Wall, Trampoline, Trapframe"
       links:
         - text: "Lecture"
-          url: "/lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe/"
+          url: "lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe/"
         - text: "Slides"
-          url: "/lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe-slides.html"
+          url: "lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe-slides.html"
         - text: "rv6 Architecture"
-          url: "/guides/rv6-architecture/"
+          url: "guides/rv6-architecture/"
         - text: "Practice Set 2"
-          url: "/assignments/practice-set-02/"
+          url: "assignments/practice-set-02/"
 
     thursday:
       date: "Nov 12"
@@ -464,13 +464,13 @@ weeks:
       due: "45k, 46k · 47k extra credit"
       links:
         - text: "Prep"
-          url: "/prep/12-cs326-2026-11-12-prep-console-and-shell/"
+          url: "prep/12-cs326-2026-11-12-prep-console-and-shell/"
         - text: "Reading"
-          url: "/lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel/"
+          url: "lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel/"
         - text: "Slides"
-          url: "/lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel-slides.html"
+          url: "lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel-slides.html"
         - text: "Extra Credit"
-          url: "/assignments/extra-credit/"
+          url: "assignments/extra-credit/"
 
     friday:
       date: "Nov 13"
@@ -480,7 +480,7 @@ weeks:
       due: "48k"
       links:
         - text: "Prep"
-          url: "/prep/12-cs326-2026-11-13-prep-user-mode/"
+          url: "prep/12-cs326-2026-11-13-prep-user-mode/"
 
 
 # === WEEK 13 ===
@@ -491,13 +491,13 @@ weeks:
       topic: "L23 User Mode II: System Calls"
       links:
         - text: "Lecture"
-          url: "/lectures/13-cs326-2026-11-17-user-mode-ii-system-calls/"
+          url: "lectures/13-cs326-2026-11-17-user-mode-ii-system-calls/"
         - text: "Slides"
-          url: "/lectures/13-cs326-2026-11-17-user-mode-ii-system-calls-slides.html"
+          url: "lectures/13-cs326-2026-11-17-user-mode-ii-system-calls-slides.html"
         - text: "Exam Prep"
-          url: "/guides/exam-prep/"
+          url: "guides/exam-prep/"
         - text: "Practice Set 2"
-          url: "/assignments/practice-set-02/"
+          url: "assignments/practice-set-02/"
 
     thursday:
       date: "Nov 19"
@@ -505,9 +505,9 @@ weeks:
       topic: "MIDTERM 2 — 34k processes through 48k user mode"
       links:
         - text: "Midterm 2"
-          url: "/assignments/midterm-2/"
+          url: "assignments/midterm-2/"
         - text: "Exam Prep"
-          url: "/guides/exam-prep/"
+          url: "guides/exam-prep/"
 
     friday:
       date: "Nov 20"
@@ -523,9 +523,9 @@ weeks:
       topic: "L21 File Commands over a Filesystem API"
       links:
         - text: "Lecture"
-          url: "/lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api/"
+          url: "lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api/"
         - text: "Slides"
-          url: "/lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api-slides.html"
+          url: "lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api-slides.html"
 
     thursday:
       date: "Nov 26"
@@ -546,9 +546,9 @@ weeks:
       topic: "L24 exec, File Descriptors, fork and wait"
       links:
         - text: "Lecture"
-          url: "/lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork/"
+          url: "lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork/"
         - text: "Slides"
-          url: "/lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html"
+          url: "lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html"
 
     thursday:
       date: "Dec 3"
@@ -558,11 +558,11 @@ weeks:
       due: "49k, 50k"
       links:
         - text: "Prep"
-          url: "/prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors/"
+          url: "prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors/"
         - text: "Reading"
-          url: "/lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland/"
+          url: "lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland/"
         - text: "Slides"
-          url: "/lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html"
+          url: "lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html"
 
     friday:
       date: "Dec 4"
@@ -573,11 +573,11 @@ weeks:
       due: "51k, 52k, 53k · 54k extra credit"
       links:
         - text: "Prep"
-          url: "/prep/15-cs326-2026-12-04-prep-fork-userland-and-ship/"
+          url: "prep/15-cs326-2026-12-04-prep-fork-userland-and-ship/"
         - text: "Extra Credit"
-          url: "/assignments/extra-credit/"
+          url: "assignments/extra-credit/"
         - text: "Practice Set 3"
-          url: "/assignments/practice-set-03/"
+          url: "assignments/practice-set-03/"
 
 
 # === WEEK 16 ===
@@ -588,11 +588,11 @@ weeks:
       topic: "L26 The Payoff: Your Commands on Your Kernel, and Final Review"
       links:
         - text: "Lecture"
-          url: "/lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review/"
+          url: "lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review/"
         - text: "Slides"
-          url: "/lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html"
+          url: "lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html"
         - text: "Final Exam"
-          url: "/assignments/final/"
+          url: "assignments/final/"
         - text: "Practice Set 3"
-          url: "/assignments/practice-set-03/"
+          url: "assignments/practice-set-03/"
 
