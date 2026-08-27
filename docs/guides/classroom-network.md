@@ -86,18 +86,14 @@ When you register a laptop, the classroom router stores:
 While you are connected during a session it also records **that the laptop was
 connected, and for how long**.
 
-That is the whole list. No browsing history, no page addresses, no traffic
-contents. The connections are encrypted and the router does not log even which
-sites you reach.
+That is the whole list. No browsing history and no page contents are kept: the
+connections are encrypted, and nothing about what you visit is stored.
 
 **It is not scored, not ranked, and not part of your grade.** There is no
 attendance component in this course — the grading table in the
 [syllabus](../syllabus.md) is the whole grade. It exists so that the exercise
 can be released to the room, and so that if a question arises later about a
 session there is a record of who was on the network.
-
-A laptop on the network is evidence that a device was in range. It is not proof
-that a person was in the room, and it will not be treated as if it were.
 
 You may ask to see your own record, and to have it deleted, at any time.
 Registrations and connection logs are erased at the end of the semester.

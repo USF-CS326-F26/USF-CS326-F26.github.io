@@ -24,16 +24,7 @@ students disadvantaged would be the ones who did the work themselves. Doing the
 work in the session removes the dilemma instead of policing it.
 
 The corollary matters as much: because the structure carries the integrity, you
-are not under individual suspicion. Nobody is being watched for signs of
-cheating. There is no plagiarism scanner pointed at your commits, and nothing
-reads your traffic on the classroom network.
-
-The class server does know which laptop is yours and when it was connected —
-that is how the room gets a network at all, and it is written down in full under
-[The Classroom Network](classroom-network.md). That is presence, not
-surveillance: the same thing a paper sign-in sheet would know, kept for the same
-reasons. A laptop on the network is not proof that a person was in the room, and
-it will never be treated as if it were.
+are not under individual suspicion.
 
 ## The rules
 
