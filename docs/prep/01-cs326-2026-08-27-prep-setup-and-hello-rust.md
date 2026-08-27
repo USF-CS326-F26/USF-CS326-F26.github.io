@@ -2,7 +2,7 @@
 
 **Session:** Thu Aug 27, 1h45 · **Exercises:** `00r_hello_rust` · **Prep time:** ~30 min · **Lecture:** [Rust I: Values, Types, and Control Flow](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md)
 
-**Most of Thursday is setup.** Work the [Setup page](../assignments/setup.md) step by step: private repository, toolchain, `oslings doctor` green, first `oslings submit`. Budget 45 minutes.
+**Most of Thursday is setup.** Work the [Setup page](../assignments/setup.md) step by step: accept both GitHub invitations, clone your repo, toolchain, `oslings doctor` green, first `oslings submit`. Budget 45 minutes.
 
 ## What you will build
 
@@ -22,13 +22,13 @@ Your first Rust, and the number formats the kernel is written in. You will name 
 |---|---|
 | [Setup](../assignments/setup.md) | 8 min |
 | [Rust I §§1–5](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#1-bindings-and-immutability-as-a-decision) | 15 min |
-| [Dev Setup §1](../guides/dev-setup.md#1-install-rustup), [§3](../guides/dev-setup.md#3-create-your-own-private-repository), [§7](../guides/dev-setup.md#7-oslings-doctor) | 5 min |
+| [Dev Setup §1](../guides/dev-setup.md#1-install-rustup), [§3](../guides/dev-setup.md#3-accept-your-two-invitations), [§7](../guides/dev-setup.md#7-oslings-doctor) | 5 min |
 | [Using OSlings: test modes](../guides/oslings-usage.md#the-three-test-modes) | 2 min |
 
 **Have done before Thursday:**
 
 - `rustup` installed and `rustc --version` working ([Dev Setup §1](../guides/dev-setup.md#1-install-rustup)); large download.
-- A GitHub account. The `oslings-<username>` repository is Setup step 3; if made at home, follow the rules: private, empty, instructor and TA added.
+- A GitHub account, and know which one you are signed in as. Your `oslings-<username>` repository is created *for* you — you do not make one. Accepting the two invitations is Setup step 3, and you can do it at home.
 - A charged computer running macOS, Linux, or Windows with WSL2.
 
 ## Mental model
@@ -53,7 +53,7 @@ Every line is a decision the hardware already made. `0x1000_0000` is where QEMU 
 
 ## What "done" looks like
 
-`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish by **Thursday 11:59 pm** and submit again.
+`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish it at a make-up session — office hours, on the class network — before the next session, and submit again.
 
 Today "done" also means the [Setup deliverables](../assignments/setup.md#deliverables) are checked off and the commit is visible on github.com.
 

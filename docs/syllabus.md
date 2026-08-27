@@ -80,8 +80,14 @@ session. See [Using OSlings](guides/oslings-usage.md) and the
 
 Sessions run on their own Wi-Fi, **cs326**. You sign in to it once per laptop —
 join the network, open <http://signin.cs326>, and sign in with your USF Google
-account. After that it recognises your laptop and there is nothing to do at the
+account. After that it recognizes your laptop and there is nothing to do at the
 start of a session. See [The Classroom Network](guides/classroom-network.md).
+
+Exercise work happens only while connected to that network. You complete an
+exercise in the classroom during its session or, if you did not finish, at a
+**make-up session** — office hours with the instructor or TA, connected to the
+same **cs326** network — before the next exercise session begins. Exercise code
+written anywhere else earns no credit.
 
 Your own work is archived in `my-work/`, and `oslings goto <name>` returns you
 to it.
@@ -107,17 +113,18 @@ one.
 | | Criterion | Score |
 |---|---|---|
 | **Pass** | The test is green in the `oslings submit` you ran during the session | 100% |
-| **Completed after class** | Not passing in the session, but passing by the deadline — **Thursday exercises by Thursday 11:59 pm, Friday exercises by Monday 11:59 pm.** Run `oslings submit` again. | 75% |
+| **Completed at a make-up session** | Not passing in the session; you finish it at office hours with the instructor or TA, connected to the **cs326** network, **before the next exercise session begins**. Run `oslings submit` there. | 75% |
 | **Substantial** | Submitted from the session: compiles, markers meaningfully attempted, test not green | 50% |
-| **Nothing submitted** | Nothing by the deadline | 0% |
+| **Nothing submitted** | Nothing by the time the next session begins | 0% |
 
-The lowest two exercise scores in each module are dropped. There is no other
-make-up work.
+The lowest two exercise scores in each module are dropped. The make-up session
+is the only make-up path; exercise work done off the classroom network earns no
+credit.
 
 ### Solutions
 
-The reference solution for an exercise is released with the next exercise,
-after its completion deadline, into `exercises/<name>/solution/` in your
+The reference solution for an exercise is released with the next exercise —
+the point at which its make-up window closes — into `exercises/<name>/solution/` in your
 repository; `oslings solution <name>` prints it. Before that it exists in no
 repository you can fetch. Exam and practice-set solutions are posted on the
 site under [Solutions](solutions/index.md).
@@ -186,8 +193,9 @@ So the policy is simple, and the line is drawn at **the session**:
   walk you through code you are reading, generate practice problems, or decode
   a compiler error. That is genuinely useful, it is where a good deal of your
   preparation should happen, and you are encouraged to do it.
-- **Finishing an exercise after class is on your honor.** The same rules
-  apply: your own work, which you can explain line by line.
+- **Finishing an unfinished exercise happens at a make-up session**, on the
+  classroom network, under the same rules: your own work, which you can explain
+  line by line.
 - **Do not share your solutions with other students.** Explaining a concept to
   a classmate is good and welcome. Handing over code is not.
 
@@ -246,7 +254,8 @@ for why it is written that way around.
 
 ### Communication
 
-Course questions go on Campuswire so everyone benefits from the answer.
+Course questions go on [Zulip](https://usfca-cs326-f26.zulipchat.com/) so
+everyone benefits from the answer.
 Personal matters go by email.
 
 ---

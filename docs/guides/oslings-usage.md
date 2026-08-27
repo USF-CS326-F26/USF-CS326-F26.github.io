@@ -88,7 +88,7 @@ remember this table (`tui.rs:729`).
 | `oslings ship [names]` | Build your Module 1 commands into your kernel |
 | `oslings cheatsheet` | Print the course cheatsheet |
 | `oslings difficulty [level]` | Show or set the guidance level |
-| `oslings init-repo <url>` | One-time: point this clone at your own repo |
+| `oslings init-repo` | One-time: add the read-only `course` remote (`setup.sh` does it) |
 
 Any `[ex]` argument accepts a full name or a unique prefix — `oslings run 33k`
 finds `33k_paging`. An ambiguous prefix (`oslings run 3`) is refused with the
@@ -101,13 +101,13 @@ edited course-owned files (`exercises/`, `info.toml`, `oslings-cli/`,
 `setup.sh`, `SETUP.md`, `README.md` — `git.rs:15`) and tells you exactly which
 ones and how to restore them. Your own work is never touched. If the merge
 brought a new CLI version, `update` reinstalls `oslings` for you
-(`sync.rs:146`). An exercise that has not been released yet exists in **no
+(`sync.rs`, `cmd_update`). An exercise that has not been released yet exists in **no
 commit you can fetch**, so `update` is the only way to get it.
 
 `submit` stages `my-work/`, `submissions/`, `.oslings/state.toml`, and every
 staging root (`warmup/src`, `commands/src/bin`, `asmlab/src`, `rv6/src`),
 commits with a message like `33k_paging: submit (passing)`, and pushes to
-`origin` (`sync.rs:167`). Run it before you leave **every** session, passing or
+`origin` (`sync.rs`, `cmd_submit`). Run it before you leave **every** session, passing or
 not — what is pushed is what is graded, and it is your resume point if you
 finish the exercise afterwards. See [Git and Submission](git-and-submission.md).
 

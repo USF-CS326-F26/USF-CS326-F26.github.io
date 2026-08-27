@@ -112,39 +112,62 @@ qemu-system-riscv64 --version
 Any QEMU from the last several years is fine. We use only the `virt` machine,
 one hart, 128 MiB, no firmware.
 
-## 3. Create your own private repository
+## 3. Accept your two invitations
 
-You keep **one private repository for the entire semester**. Every line you
-write ends up there, and it is what the instructor and TA read to grade you.
+You keep **one private repository for the entire semester**, and you do not
+create it — the instructor does, in the class organization, already seeded and
+already shared with the TA. Every line you write ends up there, and it is what
+we read to grade you.
 
-On github.com, create a new repository:
+Two invitations reach the GitHub account you named on the sign-up form. Both
+must be accepted, and they are separate things:
 
-| Setting | Value |
-|---|---|
-| Name | `oslings-<your-github-username>` — exactly this |
-| Visibility | **Private** |
-| Add a README / .gitignore / license | **No.** All three checkboxes empty. |
+| Invitation | Repo | Your access | Why you need it |
+|---|---|---|---|
+| Yours | `USF-CS326-F26/oslings-<your-github-username>` | write | `oslings submit` pushes here; we grade it |
+| Course | `USF-CS326-F26/oslings-course` | read | `oslings update` fetches releases from here |
 
-The name is not cosmetic. Batch grading finds your repository by deriving the
-name from your GitHub username, and `oslings init-repo` warns you if the URL you
-give it does not contain `oslings-` (`sync.rs:76-81`). An initialized repository
-(one with a README already committed) is not empty and the first push will be
-rejected.
+Accept the second at
+<https://github.com/USF-CS326-F26/oslings-course/invitations>. Skipping it is
+the most common way to be stuck on setup day: the course repo is private, so
+without it `git fetch course` is refused and `oslings update` reports
 
-Then open **Settings → Collaborators** and add **both** the instructor and the
-TA. If we cannot read your repository, we cannot grade it, and no amount of
-correct code changes that.
+```text
+could not fetch the course repo (git@github.com:USF-CS326-F26/oslings-course.git).
+```
 
-## 4. Clone the course repository
+A **404** on either invitation link means you are signed in to GitHub as a
+different account than the one on the roster. An invitation is bound to one
+account; sign out, sign back in as that one, and reopen the link.
+
+The name `oslings-<your-github-username>` is not cosmetic — batch grading finds
+your repository by deriving the name from your GitHub username. Since the
+instructor creates it, you cannot get this wrong, but it is why the sign-up form
+asked for your exact username.
+
+## 4. Clone your own repository
 
 ```bash
-git clone https://github.com/USF-CS326-F26/oslings-course.git oslings
+git clone git@github.com:USF-CS326-F26/oslings-<your-github-username>.git oslings
 cd oslings
 ```
 
-This is the shared, read-only course repository. Exercises are released into it
-at the start of the session they belong to — an unreleased exercise genuinely
-does not exist in your clone yet, so there is nothing to read ahead.
+or, without an SSH key, the HTTPS form:
+
+```bash
+git clone https://github.com/USF-CS326-F26/oslings-<your-github-username>.git oslings
+```
+
+Your repo arrives already seeded from the course repo, sharing its history —
+that shared base is what lets `oslings update` merge releases into it later.
+
+**Do not clone `oslings-course`.** Your clone is attached to it as a read-only
+second remote in §6, which is a different thing. Work committed in a clone of
+the course repo can never be pushed anywhere you own, so `oslings init-repo`
+refuses to run there rather than let you discover it at the end of a session.
+Exercises are released into the course repo at the start of the session they
+belong to — an unreleased exercise genuinely does not exist in any commit you
+can fetch, so there is nothing to read ahead.
 
 ## 5. Run `./setup.sh`
 
@@ -176,23 +199,38 @@ It is safe to re-run at any time; every step is idempotent. In order, it:
 7. **Builds and installs the `oslings` command**: `cargo install --path
    oslings-cli` (`setup.sh:74`).
 8. **Runs `oslings doctor`** (`setup.sh:77`).
-9. **Offers to wire up your repository**, prompting for your repo URL and
-   calling `oslings init-repo` with it (`setup.sh:84-99`).
+9. **Attaches your clone to the course repo**, by calling `oslings init-repo`
+   with no argument — the course URL travels in `info.toml`, so there is
+   nothing for you to type or paste.
+10. **Runs `oslings update`**, pulling every exercise released so far. Without
+    this a fresh clone holds no exercises at all and `oslings` has nothing to
+    show you. If it fails here, it is nearly always the course-repo invitation
+    from §3: accept it, then run `oslings update` yourself.
 
 Note what it does **not** do: it does not install `rustup`, and it will not
 `sudo` anything without asking.
 
 ## 6. `oslings init-repo` and the two-remote model
 
-If you skipped step 9, or mistyped the URL, run it directly:
+`setup.sh` runs this for you. If you need it directly, it takes **no
+argument**:
 
 ```bash
-oslings init-repo https://github.com/<you>/oslings-<you>.git
+oslings init-repo
 ```
 
-This renames the clone's `origin` (the course repo) to `course`, points a new
-`origin` at your private repository, and pushes your current branch to it
-(`sync.rs:39-83`). The result is two remotes with two jobs:
+Your clone is already your own repo, so `origin` is correct from the moment you
+cloned. All this does is *add* the second remote: it reads `[meta] course_url`
+from `info.toml` and adds it as `course` (`sync.rs`, `cmd_init_repo`). It also
+sets that remote's *push* URL to a deliberately invalid `no-push://…` sentinel,
+so a stray `git push course` fails locally with a reason instead of trying to
+publish your work into the repo everyone reads.
+
+The optional URL argument is the **course** repo's URL, used only if your
+`info.toml` somehow lacks it. It is not your repository's URL — passing that
+makes `origin` and `course` the same repo, which the command refuses.
+
+The result is two remotes with two jobs:
 
 ```mermaid
 flowchart LR
@@ -210,9 +248,9 @@ git remote -v
 ```
 
 You must see both `course` and `origin`, with `origin` pointing at *your*
-repository. If `origin` still points at `oslings-course`, `oslings submit` will
-fail with a permissions error, because you cannot push to the course repo.
-`init-repo` is idempotent — re-running it just resets `origin`'s URL.
+repository. If `origin` points at `oslings-course` you cloned the wrong repo:
+start again from §4 with a clone of your own. `init-repo` is idempotent —
+re-running it just resets the `course` URL.
 
 ## 7. `oslings doctor`
 
@@ -261,8 +299,12 @@ Failures `doctor` cannot see:
 
 | Symptom | Fix |
 |---|---|
+| `oslings update` says `could not fetch the course repo` / git says `could not read from remote repository` | You have not accepted the **course repo** invitation (§3). It is separate from the one for your own repo. Accept it at <https://github.com/USF-CS326-F26/oslings-course/invitations>, then re-run. A 404 on that page means you are signed in as a different GitHub account. |
+| `oslings` says `no exercises have been released yet` | A fresh clone holds no exercises until you pull them. Run `oslings update`. |
+| `warmup/src` is empty, or `warmup/src/lib.rs` does not exist | It is created the first time you run `oslings` (or `oslings run`), by copying the exercise's skeleton. Run `oslings update` if you have not, then `oslings`. |
+| You edited `exercises/<name>/skeleton/…` and nothing changed | Nothing builds from `exercises/`. Your work goes in the staging directory — `warmup/src/lib.rs` for the Rust exercises. Restore the skeleton with `git checkout -- exercises/`. |
 | `oslings update` says a course file has uncommitted changes | You edited a file the course owns (`exercises/`, `info.toml`, `oslings-cli`, `setup.sh`, `SETUP.md`, `README.md` — see `git.rs:15-22`). Run the `git checkout` command it prints, then update again. Your own work under `rv6/src`, `warmup/src`, `commands/src/bin`, `asmlab/src`, `my-work/`, and `submissions/` is never touched. |
-| `oslings submit` fails to push | Check `git remote -v`; re-run `oslings init-repo <url>` |
+| `oslings submit` fails to push | Check `git remote -v`. `origin` must be your own `oslings-<username>` repo; if it is the course repo you cloned the wrong one (§4). If `origin` is right, you have not accepted your repo's invitation. |
 | `git clone` over SSH fails | Use the HTTPS URL, or add an SSH key at `https://github.com/settings/keys` |
 | A newly released exercise did not appear | It may not be released yet; otherwise check your network and re-run `oslings update` |
 | QEMU starts but the exercise reports a timeout | Your kernel hung. That is a bug in your code, not in setup — see [QEMU and GDB](qemu-gdb.md) |
@@ -341,8 +383,11 @@ oslings             # read the lesson, write the code, watch the test go green
 oslings submit      # commit and push, pass or fail
 ```
 
+`update` first is not a nicety: an exercise that has not been fetched does not
+exist on your machine, and on a fresh clone nothing exists until you run it.
+
 `oslings update` also reinstalls the CLI automatically if the course repo
-shipped a new version of it (`sync.rs:146-156`), so you rarely need to run
+shipped a new version of it (`sync.rs`, `cmd_update`), so you rarely need to run
 `cargo install --path oslings-cli --force` yourself.
 
 Submit at the end of every session even when the test is still red: what is

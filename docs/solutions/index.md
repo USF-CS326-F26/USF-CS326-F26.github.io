@@ -5,8 +5,7 @@ class.
 
 **Exercise solutions are released with the next exercise.** The reference
 solution for an exercise exists in no repository you can fetch until its
-completion deadline has passed (Thursday exercises: Thursday 11:59 pm; Friday
-exercises: Monday 11:59 pm). It then ships with the next release, into
+make-up window has closed. It ships with the next release, into
 `exercises/<name>/solution/`, and `oslings update` brings it into your
 repository. Print it with:
 

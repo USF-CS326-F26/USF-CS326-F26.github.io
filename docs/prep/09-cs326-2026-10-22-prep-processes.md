@@ -47,7 +47,7 @@ A `*mut Proc` to slot 0 taken on line 2 still points at slot 0 on line 5, but th
 
 ## What "done" looks like
 
-`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish by **Thursday 11:59 pm** and submit again.
+`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish it at a make-up session — office hours, on the class network — before the next session, and submit again.
 
 ## If you finish early
 

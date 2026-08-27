@@ -82,8 +82,8 @@ markdown_extensions:
 # ==============================================================================
 extra:
   external_links:
-    - name: Campuswire
-      url: https://campuswire.com/
+    - name: Zulip
+      url: https://usfca-cs326-f26.zulipchat.com/
       icon: fontawesome/solid/comments
     - name: Canvas
       url: https://usfca.instructure.com/

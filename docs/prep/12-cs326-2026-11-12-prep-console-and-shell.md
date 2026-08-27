@@ -46,7 +46,7 @@ The handler writes only `BUF` and `TAIL`, the reader only `HEAD`; a stale read e
 
 ## What "done" looks like
 
-`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish by **Thursday 11:59 pm** and submit again. Midterm 2 is next Thursday, Nov 19, and covers processes through user mode.
+`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish it at a make-up session — office hours, on the class network — before the next session, and submit again. Midterm 2 is next Thursday, Nov 19, and covers processes through user mode.
 
 ## Extra credit today
 

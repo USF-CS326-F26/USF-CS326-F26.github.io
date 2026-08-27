@@ -16,7 +16,9 @@ and there is a troubleshooting table at the bottom of the
 - **Install `rustup` if you can** (step 2 below). It is a large download, and
   doing it at home saves class time. If it does not work, we will do it in
   class.
-- **Have a GitHub account.** Create one at github.com if you do not.
+- **Have a GitHub account**, and know which one you are signed in as. Your repo
+  is created for you against the username you gave on the sign-up form, so
+  invitations only work from that account.
 - **Bring a charged laptop** running **macOS**, **Linux**, or **Windows with
   WSL2**. (Native Windows will not work; install WSL2 and use Ubuntu inside
   it.) You need a terminal you are comfortable opening.
@@ -60,26 +62,47 @@ Then restart your terminal, or run `source "$HOME/.cargo/env"`. Check it:
 rustc --version
 ```
 
-## 3. Create your repository
+## 3. Accept your two GitHub invitations
 
-On github.com, create a **new repository**:
+Your repository has already been created for you. You do not make one.
 
-- Name it exactly **`oslings-<your-github-username>`** — for example
-  `oslings-jsmith`. The grading tools find your repo by this name.
-- Make it **Private**.
-- Do **not** add a README, .gitignore, or license. It must start empty.
+Check the email for your GitHub account, or go straight to both links. **Accept
+both** — they are separate, and each does a different job:
 
-Then, under **Settings → Collaborators**, add **both** the instructor and the
-TA. If we cannot read your repository, we cannot grade it.
+| | Accept at | What it is |
+|---|---|---|
+| 1 | `https://github.com/USF-CS326-F26/oslings-<your-github-username>` | **Your** repo. Your work is pushed here, and it is what we grade. |
+| 2 | <https://github.com/USF-CS326-F26/oslings-course/invitations> | The **course** repo, read-only. Exercises are released here and you pull them from it. |
 
-## 4. Clone the course repository
+The second one is the one people miss. Without it `oslings update` fails with
+`could not read from remote repository`, which looks like a broken SSH key and
+is not one.
+
+!!! warning "If either link shows a 404"
+    You are signed in to GitHub as a different account than the one you gave on
+    the sign-up form. Sign out, sign back in as that account, and open the link
+    again. Invitations are bound to one specific account.
+
+The instructor and TA already have access to your repo — there is nothing for
+you to share.
+
+## 4. Clone **your** repository
 
 ```bash
-git clone https://github.com/USF-CS326-F26/oslings-course.git oslings
+git clone git@github.com:USF-CS326-F26/oslings-<your-github-username>.git oslings
 cd oslings
 ```
 
-This is the shared course repository. It is where exercises arrive from.
+Use your own username, not the literal text. If you have not set up an SSH key,
+use the HTTPS form instead:
+
+```bash
+git clone https://github.com/USF-CS326-F26/oslings-<your-github-username>.git oslings
+```
+
+Do **not** clone `oslings-course`. That is the read-only course repo; your
+clone attaches to it automatically in step 5, and `oslings` refuses to work in a
+clone of it.
 
 ## 5. Run the setup script
 
@@ -90,6 +113,11 @@ This is the shared course repository. It is where exercises arrive from.
 This installs the Rust nightly toolchain, the `riscv64gc-unknown-none-elf`
 target on both toolchains, the `rust-src` and `llvm-tools` components, offers
 to install QEMU, and builds the `oslings` command.
+
+It then attaches your clone to the course repo and pulls whatever has been
+released so far, so you finish this step with today's exercise already in place.
+If that last part fails, it is almost always invitation 2 from step 3 — accept
+it, then run `oslings update`.
 
 It is safe to re-run at any time.
 
@@ -111,14 +139,28 @@ the QEMU lines are red, see the note below.
     The hard deadline for a working QEMU is **Thursday, October 1**, when
     `20a_asm_bridge` (the assembly bridge) needs it.
 
-## 7. Point this clone at your own repository
+## 7. Confirm the two remotes
+
+`setup.sh` did this for you; this step is a check, not work. Run:
 
 ```bash
-oslings init-repo https://github.com/<your-username>/oslings-<your-username>.git
+git remote -v
 ```
 
-This renames the existing remote to `course` (where exercises come *from*) and
-sets `origin` to your repository (where your work goes *to*), then pushes.
+You should see both, with `origin` pointing at **your** repo:
+
+```text
+course  git@github.com:USF-CS326-F26/oslings-course.git   (fetch)
+origin  git@github.com:USF-CS326-F26/oslings-<you>.git    (fetch)
+origin  git@github.com:USF-CS326-F26/oslings-<you>.git    (push)
+```
+
+If `course` is missing, add it (it takes no argument — the URL travels in the
+course files):
+
+```bash
+oslings init-repo
+```
 
 You now have two remotes, and that is deliberate:
 
@@ -135,15 +177,31 @@ oslings             # open the app; work 00r_hello_rust
 oslings submit      # commit and push
 ```
 
+`oslings update` is not optional on a fresh clone. Before it runs, your repo
+contains **no exercises at all**, and `oslings` will tell you so:
+
+```text
+error: no exercises have been released yet.
+
+Receive the ones your instructor has released:
+  oslings update
+```
+
+You write your answers in **`warmup/src/lib.rs`**. That file does not exist
+until the first time you run `oslings`, which puts it there for you. Do not
+edit anything under `exercises/` — that is read-only course material, the
+skeleton in it is only the template that gets copied to `warmup/src/lib.rs`,
+and editing it changes nothing except breaking your next `oslings update`.
+
 Then check github.com and confirm the commit is really there.
 
 ## Deliverables
 
 | | |
 |---|---|
-| ☐ | A private repo named `oslings-<username>` with the instructor and TA added |
+| ☐ | Both GitHub invitations accepted — your repo **and** `oslings-course` |
 | ☐ | `oslings doctor` green (QEMU lines may be pending — tell the TA) |
-| ☐ | `oslings init-repo` run, so `git remote -v` shows both `course` and `origin` |
+| ☐ | `git remote -v` shows both `course` and `origin` |
 | ☐ | `00r_hello_rust` submitted — the commit is visible on github.com |
 
 ## Submit before you leave
@@ -153,6 +211,6 @@ exercise passed.**
 
 What is committed by the end of the session is what earns credit: a passing
 exercise earns 100%, and substantial progress on one earns 50%. An exercise you
-finish afterwards and submit by the deadline — Thursday 11:59 pm for a Thursday
-exercise, Monday 11:59 pm for a Friday exercise — earns 75%. An exercise that
+finish at a make-up session — office hours with the instructor or TA, on the
+**cs326** network, before the next session — earns 75%. An exercise that
 was never submitted earns nothing.

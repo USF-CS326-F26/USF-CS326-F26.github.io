@@ -48,7 +48,7 @@ Every value that crosses the wall lives in the trapframe for the duration. Forge
 
 ## What "done" looks like
 
-`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish by **Monday 11:59 pm** and submit again. Midterm 2 is next Thursday, Nov 19, and covers processes through this exercise.
+`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish it at a make-up session — office hours, on the class network — before the next session, and submit again. Midterm 2 is next Thursday, Nov 19, and covers processes through this exercise.
 
 ## If you finish early
 

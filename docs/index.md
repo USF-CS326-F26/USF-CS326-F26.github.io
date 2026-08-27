@@ -92,8 +92,8 @@ hide:
     before you leave, passed or not. **SUBMIT** lists what each session
     releases.
 
-    Did not finish? Finish it yourself: Thursday's exercise by Thursday
-    11:59 pm, Friday's by Monday 11:59 pm.
+    Did not finish? Complete it at a **make-up session** — office hours, on the
+    **cs326** network — before the next session.
 
 ---
 

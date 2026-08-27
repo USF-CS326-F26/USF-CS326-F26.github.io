@@ -47,7 +47,7 @@ The codes overlap — 9 is also "ecall from S-mode" — so skipping the top-bit 
 
 ## What "done" looks like
 
-`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish by **Monday 11:59 pm** and submit again.
+`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish it at a make-up session — office hours, on the class network — before the next session, and submit again.
 
 ## If you finish early
 

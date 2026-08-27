@@ -123,7 +123,8 @@ HEADER = """# All Exercises
 Every exercise in the course, in order. Each is released at the start of the
 session listed and you run `oslings submit` before you leave the room, passed
 or not. An exercise not passed in class can be finished on your own for 75%:
-Thursday's by Thursday 11:59 pm, Friday's by Monday 11:59 pm. Two hints ship
+an unfinished one is completed at a make-up session — office hours, on the
+class network — before the next session. Two hints ship
 with each exercise; the reference solution ships with the next release
 (`oslings solution <name>`).
 

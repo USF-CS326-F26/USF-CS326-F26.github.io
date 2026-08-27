@@ -189,9 +189,11 @@ exercise.
 
 | Situation | What happens |
 |---|---|
-| Unfinished in class | Run `oslings submit` before you leave anyway: a compiling, meaningfully attempted exercise scores **50%**. Get the test green by the deadline — Thursday exercises by Thursday 11:59 pm, Friday exercises by Monday 11:59 pm — run `oslings submit` again, and it scores **75%**. |
-| Missed the session | The exercise was released at the start of the session; `oslings update` fetches it. Pass it by the same deadline for **75%**. After the deadline it scores 0. |
+| Unfinished in class | Run `oslings submit` before you leave anyway: a compiling, meaningfully attempted exercise scores **50%**. Finish it at a make-up session — office hours with the instructor or TA, connected to the **cs326** network — before the next exercise session begins, run `oslings submit` there, and it scores **75%**. |
+| Missed the session | The exercise was released at the start of the session; `oslings update` fetches it. Pass it at a make-up session before the next exercise session for **75%**. After that window closes it scores 0. |
 | Resuming old work | `oslings goto <name>` restores your own work from `my-work/`, exactly as you left it. |
 
-There is no supervised make-up. Finishing after class is on your honor, and the
-same integrity rules apply: your own work, explainable line by line.
+All exercise work happens on the **cs326** network — in class, or at a make-up
+session during office hours. Exercise code written anywhere else earns no
+credit, and the same rules apply at a make-up session: your own work,
+explainable line by line.

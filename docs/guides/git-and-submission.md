@@ -23,12 +23,20 @@ flowchart LR
     L -- "oslings submit\nadd + commit + push" --> O["origin\n(your private repo)"]
 ```
 
-`oslings init-repo <url>` builds this arrangement, and you run it once. It
-renames the clone's existing `origin` to `course`, adds your repo URL as the new
-`origin`, and pushes your current branch with `-u` so it tracks (`sync.rs:50`).
-Re-running it with a different URL is safe: it uses `remote set-url` when
-`origin` already exists (`sync.rs:59`). If your URL does not contain
-`oslings-`, it warns you — batch grading finds your repo by name.
+`oslings init-repo` completes this arrangement, and `setup.sh` runs it for you
+once. Half of it is already true before it runs: you cloned your own repo, so
+`origin` is yours from the start. What it adds is `course` — it reads
+`[meta] course_url` out of `info.toml` and adds that as a second remote
+(`sync.rs:125`, `cmd_init_repo`), then sets `course`'s *push* URL to an
+invalid `no-push://` sentinel so a stray `git push course` fails locally rather
+than publishing your work into the repo the whole class reads (`sync.rs:166`).
+
+It refuses to run when `origin` and the course URL are the same repository:
+that means you cloned `oslings-course` instead of your own, and every `submit`
+would fail at the end of a session rather than at the start.
+
+Re-running is safe — the `course` URL is set with `remote set-url` when the
+remote already exists.
 
 Note what is *not* here: no per-exercise repo, no branch per exercise, no pull
 request. Exercises are gated by **absence** — one that has not been released
@@ -37,22 +45,27 @@ exists in no commit you can fetch, so there is nothing to read ahead to.
 ## What `oslings update` does
 
 `oslings update` is a fetch and a merge, with two safety checks in front of it
-(`sync.rs:86`). In order:
+(`sync.rs:194`, `cmd_update`). In order:
 
 1. **Dirty check.** Any uncommitted change — modified, staged, *or untracked* —
    under a course-owned path aborts the command before anything is fetched
-   (`sync.rs:97`, `git.rs:78`).
-2. **Fetch.** `git fetch course`. Nothing in your working tree changes yet.
+   (`sync.rs:213`, `git.rs:99`).
+2. **Fetch.** `git fetch course` (`sync.rs:227`). Nothing in your working tree
+   changes yet. A failure here is reported with the course repo's URL and a
+   pointer to its invitation page, because the usual cause is that the
+   invitation was never accepted — GitHub reports "no access" and "no such
+   repo" identically, so git's own wording ("could not read from remote
+   repository") cannot tell you which.
 3. **Divergence check.** `git diff --name-only course/main...HEAD` filtered to
    course-owned paths (`git.rs:88`). This catches edits you already *committed*
    to course files — the only thing a merge can conflict on.
-4. **Merge.** `git merge --no-edit course/main` (`sync.rs:129`). Deliberately
+4. **Merge.** `git merge --no-edit course/main` (`sync.rs:269`). Deliberately
    **not** `--ff-only`.
 5. **Report.** It diffs `info.toml` before and after and prints the exercise
    names that are new (`sync.rs:15`). No new blocks means
    `Already up to date — no new exercises.`
 6. **Self-update.** If the merge touched `oslings-cli/`, it re-runs
-   `cargo install --path oslings-cli --force` for you (`sync.rs:146`).
+   `cargo install --path oslings-cli --force` for you (`sync.rs:308`).
 
 `oslings update --from <remote-or-path>` pulls from somewhere other than
 `course`, which you will only use if an instructor tells you to.

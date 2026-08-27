@@ -376,15 +376,16 @@ What is committed by the end of the session is what earns credit:
 | | Score |
 |---|---|
 | The exercise's test is green in class | 100% |
-| Finished afterwards, on your own, by the deadline | 75% |
+| Finished at a make-up session (office hours, on the class network) | 75% |
 | Substantial progress submitted in class | 50% |
 | Nothing submitted | 0% |
 
-The deadline for a Thursday exercise is Thursday at 11:59 pm; for a Friday
-exercise, Monday at 11:59 pm — that keeps you current for the next session.
-Each exercise comes with two hints; the third, the answer, is never released.
-The reference solution arrives with the *next* exercise, after the deadline, so
-you can compare it with what you wrote.
+An unfinished exercise can be completed only at a make-up session — office
+hours with the instructor or TA, connected to the classroom network — before
+the next session begins. Each exercise comes with two hints; the third, the
+answer, is never released. The reference solution arrives with the *next*
+exercise, once the make-up window has closed, so you can compare it with what
+you wrote.
 
 A session's rules: no Internet beyond what `oslings` and `cargo` need, and no
 AI assistant — what you have is the lecture notes, the guides, `oslings hint`,
@@ -621,7 +622,8 @@ must be less privileged.
 
 5. **The course runs in the room.** Read the Prep page, come Thursday and
    Friday, write the code there, and run `oslings submit` before you leave —
-   passed or not. Unfinished work can still earn 75% by the deadline.
+   passed or not. Unfinished work can still earn 75%, finished at a make-up
+   session before the next one.
 
 6. **The destination is concrete.** The `grep` you write in week 5 is the same
    source file that runs, unmodified, on the kernel you finish in week 15.

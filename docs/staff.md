@@ -1,7 +1,7 @@
 # Course Staff
 
 ## Greg Benson (Instructor)
-- Email: benson@cs.usfca.edu (Campuswire preferred)
+- Email: benson@cs.usfca.edu ([Zulip](https://usfca-cs326-f26.zulipchat.com/) preferred)
 - Office: HR 412A
 - Office hours: TBA
 - Office hours are in person and on Zoom unless otherwise announced
@@ -10,4 +10,4 @@
 - Office: HR 411/413
 - Office hours: TBA
 
-Office hours are for questions and for extra-credit work.
+Office hours are for questions, extra-credit work, and make-up sessions.
