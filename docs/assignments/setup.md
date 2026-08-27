@@ -23,12 +23,28 @@ and there is a troubleshooting table at the bottom of the
 - **Read this page and the Prep page for Thursday**, so you know what you are
   about to do before you sit down. <!-- TODO link prep page -->
 
-## 1. Register your laptop on the classroom network
+## 1. Sign in to the classroom network
 
-!!! warning "Placeholder"
-    CS 326 uses a registration client and server on the classroom router to
-    deliver exercise releases to your laptop. The registration tool is not
-    ready yet. Instructions will be given in class.
+Exercise sessions run on their own Wi-Fi, **cs326**. You sign in once per
+laptop; after that it recognises you and there is nothing to do.
+
+1. Join the **cs326** Wi-Fi. The password is given in class.
+2. Open **<http://signin.cs326>** in Safari, Chrome or Firefox — your own
+   browser, not the small Wi-Fi pop-up window.
+3. Press **Sign in with Google**. Google opens in a second tab and asks for the
+   code shown on the first one; enter it, press **Continue**, then choose your
+   USF account.
+
+About thirty seconds, and no phone or second device is needed.
+
+!!! tip "If Safari says you are not connected but everything else works"
+    Turn off iCloud Private Relay for this network: **System Settings → Wi-Fi →
+    cs326 → Details… → uncheck "Limit IP address tracking"**.
+
+The network reaches GitHub, the Rust toolchain, the Rust documentation and this
+site — and very little else. See
+[The Classroom Network](../guides/classroom-network.md) for the full list, what
+is recorded about you, and what to do when something does not work.
 
 ## 2. Install Rust
 

@@ -25,7 +25,15 @@ work in the session removes the dilemma instead of policing it.
 
 The corollary matters as much: because the structure carries the integrity, you
 are not under individual suspicion. Nobody is being watched for signs of
-cheating. There is no plagiarism scanner pointed at your commits.
+cheating. There is no plagiarism scanner pointed at your commits, and nothing
+reads your traffic on the classroom network.
+
+The class server does know which laptop is yours and when it was connected —
+that is how the room gets a network at all, and it is written down in full under
+[The Classroom Network](classroom-network.md). That is presence, not
+surveillance: the same thing a paper sign-in sheet would know, kept for the same
+reasons. A laptop on the network is not proof that a person was in the room, and
+it will never be treated as if it were.
 
 ## The rules
 
@@ -109,14 +117,22 @@ then it is in no repository you can clone — see [Solutions](../solutions/index
 
 ## The classroom network
 
-Sessions run on a restricted network: GitHub and the Rust package registry are
+Sessions run on a restricted network. GitHub and the Rust toolchain are
 reachable, because `oslings update` and `oslings submit` need the first and
-`cargo` needs the second. Most other things are not. At the start of each
-session you register your laptop with the CS 326 class server on the classroom
-router; the tool for this is not ready yet, and instructions will be given in
-class. Point `rustup doc` at your browser for the standard library offline, and
-use the guides on this site — they were written so that the restriction costs
-you nothing.
+`cargo` needs the second. So is the Rust documentation — the Book, Rust by
+Example, the standard library, rustlings and the playground — and this site.
+Very little else is, and **every AI assistant is blocked by name**, GitHub
+Copilot included.
+
+You sign in to that network once per laptop: join **cs326**, open
+<http://signin.cs326>, and sign in with your USF Google account. After that it
+recognises your laptop. [The Classroom Network](classroom-network.md) has the
+full list of what is reachable, what the class server records, and what to do
+when it does not work.
+
+`rustup doc` still opens the standard library offline and is faster than the
+network. The guides on this site were written so that the restriction costs you
+nothing.
 
 **The restriction is not airtight, and this page is not going to pretend it is.**
 A laptop with a phone hotspot defeats it completely, and no router configuration

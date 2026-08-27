@@ -359,10 +359,11 @@ and guides to reread, and a mental model, without the exercise itself. The
 better prepared you are, the sooner you finish; that preparation is what your
 time outside class is for.
 
-At the start of each session you register your laptop with the CS 326 class
-server on the classroom router; that is how the exercise reaches you. (The tool
-is not ready yet — instructions will be given in class.) Then the rhythm is
-three commands:
+The first time you bring a laptop you sign it in to the classroom network —
+join **cs326**, open <http://signin.cs326>, sign in with your USF Google
+account. Once per laptop, and after that the network recognises it. See
+[The Classroom Network](../guides/classroom-network.md). Then the rhythm of
+every session is three commands:
 
 ```bash
 oslings update      # receive the exercise this session releases

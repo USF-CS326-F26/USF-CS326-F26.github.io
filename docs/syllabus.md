@@ -78,9 +78,10 @@ whether or not the exercise passes — that submit is your record of the
 session. See [Using OSlings](guides/oslings-usage.md) and the
 [Setup](assignments/setup.md) page for the first session.
 
-At the start of each session you register your laptop with the CS 326 class
-server on the classroom router. The tool for this is not ready yet;
-instructions will be given in class.
+Sessions run on their own Wi-Fi, **cs326**. You sign in to it once per laptop —
+join the network, open <http://signin.cs326>, and sign in with your USF Google
+account. After that it recognises your laptop and there is nothing to do at the
+start of a session. See [The Classroom Network](guides/classroom-network.md).
 
 Your own work is archived in `my-work/`, and `oslings goto <name>` returns you
 to it.
@@ -172,11 +173,13 @@ So the policy is simple, and the line is drawn at **the session**:
   Exercises are not released before the session that works them, so there is
   nothing to pre-solve.
 - **During a session: no Internet and no AI assistant.** The classroom network
-  reaches GitHub and the Rust package registry — which `oslings` and `cargo`
-  need — and nothing else. No chat window, no editor autocomplete that writes
-  code for you, no phone. What you have in the room is the lecture notes, the
-  guides on the course site, `oslings hint`, the compiler, and the instructor
-  and TA.
+  reaches GitHub, the Rust toolchain, the Rust documentation — the Book, Rust
+  by Example, the standard library, rustlings and the playground — and this
+  site. Very little else, and every AI assistant is blocked by name. No chat
+  window, no editor autocomplete that writes code for you, no phone. What you
+  have in the room is the lecture notes, the guides on the course site,
+  `oslings hint`, the compiler, and the instructor and TA. The full list is on
+  [The Classroom Network](guides/classroom-network.md).
 - **Hints are limited.** `oslings hint` gives two hints per exercise. The third
   is never released.
 - **Outside a session: use AI freely, and often.** Ask it to explain a concept,
@@ -208,15 +211,40 @@ appear in any report the course produces. It exists so that if a question ever
 arises about a submission there is context for a conversation. It is a
 starting point for a discussion, never proof of anything.
 
+### Data recorded by the class server
+
+When you sign in to the `cs326` network, the classroom router stores your name,
+your USF email and your GitHub username — the first two supplied by Google when
+you sign in, the third from the roster you filled in at the start of term —
+together with that laptop's network address. While you are connected during a
+session it records that the laptop was connected, and for how long.
+
+That is the whole list. No browsing history, no page addresses, no traffic
+contents: the connections are encrypted and the router does not log even which
+sites you reach.
+
+**It is not scored, not ranked, and not part of your grade.** There is no
+attendance component in this course; the table above is the whole grade. It
+exists so that the exercise can be released to the room, and so that if a
+question arises later about a session there is a record of who was on the
+network. A laptop on the network is evidence that a device was in range, not
+proof that a person was in the room, and it will not be treated as if it were.
+
+You may ask to see your own record, and to have it deleted, at any time.
+Registrations and connection logs are erased at the end of the semester.
+
 ### Laptops and the classroom network
 
-Sessions run on a restricted network that reaches GitHub and the Rust package
-registry and not much else, so that `oslings update`, `oslings submit` and
-`cargo` all work and very little else does. You register your laptop with the
-CS 326 class server on that network at the start of each session. Keeping the
-room off the open Internet is the rule, not just the router's default; see
-[Academic Integrity and AI](guides/integrity-policy.md) for why it is written
-that way around.
+Sessions run on a restricted network that reaches GitHub, the Rust toolchain and
+documentation, and this site — so that `oslings update`, `oslings submit` and
+`cargo` all work and very little else does. You sign in to it once per laptop,
+and it recognises you after that.
+
+[The Classroom Network](guides/classroom-network.md) covers signing in, the full
+list of what is reachable, what the class server records about you, and what to
+do when it does not work. Keeping the room off the open Internet is the rule,
+not just the router's default; see [Academic Integrity and AI](guides/integrity-policy.md)
+for why it is written that way around.
 
 ### Communication
 
@@ -251,7 +279,9 @@ repetitions than the exercises give:
 
 Neither is required or graded.
 
-Run `rustup doc` for the standard library documentation offline.
+Run `rustup doc` for the standard library documentation offline — faster than
+the network, and it works anywhere. `doc.rust-lang.org` is reachable from the
+classroom network too.
 
 ---
 

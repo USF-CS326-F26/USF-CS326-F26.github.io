@@ -122,6 +122,7 @@ nav:
       - Dev Setup: guides/dev-setup.md
       - Using OSlings: guides/oslings-usage.md
       - Git and Submission: guides/git-and-submission.md
+      - The Classroom Network: guides/classroom-network.md
       - Rust for Systems: guides/rust-for-systems.md
       - Unsafe Rust and no_std: guides/rust-unsafe-nostd.md
       - RISC-V: guides/riscv.md

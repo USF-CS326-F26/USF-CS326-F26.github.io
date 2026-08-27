@@ -85,7 +85,9 @@ hide:
 !!! info "How this course runs"
     **Tuesday is lecture. Thursday and Friday are exercise sessions.** Every
     line of code in this course is written in the room, on the classroom
-    network. Read the **Prep** page before each session. The session's
+    network — join **cs326** and sign in once per laptop at
+    [signin.cs326](guides/classroom-network.md). Read the **Prep** page before
+    each session. The session's
     exercise is released when the session starts; run `oslings submit`
     before you leave, passed or not. **SUBMIT** lists what each session
     releases.
