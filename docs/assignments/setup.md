@@ -187,11 +187,13 @@ Receive the ones your instructor has released:
   oslings update
 ```
 
-You write your answers in **`warmup/src/lib.rs`**. That file does not exist
-until the first time you run `oslings`, which puts it there for you. Do not
-edit anything under `exercises/` — that is read-only course material, the
-skeleton in it is only the template that gets copied to `warmup/src/lib.rs`,
-and editing it changes nothing except breaking your next `oslings update`.
+You write your answers in **`warmup/src/lib.rs`**. It is not in the repo you
+cloned: `oslings` creates it when you open the app, by copying the exercise's
+starter code into place. So if `warmup/src` looks empty, open `oslings` — that
+is the step that puts the file there. Do not edit anything under `exercises/`
+— that is read-only course material, the skeleton in it is only the template
+that gets copied to `warmup/src/lib.rs`, and editing it changes nothing except
+breaking your next `oslings update`.
 
 Then check github.com and confirm the commit is really there.
 
