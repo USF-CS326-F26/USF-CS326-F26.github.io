@@ -2,7 +2,7 @@
 
 **This is the reference you are permitted to bring to the midterm and the
 final.** Print it, write on it, bring it in. Every bit position, magic address
-and constant rv6 is built from is on this one page, cited to the file and line
+and constant rv6 is built from is on this one page, cited to the file and item
 in the reference kernel (`exercises/52k_userland/solution/`, in your tree once
 `53k` is released) so you can check it against the real kernel. It is not a tutorial — it is what you look at when you cannot remember
 whether `PTE_U` is bit 4 or bit 5. For the *why*, see

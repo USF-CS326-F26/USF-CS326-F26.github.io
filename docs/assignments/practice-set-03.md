@@ -1,18 +1,18 @@
 # Practice Set 3
 
-**Distributed:** Friday, December 4 · **Solutions posted:** Tuesday,
-December 8 · **Prepares for:** the [Final Exam](final.md), December 11–17.
+**Distributed:** Friday, December 4 · **Solutions posted:** Monday,
+December 7 · **Prepares for:** the [Final Exam](final.md), Tuesday, December 8.
 
-This set is **ungraded**, but the final review that closes L26 on December 8
-assumes you have attempted it — we work the problems, we do not derive them
-from scratch.
+This set is **ungraded**, and with the exam on the last day of class there is no
+session in which we work it together. Attempt it first, then read the solutions
+when they go up on December 7 — that is the review.
 
 **Do it on paper, with no computer.** That is the exam condition: closed book,
 by hand, with one permitted reference, the printed
 [Cheatsheet](../guides/cheatsheet.md). Every solution shows its arithmetic.
 
-Cumulative, weighted toward `49k`–`53k`; pipes appear at the design level
-only. Each problem is labeled with its shape:
+Cumulative, weighted toward `49k`–`53k`. Each problem is labeled with its
+shape:
 **trace it**, **decode it**, or **order it / explain it**.
 
 ---
@@ -405,7 +405,7 @@ reused), or reparents to init at exit as xv6 does.
 
 ---
 
-## Part D · Composition: fork + exec, and pipes
+## Part D · Composition: fork + exec
 
 ### Problem 10: Why two calls (explain it)
 
@@ -425,7 +425,8 @@ that already exist.
 1. **Redirection.** For `cmd > out` the child opens `out`, `dup2`s it onto fd 1,
    closes the extra fd, then execs. `cmd` needs no knowledge of redirection.
 2. **Pipeline wiring.** For `a | b` the child dups its pipe end onto fd 0 or 1
-   and closes both raw pipe fds before exec'ing (Problem 11).
+   and closes both raw pipe fds before exec'ing (Problem 11 — off-exam
+   enrichment).
 
 The cheatsheet line: *"Open fds survive `exec`, which is how a redirected stdout
 persists."* `exec` replaces memory and never touches `ofile` — that is what
@@ -442,10 +443,12 @@ choice; copy-on-write exists to hide that cost. The split buys expressiveness.
 
 </details>
 
-### Problem 11: Pipes — the hard one (explain it)
+### Problem 11: Pipes — the hard one (explain it) · *not on the exam*
 
-**This is the hardest problem in the set.** rv6 has no pipes; the exam asks
-about the design, which is xv6's:
+**Optional enrichment.** Pipes are not examinable — they are never lectured,
+and no exam question depends on them. Work this one because it is the idea that
+ties `fork`, `dup`, and `exec` into a single mechanism, not because it is on the
+exam. rv6 has no pipes; the design below is xv6's:
 
 ```rust
 const PIPESIZE: usize = 512;
@@ -687,7 +690,7 @@ and plants `a0 = 0`; `exec` builds before it destroys; `exit` leaves a Zombie;
 
 ## After you have tried it
 
-Bring your paper on **December 8**. Then reread
+Work it before the solutions go up on **December 7**. Then reread
 [rv6 Architecture](../guides/rv6-architecture.md), redraw the fork and exec paths
 from memory, and check your constants against the
 [Cheatsheet](../guides/cheatsheet.md). Working these with a classmate is

@@ -13,11 +13,12 @@ constants, the [Cheatsheet](cheatsheet.md).
 |---|---|---|---|
 | **Midterm 1** | Thu **Oct 15**, in class, full period | Module 1 (`00r`–`21r`) plus `30k`–`33k` | 15% |
 | **Midterm 2** | Thu **Nov 19**, in class, full period | `34k`–`48k` — processes through user mode | 15% |
-| **Final** | **Dec 11–17**, registrar's assigned slot | cumulative, weighted toward `49k`–`53k` (pipes at the design level only) | 20% |
+| **Final** | Tue **Dec 8**, in class, full period | cumulative, weighted toward `49k`–`53k` | 20% |
 
-The final's exact date, time, and room are set by the registrar, not by the
-course — check the official final exam schedule. Midterms fall on Thursdays,
-and there is no Friday exercise session in an exam week. Later exams are cumulative in
+All three are given in class, in the period we already meet. The midterms
+fall on Thursdays, with no Friday exercise session in an exam week; the final is
+on the last day of class, and **there is no exam during finals week**. Later
+exams are cumulative in
 *concepts*: anything earlier may reappear as a building block, but no question
 rests only on old material. You must average C or better across the three to
 pass the course.

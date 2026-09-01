@@ -6,9 +6,9 @@
 |---|---|
 | **Instructor** | Greg Benson |
 | **Teaching Assistant** | Ankit Mukhopadhyay |
-| **Term** | Fall 2026 — August 25 through December 9 |
+| **Term** | Fall 2026 — August 25 through December 8 |
 | **Meetings** | Tuesday 1h45 (lecture) · Thursday 1h45 (exercise session) · Friday 1h30 (exercise session) |
-| **Final exam** | December 11–17, in the registrar's assigned slot |
+| **Final exam** | Tuesday, December 8, in class — the last day of the term |
 
 ---
 
@@ -100,7 +100,7 @@ to it.
 | Module 2 exercises (`30k`–`53k`: the kernel) | 30% |
 | **Midterm 1** — Thursday, October 15 | 15% |
 | **Midterm 2** — Thursday, November 19 | 15% |
-| **Final exam** — December 11–17 | 20% |
+| **Final exam** — Tuesday, December 8 | 20% |
 | *Extra credit* (`14c`, `41k`, `47k`, `54k`, `55k`) | *up to +3%* |
 
 ### How exercises are scored
@@ -131,15 +131,17 @@ site under [Solutions](solutions/index.md).
 
 ### Exams
 
-Both midterms are given in class on a **Thursday** — October 15 and
-November 19 — in the Thursday session's slot. There is no Friday session in an
-exam week. The final is in the registrar's slot, December 11–17.
+All three exams are given in class. The midterms fall on a **Thursday** —
+October 15 and November 19 — in the Thursday session's slot, and there is no
+Friday session in an exam week. The final is on **Tuesday, December 8**, the
+last day of class, in the Tuesday slot. **There is no exam during finals
+week.**
 
 | Exam | Covers |
 |---|---|
 | **Midterm 1** — Thursday, October 15 | Module 1 (`00r`–`21r`) and the kernel through paging (`30k`–`33k`) |
 | **Midterm 2** — Thursday, November 19 | Processes (`34k`) through user mode (`48k`) |
-| **Final** — December 11–17 | Cumulative, weighted toward `49k`–`53k` |
+| **Final** — Tuesday, December 8 | Cumulative, weighted toward `49k`–`53k` |
 
 All three are **on paper, closed book**, with one permitted reference: the
 course cheatsheet, which is published on this site and which you may print.

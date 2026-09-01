@@ -277,7 +277,8 @@ MMU on in `39k`, and the moment in `43k` when the kernel gives up machine mode.
 > operating systems lives in the gap between those two sentences.
 
 Midterm 1 is Thursday, October 15; Midterm 2 is Thursday, November 19; the final
-is in the registrar's slot, December 11–17.
+is Tuesday, December 8, in class on the last day of the term. There is no exam
+during finals week.
 
 ---
 

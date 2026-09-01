@@ -65,4 +65,4 @@ parent: wait(&status)    yields until slot 2 is a Zombie, then reaps it
 
 ## If you finish early
 
-Work the lecture's [Practice Problems](../lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland.md#practice-problems), then read xv6 book chapter 1 and the `sleep`/`wakeup` section of chapter 7, which rv6's polling `wait` omits. Tuesday Dec 8 is the payoff lecture and final review; the final is Dec 11–17.
+Work the lecture's [Practice Problems](../lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland.md#practice-problems), then read xv6 book chapter 1 and the `sleep`/`wakeup` section of chapter 7, which rv6's polling `wait` omits. Tuesday Dec 8 is the **final exam**, in class, the last day of the term — there is no exam during finals week. Practice Set 3 goes out today and its solutions go up Monday Dec 7, so attempt it on paper first.

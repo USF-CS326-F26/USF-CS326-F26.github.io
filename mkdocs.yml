@@ -227,6 +227,6 @@ nav:
       - "Dec 1 · Slides": lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html
       - "Dec 3 · exec as a System Call, and Userland": lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland.md
       - "Dec 3 · Slides": lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html
-      - "Dec 8 · Pipes, the Payoff, and Final Review": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review.md
+      - "Dec 8 · Pipes, the Payoff, and Revision": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review.md
       - "Dec 8 · Slides": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html
   - Solutions: solutions/index.md

@@ -120,8 +120,8 @@ start it only once the core exercises for the day pass.
     the specification below is complete, but you build it against your own
     kernel, in office hours, rather than receiving a skeleton. Talk to the
     instructor if you want to take it on; it is the most substantial thing on
-    this page. The final exam covers pipes at the design level only, and no
-    question depends on having built one.
+    this page. Pipes are not on the final exam, so this is entirely for its own
+    sake.
 
 A pipe is a bounded ring buffer with a reader end and a writer end, each
 holding a file descriptor. Once it exists, the shell's `|` operator falls out

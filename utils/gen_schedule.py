@@ -63,7 +63,8 @@ def sessions():
                 Thursday's Prep page
       exercise  Thursday / Friday: an exercise session; the lecture page dated
                 that day is the reading, released alongside the exercise
-      exam      in-class midterm (Thursday)
+      exam      in-class exam: the two midterms (Thursday) and the final,
+                which is given in the last Tuesday slot, not in finals week
       holiday   no meeting
     exercises: the long names released at the start of the session
     extra:     extra-credit exercises released the same day
@@ -191,9 +192,10 @@ def sessions():
         links=L(("Extra Credit", "/assignments/extra-credit/"),
                 ("Practice Set 3", "/assignments/practice-set-03/")))
 
-    add(16, 'tuesday', 'Dec 8', 'lecture',
-        'L26 The Payoff: Your Commands on Your Kernel, and Final Review',
+    add(16, 'tuesday', 'Dec 8', 'exam',
+        'FINAL EXAM — cumulative, weighted toward 49k–53k',
         links=L(("Final Exam", "/assignments/final/"),
+                ("Exam Prep", "/guides/exam-prep/"),
                 ("Practice Set 3", "/assignments/practice-set-03/")))
     return S
 
@@ -226,9 +228,13 @@ def main():
         out.append(f'# === WEEK {w} ===')
         out.append(f'  - week: {w}')
         for s in weeks[w]:
-            # Auto-discovered links first: Prep, then the lecture page (labeled
-            # "Reading" on exercise rows) and its deck, then the manual links.
-            reading = "Reading" if s["type"] == "exercise" else "Lecture"
+            # Auto-discovered links first: Prep, then the lecture page and its
+            # deck, then the manual links. The lecture page is the day's
+            # "Reading" on an exercise row; on an exam row it is revision
+            # material nobody lectured, so say so rather than calling it a
+            # lecture that never happened.
+            reading = {"exercise": "Reading",
+                       "exam": "Optional reading"}.get(s["type"], "Lecture")
             auto = prep_links(s["date"]) + lecture_links(s["date"], reading)
             # Internal links are written relative to the site root (no leading
             # slash): docs/index.md sits at the root, so they resolve whether

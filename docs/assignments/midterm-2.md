@@ -43,8 +43,8 @@ Worth 15% of the course grade.
 - User mode: privilege levels, the trampoline page and why it must be mapped
   at the same virtual address in both tables, the trapframe, `ecall`
 
-**Not on this exam**: `exec`, file descriptors, `fork`/`wait`, pipes. Those are
-the final's territory.
+**Not on this exam**: `exec`, file descriptors, `fork`/`wait`. Those are the
+final's territory. Pipes are on no exam at all.
 
 ## What the questions look like
 

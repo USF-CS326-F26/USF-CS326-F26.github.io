@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipes, the Payoff, and Final Review - CS 326</title>
+    <title>Pipes, the Payoff, and Revision - CS 326</title>
 
     <!-- Reveal.js CSS -->
     <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
@@ -175,11 +175,11 @@
         <div class="slides">
             <section data-markdown>
                 <textarea data-template>
-# Pipes, the Payoff, and Final Review
+# Pipes, the Payoff, and Revision
 
 ## CS 326 Operating Systems
 
-L26 · December 8, 2026 · the payoff (`53k`) + final review
+L26 · optional reading · not lectured, not examinable
 
 ---
 
@@ -198,10 +198,10 @@ L26 · December 8, 2026 · the payoff (`53k`) + final review
 
 1. **Pipes** — a bounded buffer with two names, and the one rule everyone gets wrong
 2. **The payoff** — your week-3 `grep`, unchanged, on your own kernel
-3. **Final review** — power-on to a prompt, rv6 vs Linux, and the honest gaps
+3. **Revision** — power-on to a prompt, rv6 vs Linux, and the honest gaps
 
 <div class="info-box">
-Nothing new is required after today. Everything below is either extra credit or exam material.
+December 8 is the <strong>final exam</strong>, so none of this is lectured and <strong>pipes are not on the exam</strong>. Parts 1&ndash;2 are here because they are worth seeing; part 3 is revision.
 </div>
 
 ---
@@ -584,14 +584,15 @@ Shorter: signals, `sleep`/`wakeup`, kernel preemption, `chdir`/`mkdir`/`readdir`
 
 ## The Final Exam
 
-- **Dec 11–17**, registrar's slot · paper, closed book · the printed Cheatsheet only · 20%
+- **Tue Dec 8**, in class, the last day of the term · paper, closed book · the printed Cheatsheet only · 20%
+- No exam during finals week
 - **Cumulative, weighted toward `49k`–`53k`**:
   `exec` and program loading · file descriptors · `fork`/`exit`/`wait` ·
-  why the split exists · userland and pid 1 · pipes
-- Pipes are examinable **exactly as today presents them** — semantics and construction. `55k_pipes` is extra credit; no question depends on it.
+  why the split exists · userland and pid 1
+- **Pipes are not on the exam.** The pipe slides are enrichment; `55k_pipes` stays design-only extra credit.
 
 <div class="info-box">
-Expect one long question that walks a single operation through every layer. Prepare by narrating <code>rv6$ ls</code> — and today's boot walk — out loud.
+Expect one long question that walks a single operation through every layer. Prepare by narrating <code>rv6$ ls</code> — and the boot walk later in this deck — out loud, then work Practice Set 3 before its solutions go up on Dec 7.
 </div>
 
 ---

@@ -1,8 +1,17 @@
-# Pipes, the Payoff, and Final Review
+# Pipes, the Payoff, and Revision
+
+!!! note "Optional reading — not lectured, not examinable"
+
+    December 8 is the [final exam](../assignments/final.md), so this page is
+    never delivered in class. **Pipes are not on the exam**, and nothing here is
+    required. Sections 4–6 are the best revision material in the course and are
+    worth the hour; sections 1–2 are here because pipes are the idea that ties
+    `fork`, `dup`, and `exec` into a single mechanism, and it would be a shame
+    to finish an OS course without seeing it.
 
 ## Overview
 
-The last session, in three parts. **Pipes**: a bounded ring buffer with a
+Three parts, none of them owed to anyone. **Pipes**: a bounded ring buffer with a
 reader end and a writer end, each named by a file descriptor. The buffer is
 tiny and uninteresting; the semantics are the whole subject, and one rule —
 when `read` returns 0 — is the most reliably mis-implemented detail in Unix.
@@ -11,11 +20,11 @@ Once the buffer exists, `a | b` needs no new kernel feature at all: fork twice,
 the `wc` and `grep` you wrote in September, recompiled as `no_std` for RISC-V and
 running on the kernel you built, from source files that never contained a
 target-specific line. A working `grep` is 2,854 bytes against a 64 KiB budget.
-**Final review**: one annotated walk from power-on to the `rv6$` prompt naming
+**Revision**: one annotated walk from power-on to the `rv6$` prompt naming
 every mechanism as it appears, a table mapping each rv6 mechanism to its Linux
-counterpart, an honest list of what rv6 does not do, and the precise scope of
-the final. The payoff is `53k_ship_your_commands`, which you ran on Friday;
-pipes are the design-only extra-credit `55k_pipes` on the
+counterpart, an honest list of what rv6 does not do, and the scope of the final.
+The payoff is `53k_ship_your_commands`, which you ran on December 4; pipes are
+the design-only extra-credit `55k_pipes` on the
 [extra-credit page](../assignments/extra-credit.md).
 
 ## Learning Objectives
@@ -41,7 +50,7 @@ pipes are the design-only extra-credit `55k_pipes` on the
 
 - Exercises `50k_file_descriptors` and `51k_fork_wait` — the `ofile` table, the
   console at fds 0/1/2, and the call that returns twice.
-- Exercise `52k_userland` and last session — `exec_into`, and the shell as an
+- Exercise `52k_userland` and L25 — `exec_into`, and the shell as an
   ordinary unprivileged program.
 - Exercises `37k_spinlocks` and `38k_semaphores` — a pipe is shared mutable state
   touched by two processes, which is what those exercises were for.
@@ -265,7 +274,7 @@ flowchart LR
 Notice what `exec` contributes: **nothing**. The child rearranges its own
 descriptors *before* becoming `a`, and `exec` preserves the fd table because it
 replaces only the address space (`exec_into()` in `exec.rs`). That is the payoff of the
-`fork`/`exec` split argued last session, made concrete: redirection and
+`fork`/`exec` split argued in L25, made concrete: redirection and
 pipelines need no parameters on `exec`, because there is a whole process
 in between where ordinary code can run.
 
@@ -434,7 +443,7 @@ decide you did not need it.
 
 ---
 
-## 4. Final Review I: Power-On to a Prompt
+## 4. Revision I: Power-On to a Prompt
 
 One walk, in order, naming the mechanism at each step. If you can narrate this
 out loud you can answer most of what the final asks.
@@ -472,14 +481,14 @@ flowchart TD
 | 11 | `shell::run` prints `rv6$ ` and calls `getc`, which loops on `wfi` | Blocking, honestly implemented: halt the core until an interrupt | `shell.rs`, `console.rs` | `46k` |
 | 12 | You press a key: UART IRQ → PLIC claim → `kernelvec` → `kerneltrap` → `console::intr` pushes to the 256-byte ring → `plic::complete` | Producer/consumer across an interrupt boundary, no lock needed on one hart | `trap.rs`, `console.rs` | `45k` |
 
-From `rv6$` onward the story is the one told last session: `run sh` execs a
+From `rv6$` onward the story is the one told in L25: `run sh` execs a
 user-mode shell, which `fork`s, has the child `exec` your command, and `wait`s.
 Six user↔kernel transitions, two address spaces built and one destroyed, per
 word typed.
 
 ---
 
-## 5. Final Review II: rv6 and Linux, Side by Side
+## 5. Revision II: rv6 and Linux, Side by Side
 
 Everything in the left column is something you wrote. The point of the right
 column is that you now know what to *look for* — the names differ, the problems
@@ -514,7 +523,7 @@ you will recognize the shape.
 
 ---
 
-## 6. Final Review III: What rv6 Does Not Do
+## 6. Revision III: What rv6 Does Not Do
 
 Being precise about the gap is part of understanding the thing. Four big
 omissions, and what each would actually take.
@@ -565,10 +574,11 @@ clock; and networking. None of them is mysterious now.
 
 ## 7. The Final Exam
 
-**When:** December 11–17, in the registrar's assigned slot — check the official
-schedule, not this page. **Format:** pencil and paper, closed book, one
-permitted reference: the [Cheatsheet](../guides/cheatsheet.md), printed. No
-devices. Worth 20% of the grade.
+**When:** Tuesday, December 8, in class, in the regular Tuesday slot — the last
+day of the term. There is no exam during finals week. **Format:** pencil and
+paper, closed book, one permitted reference: the
+[Cheatsheet](../guides/cheatsheet.md), printed. No devices. Worth 20% of the
+grade.
 
 **Scope:** cumulative, weighted toward `49k`–`53k`. Anything from either midterm
 may appear as a building block, but no question rests only on old material. The
@@ -584,12 +594,10 @@ bulk of the exam is:
 - `fork` + `exec` together — why the split exists and what it makes possible
 - userland — `init` as pid 1, and what it means for the shell to be an ordinary
   unprivileged program
-- pipes — the ring buffer, the blocking rules, the EOF rule, and the
-  `fork`/`dup`/`exec` construction of `a | b`
 
-On pipes specifically: they are examinable **exactly as this lecture presents
-them** — semantics and construction. Pipes are extra credit and have no starter, so no question
-depends on having implemented one.
+**Pipes are not on the exam.** Sections 1 and 2 of this page are optional
+enrichment: nothing on the exam depends on them, and `55k_pipes` remains
+design-only extra credit.
 
 Expect one long question that walks a single operation through every layer.
 Past form: *trace `rv6$ ls` from the keypress that completes the line to the
@@ -597,7 +605,9 @@ moment `ls` exits*, naming at each step which component acts, which CSR or data
 structure is involved, and what the alternative would have cost. Section 4 of
 this page is the other half of that question, told from power-on. Prepare by
 narrating both out loud. Then do
-[Practice Set 3](../assignments/practice-set-03.md) on paper, and reread
+[Practice Set 3](../assignments/practice-set-03.md) on paper before its
+solutions go up on December 7 — with the exam on the last day of class, that set
+and its solutions are the review. Reread
 [rv6 Architecture](../guides/rv6-architecture.md), which is the best single
 revision document in the course.
 

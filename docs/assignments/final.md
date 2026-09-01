@@ -1,9 +1,10 @@
 # Final Exam
 
-**December 11–17 — in the registrar's assigned slot**
+**Tuesday, December 8 — in class, in the regular Tuesday slot**
 
-Check the official final exam schedule for the exact date, time, and room. It
-is set by the registrar, not by the course.
+The final is given on the last day of class, in the room and at the time we
+meet every Tuesday. **There is no exam during finals week**, so December 8 is
+the last thing you owe the course.
 
 ## Format
 
@@ -31,9 +32,10 @@ appear as a building block. The new material — and the bulk of the exam — is
   what that split makes possible that a single `spawn` would not
 - **Userland**: `init` as pid 1, and what it means for the shell to be an
   ordinary unprivileged program
-- **Pipes**, at the design level only: a bounded ring buffer behind two
-  descriptors; blocking; how `a | b` falls out of fork + dup + exec. `55k_pipes`
-  is extra credit and no question depends on having built it
+
+**Pipes are not on the exam.** They are never lectured, so nothing on the exam
+depends on them. The pipes material in [L26](../lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review.md)
+is optional reading, and `55k_pipes` remains design-only extra credit.
 
 ## The question you should expect
 
@@ -50,8 +52,11 @@ address space construction, `sret` into user mode, the `write` syscall,
 
 ## How to prepare
 
-1. Do [Practice Set 3](practice-set-03.md) on paper. It is built from the
-   final's material specifically.
+1. Do [Practice Set 3](practice-set-03.md) on paper, before its solutions go up
+   on Monday, December 7. It is built from the final's material specifically,
+   and with the exam on the last day of class there is no session in which we
+   work it together — attempting it first and then reading the solutions is the
+   whole of the review.
 2. Reread [rv6 Architecture](../guides/rv6-architecture.md) end to end. It is
    the single best revision document in the course.
 3. Boot your own kernel and drive it. Being able to picture what actually

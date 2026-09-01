@@ -584,15 +584,17 @@ weeks:
   - week: 16
     tuesday:
       date: "Dec 8"
-      type: "lecture"
-      topic: "L26 The Payoff: Your Commands on Your Kernel, and Final Review"
+      type: "exam"
+      topic: "FINAL EXAM — cumulative, weighted toward 49k–53k"
       links:
-        - text: "Lecture"
+        - text: "Optional reading"
           url: "lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review/"
         - text: "Slides"
           url: "lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html"
         - text: "Final Exam"
           url: "assignments/final/"
+        - text: "Exam Prep"
+          url: "guides/exam-prep/"
         - text: "Practice Set 3"
           url: "assignments/practice-set-03/"
 
