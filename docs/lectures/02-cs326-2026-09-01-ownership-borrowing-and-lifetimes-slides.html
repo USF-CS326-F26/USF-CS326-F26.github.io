@@ -275,6 +275,11 @@ No `free`. No collector. The release point is visible in the source.
 
 ## What a Move Actually Is
 
+```rust
+let a = String::from("kernel");
+let b = a;                  // `b` owns the buffer now; `a` is dead
+```
+
 ```text
    stack                                     heap
 BEFORE  a: { ptr, len=6, cap=6 } ─────────▶  [ k e r n e l ]
