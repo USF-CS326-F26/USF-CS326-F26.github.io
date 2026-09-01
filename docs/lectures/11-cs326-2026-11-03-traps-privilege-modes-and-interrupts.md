@@ -69,11 +69,11 @@ flowchart LR
     M["M · machine\nstart.rs, timervec"]
     S["S · supervisor\nthe rv6 kernel"]
     U["U · user\nprograms"]
-    M -->|"mret · start.rs:54"| S
+    M -->|"mret · start.rs"| S
     S -->|"sret · userret"| U
     U -->|"ecall / fault / interrupt"| S
     S -->|"undelegated trap"| M
-    M -.->|"mret · start.rs:106"| S
+    M -.->|"mret · start.rs"| S
 ```
 
 > Key distinction: *privilege* and *address space* are independent. Sv39
@@ -150,17 +150,17 @@ one rung down — the densest twenty lines in the course, and the failure mode
 when you get them wrong is a machine that prints nothing.
 
 ```text
-  start.rs:25  start()          in M-mode, no page table, full power
+  start.rs  start()          in M-mode, no page table, full power
     |
-    |  1. mstatus.MPP = 01          where mret goes          start.rs:28-31
-    |  2. mepc = kmain              what pc mret loads       start.rs:34
-    |  3. satp = 0                  paging off for now       start.rs:37
-    |  4. medeleg = mideleg = 0xffff  send traps to S        start.rs:40
-    |  5. pmpaddr0 / pmpcfg0        let S touch memory       start.rs:43-44
-    |     mcounteren = 0xffffffff   let S read `time`        start.rs:47
-    |  6. timerinit()               arm the CLINT            start.rs:51
+    |  1. mstatus.MPP = 01          where mret goes          start.rs
+    |  2. mepc = kmain              what pc mret loads       start.rs
+    |  3. satp = 0                  paging off for now       start.rs
+    |  4. medeleg = mideleg = 0xffff  send traps to S        start.rs
+    |  5. pmpaddr0 / pmpcfg0        let S touch memory       start.rs
+    |     mcounteren = 0xffffffff   let S read `time`        start.rs
+    |  6. timerinit()               arm the CLINT            start.rs
     v
-  start.rs:54  mret  ------------->  kmain, in S-mode
+  start.rs  mret  ------------->  kmain, in S-mode
 ```
 
 ### `mstatus.MPP` and `mepc`: where `mret` lands
@@ -171,10 +171,10 @@ it returns *to* (`00` U, `01` S, `11` M), and `mepc` is the address. Neither
 was saved by a real trap. `start()` forges both, and `mret` cannot tell the
 difference — you enter a lower mode by pretending you were already there.
 
-The read-modify-write at `start.rs:28-31` is not decoration. `mstatus` holds a
+The read-modify-write at `start.rs` is not decoration. `mstatus` holds a
 dozen unrelated fields, so blindly writing `0b01 << 11` would zero all of them.
-`start.rs:13-14` name the mask and the value; `:29` clears the field, `:30`
-sets it. That pattern is how you touch any packed CSR.
+`MSTATUS_MPP_MASK` and `MSTATUS_MPP_SUPERVISOR` (`start.rs`) name the mask and the
+value; one clears the field, the next sets it. That pattern is how you touch any packed CSR.
 
 ### `medeleg` and `mideleg`: delegation
 
@@ -183,7 +183,7 @@ would vector to `mtvec`, and your S-mode handler would never run unless M-mode
 inspected the cause and bounced it back down by hand. Delegation removes that
 round trip. `medeleg` is a bitmask over *exception* cause codes, `mideleg` over
 *interrupt* cause codes; a set bit means "when this trap happens in S or U mode,
-take it directly in S-mode." `start.rs:40` writes `0xffff` to both.
+take it directly in S-mode." `start.rs` writes `0xffff` to both.
 
 Two subtleties hide in that line. Delegation applies only to traps taken *in* S
 or U mode. And some bits are hardwired zero and ignore the write: `medeleg` bit
@@ -211,8 +211,8 @@ zero. The hart jumps to address 0, faults, vectors to 0, forever. No error, no
 panic, no output — the worst failure signature in this course, two lines away:
 
 ```rust
-asm!("li t0, 0x3fffffffffffff", "csrw pmpaddr0, t0", out("t0") _);  // start.rs:43
-asm!("li t0, 0xf", "csrw pmpcfg0, t0", out("t0") _);                // start.rs:44
+asm!("li t0, 0x3fffffffffffff", "csrw pmpaddr0, t0", out("t0") _);  // start.rs
+asm!("li t0, 0xf", "csrw pmpcfg0, t0", out("t0") _);                // start.rs
 ```
 
 `pmpcfg0`'s low byte configures entry 0: bit 0 R, bit 1 W, bit 2 X, bits 4:3
@@ -222,7 +222,7 @@ with TOR. PMP addresses are byte addresses shifted right by two, so
 `0x3fffffffffffff` (2^54 − 1) gives a top of range of 2^56 − 4: one entry
 covering all of physical memory.
 
-`mcounteren = 0xffffffff` (`start.rs:47`) rides along, letting S-mode read the
+`mcounteren = 0xffffffff` (`start.rs`) rides along, letting S-mode read the
 `time` and `cycle` counters; without it `csrr t0, time` is an illegal
 instruction, because counter access is a privilege too.
 
@@ -255,24 +255,24 @@ interrupts disabled**, so a tick cannot land on a half-saved register set.
 `stvec`'s low two bits are a MODE field, not address bits: `00` is Direct, and
 `01` is Vectored, where interrupt *i* goes to BASE + 4×*i*. rv6 uses Direct and
 dispatches in software, which is why `kerneltrap` starts by reading `scause`,
-and why `kernelvec` is `.align 4` (`trap.rs:89`) — point `stvec` at a
+and why `kernelvec` is `.align 4` (`trap.rs`) — point `stvec` at a
 misaligned handler and you have chosen Vectored mode with a BASE three bytes
 off.
 
 ### `kernelvec`: what software must do
 
-`trap.rs:86-131` is the assembly the hardware refuses to write for you:
+`trap.rs` is the assembly the hardware refuses to write for you:
 
 ```asm
 kernelvec:
-    addi sp, sp, -128      # trap.rs:91   carve a frame on the current stack
-    sd ra,   0(sp)         # trap.rs:92   save the 16 caller-saved registers
+    addi sp, sp, -128      # trap.rs   carve a frame on the current stack
+    sd ra,   0(sp)         # trap.rs   save the 16 caller-saved registers
     ...                    #              ra, t0-t2, a0-a7, t3-t6
-    call kerneltrap        # trap.rs:109  into Rust
-    ld ra,   0(sp)         # trap.rs:111  restore all sixteen
+    call kerneltrap        # trap.rs  into Rust
+    ld ra,   0(sp)         # trap.rs  restore all sixteen
     ...
-    addi sp, sp, 128       # trap.rs:127
-    sret                   # trap.rs:129  resume at sepc, mode from SPP
+    addi sp, sp, 128       # trap.rs
+    sret                   # trap.rs  resume at sepc, mode from SPP
 ```
 
 Why sixteen and not thirty-one? `kerneltrap` is a normal Rust function under
@@ -285,10 +285,10 @@ containing the kernel, hence `48k_user_mode`'s trampoline.
 ### Decoding `scause`
 
 ```rust
-if (scause >> 63) == 1 {          // trap.rs:55
-    match scause & 0xff { ... }   // trap.rs:57  an interrupt
+if (scause >> 63) == 1 {          // trap.rs
+    match scause & 0xff { ... }   // trap.rs  an interrupt
 } else {
-    if scause == 3 { ... }        // trap.rs:75  an exception
+    if scause == 3 { ... }        // trap.rs  an exception
 }
 ```
 
@@ -308,12 +308,12 @@ re-executes the faulting instruction forever.
 
 ### Advancing `sepc`, and `sret`
 
-`trap.rs:75-78` is the whole breakpoint handler:
+`kerneltrap()` (`trap.rs`) is the whole breakpoint handler:
 
 ```rust
 if scause == 3 {
     TRAP_COUNT += 1;
-    asm!("csrw sepc, {}", in(reg) sepc + 4);   // trap.rs:77
+    asm!("csrw sepc, {}", in(reg) sepc + 4);   // trap.rs
 }
 ```
 
@@ -353,15 +353,15 @@ two registers matter:
 
 | Register | Address | Meaning |
 |---|---|---|
-| `mtime` | `0x0200_0000 + 0xBFF8` (`start.rs:17`) | A free-running 64-bit counter, 10 MHz on `virt` |
-| `mtimecmp` | `0x0200_0000 + 0x4000` (`start.rs:18`) | Hart 0's alarm. While `mtime >= mtimecmp`, a machine timer interrupt is pending |
+| `mtime` | `0x0200_0000 + 0xBFF8` (`start.rs`) | A free-running 64-bit counter, 10 MHz on `virt` |
+| `mtimecmp` | `0x0200_0000 + 0x4000` (`start.rs`) | Hart 0's alarm. While `mtime >= mtimecmp`, a machine timer interrupt is pending |
 
 That second sentence is the whole device. There is no "fire once" mode and no
 repeat register: the interrupt is *level-triggered* on the comparison, so the
 only way to clear it is to push `mtimecmp` into the future, and a handler that
-does not re-enters immediately. `start.rs:61-62` arms the first one; with
-`INTERVAL = 1_000_000` (`start.rs:19`) against a 10 MHz counter that is 0.1 s,
-ten ticks a second. `start.rs:74` sets `mie` bit 7, `MTIE`.
+does not re-enters immediately. `timerinit()` (`start.rs`) arms the first one; with
+`INTERVAL = 1_000_000` (`start.rs`) against a 10 MHz counter that is 0.1 s,
+ten ticks a second. `start.rs` sets `mie` bit 7, `MTIE`.
 
 ### Why machine mode has to do this
 
@@ -380,22 +380,22 @@ wants — and rv6, like xv6, forwards it down by hand.
    machine timer interrupt, cause 7  --- cannot be delegated ---
      |
      v
-   timervec   (M-mode, start.rs:80-107)
-     |  csrrw a0, mscratch, a0      get a scratch register  start.rs:86
-     |  mtimecmp += INTERVAL        rearm, or it re-fires   start.rs:92-96
-     |  li a1, 2 ; csrw sip, a1     raise sip.SSIP          start.rs:99-100
-     |  mret                                                start.rs:106
+   timervec   (M-mode, start.rs)
+     |  csrrw a0, mscratch, a0      get a scratch register  start.rs
+     |  mtimecmp += INTERVAL        rearm, or it re-fires   start.rs
+     |  li a1, 2 ; csrw sip, a1     raise sip.SSIP          start.rs
+     |  mret                                                start.rs
      v
    supervisor software interrupt, cause 1  (scause = 0x8000...0001)
      |
      v
-   kernelvec -> kerneltrap  (trap.rs:58)  clear sip.SSIP, TICKS += 1
+   kernelvec -> kerneltrap  (trap.rs)  clear sip.SSIP, TICKS += 1
 ```
 
 `timervec` needs a register before it can do anything, and every register
-belongs to the interrupted kernel. `csrrw a0, mscratch, a0` (`start.rs:86`)
+belongs to the interrupted kernel. `csrrw a0, mscratch, a0` (`start.rs`)
 swaps `a0` with `mscratch` in one instruction, stashing the interrupted value
-and loading a pointer to `TIMER_SCRATCH` (`start.rs:22`) in the same step.
+and loading a pointer to `TIMER_SCRATCH` (`start.rs`) in the same step.
 
 The forwarding is `li a1, 2` then `csrw sip, a1` — set `SSIP`, the supervisor
 **software** interrupt pending bit, which exists so one piece of privileged
@@ -410,25 +410,25 @@ code can poke another. rv6's tick is a *software* interrupt carrying a
 ### What the kernel must do to receive it
 
 Three gates must all be open, each a separate line of code. `intr_on`
-(`trap.rs:39-42`) opens two:
+(`trap.rs`) opens two:
 
 ```rust
-asm!("csrs sie, {}", in(reg) 1usize << 1);      // trap.rs:40  SSIE: this source
-asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs:41  SIE: the master switch
+asm!("csrs sie, {}", in(reg) 1usize << 1);      // trap.rs  SSIE: this source
+asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs  SIE: the master switch
 ```
 
 An interrupt is delivered only when its bit is set in `sie`, its bit is set in
 `sip`, and `sstatus.SIE` is 1. `csrs` — set bits, leave the rest — is the right
 instruction; `csrw` here would clear `sie.SEIE` and silently break the console
-the moment `45k_console` turns it on (`console.rs:63`). One rule nobody writes
+the moment `45k_console` turns it on (`init()` in `console.rs`). One rule nobody writes
 down: in **user** mode delegated supervisor interrupts are always enabled
 regardless of `sstatus.SIE`, which governs only the kernel.
 
-Then the handler must clear the pending bit (`trap.rs:62-63`):
+Then the handler must clear the pending bit (`kerneltrap()` in `trap.rs`):
 
 ```rust
 asm!("csrr {}, sip", out(reg) sip);
-asm!("csrw sip, {}", in(reg) sip & !2);   // trap.rs:63
+asm!("csrw sip, {}", in(reg) sip & !2);   // trap.rs
 ```
 
 Skip it and you get an **interrupt storm**: `SSIP` is still set, `sie.SSIE` is
@@ -493,14 +493,14 @@ and `48k_user_mode` for `scause = 8`, the system call.
 |---|---|---|
 | Privilege mode | Two bits of hart state deciding which instructions are legal | M = `11`, S = `01`, U = `00` |
 | Exception vs interrupt | Synchronous, caused by the current instruction, versus asynchronous | `ebreak` → `scause = 3`; timer → `scause = 0x8000…0001` |
-| `mstatus.MPP` | Bits 12:11: the mode `mret` returns to | `0b01 << 11` for supervisor (`start.rs:14`, `start.rs:30`) |
-| Delegation | `medeleg`/`mideleg` masks routing traps straight to S-mode | `0xffff` to both (`start.rs:40`); `mideleg` bits 3, 7, 11 hardwired 0 |
-| PMP | Physical range checks on S/U accesses, below paging | `pmpcfg0 = 0xf` = R\|W\|X\|TOR (`start.rs:43-44`) |
-| `stvec` | The supervisor trap vector; low two bits are the MODE field | `kernelvec`, `.align 4` for Direct mode (`trap.rs:35`, `trap.rs:89`) |
-| `sepc` | Address of the trapping instruction; where `sret` resumes | `sepc + 4` steps over an `ebreak` (`trap.rs:77`) |
-| `scause` | Bit 63 = kind, low bits = cause code | `(scause >> 63) == 1` (`trap.rs:55`) |
-| Interrupt gate | `sie` bit ∧ `sip` bit ∧ `sstatus.SIE` — all three, or nothing fires | `trap.rs:40-41` opens two of them |
-| Interrupt storm | Handler returns without clearing the pending bit, so the trap re-fires | Missing `csrw sip, sip & !2` (`trap.rs:63`) |
+| `mstatus.MPP` | Bits 12:11: the mode `mret` returns to | `0b01 << 11` for supervisor (`start.rs`) |
+| Delegation | `medeleg`/`mideleg` masks routing traps straight to S-mode | `0xffff` to both (`start.rs`); `mideleg` bits 3, 7, 11 hardwired 0 |
+| PMP | Physical range checks on S/U accesses, below paging | `pmpcfg0 = 0xf` = R\|W\|X\|TOR (`start.rs`) |
+| `stvec` | The supervisor trap vector; low two bits are the MODE field | `kernelvec`, `.align 4` for Direct mode (`trap.rs`) |
+| `sepc` | Address of the trapping instruction; where `sret` resumes | `sepc + 4` steps over an `ebreak` (`trap.rs`) |
+| `scause` | Bit 63 = kind, low bits = cause code | `(scause >> 63) == 1` (`trap.rs`) |
+| Interrupt gate | `sie` bit ∧ `sip` bit ∧ `sstatus.SIE` — all three, or nothing fires | `trap.rs` opens two of them |
+| Interrupt storm | Handler returns without clearing the pending bit, so the trap re-fires | Missing `csrw sip, sip & !2` (`trap.rs`) |
 | Preemption | The kernel regaining the CPU without the process cooperating | Needs a timer; rv6 ticks but does not yet force a yield |
 
 ---
@@ -523,9 +523,9 @@ must be advanced before `sret`.
 
 | | Kind | Cause | rv6 does | Advance `sepc`? |
 |---|---|---|---|---|
-| (a) | Interrupt | Supervisor software — the forwarded timer tick | Clears `sip.SSIP`, `TICKS += 1` (`trap.rs:58-64`) | **No** |
-| (b) | Exception | Breakpoint, `ebreak` | `TRAP_COUNT += 1`, `sepc += 4` (`trap.rs:75-78`) | **Yes** |
-| (c) | Interrupt | Supervisor external — a device via the PLIC | `console::intr()` (`trap.rs:69`) | **No** |
+| (a) | Interrupt | Supervisor software — the forwarded timer tick | Clears `sip.SSIP`, `TICKS += 1` (`trap.rs`) | **No** |
+| (b) | Exception | Breakpoint, `ebreak` | `TRAP_COUNT += 1`, `sepc += 4` (`trap.rs`) | **Yes** |
+| (c) | Interrupt | Supervisor external — a device via the PLIC | `console::intr()` (`trap.rs`) | **No** |
 | (d) | Exception | Illegal instruction | Falls through the `if`; nothing | Would have to; rv6 loops |
 | (e) | Exception | Instruction access fault | Nothing | Would have to; rv6 hangs |
 | (f) | Interrupt | Supervisor timer | No `5` arm; `_ => {}` | No |
@@ -630,7 +630,7 @@ pc = 0x8000_5000         stvec, Direct mode
 ```
 
 **(b)** `0x8000_9000 − 128 = 0x8000_8F80`. `kernelvec` subtracts 128 at
-`trap.rs:91` before saving anything, and `kerneltrap` runs on that same stack —
+`trap.rs` before saving anything, and `kerneltrap` runs on that same stack —
 no stack switch happens on a kernel trap.
 
 **(c)** `0x8000_1238`. `sret` also restores `SIE` from `SPIE` (back to 1), sets
@@ -645,13 +645,13 @@ so the loop is stack-neutral — silent, infinite, leaving no trace.
 
 ### Problem 5: Timer arithmetic and drift
 
-`mtime` runs at 10 MHz and `INTERVAL = 1_000_000`. At boot, `start.rs:61-62`
+`mtime` runs at 10 MHz and `INTERVAL = 1_000_000`. At boot, `timerinit()` (`start.rs`)
 reads `mtime = 4_200_000` and writes `mtimecmp`.
 
 (a) At what `mtime` does the first interrupt fire, and how many ticks per
 second? (b) The kernel spends 40,000 cycles with interrupts disabled before
 this tick is serviced; `timervec` does `mtimecmp += INTERVAL`
-(`start.rs:92-96`). What is the new `mtimecmp`? (c) A student rewrites it as
+(`start.rs`). What is the new `mtimecmp`? (c) A student rewrites it as
 `mtimecmp = mtime + INTERVAL` — what now, and what goes wrong over an hour?
 (d) The *supervisor* handler forgets `csrw sip, sip & !2`. What happens?
 
@@ -711,7 +711,7 @@ Find three distinct defects and give the symptom of each.
 <details>
 <summary>Click to reveal solution</summary>
 
-**1. No top-bit test** (`trap.rs:55` is the missing line). `scause & 0xff`
+**1. No top-bit test** (`trap.rs` is the missing line). `scause & 0xff`
 collapses the two cause spaces onto each other, so a real instruction access
 fault — a jump into unmapped memory — matches the `1` arm and is treated as a
 timer tick: the handler clears a bit that is not pending, increments `TICKS`,
@@ -720,7 +720,7 @@ and returns to the faulting instruction, which faults again.
 **2. `csrw sip, 0` instead of clearing only bit 1.** It survives, because only
 `SSIP` is writable through the `sip` view, but the same pattern applied to
 `sie` or `sstatus` — which students do copy — disables the console's interrupt
-or the master enable. Use `& !2` (`trap.rs:63`), or `csrc`.
+or the master enable. Use `& !2` (`trap.rs`), or `csrc`.
 
 **3. No arm for cause 9.** Once `45k_console` routes the UART through the PLIC,
 a supervisor external interrupt arrives with bit 63 set and low bits 9. The
@@ -753,10 +753,10 @@ level-triggered source is always a storm.
 ## Summary
 
 1. **Three modes, and you cannot ask which one you are in.** M owns everything, S runs the kernel, U runs programs. Privilege belongs to the hart, not the instruction bytes, and the only evidence a lower mode gets is what fails.
-2. **Down is a return; up is a trap.** `mret` and `sret` are the only ways to lower privilege, and both work by restoring forged state (`start.rs:54`). The only way up is an event whose handler address the upper mode chose in advance.
+2. **Down is a return; up is a trap.** `mret` and `sret` are the only ways to lower privilege, and both work by restoring forged state (`start.rs`). The only way up is an event whose handler address the upper mode chose in advance.
 3. **Exception, interrupt, trap are three words.** An exception is synchronous and caused by the current instruction; an interrupt is asynchronous; a trap is the transfer of control either produces. Bit 63 of `scause` is all that separates their overlapping cause codes.
-4. **The M→S handoff is six registers and all must be right.** `mstatus.MPP`, `mepc`, `medeleg`/`mideleg`, `pmpaddr0`/`pmpcfg0`, then `mret` (`start.rs:28-54`). Most of the failure modes print nothing at all.
+4. **The M→S handoff is six registers and all must be right.** `mstatus.MPP`, `mepc`, `medeleg`/`mideleg`, `pmpaddr0`/`pmpcfg0`, then `mret` (`start.rs`). Most of the failure modes print nothing at all.
 5. **PMP fails closed.** If no entry matches an S-mode access and any entry is implemented, the access is denied. Skip `pmpcfg0` and the kernel faults on its first fetch, vectors to an unset `stvec`, and spins at address 0 in silence.
-6. **The hardware writes five things and saves nothing.** `scause`, `sepc`, `stval`, the `sstatus` triple, and `pc ← stvec` — not one general register, not the stack, not the page table. `kernelvec` (`trap.rs:86-131`) covers the caller-saved half; the calling convention covers the rest.
-7. **`sepc` points at the trapping instruction, and deciding what that means is your job.** Advance past an `ebreak` or an `ecall` (`trap.rs:77`); leave it alone after an interrupt. Forgetting is an infinite, silent loop.
-8. **A timer is what makes a kernel a kernel.** The CLINT speaks only M-mode and its interrupt cannot be delegated, so `timervec` rearms `mtimecmp` and forwards the tick as `sip.SSIP` (`start.rs:92-100`). Without it a scheduler can switch only when a process cooperates.
+6. **The hardware writes five things and saves nothing.** `scause`, `sepc`, `stval`, the `sstatus` triple, and `pc ← stvec` — not one general register, not the stack, not the page table. `kernelvec` (`trap.rs`) covers the caller-saved half; the calling convention covers the rest.
+7. **`sepc` points at the trapping instruction, and deciding what that means is your job.** Advance past an `ebreak` or an `ecall` (`trap.rs`); leave it alone after an interrupt. Forgetting is an infinite, silent loop.
+8. **A timer is what makes a kernel a kernel.** The CLINT speaks only M-mode and its interrupt cannot be delegated, so `timervec` rearms `mtimecmp` and forwards the tick as `sip.SSIP` (`start.rs`). Without it a scheduler can switch only when a process cooperates.

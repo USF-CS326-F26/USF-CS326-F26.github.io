@@ -67,9 +67,9 @@ Two things make it worth building. First, it is the first object in this course
 that two processes **share without sharing memory**. `fork` gives a child a
 *copy* of the parent's address space; a pipe gives two processes a channel the
 kernel owns and both can name. Second, it costs almost nothing to add, because
-the file descriptor layer already exists. `FileKind` (`file.rs:23`) is an enum
+the file descriptor layer already exists. `FileKind` (`file.rs`) is an enum
 with `Console` and `Inode`; a pipe is a third variant. `sys_read` and
-`sys_write` (`syscall.rs:468`, `syscall.rs:517`) already dispatch on it. The
+`sys_write` (`syscall.rs`) already dispatch on it. The
 program's side of the interface does not change by one byte.
 
 > Key idea: "everything is a file" is not a slogan about files. It is the claim
@@ -109,7 +109,7 @@ that is about 580 years, so xv6 and rv6 both take the deal.
 
 The buffer is deliberately small. 512 bytes is xv6's `PIPESIZE`; a plausible
 rv6 choice is the same, since a fixed `[u8; 512]` in a `SpinLock`-protected
-table needs no allocator, exactly like `PROCS` (`proc.rs:65`). Linux uses 16
+table needs no allocator, exactly like `PROCS` (`proc.rs`). Linux uses 16
 pages — 64 KiB — per pipe by default, adjustable with `fcntl(F_SETPIPE_SZ)` up
 to `/proc/sys/fs/pipe-max-size`. Bigger buffers mean fewer blocking round trips
 and more memory pinned per pipe; the number is a throughput/footprint knob, not
@@ -172,10 +172,10 @@ stateDiagram-v2
 
 ### Where "block" comes from in rv6
 
-rv6 has no `sleep`/`wakeup`. It has `proc_yield` (`usermode.rs:363`) and a
-round-robin policy (`sched.rs:20`), so blocking is a polling loop: take the
+rv6 has no `sleep`/`wakeup`. It has `proc_yield` (`usermode.rs`) and a
+round-robin policy (`RoundRobin::pick_next()` in `sched.rs`), so blocking is a polling loop: take the
 lock, test the condition, release the lock, `proc_yield`, repeat. That is
-exactly the shape of `sys_wait` (`syscall.rs:141`), and on a single hart it is
+exactly the shape of `sys_wait` (`syscall.rs`), and on a single hart it is
 correct — just wasteful, since a blocked reader is `Runnable` and burns a
 timeslice each rotation.
 
@@ -264,7 +264,7 @@ flowchart LR
 
 Notice what `exec` contributes: **nothing**. The child rearranges its own
 descriptors *before* becoming `a`, and `exec` preserves the fd table because it
-replaces only the address space (`exec.rs:753`). That is the payoff of the
+replaces only the address space (`exec_into()` in `exec.rs`). That is the payoff of the
 `fork`/`exec` split argued last session, made concrete: redirection and
 pipelines need no parameters on `exec`, because there is a whole process
 in between where ordinary code can run.
@@ -326,7 +326,7 @@ façade looked like ceremony. This is what it was for.
 ### One source, two machines
 
 `ulib` has two backends chosen by the **target triple**, not a feature flag
-(`ulib/src/lib.rs:19`):
+(`ulib/src/lib.rs`):
 
 ```rust
 #![cfg_attr(target_os = "none", no_std)]
@@ -350,17 +350,17 @@ ulib::write_all(STDOUT, line)?;
 ```
 
 On your laptop that becomes `write(2)`. On `riscv64gc-unknown-none-elf` it
-becomes three instructions (`ulib/src/sys/rv6.rs:21`):
+becomes three instructions (`ecall3()` in `ulib/src/sys/rv6.rs`):
 
 ```asm
-li    a7, 16          # SYS_WRITE — the number from syscall.rs:28
+li    a7, 16          # SYS_WRITE — the number from syscall.rs
                       # a0 = fd, a1 = buffer, a2 = length
 ecall
 ```
 
 and from there: the trampoline you wrote in `48k_user_mode`, `usertrap`
-(`usermode.rs:385`), `dispatch` (`syscall.rs:33`), `sys_write`
-(`syscall.rs:517`), `getfile` (`syscall.rs:312`), and finally `uart::putc`
+(`usermode.rs`), `dispatch` (`syscall.rs`), `sys_write`
+(`syscall.rs`), `getfile` (`syscall.rs`), and finally `uart::putc`
 against the NS16550A at `0x1000_0000`. Every layer between the program and the
 glass is yours.
 
@@ -382,7 +382,7 @@ glass is yours.
         v
   the kernel image                exec::lookup("mygrep") finds it
         |
-        |  build_addrspace -> load_segment (vm.rs:196)
+        |  build_addrspace -> load_segment (vm.rs)
         v
   a fresh page table              image at USER_CODE = 0x0, R|X|U
                                   stack at USER_STACK = 0x1_0000, R|W|U
@@ -390,11 +390,11 @@ glass is yours.
 ```
 
 Two consequences of "flat image, byte 0 is the entry point" are worth naming.
-`ulib::main!` places `_start` in `.text.start` (`ulib/src/entry.rs:31`) and the
+`ulib::main!` places `_start` in `.text.start` (`ulib/src/entry.rs`) and the
 user linker script puts that section first, because a flat image has no
 `e_entry` field to read — without that, the linker is free to order some other
 function first and the program jumps into the middle of itself. And the image
-pages are mapped `PTE_R | PTE_X | PTE_U` with **no** `PTE_W` (`vm.rs:228`),
+pages are mapped `PTE_R | PTE_X | PTE_U` with **no** `PTE_W` (`vm.rs`),
 which means a shipped command cannot have a mutable global at all: its buffers
 live on the stack, which is the one `R|W|U` page. The address space is
 accidentally W^X, and the reason is that a flat image has nowhere to put a
@@ -411,7 +411,7 @@ exercise `54k_elf_loader`.
 | `head` | 2,713 bytes | 1 | 4.1% |
 | `grep` | 2,854 bytes | 1 | 4.4% |
 
-The budget is `MAX_PROG_PAGES = 16` pages (`memlayout.rs:65`), which is 64 KiB
+The budget is `MAX_PROG_PAGES = 16` pages (`memlayout.rs`), which is 64 KiB
 — the window between `USER_CODE` at 0 and `USER_STACK` at `0x1_0000`. All five
 commands together are 9,028 bytes: 14% of what a *single* program is allowed.
 
@@ -426,7 +426,7 @@ of those is doing anything.
 
 What removed the weight is not cleverness, it is absence: `#![no_std]` deletes
 formatting machinery and the collection types, `panic = "abort"` with the
-single panic handler in `ulib` (`ulib/src/sys/rv6.rs:66`) deletes unwinding,
+single panic handler in `ulib` (`ulib/src/sys/rv6.rs`) deletes unwinding,
 and static linking to a flat image deletes relocation and the loader. The
 lesson generalizes past this course. Most of the size of ordinary software is
 infrastructure that was linked in because it was easier to have it than to
@@ -441,36 +441,36 @@ out loud you can answer most of what the final asks.
 
 ```mermaid
 flowchart TD
-    R["reset: hart 0, machine mode\nQEMU ROM at 0x1000 jumps to 0x8000_0000"] --> E["_entry — set sp to top of STACK0\nentry.rs:18"]
-    E --> S["start — M-mode setup, then mret\nstart.rs:25"]
-    S --> K["kmain in SUPERVISOR mode\nmain.rs:97"]
+    R["reset: hart 0, machine mode\nQEMU ROM at 0x1000 jumps to 0x8000_0000"] --> E["_entry — set sp to top of STACK0\nentry.rs"]
+    E --> S["start — M-mode setup, then mret\nstart.rs"]
+    S --> K["kmain in SUPERVISOR mode\nmain.rs"]
     K --> U["uart::init — MMIO at 0x1000_0000"]
-    U --> A["kalloc::init — free list, end..PHYSTOP\nkalloc.rs:21"]
-    A --> V["kvmmake + kvminithart — satp, MMU ON\nvm.rs:125, vm.rs:177"]
-    V --> P["proc::init — 64 PCB slots\nproc.rs:74"]
-    P --> T["trap::init — stvec = kernelvec\ntrap.rs:33"]
+    U --> A["kalloc::init — free list, end..PHYSTOP\nkalloc.rs"]
+    A --> V["kvmmake + kvminithart — satp, MMU ON\nvm.rs, vm.rs"]
+    V --> P["proc::init — 64 PCB slots\nproc.rs"]
+    P --> T["trap::init — stvec = kernelvec\ntrap.rs"]
     T --> F["FS.init — 64 inodes, root at inode 1"]
-    F --> C["console::init — UART RX, PLIC, sie.SEIE\nconsole.rs:58"]
-    C --> I["intr_on — sstatus.SIE\ntrap.rs:39"]
-    I --> SH["shell::run — print rv6$, then getc\nshell.rs:343"]
-    SH --> W["getc spins on wfi until the ring buffer fills\nconsole.rs:47"]
+    F --> C["console::init — UART RX, PLIC, sie.SEIE\nconsole.rs"]
+    C --> I["intr_on — sstatus.SIE\ntrap.rs"]
+    I --> SH["shell::run — print rv6$, then getc\nshell.rs"]
+    SH --> W["getc spins on wfi until the ring buffer fills\nconsole.rs"]
 ```
 
 | # | What happens | Mechanism being demonstrated | Where | Exercise |
 |---|---|---|---|---|
 | 0 | Reset; QEMU's ROM jumps to RAM base with `a0` = hartid, `a1` = device tree | There is no BIOS: the kernel *is* the firmware | `-bios none` | `31k` |
-| 1 | `_entry` sets `sp` to the top of a 16 KiB static array, calls `start` | Rust cannot run without a stack, and the linker script puts `.entry` first | `entry.rs:18`, `kernel.ld` | `31k` |
-| 2 | `start` sets `mstatus.MPP = S`, `mepc = kmain`, delegates traps, opens PMP, arms the CLINT timer, `mret` | **Dropping privilege by faking a trap return** — the only way down | `start.rs:25` | `43k`, `44k` |
-| 3 | `uart::init` programs the NS16550A | Memory-mapped I/O: a device is a struct at a fixed address | `uart.rs`, `memlayout.rs:17` | `31k`, `41k` |
-| 4 | `kalloc::init` links every 4 KiB page from `end` to `PHYSTOP` into a free list | The free list lives *in* the free pages: an allocator that needs no memory | `kalloc.rs:21` | `32k` |
-| 5 | `kvmmake` builds an Sv39 tree, copies the trampoline to its own page, maps it at `MAXVA - PGSIZE`; `kvminithart` writes `satp` and `sfence.vma` | **The MMU turns on between two instructions.** The identity map is what makes the next one fetchable | `vm.rs:125`, `vm.rs:177` | `33k`, `39k` |
-| 6 | `proc::init` resets 64 PCB slots and `NEXTPID` | A fixed table, not a linked list: no allocator in the process layer | `proc.rs:74`, `param.rs` | `34k` |
-| 7 | `trap::init` writes `stvec` | One register decides where every supervisor trap lands | `trap.rs:33` | `43k` |
-| 8 | `FS.init` creates the root directory | 64 inodes, 128-byte files, all in RAM behind one `SpinLock` | `fs.rs:5`, `fs.rs:73` | `37k`, `40k` |
-| 9 | `console::init` enables UART RX, configures the PLIC, sets `sie.SEIE` | Interrupt routing: device → PLIC → hart → `stvec` | `console.rs:58`, `plic.rs` | `45k` |
-| 10 | `intr_on` sets `sstatus.SIE` | The global enable, deliberately last: nothing may interrupt half-built state | `trap.rs:39` | `44k` |
-| 11 | `shell::run` prints `rv6$ ` and calls `getc`, which loops on `wfi` | Blocking, honestly implemented: halt the core until an interrupt | `shell.rs:343`, `console.rs:47` | `46k` |
-| 12 | You press a key: UART IRQ → PLIC claim → `kernelvec` → `kerneltrap` → `console::intr` pushes to the 256-byte ring → `plic::complete` | Producer/consumer across an interrupt boundary, no lock needed on one hart | `trap.rs:46`, `console.rs:68` | `45k` |
+| 1 | `_entry` sets `sp` to the top of a 16 KiB static array, calls `start` | Rust cannot run without a stack, and the linker script puts `.entry` first | `entry.rs`, `kernel.ld` | `31k` |
+| 2 | `start` sets `mstatus.MPP = S`, `mepc = kmain`, delegates traps, opens PMP, arms the CLINT timer, `mret` | **Dropping privilege by faking a trap return** — the only way down | `start.rs` | `43k`, `44k` |
+| 3 | `uart::init` programs the NS16550A | Memory-mapped I/O: a device is a struct at a fixed address | `uart.rs`, `memlayout.rs` | `31k`, `41k` |
+| 4 | `kalloc::init` links every 4 KiB page from `end` to `PHYSTOP` into a free list | The free list lives *in* the free pages: an allocator that needs no memory | `kalloc.rs` | `32k` |
+| 5 | `kvmmake` builds an Sv39 tree, copies the trampoline to its own page, maps it at `MAXVA - PGSIZE`; `kvminithart` writes `satp` and `sfence.vma` | **The MMU turns on between two instructions.** The identity map is what makes the next one fetchable | `vm.rs` | `33k`, `39k` |
+| 6 | `proc::init` resets 64 PCB slots and `NEXTPID` | A fixed table, not a linked list: no allocator in the process layer | `proc.rs`, `param.rs` | `34k` |
+| 7 | `trap::init` writes `stvec` | One register decides where every supervisor trap lands | `trap.rs` | `43k` |
+| 8 | `FS.init` creates the root directory | 64 inodes, 128-byte files, all in RAM behind one `SpinLock` | `fs.rs` | `37k`, `40k` |
+| 9 | `console::init` enables UART RX, configures the PLIC, sets `sie.SEIE` | Interrupt routing: device → PLIC → hart → `stvec` | `console.rs`, `plic.rs` | `45k` |
+| 10 | `intr_on` sets `sstatus.SIE` | The global enable, deliberately last: nothing may interrupt half-built state | `trap.rs` | `44k` |
+| 11 | `shell::run` prints `rv6$ ` and calls `getc`, which loops on `wfi` | Blocking, honestly implemented: halt the core until an interrupt | `shell.rs`, `console.rs` | `46k` |
+| 12 | You press a key: UART IRQ → PLIC claim → `kernelvec` → `kerneltrap` → `console::intr` pushes to the 256-byte ring → `plic::complete` | Producer/consumer across an interrupt boundary, no lock needed on one hart | `trap.rs`, `console.rs` | `45k` |
 
 From `rv6$` onward the story is the one told last session: `run sh` execs a
 user-mode shell, which `fork`s, has the child `exec` your command, and `wait`s.
@@ -488,19 +488,19 @@ do not.
 | Mechanism | rv6 | Linux | Where to read it |
 |---|---|---|---|
 | First instruction | `_entry` at `0x8000_0000`, 16 KiB static stack | `_start` in RISC-V head code, then `start_kernel` | `arch/riscv/kernel/head.S`, `init/main.c` |
-| Privilege drop | `mret` in `start.rs:54` | the same `mret`, executed by OpenSBI firmware | `arch/riscv/kernel/head.S` |
+| Privilege drop | `mret` in `start.rs` | the same `mret`, executed by OpenSBI firmware | `arch/riscv/kernel/head.S` |
 | Physical allocator | free list of 4 KiB pages | buddy allocator + SLUB for small objects | `mm/page_alloc.c`, `mm/slub.c` |
 | Page tables | Sv39, three levels, `walk` + `mappages` | Sv39/Sv48/Sv57, five-level generic code | `arch/riscv/mm/`, `mm/memory.c` |
 | Kernel mapping | all RAM identity-mapped R+W+X | direct map plus per-section permissions, KASLR, no W+X | `mm/init.c` |
 | PCB | `Proc`, a fixed `[Proc; 64]` | `task_struct`, several kilobytes, one per **thread** | `include/linux/sched.h` |
 | Context switch | `swtch`, 14 callee-saved registers | `__switch_to`, plus lazy FPU/vector state | `arch/riscv/kernel/entry.S` |
-| Scheduler | round robin over the table (`sched.rs:20`) | EEVDF, per-CPU runqueues, load balancing, cgroups | `kernel/sched/fair.c` |
+| Scheduler | round robin over the table (`sched.rs`) | EEVDF, per-CPU runqueues, load balancing, cgroups | `kernel/sched/fair.c` |
 | Locking | `SpinLock<T>` over one `AtomicBool` | qspinlocks, mutexes, rwsems, seqlocks, RCU | `kernel/locking/` |
 | Trap entry | trampoline page + per-process trapframe | trap vector saving `pt_regs` on the kernel stack | `arch/riscv/kernel/entry.S` |
 | Syscall ABI | `ecall`, `a7` = number, `a0`–`a2` args, result in `a0` | identical ABI, roughly 350 numbers | `include/uapi/asm-generic/unistd.h` |
-| fd table | `[File; 16]` stored **by value** (`proc.rs:39`) | `files_struct` → `struct file *`, refcounted and shared | `fs/file.c`, `fs/open.c` |
+| fd table | `[File; 16]` stored **by value** (`proc.rs`) | `files_struct` → `struct file *`, refcounted and shared | `fs/file.c`, `fs/open.c` |
 | What an fd names | `FileKind::{Console, Inode}` | `struct file_operations` — dozens of backends | `include/linux/fs.h` |
-| `read` | `sys_read` (`syscall.rs:468`) | `ksys_read` → `vfs_read` → the file's `read_iter` | `fs/read_write.c` |
+| `read` | `sys_read` (`syscall.rs`) | `ksys_read` → `vfs_read` → the file's `read_iter` | `fs/read_write.c` |
 | Filesystem | 64 inodes, 128-byte files, RAM only | VFS over ext4/xfs/btrfs, page cache, journalling | `fs/` |
 | Console | 256-byte ring, no line discipline | tty layer, termios, `n_tty` line discipline | `drivers/tty/n_tty.c` |
 | Process creation | `fork` copies every page eagerly | `clone3` with copy-on-write; `fork` is one flag set | `kernel/fork.c` |
@@ -519,7 +519,7 @@ you will recognize the shape.
 Being precise about the gap is part of understanding the thing. Four big
 omissions, and what each would actually take.
 
-**No disk.** The filesystem is a `static FileSystem` in RAM (`fs.rs:73`): 64
+**No disk.** The filesystem is a `static FileSystem` in RAM (`FileSystem::new()` in `fs.rs`): 64
 inodes, 128 bytes per file, gone at power off. Fixing it needs a virtio-blk
 driver (about 150 lines of descriptor-ring MMIO), a buffer cache, and an
 on-disk layout of superblock, inode table, and free bitmap. The hard part is
@@ -527,7 +527,7 @@ none of those — it is **crash consistency**. A write that updates an inode and
 a data block is two writes, and the machine can die between them. xv6 answers
 with `log.c`, a write-ahead log, and it is the most subtle file in that kernel.
 
-**No demand paging.** `load_segment` (`vm.rs:196`) copies the entire image
+**No demand paging.** `load_segment` (`vm.rs`) copies the entire image
 eagerly before the program ever runs; no page is ever mapped absent and fetched
 on use. The machinery is nearly there: a page fault already arrives as `scause`
 12, 13, or 15 with the faulting address in `stval`. What is missing is the
@@ -535,9 +535,9 @@ policy — leave PTEs invalid, and in `usertrap` allocate a page, fill it from a
 backing store, `sfence.vma`, and return to the *same* `sepc` so the faulting
 instruction re-executes. That last detail is the whole trick: a page fault is a
 trap you resume from rather than advance past, which is why `usertrap` adds 4
-to `epc` for `ecall` (`usermode.rs:401`) and must not for a fault.
+to `epc` for `ecall` (`usermode.rs`) and must not for a fault.
 
-**No copy-on-write.** `uvmcopy` (`vm.rs:383`) duplicates every page of the
+**No copy-on-write.** `uvmcopy` (`vm.rs`) duplicates every page of the
 parent, and in the overwhelmingly common case the child immediately `exec`s and
 throws all of it away. COW is: map both parent and child read-only, keep a
 reference count per physical page, and on a store fault (`scause` 15) allocate
@@ -547,7 +547,7 @@ space) into O(page table). It is also the single change that would most improve
 rv6's numbers.
 
 **No SMP.** One hart, assumed everywhere. `CURPROC` is a single `static mut`
-(`usermode.rs:206`), there is one scheduler loop, and the `SpinLock` you wrote
+(`usermode.rs`), there is one scheduler loop, and the `SpinLock` you wrote
 is real but never contended. Going multi-core needs per-hart state reached
 through `tp`, a scheduler context per hart, and inter-processor interrupts —
 but the work that would take the longest is auditing every `static mut` in the
@@ -617,8 +617,8 @@ revision document in the course.
 | Lost wakeup | A `wakeup` that lands between "test the condition" and "sleep", so the sleeper never wakes | Why `sleep(chan, lock)` takes the lock |
 | Façade | An interface whose implementation is chosen below the seam, so callers contain no conditionals | `ulib` picks `host`/`rv6` on `target_os = "none"` |
 | Flat image | A program stored as raw bytes loaded at a fixed address, with entry = byte 0 and no `.bss` | `grep.bin`, 2,854 bytes, mapped at `USER_CODE` |
-| Image budget | `MAX_PROG_PAGES` pages between `USER_CODE` and `USER_STACK` | 16 × 4 KiB = 64 KiB (`memlayout.rs:65`) |
-| Copy-on-write | Sharing pages read-only after `fork` and copying only on a store fault | Absent in rv6; `uvmcopy` copies eagerly (`vm.rs:383`) |
+| Image budget | `MAX_PROG_PAGES` pages between `USER_CODE` and `USER_STACK` | 16 × 4 KiB = 64 KiB (`memlayout.rs`) |
+| Copy-on-write | Sharing pages read-only after `fork` and copying only on a store fault | Absent in rv6; `uvmcopy` copies eagerly (`vm.rs`) |
 
 ---
 
@@ -719,7 +719,7 @@ precede `kvminithart`, and what happens if `intr_on` is moved to just after
 
 Order: **G, C, F, D, A, H, B, E** — `uart::init`, `kalloc::init`,
 `kvminithart(kvmmake())`, `proc::init`, `trap::init`, `FS.init`,
-`console::init`, `intr_on` (`main.rs:87`, `main.rs:116`).
+`console::init`, `intr_on` (`main.rs`, `kmain()` (`main.rs`)).
 
 **`kalloc::init` must precede `kvminithart`.** `kvmmake` builds the page table
 by calling `kalloc` for the root, for every interior node the `walk` needs, and
@@ -750,7 +750,7 @@ immediately. Why?
 <summary>Click to reveal solution</summary>
 
 **(a)** `ceil(2854 / 4096) = 1` page. `load_segment` zeroes each page with
-`write_bytes` *before* copying (`vm.rs:220`), so the trailing
+`write_bytes` *before* copying (`vm.rs`), so the trailing
 `4096 − 2854 = 1,242` bytes are zeros, not garbage. That zeroing is deliberate:
 a partial last page otherwise exposes whatever the previous owner of that
 physical page left behind, which is both an information leak and a source of
@@ -766,10 +766,10 @@ irreproducible bugs.
 | `MAXVA − PGSIZE` (`TRAMPOLINE`) | `uservec`/`userret` | `R X` — no `U` |
 
 **(c)** The image pages are mapped `PTE_R | PTE_X | PTE_U` with no `PTE_W`
-(`vm.rs:228`). A `static mut` lands in the image, so the increment is a store
+(`load_segment()` in `vm.rs`). A `static mut` lands in the image, so the increment is a store
 to a read-only page: `scause` 15, a store page fault. `usertrap` has no page
 fault handler, so it takes the final `else` branch, records the fault, and
-kills the process (`usermode.rs:430`).
+kills the process (`usermode.rs`).
 
 This is a direct consequence of the flat image: with no ELF program headers
 there are no per-segment permissions and no `.bss`, so there is nowhere to put
@@ -822,7 +822,7 @@ and reacquires the lock on return. Any `wakeup` that runs after the lock is
 released necessarily sees the sleeper.
 
 rv6 sidesteps the whole race by polling: it drops the lock, calls `proc_yield`
-(`usermode.rs:363`), and rechecks. That cannot lose a wakeup because there is
+(`usermode.rs`), and rechecks. That cannot lose a wakeup because there is
 no wakeup to lose — the cost is that a blocked process stays `Runnable` and
 burns a timeslice on every rotation. Correct, and honest about being a
 placeholder for the real mechanism.

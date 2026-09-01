@@ -213,14 +213,14 @@ A program cannot tell a file from a terminal from a pipe. That is the point.
 ## Four Calls, One `ecall` Each
 
 ```rust
-read(fd, &mut buf)  -> Result<usize, Error>   // lib.rs:104
-write(fd, &buf)     -> Result<usize, Error>   // lib.rs:114
-open(path, flags)   -> Result<Fd, Error>      // lib.rs:125
-close(fd)           -> Result<(), Error>      // lib.rs:134
+read(fd, &mut buf)  -> Result<usize, Error>   // lib.rs
+write(fd, &buf)     -> Result<usize, Error>   // lib.rs
+open(path, flags)   -> Result<Fd, Error>      // lib.rs
+close(fd)           -> Result<(), Error>      // lib.rs
 ```
 
 On rv6 each is one instruction: number in `a7`, args in `a0`–`a2`,
-result back in `a0` (`sys/rv6.rs:21`).
+result back in `a0` (`sys/rv6.rs`).
 
 `SYS_EXIT 2 · SYS_READ 5 · SYS_OPEN 15 · SYS_WRITE 16 · SYS_CLOSE 21`
 
@@ -230,12 +230,12 @@ result back in `a0` (`sys/rv6.rs:21`).
 
 <div class="mermaid">
 flowchart TD
-    A["ulib::read(fd, &amp;mut buf)"] --> B["sys_read — rv6.rs:33"]
+    A["ulib::read(fd, &amp;mut buf)"] --> B["sys_read — rv6.rs"]
     B --> C["ecall: a7=5, a0=fd, a1=ptr, a2=len"]
     C --> D["trap: trampoline saves 31 registers"]
-    D --> E["syscall.rs:468 sys_read"]
-    E --> F["Console: one getc — syscall.rs:489"]
-    E --> G["Inode: 128-byte kernel buffer — syscall.rs:496"]
+    D --> E["syscall.rs sys_read"]
+    E --> F["Console: one getc — syscall.rs"]
+    E --> G["Inode: 128-byte kernel buffer — syscall.rs"]
     F --> H["copyout, return count in a0"]
     G --> H
 </div>
@@ -260,9 +260,9 @@ A partially filled buffer is a success, not an error.
 ## Why a Read Comes Back Short
 
 - **The file ran out** — 40 bytes left, you asked for 512
-- **The console is one keystroke at a time** — `syscall.rs:489` calls
+- **The console is one keystroke at a time** — `sys_read()` (`syscall.rs`) calls
   `console::getc()` once and returns `1`, whatever your buffer size
-- **The kernel has its own buffer** — `syscall.rs:496` declares
+- **The kernel has its own buffer** — `sys_read()` (`syscall.rs`) declares
   `[0u8; 128]` and clips your request to it
 - **A pipe hands over what exists** — 12 bytes so far, so 12
 - **A signal interrupted a transfer in progress** (Linux)
@@ -294,10 +294,10 @@ file: 1500 bytes, 512-byte buffer
 host (regular file):
   512, 512, 476, 0        ->  4 reads, 3 writes
 
-rv6 (kernel clips at 128, syscall.rs:497):
+rv6 (kernel clips at 128, syscall.rs):
   128 x 11, 92, 0         -> 13 reads, 12 writes
 
-rv6 console (syscall.rs:489):
+rv6 console (syscall.rs):
   1, 1, 1, ...            -> one syscall PER KEYSTROKE
 ```
 
@@ -324,7 +324,7 @@ pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
 }
 ```
 
-`lib.rs:154`. The binding is `mut`, not the data. No count returned —
+`write_all()` (`lib.rs`). The binding is `mut`, not the data. No count returned —
 "all of it" is the only success. The `n == 0` guard stops an infinite loop.
 
 ---
@@ -332,13 +332,13 @@ pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
 ## What Your Tests Cannot Catch
 
 <div class="info-box">
-The host harness (<code>host.rs:33</code>) accepts <strong>every</strong> write in full,
+The host harness (<code>sys_write() (host.rs)</code>) accepts <strong>every</strong> write in full,
 and its descriptor table grows. So no test on your laptop can fail a
 <code>write</code>-instead-of-<code>write_all</code> bug, or a missing <code>close</code>.
 </div>
 
 rv6 charges you for both — and its entire diagnostic is the six-line panic
-handler at `sys/rv6.rs:66`, which prints the word `panic`.
+handler at `sys/rv6.rs`, which prints the word `panic`.
 
 ---
 
@@ -377,7 +377,7 @@ work is a 512-byte `memcpy` — a handful of cycles.
 
 1. **Syscall amortisation** — wants it large, with steep diminishing returns
 2. **Device geometry** — sectors are 512 B, pages 4 KiB; alignment matters
-3. **The kernel's staging buffer** — rv6 clips at 128 (`syscall.rs:497`),
+3. **The kernel's staging buffer** — rv6 clips at 128 (`sys_read()` in `syscall.rs`),
    so asking for more buys nothing there
 4. **Your memory budget** — and on rv6 this one bites
 
@@ -392,8 +392,8 @@ work is a 512-byte `memcpy` — a handful of cycles.
 0x0000_0000   flat image, 1..16 pages -> 64 KiB maximum
 ```
 
-`cat.rs:23`, `wc.rs:34` use `[0u8; 512]`.
-`head.rs:40`, `grep.rs:45` use `[0u8; 1024]` — a **quarter** of the stack.
+`cat_fd()` (`cat.rs`), `count_fd()` (`wc.rs`) use `[0u8; 512]`.
+`head_fd()` (`head.rs`), `grep_fd()` (`grep.rs`) use `[0u8; 1024]` — a **quarter** of the stack.
 
 `[0u8; 8192]` is not slow. It is a page fault.
 
@@ -419,7 +419,7 @@ invariant that other unsafe code relies on — so the conversion can fail.
   none has an encoding
 - **Validation costs image space.** A UTF-8 table plus the `core::fmt`
   that travels with it is 12–18 KiB — a fifth of a 64 KiB program budget.
-  Hence `write_usize` (`lib.rs:181`): 20 lines, no table
+  Hence `write_usize` (`lib.rs`): 20 lines, no table
 - **Chunk boundaries ignore characters.** A 4-byte emoji straddling a
   512-byte buffer arrives two bytes now, two bytes later
 
@@ -457,15 +457,15 @@ Without one: **one fixed buffer**, and lines do not align with reads.
 
 ## `ulib::Lines` — Four Cases
 
-`lines.rs:32`, in priority order:
+`lines.rs`, in priority order:
 
-1. **Newline already in the buffer** (`:34`) — return the slice, advance
+1. **Newline already in the buffer** — return the slice, advance
    `start`. **No syscall.** The common case
-2. **EOF with bytes left** (`:39`) — return them; this is why a file with
+2. **EOF with bytes left** — return them; this is why a file with
    no trailing newline still yields its last line
-3. **Buffer full, no newline** (`:52`) — a line longer than the buffer:
+3. **Buffer full, no newline** — a line longer than the buffer:
    return what there is and set `truncated`
-4. **Otherwise** (`:49`) — compact, then refill
+4. **Otherwise** — compact, then refill
 
 ---
 
@@ -544,7 +544,7 @@ the same shape returns in the UART driver (ex. 15), the shell's tokenizer
 `slow_program | head -n 1` must not wait for `slow_program`.
 
 ```rust
-while printed < limit { ... }     // head.rs:43 — the stopping IS the loop bound
+while printed < limit { ... }     // head.rs — the stopping IS the loop bound
 ```
 
 Not "read every line, print the first `limit`". Both pass every test; only
@@ -564,7 +564,7 @@ why `yes | head -n 1` terminates.
    then indexes out of bounds. *Type* edge case
 3. **Match at the very end** — the last start position is exactly
    `len - needle.len()`, so the range is `0..=n`, not `0..n`
-   (`grep.rs:33`). *Off-by-one*, and the dangerous kind
+   (`contains()` in `grep.rs`). *Off-by-one*, and the dangerous kind
 
 (2) and (3) pull opposite ways — which is why the guards come **before** the
 subtraction.

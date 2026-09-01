@@ -63,8 +63,8 @@ Exercise `46k_shell` stages twenty files into `rv6/src`. Seventeen of them —
 `param.rs`, `proc.rs`, `swtch.rs`, `sched.rs`, `spinlock.rs`, `semaphore.rs`,
 `kheap.rs`, `trap.rs`, `plic.rs`, `console.rs`, `testdev.rs` — are
 **byte-identical** to the exercise-15 reference solution. `fs.rs` is the
-exercise-10 filesystem plus two helpers the shell needs, `is_dir` (`fs.rs:169`)
-and `for_each_entry` (`fs.rs:175`). `main.rs` gains a test harness. `shell.rs`
+exercise-10 filesystem plus two helpers the shell needs, `is_dir` (`fs.rs`)
+and `for_each_entry` (`fs.rs`). `main.rs` gains a test harness. `shell.rs`
 is new, and it is the **only file in the exercise carrying an `IMPLEMENT`
 marker**.
 
@@ -81,10 +81,10 @@ from the first exercise, in both directions:
   it: exercise 37k's has reference `36k` code, exercise 46k's has reference `45k`
   code. That is what keeps the sequence moving: every exercise starts from a
   kernel that works.
-- Before *any* staging directory is overwritten, `archive_work` (`model.rs:712`)
+- Before *any* staging directory is overwritten, `archive_work` (`model.rs`)
   copies the whole directory, every file including scratch modules you added,
   into `my-work/<exercise>/`.
-- On arrival, `stage_exercise` (`model.rs:740`) restores from `my-work/<target>/`
+- On arrival, `stage_exercise` (`model.rs`) restores from `my-work/<target>/`
   when it exists and falls back to the skeleton only when it does not.
 
 Which means `oslings goto 43k` drops you back into `43k_traps` with your own
@@ -121,9 +121,9 @@ today, you are not asked how `dircreate` finds a free directory slot — you are
 asked three questions:
 
 1. **What does it promise?** `dirlookup(dir, name)` returns `Ok(inum)` or
-   `Err(FsError)` (`fs.rs:109`).
+   `Err(FsError)` (`fs.rs`).
 2. **What does it require?** Names are raw bytes, so every call site ends in
-   `.as_bytes()`; the filesystem lives behind one lock, `FS` (`fs.rs:277`).
+   `.as_bytes()`; the filesystem lives behind one lock, `FS` (`fs.rs`).
 3. **What invariant must I not break?** Do not hold that guard longer than the
    work needs, and do not call back into the filesystem while holding it.
 
@@ -154,7 +154,7 @@ about the fact that we are doing it on purpose.
 ### 2.1 Four steps and nothing else
 
 A shell is a **REPL**: read, evaluate, print, loop. rv6's is `run`
-(`shell.rs:343`), about thirty lines:
+(`shell.rs`), about thirty lines:
 
 ```text
 print "rv6$ "
@@ -171,7 +171,7 @@ loop {
 ```
 
 Note the signature: `pub fn run() -> !`. It never returns, because it is the
-last thing `kmain` does (`main.rs:123`). On Unix an exiting login shell hands
+last thing `kmain` does (`main.rs`). On Unix an exiting login shell hands
 control back to `init`; here there is no `init`, so leaving the loop would fall
 off the end of the kernel. The type says so.
 
@@ -186,7 +186,7 @@ is only how hard the "evaluate" step works.
 
 ### 2.2 Where the bytes come from
 
-`getc` (`console.rs:47`) is the entire read step, and underneath it are
+`getc` (`console.rs`) is the entire read step, and underneath it are
 exercises 41k, 43k, 44k, and 45k arriving at once.
 
 ```text
@@ -197,7 +197,7 @@ exercises 41k, 43k, 44k, and 45k arriving at once.
   |  UART 16550| ---------------->|  PLIC  | ------------------->| kerneltrap|
   +-----------+                   +--------+   (scause = 9)      +-----------+
                                                                        |
-                                        console::intr (console.rs:68)  |
+                                        console::intr (console.rs)  |
                                         claim -> drain -> complete     v
                                                               +-----------------+
                                                               | ring buffer     |
@@ -205,23 +205,23 @@ exercises 41k, 43k, 44k, and 45k arriving at once.
                                                               | HEAD ... TAIL   |
                                                               +-----------------+
                                                                        ^
-   shell::run  ->  console::getc (console.rs:47)                       |
+   shell::run  ->  console::getc (console.rs)                       |
                      loop { try_getc()? ; wfi }  --- pops one byte ----+
 ```
 
 Three details that matter more than they look:
 
 - **The interrupt handler does almost nothing.** `console::intr` claims the IRQ,
-  drains the UART's bytes into the ring with `push` (`console.rs:18`), and
+  drains the UART's bytes into the ring with `push` (`console.rs`), and
   completes. It does not tokenize, dispatch, or print. All the thinking happens
   in the shell, at normal priority, where it can be preempted — the top-half /
   bottom-half split every device driver uses.
 - **The ring needs no lock.** One producer, one consumer, separate `HEAD` and
-  `TAIL` counters (`console.rs:14`–`console.rs:15`). That argument is airtight on
+  `TAIL` counters (`console.rs`). That argument is airtight on
   one hart and collapses on two, which is the kind of assumption you now have to
   notice when reading kernel code.
 - **`wfi` is not a busy-wait.** When the buffer is empty the loop halts the CPU
-  until an interrupt arrives (`console.rs:52`), so an idle prompt burns no
+  until an interrupt arrives (`getc()` in `console.rs`), so an idle prompt burns no
   cycles.
 
 ### 2.3 Line discipline: who owns the backspace?
@@ -236,18 +236,18 @@ buffers a line, handles erase and kill, echoes, and returns from `read` only at
 a newline. A program wanting raw keystrokes — `vi`, `less`, a game — clears
 `ICANON` and `ECHO` through `termios` and owns all four jobs itself.
 
-rv6 has no tty layer, so the shell *is* the line discipline (`shell.rs:349`–
-`shell.rs:371`). Three consequences you can read straight off the code:
+rv6 has no tty layer, so the shell *is* the line discipline (`shell.rs`–
+`shell.rs`). Three consequences you can read straight off the code:
 
 - **The shell echoes.** `console::getc` returns a byte and prints nothing; the
-  echo is `out.puts` inside `run` (`shell.rs:366`). Which is why a password
+  echo is `out.puts` inside `run` (`shell.rs`). Which is why a password
   prompt is impossible today: nothing can ask for a byte without showing it.
-- **Erasing takes three bytes.** `"\x08 \x08"` (`shell.rs:359`) — backspace,
+- **Erasing takes three bytes.** `"\x08 \x08"` (`shell.rs`) — backspace,
   space, backspace. A terminal's backspace only moves the cursor left; you must
   overwrite the character with a space and move left again.
 - **Anything not printable is silently dropped.** The filter is
-  `c.is_ascii_graphic() || c == b' '` (`shell.rs:363`) with a catch-all `_ => {}`
-  (`shell.rs:370`). Press Tab or Ctrl-C and nothing happens at all — no echo, no
+  `c.is_ascii_graphic() || c == b' '` (`shell.rs`) with a catch-all `_ => {}`
+  (`run()` in `shell.rs`). Press Tab or Ctrl-C and nothing happens at all — no echo, no
   beep, no entry in the line.
 
 ---
@@ -267,7 +267,7 @@ let cmd = match words.next() {
 let arg = words.next().unwrap_or("");
 ```
 
-That is `shell.rs:40`–`shell.rs:45`, and the interesting property is what it
+That is `Shell::exec()` in `shell.rs`, and the interesting property is what it
 does **not** do. `split_whitespace` allocates nothing and copies nothing. Each
 item it yields is a `&str` — a (pointer, length) pair aimed *into the line
 buffer that is already there*.
@@ -283,14 +283,14 @@ line: String   "mkdir   docs\0..."
 ```
 
 In a kernel that is not a micro-optimization. This heap hands out *one whole
-4 KiB page per allocation* (`kheap.rs:26`–`kheap.rs:30`), and it can fail. A
+4 KiB page per allocation* (`KernelHeap::alloc()` in `kheap.rs`), and it can fail. A
 parser that allocates per token can fail on a long command line — a spectacular
 failure mode for the one piece of code the user talks to.
 
 > Key distinction: a token here is a **view**, not a string. It borrows the
 > line. Nothing owns it, nothing frees it, and it stops being valid the moment
 > the line changes. The borrow checker enforces exactly that: `line.clear()`
-> happens *after* `exec` returns (`shell.rs:354`–`shell.rs:355`), and it could
+> happens *after* `exec` returns (`run()` in `shell.rs`), and it could
 > not be moved earlier even by accident.
 
 ### 3.2 The other way to do it
@@ -301,7 +301,7 @@ separators are gone, and it keeps its position in a static variable, so two
 callers cannot tokenize at once.
 
 rv6's *user-mode* shell works exactly that way, being hand-written assembly with
-no library at all (`exec.rs:389`–`exec.rs:421`): scan forward, store each word's
+no library at all (`exec.rs`): scan forward, store each word's
 address into an `argv` array, store a zero byte over each space. The two
 techniques are one idea with the length kept in different places — Rust in the
 slice, C in a terminator — and everything else follows from that: whether the
@@ -349,7 +349,7 @@ shell with pipes.
 ### 3.4 Why `echo >` has to cheat
 
 Exercise 47k adds `echo TEXT > FILE`, and its handler is instructive: `cmd_echo`
-(`shell.rs:212`) ignores the token iterator entirely and re-parses the **raw
+(`shell.rs`) ignores the token iterator entirely and re-parses the **raw
 line**:
 
 ```rust
@@ -378,7 +378,7 @@ tokenizer is where the change lands.
 ### 4.1 Why a table, not a chain of `if`s
 
 Once you have the command word, you have to decide what to run. rv6 does it with
-one `match` (`shell.rs:47`–`shell.rs:63`):
+one `match` (`Shell::exec()` in `shell.rs`):
 
 ```rust
 match cmd {
@@ -400,9 +400,9 @@ clauses. The reason not to is not performance; it is four structural properties.
 - **A uniform handler signature.** Every arm calls something shaped
   `fn(&mut self, arg, &mut dyn Out)`. That regularity is what later lets the
   table become *data* — an array of `(name, function pointer)` — which is how
-  real dispatch tables, including rv6's syscall table (`syscall.rs:35`), work.
+  real dispatch tables, including rv6's syscall table (`syscall.rs`), work.
 - **Exhaustiveness.** `match` on `&str` forces the `_` arm, so "command not
-  found" exists in exactly one place (`shell.rs:59`) and cannot be forgotten.
+  found" exists in exactly one place (`shell.rs`) and cannot be forgotten.
 - **Separation of concerns.** `exec` decides *which*; the handler decides *how*.
   Dispatch is testable without testing any command.
 
@@ -433,12 +433,12 @@ flowchart TD
 
 Everything in today's shell takes the left branch, because rv6 has no way to
 start a process at all. That changes in stages: exercise 49k adds
-`run PROGRAM [args...]` (`shell.rs:256`), which looks a name up in a compiled-in
-program table (`exec.rs:574`), builds a process, runs it, and reports how it
-ended (`shell.rs:288`–`shell.rs:297`). Exercise 52k adds the user-mode `sh`
-(`exec.rs:354`), which has exactly **one** built-in — `exit` (`exec.rs:433`) —
-and runs everything else with `fork` (`exec.rs:438`), `exec` (`exec.rs:443`),
-and `wait` (`exec.rs:455`).
+`run PROGRAM [args...]` (`shell.rs`), which looks a name up in a compiled-in
+program table (`programs()` in `exec.rs`), builds a process, runs it, and reports how it
+ended (`Shell::cmd_run()` in `shell.rs`). Exercise 52k adds the user-mode `sh`
+(`exec.rs`), which has exactly **one** built-in — `exit` (`exec.rs`) —
+and runs everything else with `fork` and `exec` (`exec.rs`),
+and `wait` (`exec.rs`).
 
 Why is `ls` a program on Unix and a built-in here? Because Unix can afford it:
 process creation is cheap and the isolation is worth paying for. A buggy `ls` on
@@ -447,7 +447,7 @@ Unix dies alone; a buggy `cmd_ls` here takes the kernel with it.
 ### 4.3 The `Out` trait: where the output goes
 
 Commands never call `uart::puts` directly. They write to an `Out`
-(`shell.rs:17`):
+(`shell.rs`):
 
 ```rust
 pub trait Out {
@@ -455,9 +455,9 @@ pub trait Out {
 }
 ```
 
-Two implementations exist. `ConsoleOut` (`shell.rs:334`) forwards to the UART;
+Two implementations exist. `ConsoleOut` (`shell.rs`) forwards to the UART;
 the harness supplies a `BufOut` that appends into a 512-byte array so a test can
-read back what was printed (exercise 46k's `main.rs:111`–`main.rs:139`). Same
+read back what was printed (exercise 46k's `main.rs`). Same
 commands, two destinations — which is how `oslings run 46k_shell` checks a shell
 with no terminal attached.
 
@@ -486,10 +486,10 @@ pub struct Shell {
 }
 ```
 
-`shell.rs:23`. `cwd()` (`shell.rs:33`) returns the inum on top of that stack, or
-`fs::ROOT` when it is empty; `cmd_pwd` (`shell.rs:66`) reconstructs the path by
-walking it; `cd name` pushes (`shell.rs:103`), `cd ..` pops (`shell.rs:94`), and
-`cd /` or bare `cd` clears it (`shell.rs:93`).
+`shell.rs`. `cwd()` (`shell.rs`) returns the inum on top of that stack, or
+`fs::ROOT` when it is empty; `cmd_pwd` (`shell.rs`) reconstructs the path by
+walking it; `cd name` pushes (`Shell::cmd_cd()` in `shell.rs`), `cd ..` pops (`Shell::cmd_cd()` in `shell.rs`), and
+`cd /` or bare `cd` clears it (`shell.rs`).
 
 Unix keeps it in the kernel, **per process**. In xv6, `struct proc` has a
 `struct inode *cwd`. In Linux, `task_struct` points at a `struct fs_struct`
@@ -549,12 +549,12 @@ rv6 caches `(name, inum)` pairs at `cd` time. Three consequences, all
 examinable:
 
 - **`pwd` reports remembered names, not current truth.** It prints strings
-  captured at `cd` time (`shell.rs:69`–`shell.rs:73`). Real `getcwd(3)` instead
+  captured at `cd` time (`Shell::cmd_pwd()` in `shell.rs`). Real `getcwd(3)` instead
   walks *upward* from the cwd inode through `..` entries, and fails with
   `ENOENT` if the directory was deleted underneath you.
 - **rv6 cannot walk upward at all.** Its directories hold only entries you
-  created — no `.` or `..` (`for_each_entry`, `fs.rs:175`, lists exactly what
-  `dircreate` put there). So `cd ..` is a `Vec::pop` (`shell.rs:94`), not a
+  created — no `.` or `..` (`for_each_entry`, `fs.rs`, lists exactly what
+  `dircreate` put there). So `cd ..` is a `Vec::pop` (`shell.rs`), not a
   lookup; the shell's stack is the only record of the parent chain, and popping
   at the root is a silent no-op.
 - **An inum is an index, not a reference.** Nothing stops `rm`/`rmdir` (exercise
@@ -570,7 +570,7 @@ examinable:
 
 ### 5.4 rv6 stops short, on purpose
 
-Look at the system call table (`syscall.rs:21`–`syscall.rs:29`): `fork`, `exit`,
+Look at the system call table (`syscall.rs`): `fork`, `exit`,
 `wait`, `read`, `exec`, `getpid`, `open`, `write`, `close`. There is **no
 `chdir`**. So the user-mode shell of exercise 52k has no `cd` at all, and every
 path it hands to `open` resolves from the root.
@@ -587,7 +587,7 @@ resolution start there instead of at `fs::ROOT`. See
 ### 6.1 Name it precisely
 
 `shell.rs` is compiled into the kernel and runs in supervisor mode; `cmd_ls`
-calls `FS.lock()` and reaches into the inode table directly (`shell.rs:79`).
+calls `FS.lock()` and reaches into the inode table directly (`shell.rs`).
 Nothing checks anything, because at S-mode there is nothing to check *against*.
 Today's shell can:
 
@@ -600,8 +600,8 @@ Today's shell can:
 - take a spinlock and never give it back.
 
 That last one is not hypothetical. `cmd_ls` holds the filesystem lock for the
-whole listing and prints from inside the callback (`shell.rs:79`–`shell.rs:88`),
-and `puts` is a UART busy-wait. `SpinLock::lock` (`spinlock.rs:22`) is a plain
+whole listing and prints from inside the callback (`shell.rs`),
+and `puts` is a UART busy-wait. `SpinLock::lock` (`spinlock.rs`) is a plain
 compare-exchange loop: not reentrant, and — unlike xv6's `acquire`, which calls
 `push_off` — it does not disable interrupts. Both are bugs waiting for a second
 hart or a re-entrant caller (Problem 5).
@@ -639,10 +639,10 @@ way?":
 - **`50k_file_descriptors`** gives each process a small-integer table, so
   `write(1, buf, n)` means something — the honest version of `Out`.
 - **`51k_fork_wait`** lets a process make another one and reap it.
-- **`52k_userland` moves the shell across.** `sh` (`exec.rs:354`) is a user
+- **`52k_userland` moves the shell across.** `sh` (`exec.rs`) is a user
   program with no privileges: it prompts with `$ ` rather than `rv6$ `, reads
-  keystrokes with `read(0, ...)` (`exec.rs:369`), tokenizes in place, and runs a
-  command with `fork` + `exec` + `wait` (`exec.rs:437`–`exec.rs:458`). If it
+  keystrokes with `read(0, ...)` (`exec.rs`), tokenizes in place, and runs a
+  command with `fork` + `exec` + `wait` (`exec.rs`). If it
   dereferences a bad pointer it dies alone; the kernel prints that the program
   faulted and gives you back the prompt.
 
@@ -652,7 +652,7 @@ table and a scheduler, `read` and `write` need file descriptors, and all of them
 need a trap path from U-mode. The kernel shell is the scaffolding that keeps rv6
 usable *while* those are built — and it survives to the end as a debugging
 console, since `run sh` at the `rv6$` prompt is how the user shell is launched
-(`main.rs:123`).
+(`kmain()` in `main.rs`).
 
 ### 6.4 Why Unix drew the line here
 
@@ -679,18 +679,18 @@ write it, use it, and notice what it can do that it should not.
 
 | Concept | Definition | Example |
 |---|---|---|
-| REPL | Read–evaluate–print loop; the entire structure of a shell | `run` (`shell.rs:343`): prompt, `getc`, `exec`, repeat |
-| Line discipline | The layer that buffers a line, handles erase, echoes, and ends on newline | rv6 puts it in the shell (`shell.rs:349`–`shell.rs:371`); Unix puts it in the tty driver |
+| REPL | Read–evaluate–print loop; the entire structure of a shell | `run` (`shell.rs`): prompt, `getc`, `exec`, repeat |
+| Line discipline | The layer that buffers a line, handles erase, echoes, and ends on newline | rv6 puts it in the shell (`shell.rs`); Unix puts it in the tty driver |
 | Canonical mode | tty mode where `read` returns whole lines and the kernel handles erase | Turned off via `termios` `ICANON` by `vi` and `less` |
-| Token | A word produced by the tokenizer; in Rust a borrowed `&str` view | `split_whitespace` (`shell.rs:40`) allocates nothing |
-| Dispatch table | One structure mapping command names to handlers | `match cmd { ... }` (`shell.rs:47`–`shell.rs:63`) |
-| Built-in | A command that must run inside the shell's own process | `cd`, `exit`; rv6's user `sh` has only `exit` (`exec.rs:433`) |
-| External command | A command run as a separate process | `fork` + `exec` + `wait` (`exec.rs:437`–`exec.rs:458`) |
-| Current working directory | Per-process state that relative path resolution starts from | rv6: `Shell.stack` (`shell.rs:23`); Unix: `p->cwd` / `fs_struct` |
-| Inode number | An index into the inode table naming a file or directory | `cwd()` returns one, or `fs::ROOT` (`shell.rs:33`, `fs.rs:9`) |
-| `Out` trait | Indirection between a command and its output destination | `ConsoleOut` (`shell.rs:334`) vs the harness's `BufOut` |
-| Kernel shell | rv6's S-mode shell, prompt `rv6$`, calls the filesystem directly | `shell.rs:343`, started by `kmain` (`main.rs:123`) |
-| User shell | rv6's U-mode shell, prompt `$`, reaches the kernel only by `ecall` | `exec.rs:354`, started by typing `run sh` |
+| Token | A word produced by the tokenizer; in Rust a borrowed `&str` view | `split_whitespace` (`shell.rs`) allocates nothing |
+| Dispatch table | One structure mapping command names to handlers | `match cmd { ... }` (`shell.rs`) |
+| Built-in | A command that must run inside the shell's own process | `cd`, `exit`; rv6's user `sh` has only `exit` (`exec.rs`) |
+| External command | A command run as a separate process | `fork` + `exec` + `wait` (`exec.rs`) |
+| Current working directory | Per-process state that relative path resolution starts from | rv6: `Shell.stack` (`shell.rs`); Unix: `p->cwd` / `fs_struct` |
+| Inode number | An index into the inode table naming a file or directory | `cwd()` returns one, or `fs::ROOT` (`shell.rs`, `fs.rs`) |
+| `Out` trait | Indirection between a command and its output destination | `ConsoleOut` (`shell.rs`) vs the harness's `BufOut` |
+| Kernel shell | rv6's S-mode shell, prompt `rv6$`, calls the filesystem directly | `shell.rs`, started by `kmain` (`main.rs`) |
+| User shell | rv6's U-mode shell, prompt `$`, reaches the kernel only by `ecall` | `exec.rs`, started by typing `run sh` |
 
 ---
 
@@ -706,19 +706,19 @@ m  k  d  i  r  SP  d  o  x  7F  c  09  s  0D
 ```
 
 `7F` is DEL (the terminal's backspace), `09` is Tab, `0D` is carriage return.
-Using `run` (`shell.rs:343`–`shell.rs:371`), give (a) the exact byte stream the
+Using `run` (`shell.rs`), give (a) the exact byte stream the
 shell echoes, and (b) the exact string passed to `Shell::exec`.
 
 <details>
 <summary>Click to reveal solution</summary>
 
 **(a) Echoed bytes.** Graphic characters and spaces echo as themselves
-(`shell.rs:363`–`shell.rs:369`), so `mkdir dox` goes out first. `7F` hits the
-backspace arm (`shell.rs:357`): `line.pop()` returns `Some('x')`, so the shell
+(`run()` in `shell.rs`), so `mkdir dox` goes out first. `7F` hits the
+backspace arm (`shell.rs`): `line.pop()` returns `Some('x')`, so the shell
 emits `08 20 08`. Then `c` echoes. Tab (`09`) is neither `is_ascii_graphic()`
-nor `b' '`, so it falls into the catch-all `_ => {}` (`shell.rs:370`) and is
+nor `b' '`, so it falls into the catch-all `_ => {}` (`run()` in `shell.rs`) and is
 discarded with no echo and no effect on the line. Then `s` echoes, and `0D` hits
-the Enter arm (`shell.rs:351`), which echoes `"\n"` first.
+the Enter arm (`run()` in `shell.rs`), which echoes `"\n"` first.
 
 Full stream: `mkdir dox`, then `08 20 08`, then `cs`, then `\n`, and after
 `exec` returns, the next prompt `rv6$ `.
@@ -766,16 +766,16 @@ notes/
 The four steps that produce nothing are as important as the ones that print.
 `mkdir docs`, `cd docs`, and `mkdir notes` are all silent successes — note that
 `notes` lands inside `docs`, because the cwd is the top of the stack
-(`shell.rs:33`). The first `cd ..` pops back to the root. The **second `cd ..`
+(`shell.rs`). The first `cd ..` pops back to the root. The **second `cd ..`
 is a silent no-op**: `Vec::pop` on an empty stack returns `None` and is ignored
-(`shell.rs:94`–`shell.rs:96`), so you cannot go above the root.
+(`Shell::cmd_cd()` in `shell.rs`), so you cannot go above the root.
 
 Then: `cd notes` fails because `notes` is inside `docs`, not in the root; `pwd`
 on an empty stack prints `/`; bare `mkdir` gets `arg == ""` from
-`unwrap_or("")` (`shell.rs:45`) and trips the guard at `shell.rs:113`; the first
+`unwrap_or("")` (`Shell::exec()` in `shell.rs`) and trips the guard at `Shell::cmd_mkdir()` (`shell.rs`); the first
 `cd docs` succeeds and the second fails (no `docs` inside `docs`); `pwd` prints
 `/docs`; and `ls` prints `notes` followed by `/` because the entry is a
-directory (`shell.rs:84`–`shell.rs:87`).
+directory (`Shell::cmd_ls()` in `shell.rs`).
 </details>
 
 ### Problem 3: Tokens versus the raw line
@@ -799,7 +799,7 @@ and (b) are unrelated.
 the quoted phrase is split into two tokens with the quote characters attached.
 
 **(b)** `cat out.txt` prints `"hello   world"` — quotes included, interior
-spacing preserved. `cmd_echo` (`shell.rs:212`) never looks at the tokens: it
+spacing preserved. `cmd_echo` (`shell.rs`) never looks at the tokens: it
 takes the raw line, strips the literal prefix `"echo"`, `trim_start`s, and
 splits **once** on `>`, then trims both halves and appends `'\n'`. The three
 interior spaces sit inside the trimmed region, so they survive.
@@ -833,8 +833,8 @@ is the minimal change that makes `cd` work?
 
 `cat notes.txt` fails: no such file.
 
-The user shell runs a command by forking (`exec.rs:438`) and having the **child**
-exec the program (`exec.rs:443`) while the parent waits (`exec.rs:455`). `fork`
+The user shell runs a command by forking (`exec.rs`) and having the **child**
+exec the program while the parent waits — the shell's assembly in `exec.rs`. `fork`
 gives the child a *copy* of the parent's process state, including whatever cwd
 field we just added. `cdprog` therefore changes the child's cwd to `/docs`, then
 exits; the child is reaped and its state is freed. The shell's own cwd was never
@@ -842,7 +842,7 @@ touched, so the next command resolves `notes.txt` from the root.
 
 **Minimal change:** the shell must recognize `cd` *before* the fork and call
 `chdir` in its own process — that is, `cd` must be a built-in, exactly like the
-existing `exit` built-in (`exec.rs:433`), which is checked before the fork for
+existing `exit` built-in (`exec.rs`), which is checked before the fork for
 the same reason. xv6 says so in a comment: "Chdir must be called by the parent,
 not the child."
 
@@ -876,12 +876,12 @@ was broken and give two fixes.
 <details>
 <summary>Click to reveal solution</summary>
 
-**It hangs the machine.** `cmd_ls` (`shell.rs:77`) takes the filesystem lock and
+**It hangs the machine.** `cmd_ls` (`shell.rs`) takes the filesystem lock and
 then calls `for_each_entry` with a closure that calls `out.puts(...)` — *while
-the guard is still alive* (`shell.rs:79`–`shell.rs:88`). `FileOut::puts` calls
+the guard is still alive* (`shell.rs`). `FileOut::puts` calls
 `FS.lock()` again on the same hart.
 
-`SpinLock::lock` (`spinlock.rs:22`–`spinlock.rs:31`) is a `compare_exchange`
+`SpinLock::lock` (`spinlock.rs`) is a `compare_exchange`
 loop with no owner tracking: **not reentrant**. The second acquisition spins
 forever waiting for a lock only the spinning code could release, and nothing
 else on this hart runs, so the prompt never returns. (It does not disable
@@ -896,7 +896,7 @@ construction: the whole point of the trait is that `cmd_ls` does not know what
 
 **Two fixes.** (1) *Collect, then print:* under the lock copy the names into a
 local `Vec<String>`, drop the guard, then print — `cmd_cd` already does a
-smaller version of this, dropping `fsg` at `shell.rs:102` before pushing.
+smaller version of this, dropping `fsg` at `shell.rs` before pushing.
 (2) *Buffer in the sink:* let `FileOut::puts` append into its own `buf` and do
 the single filesystem `write` in a `flush` called after `cmd_ls` returns.
 
@@ -929,10 +929,10 @@ Order: **B, F, G, D, E, A, H, C** — with one honest caveat about C, below.
 
 | Step | Event | Mode |
 |---|---|---|
-| 1 | **B** shell writes the prompt (`exec.rs:361`–`exec.rs:365`) | starts U, traps to S for the `ecall` |
-| 2 | **F** tokenize the line in place (`exec.rs:389`–`exec.rs:421`) | U — pure computation, no kernel involved |
-| 3 | **G** `fork()` (`exec.rs:438`) | U issues it; S performs it |
-| 4 | **D** the child calls `exec` (`exec.rs:443`) | U issues it |
+| 1 | **B** shell writes the prompt (`exec.rs`) | starts U, traps to S for the `ecall` |
+| 2 | **F** tokenize the line in place (`exec.rs`) | U — pure computation, no kernel involved |
+| 3 | **G** the shell issues `fork` (`exec.rs`) | U issues it; S performs it |
+| 4 | **D** the child calls `exec` (`exec.rs`) | U issues it |
 | 5 | **E** `uservec` parks the child's registers in its trapframe | S (on the trampoline page) |
 | 6 | **A** `sys_exec` replaces the address space | S |
 | 7 | **H** the new program writes `hi` | U issues `write`, S performs it |
@@ -991,9 +991,9 @@ entirely before step G, in the shell's own process, or it would not work at all.
    reference solution, and `shell.rs` is the only file with an `IMPLEMENT`
    marker. Every exercise stages from the reference version of what came before.
 
-2. **Nothing you wrote is gone.** `archive_work` (`model.rs:712`) copies your
+2. **Nothing you wrote is gone.** `archive_work` (`model.rs`) copies your
    whole staging directory to `my-work/<exercise>/` before any overwrite, and
-   `stage_exercise` (`model.rs:740`) restores it on the way back. `oslings goto
+   `stage_exercise` (`model.rs`) restores it on the way back. `oslings goto
    43k` returns you to your own trap handler; `oslings goto 46k` returns you here.
 
 3. **The job changes from building to extending.** Read for interfaces — what a
@@ -1001,16 +1001,16 @@ entirely before step G, in the shell's own process, or it would not work at all.
    for implementations. That is what almost all real kernel work looks like.
 
 4. **A shell is a loop, and that is the whole idea.** Read a line, decide which
-   command it names, run it, print, repeat (`shell.rs:343`). Shells from
+   command it names, run it, print, repeat (`run()` in `shell.rs`). Shells from
    Thompson's to zsh differ only in how hard the evaluate step works.
 
 5. **Tokenizing borrows; it does not allocate.** `split_whitespace`
-   (`shell.rs:40`) yields `&str` views into the line buffer — no copies, no
+   (`shell.rs`) yields `&str` views into the line buffer — no copies, no
    failure mode, and a borrow checker that forces `line.clear()` after `exec`
    returns. C's `strtok` gets there by destroying the input, which is what rv6's
-   assembly user shell does (`exec.rs:389`).
+   assembly user shell does (`exec.rs`).
 
-6. **Dispatch belongs in a table.** One `match` (`shell.rs:47`) gives a single
+6. **Dispatch belongs in a table.** One `match` (`shell.rs`) gives a single
    point of truth, a uniform handler signature, a forced catch-all arm, and a
    clean split between "which command" and "how it works" — plus room for the
    second branch every real shell has: built-in, or fork-exec-wait a program.
@@ -1018,11 +1018,11 @@ entirely before step G, in the shell's own process, or it would not work at all.
 7. **The current directory is per-process kernel state, which is why `cd` is a
    built-in.** A child gets a copy of the cwd, so a `cd` program would change
    its own directory and die. rv6 keeps the cwd in the shell instead
-   (`shell.rs:23`), caches inode *numbers* rather than references, and has no
-   `chdir` system call at all (`syscall.rs:21`–`syscall.rs:29`).
+   (`Shell` in `shell.rs`), caches inode *numbers* rather than references, and has no
+   `chdir` system call at all (`dispatch()` in `syscall.rs`).
 
 8. **This shell has powers no shell should have, and we know which exercise
    takes them away.** It runs in S-mode, calls `FS.lock()` directly, and can
    corrupt any memory in the machine. Exercise `48k_user_mode` builds the wall —
    U-mode, `PTE_U`, trampoline, trapframe — and exercise `52k_userland` moves the
-   shell behind it (`exec.rs:354`), where a bug kills only the program.
+   shell behind it (`exec.rs`), where a bug kills only the program.

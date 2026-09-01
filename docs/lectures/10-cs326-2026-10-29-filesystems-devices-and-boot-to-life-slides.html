@@ -200,7 +200,7 @@ An <strong>inode number</strong> is an <em>index</em>, not a pointer. An index s
 ## rv6's Inode Has No Name Field
 
 ```rust
-pub struct Inode {                  // fs.rs:50
+pub struct Inode {                  // fs.rs
     kind: InodeKind,                // Free | File | Dir
     size: usize,
     data: [u8; FILESIZE],           // file bytes ...
@@ -208,8 +208,8 @@ pub struct Inode {                  // fs.rs:50
 }
 ```
 
-- Inode 1 is the root, made a `Dir` by `init` (`fs.rs:83`)
-- `alloc` scans upward from `ROOT` for the first `Free` slot (`fs.rs:86`)
+- Inode 1 is the root, made a `Dir` by `init` (`fs.rs`)
+- `alloc` scans upward from `ROOT` for the first `Free` slot (`fs.rs`)
 - A real inode holds *block numbers*; rv6 holds the bytes inline
 
 ---
@@ -247,7 +247,7 @@ Two entries point at inode 2. Nothing forbids it.
 ## rv6's `unlink` Has No Link Count
 
 ```rust
-// fs.rs:197 — free the inode, unconditionally
+// fs.rs — free the inode, unconditionally
 self.inodes[e.inum] = Inode::new();
 self.inodes[dir].entries[i].used = false;
 ```
@@ -278,7 +278,7 @@ V7 Unix entries were exactly 16 bytes: a 2-byte inode number and a 14-character 
 ```rust
 pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError> {
     if self.inodes[dir].kind != InodeKind::Dir {
-        return Err(FsError::NotADirectory);      // fs.rs:110
+        return Err(FsError::NotADirectory);      // fs.rs
     }
     for e in &self.inodes[dir].entries {
         if e.used && e.len == name.len() && &e.name[..e.len] == name {
@@ -294,11 +294,11 @@ pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError> {
 ## Two Errors, and One Quiet Discipline
 
 - `NotFound` vs `NotADirectory` are different facts, so they are different variants — the kind check is why `cat /etc/passwd/foo` says `ENOTDIR`
-- `dircreate` reuses `dirlookup` for its duplicate check, treating `NotFound` as permission to proceed (`fs.rs:126`)
+- `dircreate` reuses `dirlookup` for its duplicate check, treating `NotFound` as permission to proceed (`fs.rs`)
 - The scan is O(entries); ext4 switches to hashed B-trees once a directory outgrows a block
 
 <div class="info-box">
-<code>dircreate</code> takes the directory slot <em>before</em> allocating the inode (<code>fs.rs:132</code>). Reverse them and a create into a full directory leaks an inode every time.
+<code>dircreate</code> takes the directory slot <em>before</em> allocating the inode (<code>fs.rs</code>). Reverse them and a create into a full directory leaks an inode every time.
 </div>
 
 ---
@@ -389,10 +389,10 @@ The log makes an operation <strong>atomic</strong>, not <strong>durable</strong>
 
 | Device | Physical address | Source |
 |---|---|---|
-| UART | `0x1000_0000` | `memlayout.rs:17` |
-| Test finisher | `0x10_0000` | `memlayout.rs:21` |
-| PLIC | `0x0c00_0000` | `memlayout.rs:26` |
-| RAM (`KERNBASE`) | `0x8000_0000` | `memlayout.rs:10` |
+| UART | `0x1000_0000` | `memlayout.rs` |
+| Test finisher | `0x10_0000` | `memlayout.rs` |
+| PLIC | `0x0c00_0000` | `memlayout.rs` |
+| RAM (`KERNBASE`) | `0x8000_0000` | `memlayout.rs` |
 
 x86 has a *separate* 16-bit I/O space reached with `in`/`out`. RISC-V does not repeat that.
 
@@ -426,7 +426,7 @@ pub fn tx_ready() -> bool { unsafe { reg_read(LSR) & LSR_THRE != 0 } }
 pub fn rx_ready() -> bool { unsafe { reg_read(LSR) & LSR_DR   != 0 } }
 
 pub fn putc(c: u8) {
-    while !tx_ready() {}            // uart.rs:49 — spin for room
+    while !tx_ready() {}            // uart.rs — spin for room
     unsafe { reg_write(THR, c) }
 }
 
@@ -457,7 +457,7 @@ Every polled driver: *is it ready*, *transfer*, *acknowledge*.
 - UART transmitter (µs) &rarr; poll
 - Disk (ms) &rarr; interrupt
 - NVMe &rarr; poll again; the interrupt became the slow part
-- rv6 moves *input* to interrupts in L19 (`uart.rs:36`, `plic.rs:14`, `console.rs:68`)
+- rv6 moves *input* to interrupts in L19 (`enable_rx_interrupt()` (`uart.rs`), `UART0_IRQ` (`plic.rs`), `intr()` (`console.rs`))
 - Output stays polled forever: the console must work when everything else is broken
 
 ---
@@ -486,7 +486,7 @@ Every polled driver: *is it ready*, *transfer*, *acknowledge*.
 ## `kinit`: Six Lines, Six Arguments
 
 ```rust
-unsafe fn kinit() {                  // main.rs:87
+unsafe fn kinit() {                  // main.rs
     uart::init();                    // console first
     kalloc::init();                  // physical pages
     vm::kvminithart(vm::kvmmake());  // page table, then arm the MMU
@@ -518,8 +518,8 @@ flowchart TD
 ## Which Edges Are Real?
 
 - **Policy:** UART first. Nothing in `kalloc` calls it — but a kernel that cannot say why it died is debugged with a logic analyzer
-- **Mechanical:** `kvmmake` calls `kalloc` (`vm.rs:126`). No free list &rarr; null root &rarr; `satp` pointing at physical page 0
-- **Mechanical:** `csrw satp` retires and the *next instruction* is translated. rv6 survives on the identity map (`vm.rs:141`)
+- **Mechanical:** `kvmmake` calls `kalloc` (`vm.rs`). No free list &rarr; null root &rarr; `satp` pointing at physical page 0
+- **Mechanical:** `csrw satp` retires and the *next instruction* is translated. rv6 survives on the identity map (`vm.rs`)
 - **Conventional:** `fs::FS.lock().init()` allocates nothing and could go almost anywhere
 
 ---
@@ -530,7 +530,7 @@ flowchart TD
 Through exercise 42k the kernel runs in <strong>machine mode</strong>, where <code>satp</code> translates nothing. The write lands, the mode field reads back as 8, and no translation happens.
 </div>
 
-- Exercise 43k's `start` sets `mstatus.MPP`, points `mepc` at `kmain`, and `mret`s (`start.rs:29`-`54`)
+- Exercise 43k's `start` sets `mstatus.MPP`, points `mepc` at `kmain`, and `mret`s (`start.rs`)
 - **A broken page table can pass exercise 42k and hang exercise 43k** — with no code change in between
 - `42k` boots fine, `43k` dead an hour later? Suspect `kvmmake`
 

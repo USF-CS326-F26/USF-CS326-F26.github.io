@@ -35,7 +35,7 @@ rv6 uses.
 | `0x0010_0000` – `0x0010_0fff` | SiFive test finisher | `TEST_FINISHER`, `testdev.rs` |
 | `0x0010_1000` | goldfish RTC | unused |
 | `0x0200_0000` – `0x0200_3fff` | CLINT software-interrupt registers | unused |
-| `0x0200_4000` – `0x0200_bfff` | CLINT timer: `mtime` (`+0xBFF8`), `mtimecmp` (`+0x4000`) | `start.rs:17`, `start.rs:18` |
+| `0x0200_4000` – `0x0200_bfff` | CLINT timer: `mtime` (`+0xBFF8`), `mtimecmp` (`+0x4000`) | `start.rs` |
 | `0x0c00_0000` – `0x0c5f_ffff` | PLIC | `PLIC`, `plic.rs` |
 | `0x1000_0000` | NS16550A UART | `UART0`, `uart.rs` |
 | `0x1000_1000` – `0x1000_8fff` | eight virtio-mmio slots | unused |
@@ -46,7 +46,7 @@ rv6 uses.
 Two conventions worth pinning down. The **CLINT** base in `start.rs` is written
 `0x0200_0000`, with `mtimecmp` for hart 0 at `+0x4000` and `mtime` at `+0xBFF8`
 — those land inside the timer block above. The **PLIC** is 6 MiB wide on the
-board, but `PLIC_SIZE` in `memlayout.rs:27` is `0x40_0000` (4 MiB), which
+board, but `PLIC_SIZE` in `memlayout.rs` is `0x40_0000` (4 MiB), which
 comfortably covers every register `plic.rs` touches (the highest is
 `PLIC + 0x20_1004`).
 
@@ -91,22 +91,22 @@ The linker script is 20 lines of substance and every one of them matters.
 
 ```text
 OUTPUT_ARCH( "riscv" )
-ENTRY( _entry )            /* kernel.ld:12 */
+ENTRY( _entry )            /* kernel.ld */
 
 SECTIONS {
-  . = 0x80000000;          /* kernel.ld:16 */
+  . = 0x80000000;          /* kernel.ld */
 
   .text : {
-    *(.entry)              /* kernel.ld:19 */
+    *(.entry)              /* kernel.ld */
     *(.text .text.*)
     . = ALIGN(0x1000);
-    PROVIDE(etext = .);    /* kernel.ld:22 */
+    PROVIDE(etext = .);    /* kernel.ld */
   }
   .rodata : { . = ALIGN(16); *(.srodata .srodata.*) *(.rodata .rodata.*) }
   .data   : { . = ALIGN(16); *(.sdata .sdata.*)     *(.data .data.*) }
   .bss    : { . = ALIGN(16); *(.sbss .sbss.*)       *(.bss .bss.*) }
 
-  PROVIDE(end = .);        /* kernel.ld:43 */
+  PROVIDE(end = .);        /* kernel.ld */
 }
 ```
 
@@ -151,7 +151,7 @@ extern "C" {
 
 pub unsafe fn init() {
     let start = &end as *const u8 as usize;
-    free_range(start, PHYSTOP);          // kalloc.rs:23
+    free_range(start, PHYSTOP);          // kalloc.rs
 }
 ```
 
@@ -183,7 +183,7 @@ physical memory
        |       (page tables, trapframes, kernel stacks, user pages)
        |
   0x8003_1000  first free page (pgroundup of `end`)
-  0x8003_0748  end       <- PROVIDE(end = .) in kernel.ld:43
+  0x8003_0748  end       <- PROVIDE(end = .) in kernel.ld
        |       .bss  (includes STACK0, the boot stack)
        |       .data
        |       .rodata
@@ -196,16 +196,16 @@ physical memory
 
 ## The kernel's virtual address space
 
-`vm.rs:125` (`kvmmake`) builds it, and it is deliberately boring — an identity
+`vm.rs` (`kvmmake`) builds it, and it is deliberately boring — an identity
 map plus one exception:
 
 | Virtual range | Maps to | Perms | Source |
 |---|---|---|---|
-| `0x1000_0000` (1 page) | itself | `R W` | `vm.rs:132` |
-| `0x0010_0000` (1 page) | itself | `R W` | `vm.rs:135` |
-| `0x0c00_0000` (4 MiB) | itself | `R W` | `vm.rs:138` |
-| `0x8000_0000` – `0x8800_0000` | itself | `R W X` | `vm.rs:141` |
-| `TRAMPOLINE` (1 page) | a fresh page holding a copy of `uservec`/`userret` | `R X` | `vm.rs:169` |
+| `0x1000_0000` (1 page) | itself | `R W` | `vm.rs` |
+| `0x0010_0000` (1 page) | itself | `R W` | `vm.rs` |
+| `0x0c00_0000` (4 MiB) | itself | `R W` | `vm.rs` |
+| `0x8000_0000` – `0x8800_0000` | itself | `R W X` | `vm.rs` |
+| `TRAMPOLINE` (1 page) | a fresh page holding a copy of `uservec`/`userret` | `R X` | `vm.rs` |
 
 Identity mapping means a physical address and a kernel virtual address are the
 same number, so kernel pointers keep working the instant `satp` is written. The
@@ -254,22 +254,22 @@ Four things about this layout trip people up.
 
 **`MAXVA` is `1 << 38`, not `1 << 39`.** Sv39 has 39 address bits, but bit 38 is
 the sign bit: any address with it set must be sign-extended into all the upper
-bits or the hardware faults. Stopping one bit short (`memlayout.rs:49`) means no
+bits or the hardware faults. Stopping one bit short (`memlayout.rs`) means no
 address rv6 constructs is ever a candidate for that mistake.
 
 **The trampoline is mapped at the same virtual address in *every* page table.**
 That is not an aesthetic choice. `uservec` switches `satp` mid-instruction
 stream; the instruction after the switch must still be mapped, and the only way
 to guarantee that is for the page to live at an identical address in both tables
-(`vm.rs:153`).
+(`kvmmake()` in `vm.rs`).
 
 **`TRAMPOLINE` and `TRAPFRAME` have no `PTE_U` bit.** They are in the user's
 page table, but user mode cannot touch them — that single bit is the wall
-(`vm.rs:23`). `free_pt` uses the same bit to decide what a process owns:
-`PTE_U` leaves get freed, non-`U` leaves get unmapped only (`vm.rs:363`).
+(`vm.rs`). `free_pt` uses the same bit to decide what a process owns:
+`PTE_U` leaves get freed, non-`U` leaves get unmapped only (`vm.rs`).
 
 **The guard is a gap, not a page.** `USER_STACK` is fixed at
-`MAX_PROG_PAGES * PGSIZE` = `0x1_0000` (`memlayout.rs:72`), above the largest
+`MAX_PROG_PAGES * PGSIZE` = `0x1_0000` (`memlayout.rs`), above the largest
 image rv6 will load. A one-page program therefore leaves 15 unmapped pages
 between its code and its stack, so running off the end of either faults cleanly
 instead of corrupting the other. Be honest about the edge case: a program that
@@ -277,7 +277,7 @@ actually uses all 16 pages has *no* gap, and its last code page sits directly
 below the stack.
 
 **Address 0 is a valid, mapped, executable address.** `USER_CODE` is `0x0`
-(`memlayout.rs:61`), so a null pointer dereference in an rv6 user program reads
+(`memlayout.rs`), so a null pointer dereference in an rv6 user program reads
 its own first instruction rather than faulting. That is a real difference from
 Linux and it will surprise you at least once.
 
@@ -304,7 +304,7 @@ All from `memlayout.rs`.
 
 Two stacks are *not* in that table because they are allocated, not fixed:
 `STACK0` in `entry.rs` is a 16 KiB boot stack living in `.bss`, and each process
-gets a one-page kernel stack from `kalloc` (`proc.rs:118`), with `kernel_sp` set
-to `kstack + PGSIZE` (`usermode.rs:450`).
+gets a one-page kernel stack from `kalloc` (`proc.rs`), with `kernel_sp` set
+to `kstack + PGSIZE` (`usertrapret()` in `usermode.rs`).
 
 To watch any of this at runtime, see [QEMU and GDB](qemu-gdb.md).

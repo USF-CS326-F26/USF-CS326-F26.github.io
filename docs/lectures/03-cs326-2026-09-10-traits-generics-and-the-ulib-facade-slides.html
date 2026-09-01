@@ -249,7 +249,7 @@ pub trait Out {
 - A trait holds **no data**; you can never build a value of one
 - It is a statement *about* types, not a type
 
-Real code: `shell.rs:17` in the reference kernel.
+Real code: `Out` (`shell.rs`) in the reference kernel.
 
 ---
 
@@ -389,7 +389,7 @@ The last row decides most cases. Neither is the "advanced" one.
 ## rv6 #1: the `Scheduler` Trait
 
 ```rust
-// sched.rs:5 — exercise 36k
+// sched.rs — exercise 36k
 pub trait Scheduler {
     fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
 }
@@ -397,7 +397,7 @@ pub trait Scheduler {
 
 *Policy* (which process runs) is separated from *mechanism* (how the CPU is handed over &mdash; hand-written assembly you touch once).
 
-`RoundRobin` at `sched.rs:20` keeps a rotation cursor; a `Priority` policy keeps a table. The loop never changes.
+`RoundRobin` at `sched.rs` keeps a rotation cursor; a `Priority` policy keeps a table. The loop never changes.
 
 ---
 
@@ -418,7 +418,7 @@ pub trait Scheduler {
 ## rv6 #2: the `Out` Trait
 
 ```rust
-// shell.rs:17 / :334 / :345
+// shell.rs / :334 / :345
 pub trait Out { fn puts(&mut self, s: &str); }
 
 struct ConsoleOut;
@@ -456,14 +456,14 @@ enum Result<T, E> { Ok(T),   Err(E) }
 - `Result` is `#[must_use]`: ignoring one is a compiler warning
 
 `.ok_or(e)` is the bridge, and the line where the **policy** lives:
-`lookup(name).ok_or(ExecError::NotFound)?` &mdash; `exec.rs:649`
+`lookup(name).ok_or(ExecError::NotFound)?` &mdash; `Built` (`exec.rs`)
 
 ---
 
 ## Your Own Error Type
 
 ```rust
-// fs.rs:19
+// fs.rs
 pub enum FsError {
     NotFound,     AlreadyExists,  NotADirectory,  IsADirectory,
     NoFreeInode,  DirFull,        NameTooLong,    FileTooBig,
@@ -471,7 +471,7 @@ pub enum FsError {
 ```
 
 - The caller `match`es a *named* failure, not an integer
-- `shell.rs:135`: `touch` treats `AlreadyExists` as success
+- `shell.rs`: `touch` treats `AlreadyExists` as success
 - Grow the enum later and every `match` needing a new decision stops compiling
 
 ---
@@ -516,11 +516,11 @@ Written once per error-type *pair*, not per call site. Direction is fixed: speci
   layer                      type it speaks in          what it can say
   ─────────────────────────────────────────────────────────────────────
   cat.rs (user program)      Result<usize,ulib::Error>  Error(-1)
-  ulib::read    lib.rs:104   isize, read out of a0      -1
+  ulib::read    lib.rs   isize, read out of a0      -1
   ══ trap boundary ══ one register, no types, another address space ══
-  sys_read      syscall.rs:468  isize                   -1   <- cause lost
-  FS.read_at    fs.rs:231    Result<usize, FsError>     IsADirectory, ...
-  dirlookup     fs.rs:109    Result<usize, FsError>     NotFound
+  sys_read      syscall.rs  isize                   -1   <- cause lost
+  FS.read_at    fs.rs    Result<usize, FsError>     IsADirectory, ...
+  dirlookup     fs.rs    Result<usize, FsError>     NotFound
 ```
 
 The collapse belongs in **one** place: the boundary. Everything behind it speaks `FsError`.
@@ -573,7 +573,7 @@ mod host;
 pub(crate) use host::*;
 ```
 
-Both backends expose the same five functions, so `lib.rs` above them has **no `#[cfg]` at all**. Your command file has none either &mdash; two lines of ceremony (`cat.rs:15`, `cat.rs:19`).
+Both backends expose the same five functions, so `lib.rs` above them has **no `#[cfg]` at all**. Your command file has none either &mdash; two lines of ceremony (`cat.rs`).
 
 ---
 
@@ -601,7 +601,7 @@ let out = testing::run_with_files(
 assert_eq!(out.out(), "hello\nworld\n");
 ```
 
-`testing::run` (`testing.rs:28`) diverts writes into a thread-local capture buffer and calls your `run` directly &mdash; no process spawned, no temp files, and **byte-identical source** to what will run on rv6.
+`testing::run` (`testing.rs`) diverts writes into a thread-local capture buffer and calls your `run` directly &mdash; no process spawned, no temp files, and **byte-identical source** to what will run on rv6.
 
 ---
 

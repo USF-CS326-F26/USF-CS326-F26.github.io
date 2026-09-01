@@ -91,7 +91,7 @@ that do must either save `f0`–`f31` too or switch the FPU lazily.
 
 ### Two languages have to agree on byte offsets
 
-From `swtch.rs:5`–`swtch.rs:22`:
+From `Context` in `swtch.rs`:
 
 ```rust
 #[repr(C)]
@@ -130,7 +130,7 @@ on a compiler upgrade.
 
 ## 2. `swtch`, Instruction by Instruction
 
-From `swtch.rs:46`–`swtch.rs:82`, abridged in the middle:
+From `swtch.rs`, abridged in the middle:
 
 ```asm
 .globl swtch
@@ -152,19 +152,19 @@ swtch:
 
 **Entry.** `a0` and `a1` hold the arguments per the ABI: where to save and load from. `ra` holds the address after the call site; `sp` points at the caller's stack.
 
-**The save block (`swtch.rs:50`–`swtch.rs:63`).** Fourteen `sd` (store doubleword)
+**The save block (`swtch.rs`).** Fourteen `sd` (store doubleword)
 instructions write the live registers into `*old`, which is then a complete,
 resumable description of the calling thread. Nothing the CPU is doing has changed —
 we made a copy.
 
-**The load block (`swtch.rs:65`–`swtch.rs:78`).** Fourteen `ld` instructions
+**The load block (`swtch.rs`).** Fourteen `ld` instructions
 overwrite those registers from `*new`. Two are dramatic, twelve are bookkeeping:
 
 - `ld sp, 8(a1)` switches stacks. From here the CPU stands on someone else's stack;
   the old thread's locals and frames are still intact in memory, just unreachable.
 - `ld ra, 0(a1)` rewrites where this function will return to.
 
-**`ret` (`swtch.rs:80`).** `ret` is a pseudo-instruction for `jalr x0, 0(ra)`: jump
+**`ret` (`swtch.rs`).** `ret` is a pseudo-instruction for `jalr x0, 0(ra)`: jump
 to the address in `ra`, discard the link. It never consults the stack and has no idea
 a switch happened. It jumps to the `ra` loaded four instructions ago.
 
@@ -199,7 +199,7 @@ baby_swtch:                       swtch:
     ret                               ret
 ```
 
-Ten more registers, and a `Context` living inside a `Proc` (`proc.rs:33`) instead of a
+Ten more registers, and a `Context` living inside a `Proc` (`proc.rs`) instead of a
 test harness. Same argument registers, same ordering constraint, same `ret`. 20a's
 version was not a model of a context switch; it *was* one, for a machine that only
 used four registers.
@@ -207,7 +207,7 @@ used four registers.
 Two details 20a also established. **`global_asm!`, not `asm!` inside a function:** a
 Rust function gets a prologue and epilogue that adjust `sp`, and `swtch` is *about*
 `sp`. `global_asm!` emits the routine with no wrapper; the `extern "C"` block at
-`swtch.rs:34` declares the symbol, and calling it is `unsafe` because Rust cannot
+`swtch.rs` declares the symbol, and calling it is `unsafe` because Rust cannot
 check that declaration against the assembly. **Save all before loading any:** a `ld`
 before the `sd` that reads the same register would save the target's value instead
 of the caller's.
@@ -239,7 +239,7 @@ sequenceDiagram
 
 **1. The scheduler needs a stack nobody is about to free.** A direct switch means the
 picking code runs on the *outgoing* process's kernel stack. Look at `exit_current`
-(`usermode.rs:371`–`usermode.rs:377`): a process marks itself `Zombie` and leaves for
+(`usermode.rs`): a process marks itself `Zombie` and leaves for
 good, and its kernel stack page goes back to `kalloc`. You cannot free the stack you
 are standing on.
 
@@ -248,8 +248,8 @@ scheduler or scheduler → process, so an invariant like "the process-table lock
 across the switch and released by whoever arrives" has two cases, not every pair.
 
 **3. "Per-CPU" is not decoration.** rv6 is single-hart, so the scheduler context is
-one static — `SCHED_CTX` at `usermode.rs:204`, the running process in `CURPROC` at
-`usermode.rs:206`. On a multi-hart machine each hart needs its own scheduler context
+one static — `SCHED_CTX` at `usermode.rs`, the running process in `CURPROC` at
+`usermode.rs`. On a multi-hart machine each hart needs its own scheduler context
 and stack, since all can be inside the loop at once; xv6 keeps these two fields in a
 per-CPU `struct cpu` indexed by hart id.
 
@@ -260,7 +260,7 @@ quantum.
 
 ### One turn, in detail
 
-The loop is `scheduler` at `usermode.rs:278`, stripped to essentials:
+The loop is `scheduler` at `usermode.rs`, stripped to essentials:
 
 ```rust
 let mut policy = RoundRobin::new();
@@ -281,12 +281,12 @@ loop {
 }
 ```
 
-Stare at `usermode.rs:297`. Textually one call; dynamically, an unbounded amount of
+Stare at `scheduler()` (`usermode.rs`). Textually one call; dynamically, an unbounded amount of
 time passes inside it. Control reaches the next statement only because the process
-eventually called `swtch` the other way, from `proc_yield` (`usermode.rs:365`) or
-`exit_current` (`usermode.rs:375`).
+eventually called `swtch` the other way, from `proc_yield` (`usermode.rs`) or
+`exit_current` (`usermode.rs`).
 
-`proc_yield` at `usermode.rs:363` is the cooperative hand-back:
+`proc_yield` at `usermode.rs` is the cooperative hand-back:
 
 ```rust
 pub unsafe fn proc_yield(p: *mut Proc) {
@@ -315,7 +315,7 @@ stateDiagram-v2
 ### Bootstrapping a context that has never run
 
 A new process has never called `swtch`, so it has no saved context. The kernel
-forges one — `ready` at `usermode.rs:245`–`usermode.rs:249`:
+forges one — `ready` in `usermode.rs`:
 
 ```rust
 pub unsafe fn ready(p: *mut Proc) {
@@ -325,13 +325,13 @@ pub unsafe fn ready(p: *mut Proc) {
 }
 ```
 
-Exercise 35k's `init_context` (`swtch.rs:38`–`swtch.rs:44`) is the same three lines
+Exercise 35k's `init_context` (`swtch.rs`) is the same three lines
 in general form. Two fields matter. **`ra` is the entry function's address** — the
 first `swtch` into this process `ret`s to it, so `ret` *becomes* the call. In rv6
-the entry is `forkret` (`usermode.rs:356`), which calls the `-> !` function
+the entry is `forkret` (`usermode.rs`), which calls the `-> !` function
 `usertrapret`, so it never returns and needs no valid `ra` of its own. **`sp` is the
-top of a fresh stack:** `kstack` is one `kalloc`'d page (`proc.rs:118`;
-`PGSIZE = 4096` at `memlayout.rs:7`) and RISC-V stacks grow *downward*. Setting it
+top of a fresh stack:** `kstack` is one `kalloc`'d page (`proc.rs`;
+`PGSIZE = 4096` at `memlayout.rs`) and RISC-V stacks grow *downward*. Setting it
 to `kstack` is a classic bug — the first push writes below the page.
 
 ---
@@ -344,7 +344,7 @@ fourteen loads, a jump; assembly; no opinions. **Policy** is *which* action, and
 entirely opinions.
 
 The separation is not tidiness — it is what makes a scheduler replaceable. In rv6
-the seam is a trait, `sched.rs:5`–`sched.rs:7`:
+the seam is a trait, `Scheduler` in `sched.rs`:
 
 ```rust
 pub trait Scheduler {
@@ -352,8 +352,8 @@ pub trait Scheduler {
 }
 ```
 
-The loop names the trait, not the implementation (`usermode.rs:279`,
-`usermode.rs:290`). Swap `RoundRobin` for `Lottery` and the delicate assembly is not
+The loop names the trait, not the implementation (`scheduler()` (`usermode.rs`),
+`usermode.rs`). Swap `RoundRobin` for `Lottery` and the delicate assembly is not
 recompiled, not re-reviewed, not re-debugged. `&mut self` lets a policy carry state
 between calls — a cursor, a priority table, a virtual clock.
 
@@ -364,7 +364,7 @@ struct of roughly two dozen function pointers, with classes chained in priority
 order: stop, deadline, realtime, fair, idle.
 
 > Rule of thumb: policy code runs on *every* scheduling decision. An `O(n)` policy is
-> fine at `NPROC = 64` (`param.rs:7`) and a catastrophe at 100,000 threads — which is
+> fine at `NPROC = 64` (`param.rs`) and a catastrophe at 100,000 threads — which is
 > why Linux went from an `O(n)` scan to the `O(1)` scheduler to CFS's red-black tree.
 
 ---
@@ -372,7 +372,7 @@ order: stop, deadline, realtime, fair, idle.
 ## 5. Round Robin
 
 Round robin puts runnable processes in a circle and gives each a turn
-(`sched.rs:20`–`sched.rs:29`):
+(`RoundRobin::pick_next()` in `sched.rs`):
 
 ```rust
 fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
@@ -421,10 +421,10 @@ As written this is **cooperative**: the process decides when to hand back, and o
 that loops forever owns the machine. The fix is the **quantum** — the maximum CPU
 time a process may hold before the scheduler runs again — enforced by a timer.
 
-rv6 already has the hardware. `start.rs:19` sets `INTERVAL = 1_000_000`, and the
+rv6 already has the hardware. `start.rs` sets `INTERVAL = 1_000_000`, and the
 `time` CSR ticks at 10 MHz on QEMU `virt`, so the machine timer fires about every
-0.1 s; `timervec` (`start.rs:83`) forwards it as a supervisor software interrupt,
-counted at `trap.rs:64`. Turning that tick into a forced yield is preemption:
+0.1 s; `timervec` (`start.rs`) forwards it as a supervisor software interrupt,
+counted at `kerneltrap()` (`trap.rs`). Turning that tick into a forced yield is preemption:
 exercise `44k_interrupts`. Today's scheduler is cooperative on purpose, because it is
 deterministic — a wrong `pick_next` gives a wrong *order* rather than a heisenbug.
 
@@ -576,7 +576,7 @@ object behind a trait, so the policy is swappable.
 yield turns cooperative round robin into preemptive. **Locking**
 (`37k_spinlocks`): once a switch can happen at an arbitrary instruction, every shared
 kernel structure needs mutual exclusion. **Blocking** (`38k_semaphores`): `Sleeping`
-exists in `ProcState` (`proc.rs:18`) but nothing puts a process there yet.
+exists in `ProcState` (`proc.rs`) but nothing puts a process there yet.
 
 ---
 
@@ -584,15 +584,15 @@ exists in `ProcState` (`proc.rs:18`) but nothing puts a process there yet.
 
 | Concept | Definition | Example |
 |---|---|---|
-| Context | Register state needed to resume a suspended kernel thread | `ra`, `sp`, `s0`–`s11` — 14 `usize`, 112 bytes (`swtch.rs:7`) |
+| Context | Register state needed to resume a suspended kernel thread | `ra`, `sp`, `s0`–`s11` — 14 `usize`, 112 bytes (`swtch.rs`) |
 | Callee-saved | Registers a called function must return unchanged | `ra`, `sp`, `s0`–`s11`; the only ones `swtch` saves |
-| `#[repr(C)]` | Forces declaration-order, C-rule field layout | Locks `ra` at 0, `sp` at 8, `s11` at 104 (`swtch.rs:5`) |
-| `swtch` | Save 14 registers, load 14, `ret` | `swtch.rs:46`–`swtch.rs:82`; 20a's `baby_swtch` plus ten |
-| Double switch | Every handover goes process → scheduler → process | In at `usermode.rs:297`, out at `usermode.rs:365` |
-| Per-CPU scheduler context | The hub context each hart switches through | `static mut SCHED_CTX` (`usermode.rs:204`) |
-| `Scheduler` trait | The seam that makes a policy replaceable | `pick_next(&mut self, &[ProcState]) -> Option<usize>` (`sched.rs:5`) |
-| Round robin | Give each runnable process a turn in rotation | Cursor at `sched.rs:26`: `self.next = (i + 1) % n` |
-| Quantum | Max CPU held before the scheduler runs again | rv6's timer fires every ~0.1 s (`start.rs:19`) |
+| `#[repr(C)]` | Forces declaration-order, C-rule field layout | Locks `ra` at 0, `sp` at 8, `s11` at 104 (`swtch.rs`) |
+| `swtch` | Save 14 registers, load 14, `ret` | `swtch.rs`; 20a's `baby_swtch` plus ten |
+| Double switch | Every handover goes process → scheduler → process | In at `scheduler`, out at `proc_yield` (`usermode.rs`) |
+| Per-CPU scheduler context | The hub context each hart switches through | `static mut SCHED_CTX` (`usermode.rs`) |
+| `Scheduler` trait | The seam that makes a policy replaceable | `pick_next(&mut self, &[ProcState]) -> Option<usize>` (`sched.rs`) |
+| Round robin | Give each runnable process a turn in rotation | Cursor in `sched.rs`: `self.next = (i + 1) % n` |
+| Quantum | Max CPU held before the scheduler runs again | rv6's timer fires every ~0.1 s (`start.rs`) |
 | Starvation | Runnable but indefinitely deferred by the selection rule | A long job under SJF |
 
 ---
@@ -611,7 +611,7 @@ stack is the CPU standing on?
 <details>
 <summary>Click to reveal solution</summary>
 
-(a) `0x8020_0FF0` — `sd sp, 8(a0)` (`swtch.rs:51`) stores `sp` at offset 8 of the
+(a) `0x8020_0FF0` — `sd sp, 8(a0)` (`swtch.rs`) stores `sp` at offset 8 of the
 *old* context.
 
 (b) `0x8021_0FF0`, loaded from `B + 8`.
@@ -685,7 +685,7 @@ Scans go `(next + off) % 6` for `off` in `0..6`, taking the first `Runnable`.
 | 8 | 1,2,3,4,5,0 | **3** | 4 |
 
 Order: `4, 0, 3, 4, 0, 3, 0, 3`. `Unused`, `Sleeping`, and `Zombie` are skipped
-identically — `pick_next` tests only for `Runnable` (`sched.rs:24`). Once slot 4 exits
+identically — `pick_next` tests only for `Runnable` (`sched.rs`). Once slot 4 exits
 the rotation collapses to alternating 0 and 3, and never stalls on the dead index.
 
 </details>
@@ -719,7 +719,7 @@ is the *bottom* of the page. Nothing faults immediately: the address is mapped a
 writable. You get silent corruption of another process's stack — in QEMU, typically a
 page-fault report from an unrelated function, or a hang.
 
-(d) `(*p).context.sp = (*p).kstack + PGSIZE;` (`usermode.rs:248`).
+(d) `(*p).context.sp = (*p).kstack + PGSIZE;` (`ready()` in `usermode.rs`).
 
 </details>
 
@@ -762,7 +762,7 @@ there. (a) Name one thing that still works. (b) Name the specific case that brea
 (a) The ordinary yield path — `swtch` does not care whose contexts it gets, and you
 save one switch per handover.
 
-(b) `exit_current` (`usermode.rs:371`) marks the process `Zombie` and leaves for good.
+(b) `exit_current` (`usermode.rs`) marks the process `Zombie` and leaves for good.
 Its kernel stack must go back to `kalloc`, but with direct switching the picking code
 ran on *that* stack and nobody else can free it: either a one-page leak per exit, or a
 use-after-free. With the hub, the scheduler is already on its own stack. Second
@@ -814,7 +814,7 @@ to go — it would return into a process that just declared itself not running.
    registers: same argument registers, same save-then-load constraint, same `ret`.
 
 5. **rv6 switches twice per handover, through a per-CPU hub.** Process → scheduler →
-   process via `SCHED_CTX` (`usermode.rs:204`). The extra 14 stores and 14 loads buy a
+   process via `SCHED_CTX` (`usermode.rs`). The extra 14 stores and 14 loads buy a
    scheduler stack no exiting process can free underneath it, and two transition shapes
    instead of `n²`.
 
@@ -824,11 +824,11 @@ to go — it would return into a process that just declared itself not running.
 
 7. **Mechanism and policy are separated so the policy is replaceable.** `swtch` is
    assembly with no opinions, `pick_next` is safe Rust that is entirely opinions, and
-   the `Scheduler` trait (`sched.rs:5`) is the seam — what it exposes decides which
+   the `Scheduler` trait (`sched.rs`) is the seam — what it exposes decides which
    policies are expressible at all.
 
 8. **Round robin trades turnaround for latency and never starves.** The cursor
-   advancing past each selection (`sched.rs:26`) is the whole proof. FCFS convoys; SJF
+   advancing past each selection (`sched.rs`) is the whole proof. FCFS convoys; SJF
    is turnaround-optimal but starves long jobs; priority needs aging; MLFQ infers job
    type from behavior; CFS orders by weighted virtual runtime. Exercises
    `35k_context_switch` and `36k_scheduling` are the mechanism and the policy.

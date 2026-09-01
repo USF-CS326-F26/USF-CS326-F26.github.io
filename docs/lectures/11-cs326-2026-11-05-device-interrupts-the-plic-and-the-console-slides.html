@@ -214,7 +214,7 @@ The timer (ex 14) lives <em>inside</em> the CPU. A keypress does not — it has 
 
 ```rust
 loop {
-    if let Some(b) = uart::getc() { handle(b); }   // uart.rs:53
+    if let Some(b) = uart::getc() { handle(b); }   // uart.rs
 }
 ```
 
@@ -229,7 +229,7 @@ loop {
 
 ## The Same Byte, by Interrupt
 
-- `kernelvec` prologue: 16 stores (`trap.rs:91`–`trap.rs:107`)
+- `kernelvec` prologue: 16 stores (`trap.rs`)
 - handler + 3 MMIO accesses (claim, `RBR`, complete)
 - 16 restores, `sret`
 - Round up hard: **1 µs per byte** → 9 µs/s → **0.0009% CPU**
@@ -242,10 +242,10 @@ loop {
 
 ## So Why Does rv6 Still Poll to Print?
 
-`uart::putc` spins on `THRE` (`uart.rs:49`) — deliberately.
+`uart::putc` spins on `THRE` (`uart.rs`) — deliberately.
 
 - Kernel is the *producer*; the device is fast
-- 16-byte TX FIFO (`uart.rs:30`); under QEMU `THRE` is always set
+- 16-byte TX FIFO (`uart.rs`); under QEMU `THRE` is always set
 - Interrupt-driven TX needs a queue + a lock + a TX handler
 - None of that works inside a **panic handler**
 
@@ -279,7 +279,7 @@ Both extremes poll. The middle interrupts.
 
 ## Sources and Contexts
 
-- **Source** — a numbered device line, 1..1023 (0 = none). UART = **10** (`plic.rs:14`)
+- **Source** — a numbered device line, 1..1023 (0 = none). UART = **10** (`plic.rs`)
 - **Context** — a (hart, privilege) pair. On `virt`: hart *i* owns `2i` (M) and `2i+1` (S)
 - rv6 is single-hart, supervisor mode → **context 1**
 
@@ -292,14 +292,14 @@ Priority is *global per source*. Enable, threshold, and claim are *per context*.
 ```text
   PLIC base = 0x0c00_0000              offset                what rv6 writes
   ------------------------------------------------------------------------
-  priority[src]        base + 4*src              +0x000028  1     plic.rs:24
+  priority[src]        base + 4*src              +0x000028  1     plic.rs
   pending[src/32]      base + 0x1000 + ...       (rv6 never reads it)
-  enable[ctx][src/32]  base + 0x2000 + 0x80*ctx  +0x002080  1<<10 plic.rs:26
-  threshold[ctx]       base + 0x200000 + 0x1000*ctx +0x201000  0  plic.rs:28
-  claim/complete[ctx]  base + 0x200004 + 0x1000*ctx +0x201004     plic.rs:19
+  enable[ctx][src/32]  base + 0x2000 + 0x80*ctx  +0x002080  1<<10 plic.rs
+  threshold[ctx]       base + 0x200000 + 0x1000*ctx +0x201000  0  plic.rs
+  claim/complete[ctx]  base + 0x200004 + 0x1000*ctx +0x201004     plic.rs
 ```
 
-`PLIC_SIZE` = 4 MiB (`memlayout.rs:27`); mapped `R|W` at `vm.rs:138`.
+`PLIC_SIZE` = 4 MiB (`memlayout.rs`); mapped `R|W` at `kvmmake()` (`vm.rs`).
 
 ---
 
@@ -340,14 +340,14 @@ stateDiagram-v2
 
 ```rust
 pub fn intr() {
-    let irq = plic::claim();                 // console.rs:70 — which device?
-    if irq == plic::UART0_IRQ {              // console.rs:71
-        while let Some(b) = uart::getc() {   // console.rs:73 — drain the FIFO
-            push(b);                         // console.rs:74 — into the ring
+    let irq = plic::claim();                 // console.rs — which device?
+    if irq == plic::UART0_IRQ {              // console.rs
+        while let Some(b) = uart::getc() {   // console.rs — drain the FIFO
+            push(b);                         // console.rs — into the ring
         }
     }
-    if irq != 0 {                            // console.rs:78
-        plic::complete(irq);                 // console.rs:79
+    if irq != 0 {                            // console.rs
+        plic::complete(irq);                 // console.rs
     }
 }
 ```
@@ -371,14 +371,14 @@ The first two both give a dead console: one burns all the CPU, one burns none.
 
 ## You Cannot CSR Your Way Out
 
-- Timer tick: clear `sip.SSIP` yourself (`trap.rs:62`–`trap.rs:63`)
+- Timer tick: clear `sip.SSIP` yourself (`kerneltrap()` in `trap.rs`)
 - Device interrupt: **`sip.SEIP` is read-only** to S-mode
 
 <div class="info-box">
 <code>SEIP</code> is a wire from the PLIC. The only way to make it go low is to satisfy the PLIC — read the device, then complete.
 </div>
 
-Also: `claim()` can return `0`. A handler must survive being called for no reason (`console.rs:78`).
+Also: `claim()` can return `0`. A handler must survive being called for no reason (`intr()` in `console.rs`).
 
 ---
 
@@ -386,15 +386,15 @@ Also: `claim()` can return `0`. A handler must survive being called for no reaso
 
 <div class="mermaid">
 flowchart LR
-    K["keypress"] --> G1["1 · IER bit 0\nuart.rs:37"]
-    G1 --> G2["2 · priority>0\nplic.rs:24"]
-    G2 --> G3["3 · enable bit 10\nplic.rs:26"]
-    G3 --> G4["4 · > threshold\nplic.rs:28"]
-    G4 --> G5["5 · mideleg bit 9\nstart.rs:40"]
-    G5 --> G6["6 · sie.SEIE\nconsole.rs:63"]
-    G6 --> G7["7 · sstatus.SIE\ntrap.rs:41"]
-    G7 --> G8["8 · stvec\ntrap.rs:35"]
-    G8 --> G9["9 · PLIC mapped\nvm.rs:138"]
+    K["keypress"] --> G1["1 · IER bit 0\nuart.rs"]
+    G1 --> G2["2 · priority>0\nplic.rs"]
+    G2 --> G3["3 · enable bit 10\nplic.rs"]
+    G3 --> G4["4 · > threshold\nplic.rs"]
+    G4 --> G5["5 · mideleg bit 9\nstart.rs"]
+    G5 --> G6["6 · sie.SEIE\nconsole.rs"]
+    G6 --> G7["7 · sstatus.SIE\ntrap.rs"]
+    G7 --> G8["8 · stvec\ntrap.rs"]
+    G8 --> G9["9 · PLIC mapped\nvm.rs"]
     G9 --> H["console::intr"]
 </div>
 
@@ -406,7 +406,7 @@ Symptom: prints fine, ticks climb, typing does nothing, no panic.
 
 - Ruled out: **7, 8** (ticks arrive), **5** (`mideleg` is one write), **9** (would page-fault)
 - Suspect: **1** (`IER` still `0x00`), **2–4** (`plic::init` not run), **6** (`sie.SEIE`)
-- All three are set by `console::init` (`console.rs:58`)
+- All three are set by `console::init` (`console.rs`)
 
 <div class="highlight-box">
 Order your hypotheses by how much they explain: check that <code>console::init</code> ran at all.
@@ -427,13 +427,13 @@ Order your hypotheses by how much they explain: check that <code>console::init</
 ## The Ring Buffer
 
 ```rust
-static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];  // console.rs:13
+static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];  // console.rs
 static mut HEAD: usize = 0;  // next index the consumer reads
 static mut TAIL: usize = 0;  // next index the producer writes
 ```
 
 - Counters, **not** offsets — `% BUF_LEN` at the point of use
-- Full test: `tail.wrapping_sub(head) < BUF_LEN` (`console.rs:22`)
+- Full test: `tail.wrapping_sub(head) < BUF_LEN` (`push()` in `console.rs`)
 - `HEAD == TAIL` is the *only* empty condition — no full/empty ambiguity
 
 ---
@@ -471,7 +471,7 @@ On two harts it collapses: store ordering is no longer guaranteed, and handler a
 ## `wfi` Is Not a Busy-Wait
 
 ```rust
-pub fn getc() -> u8 {              // console.rs:47
+pub fn getc() -> u8 {              // console.rs
     loop {
         if let Some(b) = try_getc() { return b; }
         unsafe { asm!("wfi") };    // halt until an interrupt
@@ -481,7 +481,7 @@ pub fn getc() -> u8 {              // console.rs:47
 
 - One pass per interrupt, not a million per second — an idle prompt costs nothing
 - With processes, this becomes `sleep` (xv6's `consoleread`)
-- Trap: `wfi` with interrupts **off** halts a hart nothing will wake (`syscall.rs:488`)
+- Trap: `wfi` with interrupts **off** halts a hart nothing will wake (`sys_read()` in `syscall.rs`)
 
 ---
 
@@ -506,10 +506,10 @@ Cooked input is a <strong>kernel service</strong>, not a terminal feature.
 ```text
   you type:   l   s   DEL   a   Enter(0x0d)
 
-  echo      → "l" "s" "\x08 \x08" "a" "\n"    shell.rs:352, 360, 367
-  erase     → line.pop() removes the 's'      shell.rs:359
-  translate → 0x0d and 0x0a both end a line   shell.rs:351
-  delimit   → release the line to exec()      shell.rs:353
+  echo      → "l" "s" "\x08 \x08" "a" "\n"    shell.rs, 360, 367
+  erase     → line.pop() removes the 's'      shell.rs
+  translate → 0x0d and 0x0a both end a line   shell.rs
+  delimit   → release the line to exec()      shell.rs
 
   the reader gets:  "la"
 ```
@@ -523,7 +523,7 @@ Erase takes three bytes: backspace, space, backspace.
 - Enter sends **`\r` (0x0d)**, not `\n` — carriage return and line feed were two
   physical motions on a teletype
 - Backspace is **`0x7f` (DEL)** on VT100-family terminals, **`0x08` (BS)** elsewhere —
-  `shell.rs:357` accepts both
+  `run()` (`shell.rs`) accepts both
 - `ESC [ A` is the Up arrow: three bytes, and rv6 reassembles none of them
 
 ---
@@ -546,7 +546,7 @@ Erase takes three bytes: backspace, space, backspace.
 
 | System | Location |
 |---|---|
-| rv6 | in the **reader** — `shell.rs:349`–`shell.rs:371`, no tty layer |
+| rv6 | in the **reader** — `run()` in `shell.rs`, no tty layer |
 | xv6 | in the **interrupt handler** — `consoleintr`, with an edit index `cons.e` |
 | Linux | a **pluggable** line discipline — `drivers/tty/n_tty.c` |
 
@@ -571,7 +571,7 @@ sequenceDiagram
     You->>U: 'l' arrives, LSR.DR = 1
     U->>P: assert IRQ 10
     P->>C: sip.SEIP → scause 9
-    C->>I: kerneltrap (trap.rs:69)
+    C->>I: kerneltrap (kerneltrap() (trap.rs))
     I->>P: claim() → 10
     I->>U: read RBR, DR clears
     I->>I: push into ring (TAIL+1)

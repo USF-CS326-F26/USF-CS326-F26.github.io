@@ -40,16 +40,16 @@ Three descriptors are open before your program starts running, by convention rat
 
 That last row is not a detail. `cat a b > out` sends descriptor 1 into `out`; if error messages also went to descriptor 1, the words "cannot open" would land in the middle of your data file. Separating the two is what makes a Unix pipeline composable at all.
 
-The entire interface is four calls — `open`, `read`, `write`, `close` — plus `exit`. In `ulib` those are `lib.rs:104`, `lib.rs:114`, `lib.rs:125`, `lib.rs:134`, and `lib.rs:144`. On rv6 each becomes exactly one `ecall` instruction: the syscall number in `a7`, up to three arguments in `a0`–`a2`, the result back in `a0` (`ulib/src/sys/rv6.rs:21`). The numbers are fixed at `rv6.rs:10-14`: exit is 2, read is 5, open is 15, write is 16, close is 21.
+The entire interface is four calls — `open`, `read`, `write`, `close` — plus `exit`. In `ulib` they are `read`, `write`, `open`, `close`, and `exit` (`lib.rs`). On rv6 each becomes exactly one `ecall` instruction: the syscall number in `a7`, up to three arguments in `a0`–`a2`, the result back in `a0` (`ulib/src/sys/rv6.rs`). The numbers are fixed at `SYS_EXIT` (`rv6.rs`): exit is 2, read is 5, open is 15, write is 16, close is 21.
 
 ```mermaid
 flowchart TD
-    A["your code:\nulib::read(fd, &amp;mut buf)"] --> B["ulib::sys::sys_read\nrv6.rs:33"]
+    A["your code:\nulib::read(fd, &amp;mut buf)"] --> B["ulib::sys::sys_read\nrv6.rs"]
     B --> C["ecall\na7=5, a0=fd, a1=ptr, a2=len"]
     C --> D["trap into supervisor mode\ntrampoline saves 31 registers"]
-    D --> E["syscall.rs:468 sys_read\nlooks fd up in the process table"]
-    E --> F["Console: one getc\nsyscall.rs:489"]
-    E --> G["Inode: read_at into a\n128-byte kernel buffer\nsyscall.rs:496"]
+    D --> E["syscall.rs sys_read\nlooks fd up in the process table"]
+    E --> F["Console: one getc\nsyscall.rs"]
+    E --> G["Inode: read_at into a\n128-byte kernel buffer\nsyscall.rs"]
     F --> H["copyout into your buffer"]
     G --> H
     H --> I["return byte count in a0"]
@@ -63,7 +63,7 @@ Everything between the `ecall` and the return is machinery you build later: the 
 
 ## 2. The Short-Read Contract
 
-Here is the signature, from `ulib/src/lib.rs:104`:
+Here is the signature, from `ulib/src/lib.rs`:
 
 ```rust
 pub fn read(fd: Fd, buf: &mut [u8]) -> Result<usize, Error>
@@ -74,8 +74,8 @@ It returns **how many bytes it actually read**. That number may be anywhere from
 Why would the kernel give you less than you asked for? Because the abstraction is uniform but the things behind it are not:
 
 - **The file ran out.** You asked for 512 with 40 bytes remaining; you get 40.
-- **The console works one keystroke at a time.** `syscall.rs:489`: rv6's `sys_read` on a console descriptor calls `console::getc()` once and returns `1`. It does not matter that you passed a 512-byte buffer — a console read on your own kernel returns exactly one byte, forever.
-- **The kernel has a buffer of its own.** `syscall.rs:496` declares `let mut kbuf = [0u8; 128];` and then `let want = core::cmp::min(len, kbuf.len());`. Your 512-byte request is clipped to 128 before it ever reaches the filesystem. The kernel has no allocator on the trap path either, so its fixed staging buffer becomes your ceiling.
+- **The console works one keystroke at a time.** `syscall.rs`: rv6's `sys_read` on a console descriptor calls `console::getc()` once and returns `1`. It does not matter that you passed a 512-byte buffer — a console read on your own kernel returns exactly one byte, forever.
+- **The kernel has a buffer of its own.** `syscall.rs` declares `let mut kbuf = [0u8; 128];` and then `let want = core::cmp::min(len, kbuf.len());`. Your 512-byte request is clipped to 128 before it ever reaches the filesystem. The kernel has no allocator on the trap path either, so its fixed staging buffer becomes your ceiling.
 - **A pipe hands over whatever exists.** The writer has produced 12 bytes so far; you get 12 rather than blocking until 512 arrive.
 - **On Linux, a signal arrived.** A `read` interrupted after transferring some data returns that partial count rather than failing.
 
@@ -103,13 +103,13 @@ host (macOS/Linux, regular file):
   read #4 -> 0     stop
   4 reads, 3 writes, 1500 bytes out
 
-rv6 (kernel clips at 128 bytes, syscall.rs:496-497):
+rv6 (kernel clips at 128 bytes, syscall.rs):
   read #1..#11 -> 128 each   (1408 bytes)
   read #12     -> 92
   read #13     -> 0     stop
   13 reads, 12 writes, 1500 bytes out
 
-rv6 console (syscall.rs:489-493):
+rv6 console (syscall.rs):
   read #1 -> 1 ... read #k -> 1 ... one syscall PER KEYSTROKE
 ```
 
@@ -126,12 +126,12 @@ The failure mode is nastier than a crash. A program that reads once and assumes 
 `write` has the mirror-image problem, and it is worse because it fails quietly in the other direction:
 
 ```rust
-pub fn write(fd: Fd, buf: &[u8]) -> Result<usize, Error>   // lib.rs:114
+pub fn write(fd: Fd, buf: &[u8]) -> Result<usize, Error>   // lib.rs
 ```
 
 It returns a count too, and that count may be less than `buf.len()`. A pipe whose buffer is full accepts what fits. A disk that fills mid-transfer writes what it could. A socket accepts what the send window allows. Ignoring the return value drops bytes with no error and no clue — the same silent truncation as the short read, from the other side.
 
-The fix belongs in a library rather than in every program, so `ulib` ships it (`ulib/src/lib.rs:154`):
+The fix belongs in a library rather than in every program, so `ulib` ships it (`ulib/src/lib.rs`):
 
 ```rust
 pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
@@ -148,10 +148,10 @@ pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
 
 Three things are worth reading closely. The parameter is `mut buf: &[u8]` — the *binding* is mutable, not the data; each iteration re-points the slice past what was written, which costs nothing because a slice is a pointer and a length. The return type is `Result<(), Error>` with no count, because "all of it" is the only success there is. And the `n == 0` guard turns a stalled descriptor into an error rather than an infinite loop that writes zero bytes forever.
 
-Use `write_all` always. There is no case in these five commands where a bare `write` is correct, and the host harness cannot catch you: `host.rs:33` accepts the whole buffer every time, so a `write`-based program is green on your laptop and truncates on rv6. That is one of two places where passing tests is not the same as being correct; the other is forgetting `close`, since the host harness has a growable descriptor table and rv6 has a small fixed one.
+Use `write_all` always. There is no case in these five commands where a bare `write` is correct, and the host harness cannot catch you: `sys_write()` (`host.rs`) accepts the whole buffer every time, so a `write`-based program is green on your laptop and truncates on rv6. That is one of two places where passing tests is not the same as being correct; the other is forgetting `close`, since the host harness has a growable descriptor table and rv6 has a small fixed one.
 
 !!! warning
-    A green `cargo test` run proves your logic, not your system-call hygiene. The two things the harness structurally cannot check are short writes and descriptor leaks. Both are free today and both cost you a debugging session in December, when the only diagnostic rv6 offers is the six-line panic handler at `ulib/src/sys/rv6.rs:66`, which prints the single word `panic`.
+    A green `cargo test` run proves your logic, not your system-call hygiene. The two things the harness structurally cannot check are short writes and descriptor leaks. Both are free today and both cost you a debugging session in December, when the only diagnostic rv6 offers is the six-line panic handler at `ulib/src/sys/rv6.rs`, which prints the single word `panic`.
 
 ---
 
@@ -182,10 +182,10 @@ Four forces set the actual number:
 
 1. **System-call amortisation** wants it large — but with steeply diminishing returns, as above.
 2. **The device's natural transfer size** wants it aligned. Disks move sectors (512 B) or blocks (4 KiB); pages are 4 KiB. A buffer that is a multiple of the block size lets a transfer start and end on a boundary instead of straddling two.
-3. **The kernel's own staging buffer** caps the useful size. Asking rv6 for more than 128 bytes per read cannot help, because `syscall.rs:497` clips it. Anything past that ceiling buys nothing on rv6, though it still helps on the host.
+3. **The kernel's own staging buffer** caps the useful size. Asking rv6 for more than 128 bytes per read cannot help, because `sys_read()` (`syscall.rs`) clips it. Anything past that ceiling buys nothing on rv6, though it still helps on the host.
 4. **Your memory budget** wants it small, and on rv6 that constraint bites hard.
 
-The fourth is unusual enough to spell out. A user program on rv6 gets a flat image of at most 16 pages — 64 KiB (`memlayout.rs:65`) — and **exactly one 4 KiB stack page** (`memlayout.rs:72`), with an unmapped guard gap between them so an overrun faults instead of silently corrupting the stack.
+The fourth is unusual enough to spell out. A user program on rv6 gets a flat image of at most 16 pages — 64 KiB (`MAX_PROG_PAGES` in `memlayout.rs`) — and **exactly one 4 KiB stack page** (`USER_STACK` in `memlayout.rs`), with an unmapped guard gap between them so an overrun faults instead of silently corrupting the stack.
 
 ```text
 0x0001_1000   initial sp; exec's push_argv copies argv strings just below
@@ -194,9 +194,9 @@ The fourth is unusual enough to spell out. A user program on rv6 gets a flat ima
 0x0000_0000   flat program image, 1..16 pages -> 64 KiB maximum
 ```
 
-Your buffer is a local variable, so it lives on that one page. `cat.rs:23` and `wc.rs:34` use `[0u8; 512]`; `head.rs:40` and `grep.rs:45` use `[0u8; 1024]`, already a quarter of the entire stack. A `[0u8; 8192]` buffer is not slow, it is a page fault. Compare `stdio`'s `BUFSIZ`, which glibc sets to 8192 and nobody thinks about, because on Linux the stack grows on demand up to 8 MB. The constraint here is not austerity for its own sake; it is what "no allocator, one stack page" means once you write the number down.
+Your buffer is a local variable, so it lives on that one page. `cat_fd()` (`cat.rs`) and `count_fd()` (`wc.rs`) use `[0u8; 512]`; `head_fd()` (`head.rs`) and `grep_fd()` (`grep.rs`) use `[0u8; 1024]`, already a quarter of the entire stack. A `[0u8; 8192]` buffer is not slow, it is a page fault. Compare `stdio`'s `BUFSIZ`, which glibc sets to 8192 and nobody thinks about, because on Linux the stack grows on demand up to 8 MB. The constraint here is not austerity for its own sake; it is what "no allocator, one stack page" means once you write the number down.
 
-> Key distinction: buffering is not caching. A buffer is *your* staging area for a transfer in flight; a cache is the kernel keeping data around in case someone asks again. Linux's page cache is the latter and is why the second `cat bigfile` is faster than the first. rv6 has buffers and no cache — its whole filesystem is a fixed array of inodes in RAM (`fs.rs:69`), so there is nothing to cache it *from*.
+> Key distinction: buffering is not caching. A buffer is *your* staging area for a transfer in flight; a cache is the kernel keeping data around in case someone asks again. Linux's page cache is the latter and is why the second `cat bigfile` is faster than the first. rv6 has buffers and no cache — its whole filesystem is a fixed array of inodes in RAM (`FileSystem` in `fs.rs`), so there is nothing to cache it *from*.
 
 ---
 
@@ -217,13 +217,13 @@ A kernel interface cannot afford that, for three reasons.
 
 **The data genuinely is bytes.** A disk block, a UART receive register, a page of memory: none has an encoding. Handing them over as `&str` would be a claim the kernel cannot substantiate.
 
-**Validation costs image space.** `core::str::from_utf8` is not a length check. UTF-8 is variable-length: a code point is 1–4 bytes, continuation bytes must match `10xxxxxx`, over-long encodings are illegal, and the surrogate range `U+D800..U+DFFF` is excluded. The standard library implements that with a lookup table over lead-byte classes plus a state machine — small, a couple of hundred bytes of table plus code, but not free, out of a 64 KiB budget for the whole program. Pull in the string formatting that usually travels with it and you spend 12–18 KiB, roughly a fifth of everything a program is allowed, so that `write!` can right-align a number. Hence `write_usize` (`lib.rs:181`): about twenty lines, no table, no `core::fmt`.
+**Validation costs image space.** `core::str::from_utf8` is not a length check. UTF-8 is variable-length: a code point is 1–4 bytes, continuation bytes must match `10xxxxxx`, over-long encodings are illegal, and the surrogate range `U+D800..U+DFFF` is excluded. The standard library implements that with a lookup table over lead-byte classes plus a state machine — small, a couple of hundred bytes of table plus code, but not free, out of a 64 KiB budget for the whole program. Pull in the string formatting that usually travels with it and you spend 12–18 KiB, roughly a fifth of everything a program is allowed, so that `write!` can right-align a number. Hence `write_usize` (`lib.rs`): about twenty lines, no table, no `core::fmt`.
 
 **Chunk boundaries do not respect characters.** A `read` returns bytes at whatever boundary the kernel chose, so a four-byte emoji straddling the end of a 512-byte buffer arrives as two bytes now and two later. A `&str`-based API would have to fail on the fragment or hold state across calls to stitch it together. A `&[u8]`-based API has nothing to be incomplete about — and copying bytes, counting newlines, and comparing against a needle are byte operations that give the right answer on UTF-8 text anyway.
 
 That last point is what makes the choice safe rather than merely cheap. UTF-8 was designed in 1992 by Ken Thompson and Rob Pike with exactly this property: **every byte of a multi-byte sequence has its high bit set**, so no byte of a multi-byte character can be mistaken for an ASCII byte. Searching for the bytes of `cat` cannot produce a false hit inside `café`'s encoding, and splitting on `\n` (byte 0x0A) can never split inside a character. Byte-oriented `grep` and byte-oriented line splitting are correct on UTF-8 text for free — a deliberate goal of the encoding, aimed at letting existing Unix tools keep working unmodified.
 
-Two consequences arrive immediately. Arguments are `&[u8]` because that is literally what `exec` pushes onto the new program's stack — NUL-terminated bytes, walked back into slices at `rv6.rs:80`. And `b"-n"` is a **byte-string literal**, a `&[u8; 2]` rather than a `&str`, which is what you compare argv against. `ulib::Args` therefore exposes `get(i) -> Option<&[u8]>` (`lib.rs:83`), with `str(i)` (`lib.rs:88`) alongside for the rare host-side case that wants the check.
+Two consequences arrive immediately. Arguments are `&[u8]` because that is literally what `exec` pushes onto the new program's stack — NUL-terminated bytes, walked back into slices at `rt` (`rv6.rs`). And `b"-n"` is a **byte-string literal**, a `&[u8; 2]` rather than a `&str`, which is what you compare argv against. `ulib::Args` therefore exposes `get(i) -> Option<&[u8]>` (`lib.rs`), with `str(i)` (`lib.rs`) alongside for the rare host-side case that wants the check.
 
 > Key distinction: `wc` counts **bytes**, not characters. `printf 'café\n' | wc` reports 6 bytes, because `é` is two bytes in UTF-8. Real `wc` agrees — `-c` counts bytes, and you need `-m` to count characters, which is a different and much more expensive question.
 
@@ -235,7 +235,7 @@ Most text processing is line-oriented, and a line is defined by a separator rath
 
 Splitting a stream into lines with a heap is trivial: read a chunk, find newlines, allocate a `String` per line, keep a growable remainder. Without a heap you have one fixed buffer and a problem, because lines do not align with reads. A 1024-byte buffer may end mid-line, and the next `read` has to be appended to the fragment already there — which means moving the fragment to the front first.
 
-`ulib::Lines` (`ulib/src/lines.rs:10`) does that, and is given to you so `14c_head` and `13c_grep` are exercises about heads and greps rather than about ring buffers. Its whole state is six fields:
+`ulib::Lines` (`ulib/src/lines.rs`) does that, and is given to you so `14c_head` and `13c_grep` are exercises about heads and greps rather than about ring buffers. Its whole state is six fields:
 
 ```rust
 pub struct Lines<'b> {
@@ -248,12 +248,12 @@ pub struct Lines<'b> {
 }
 ```
 
-`next_line` (`lines.rs:32`) is a loop over four cases, in priority order:
+`next_line` (`lines.rs`) is a loop over four cases, in priority order:
 
-1. **A newline is already in the buffer** (`lines.rs:34`) — return the slice before it and advance `start` past it. No syscall. This is the common case: one `read` typically yields many lines.
-2. **End of file with bytes left over** (`lines.rs:39`) — return them as a final line. This is what makes a file whose last line lacks a newline still produce that line.
-3. **Buffer full with no newline in it** (`lines.rs:52`) — a single line longer than the buffer. Return what there is, set the `truncated` flag, and continue. It cannot grow, so it says so instead of lying.
-4. **Otherwise, compact and refill** (`lines.rs:49`) — `copy_within(start..len, 0)` slides the unconsumed tail to the front, then `read` fills the space behind it.
+1. **A newline is already in the buffer** (`lines.rs`) — return the slice before it and advance `start` past it. No syscall. This is the common case: one `read` typically yields many lines.
+2. **End of file with bytes left over** (`lines.rs`) — return them as a final line. This is what makes a file whose last line lacks a newline still produce that line.
+3. **Buffer full with no newline in it** (`lines.rs`) — a single line longer than the buffer. Return what there is, set the `truncated` flag, and continue. It cannot grow, so it says so instead of lying.
+4. **Otherwise, compact and refill** (`lines.rs`) — `copy_within(start..len, 0)` slides the unconsumed tail to the front, then `read` fills the space behind it.
 
 ```text
 Case 4, with a 16-byte buffer:
@@ -271,7 +271,7 @@ Case 4, with a 16-byte buffer:
 
 Two things here matter more than the algorithm. The memory is *yours*: `Lines::new(fd, &mut buf)` borrows a buffer you declared, so the program's entire footprint is visible in the one line where you wrote `[0u8; 1024]`. And the borrow is what makes the returned slice safe — `next_line` returns `Option<&[u8]>` pointing **into** your buffer, and the `'b` lifetime on `Lines<'b>` forbids you touching `buf` while the iterator is alive. In C that discipline exists only in your head, and violating it is the classic dangling-pointer bug that survives for years because the memory usually still holds the old contents. Here it does not compile.
 
-Compare the two C answers. `fgets` writes into a caller-supplied array and, on a line longer than it, silently returns a prefix with no indication whether the line ended or was cut — the same truncation, without the flag. `getline` gets it right by `malloc`-ing and `realloc`-ing a buffer that grows to whatever the line needs, which is exactly the option a program with no allocator does not have. `Lines` takes the `fgets` shape and adds the honesty: `truncated()` at `lines.rs:27`.
+Compare the two C answers. `fgets` writes into a caller-supplied array and, on a line longer than it, silently returns a prefix with no indication whether the line ended or was cut — the same truncation, without the flag. `getline` gets it right by `malloc`-ing and `realloc`-ing a buffer that grows to whatever the line needs, which is exactly the option a program with no allocator does not have. `Lines` takes the `fgets` shape and adds the honesty: `truncated()` at `lines.rs`.
 
 One more property: `next_line` **reads only when it must**. Cases 1 and 2 issue no syscall at all. Stop calling it and the reading stops with you — which is precisely what `head` needs.
 
@@ -307,7 +307,7 @@ One `bool` is everything you need to remember about the past, and two properties
 
 That shape recurs for the rest of the semester: the UART driver in exercise 45k is a state machine over arriving bytes, the shell's tokenizer in exercise 46k is the same word-boundary machine with an action attached, and the ELF parser in exercise 49k walks a header with fixed state. "Streaming with O(1) state" is not an exercise constraint; it is what code on a trap path looks like, because there is no allocator to call there and no sensible way to handle its failure if there were.
 
-**`head` stops early.** This is the first command whose correctness includes *not* doing work. `head -n 5 /var/log/huge.log` must not read a gigabyte to print five lines, and `slow_program | head -n 1` must not wait for `slow_program` to finish. Because `Lines::next_line` reads lazily, the stopping lives entirely in the loop bound — `head.rs:43` is `while printed < limit`, not a loop over every line with a counter deciding whether to print. Both versions pass every test; only one is `head`. It is also your first encounter with **backpressure**: a reader that stops reading eventually blocks the writer, which is how `yes | head -n 1` terminates instead of filling your disk.
+**`head` stops early.** This is the first command whose correctness includes *not* doing work. `head -n 5 /var/log/huge.log` must not read a gigabyte to print five lines, and `slow_program | head -n 1` must not wait for `slow_program` to finish. Because `Lines::next_line` reads lazily, the stopping lives entirely in the loop bound — `head.rs` is `while printed < limit`, not a loop over every line with a counter deciding whether to print. Both versions pass every test; only one is `head`. It is also your first encounter with **backpressure**: a reader that stops reading eventually blocks the writer, which is how `yes | head -n 1` terminates instead of filling your disk.
 
 `head` also parses an argument by hand, because `str::parse` wants a `&str` and drags in machinery. ASCII `'0'`–`'9'` are the ten consecutive byte values 48–57, so `b - b'0'` is the digit's value, and folding left to right with `n = n * 10 + digit` is exactly what place value means; `checked_mul` and `checked_add` make an absurd count return `None` rather than a wrapped number.
 
@@ -315,9 +315,9 @@ That shape recurs for the rest of the semester: the UART driver in exercise 45k 
 
 1. **The empty needle.** `grep '' file` prints every line, including empty ones, because the empty string occurs in every string at position 0. A *definitional* edge case: the answer does not fall out of the loop, so it has to be stated before any scanning.
 2. **A needle longer than the haystack.** The natural loop bound is `haystack.len() - needle.len()`, and both are `usize` — **unsigned**, so `3 - 8` does not go negative. A debug build panics on overflow; a release build wraps to about 1.8 × 10¹⁹ and then indexes past the end of the slice, which panics too. A *type* edge case, and one Rust catches loudly where C would compute a garbage bound and read whatever memory it found.
-3. **A match at the very end.** Searching for `x` in `abcx`, the last start position is index 3 — exactly `haystack.len() - needle.len()`. The range **includes** its upper bound: `0..=n`, not `0..n` (`grep.rs:33`). An *off-by-one* of the dangerous kind: the program works on almost every input and silently misses matches that end at the last byte.
+3. **A match at the very end.** Searching for `x` in `abcx`, the last start position is index 3 — exactly `haystack.len() - needle.len()`. The range **includes** its upper bound: `0..=n`, not `0..n` (`contains()` in `grep.rs`). An *off-by-one* of the dangerous kind: the program works on almost every input and silently misses matches that end at the last byte.
 
-(2) and (3) pull in opposite directions — one says subtract carefully, the other says include the endpoint — which is why the guard clauses at `grep.rs:26-31` come before the loop rather than inside it.
+(2) and (3) pull in opposite directions — one says subtract carefully, the other says include the endpoint — which is why the guard clauses at `contains()` (`grep.rs`) come before the loop rather than inside it.
 
 `grep` also makes its **exit status** part of its output: 0 if something matched, 1 if nothing did and nothing went wrong, 2 if something went wrong. "Found nothing" is deliberately not an error but a successful run answering *no*, which is what makes `grep -q x f && echo yes` work. It is the only value a program returns that another program can act on without parsing text.
 
@@ -346,16 +346,16 @@ All five together are under 9 KiB. A single `println!` would roughly quintuple t
 | Concept | Definition | Example |
 |---|---|---|
 | File descriptor | A small integer indexing a per-process table of open things | `STDOUT` is `1`; the first `open` returns `3` |
-| Short read | `read` returning fewer bytes than requested, which is normal | rv6 caps a read at 128 bytes (`syscall.rs:497`) |
+| Short read | `read` returning fewer bytes than requested, which is normal | rv6 caps a read at 128 bytes (`syscall.rs`) |
 | End of file | The single return value `0` from `read` | `if n == 0 { break; }` |
 | Short write | `write` accepting fewer bytes than offered | A full pipe takes what fits and reports it |
-| `write_all` | A loop over `write` until every byte is gone | `ulib/src/lib.rs:154`, nine lines |
+| `write_all` | A loop over `write` until every byte is gone | `ulib/src/lib.rs`, nine lines |
 | Streaming | Processing input in fixed chunks without holding it all | `cat`'s 512-byte loop on a 20 GB file |
 | O(1) state | State whose size does not grow with the input | `wc`: three `usize` and one `bool` |
 | Byte-string literal | `b"..."` — a `&[u8; N]`, not a `&str` | `args.get(1) == Some(b"-n")` |
 | UTF-8 | Variable-length encoding, 1–4 bytes, ASCII-transparent | `é` is 2 bytes, so `wc` reports 2 |
 | Line | Bytes up to a `\n`; the newline is a separator | `"a\nb"` is two lines; `"a\n"` is one |
-| Compaction | Sliding an unconsumed fragment to the front to make room | `lines.rs:49` `copy_within(start..len, 0)` |
+| Compaction | Sliding an unconsumed fragment to the front to make room | `lines.rs` `copy_within(start..len, 0)` |
 | Backpressure | A stopped reader eventually stalling the writer | `yes \| head -n 1` terminates |
 
 ---
@@ -367,7 +367,7 @@ All five together are under 9 KiB. A single `println!` would roughly quintuple t
 A program copies a 900-byte file to standard output with a correct read/write loop and a `[0u8; 256]` buffer.
 
 **(a)** On the host, where a regular-file `read` fills the buffer whenever it can, how many `read` calls does it make, and what does each return?
-**(b)** On rv6, whose `sys_read` clips every request to 128 bytes (`syscall.rs:496-497`), how many `read` calls, and what does each return?
+**(b)** On rv6, whose `sys_read` clips every request to 128 bytes (`syscall.rs`), how many `read` calls, and what does each return?
 **(c)** The same program is run as `cat` with no arguments on rv6, and the user types `hi` then Enter. How many `read` calls occur before the program has those three bytes, and why?
 **(d)** A classmate replaces the loop with a single `read` into a `[0u8; 4096]` buffer, arguing the file fits. On which of (a), (b), (c) does that produce correct output?
 
@@ -378,7 +378,7 @@ A program copies a 900-byte file to standard output with a correct read/write lo
 
 **(b)** rv6 clips to 128 even though you asked for 256. 900 = 7 × 128 (896) plus one read of 4, then the `0`. **Nine** `read` calls, eight writes. The program is unchanged; only the call pattern differs.
 
-**(c)** Three, one per byte — `h`, `i`, `\n` — because `syscall.rs:489` reads one character with `console::getc()` and returns `1` regardless of buffer size. A console descriptor on rv6 never returns more than one byte.
+**(c)** Three, one per byte — `h`, `i`, `\n` — because `sys_read()` (`syscall.rs`) reads one character with `console::getc()` and returns `1` regardless of buffer size. A console descriptor on rv6 never returns more than one byte.
 
 **(d)** Only (a), and only by luck. In (b) it prints 128 bytes and stops, losing 772 with no error; in (c) it prints `h` and exits. That is exactly the bug a small fixture hides: on a 12-byte file all three behave identically.
 </details>
@@ -431,7 +431,7 @@ Ok(())
 
 **(b)** **A** and **C** produce correct output; **B** and **D** do not. A survives by coincidence: the host returns 512, 512, 476, so `n < buf.len()` first becomes true on the final chunk, after it has already been written. C survives because the host harness accepts every write, so its short-write bug cannot fire. B appends 36 stale bytes (512 − 476) after the last chunk, and D prints 512 bytes of 1500.
 
-**(c)** The suite catches **A**, **B**, and **D** through `handles_content_larger_than_the_buffer`. It structurally misses **C**: `host.rs:33` accepts the entire buffer on every call, so no host test can ever produce a short write. That is stated as an explicit warning in the exercise, and it is why the rule is "always `write_all`" rather than "use `write_all` where it matters."
+**(c)** The suite catches **A**, **B**, and **D** through `handles_content_larger_than_the_buffer`. It structurally misses **C**: `sys_write()` (`host.rs`) accepts the entire buffer on every call, so no host test can ever produce a short write. That is stated as an explicit warning in the exercise, and it is why the rule is "always `write_all`" rather than "use `write_all` where it matters."
 
 **(d)** Worst first: **C**, **A**, **B**, **D**. C is worst because no test on your laptop can fail it, so it ships, and then fires only under load, only on pipes or slow sinks, and only as output that is quietly a bit short. A is next: it works on files and fails on interactive input, which is hard to reproduce. B and D corrupt or truncate on the first non-trivial input and are caught in minutes.
 </details>
@@ -513,7 +513,7 @@ if needle.len() > haystack.len() { return false; } // fixes (b), before any subt
 for start in 0..=(haystack.len() - needle.len()) { /* ... */ }  // fixes (a)
 ```
 
-Order matters: the length guard must precede the subtraction, not merely exist somewhere, since the panic happens when the expression is *evaluated*. This is `grep.rs:26-33`.
+Order matters: the length guard must precede the subtraction, not merely exist somewhere, since the panic happens when the expression is *evaluated*. This is `contains()` (`grep.rs`).
 </details>
 
 ### Problem 5: Tracing `Lines` through a tiny buffer
@@ -536,9 +536,9 @@ ab\ncdefghijklmnop\nqr
 
 **(a)** `b"ab"`, `b"cdefghijklmn"`, `b"op"`, `b"qr"`, then `None`.
 
-Trace: call 1 finds the buffer empty and reads 12 bytes, `ab\ncdefghijk`; the `\n` is at index 2, so it returns `b"ab"` and sets `start = 3`. Call 2 finds no `\n` in `buf[3..12]`, compacts the 9 remaining bytes (`cdefghijk`) to the front, reads 3 more into the tail, and holds `cdefghijklmn` — 12 bytes, still no newline. The buffer is full (`len == buf.len()`), so branch 3 at `lines.rs:52` fires: return all 12, mark truncated, reset `len = 0`. Call 3 asks for 12 and gets the 5 remaining (`op\nqr`), finds the `\n` at index 2, returns `b"op"`. Call 4 finds no newline, compacts, reads `0` and sets `eof`, then branch 2 at `lines.rs:39` returns the leftover `b"qr"`. Call 5 returns `None`.
+Trace: call 1 finds the buffer empty and reads 12 bytes, `ab\ncdefghijk`; the `\n` is at index 2, so it returns `b"ab"` and sets `start = 3`. Call 2 finds no `\n` in `buf[3..12]`, compacts the 9 remaining bytes (`cdefghijk`) to the front, reads 3 more into the tail, and holds `cdefghijklmn` — 12 bytes, still no newline. The buffer is full (`len == buf.len()`), so branch 3 at `lines.rs` fires: return all 12, mark truncated, reset `len = 0`. Call 3 asks for 12 and gets the 5 remaining (`op\nqr`), finds the `\n` at index 2, returns `b"op"`. Call 4 finds no newline, compacts, reads `0` and sets `eof`, then branch 2 at `lines.rs` returns the leftover `b"qr"`. Call 5 returns `None`.
 
-**(b)** At the **second** call, via the "buffer full with no newline" branch at `lines.rs:52-58`. That branch is the only place `truncated` is set.
+**(b)** At the **second** call, via the "buffer full with no newline" branch at `lines.rs`. That branch is the only place `truncated` is set.
 
 **(c)** Four: 12 bytes, 3 bytes, 5 bytes, and the final `0`-returning call that sets `eof`. (Depending on how the underlying stream chunks, the middle two could be split further; the branch structure is unchanged.)
 
@@ -559,9 +559,9 @@ You are choosing the buffer size for a filter that will run both on your laptop 
 
 **(a)** 4 MiB is 4 194 304 bytes. With 64 bytes: 65 536 reads. With 4096: 1024 reads. The second is **1.5625 %** of the first — a 64× reduction, matching the 64× buffer. Each of those calls is a full trap, so the saving is real; but note the shape of the curve, since going from 4096 to 65536 would save only another 960 calls out of 1024.
 
-**(b)** Above **128 bytes**. `syscall.rs:497` computes `want = min(len, kbuf.len())` with `kbuf: [0u8; 128]`, so a request for 512 and a request for 8192 both return at most 128 bytes and the call count is identical. The kernel's fixed staging buffer, not your buffer, sets the rv6 ceiling — a good reminder that the other side of a system call has a memory budget too.
+**(b)** Above **128 bytes**. `sys_read()` (`syscall.rs`) computes `want = min(len, kbuf.len())` with `kbuf: [0u8; 128]`, so a request for 512 and a request for 8192 both return at most 128 bytes and the call count is identical. The kernel's fixed staging buffer, not your buffer, sets the rv6 ceiling — a good reminder that the other side of a system call has a memory budget too.
 
-**(c)** It faults. A local array lives on the stack, and a user program on rv6 gets exactly one 4 KiB stack page at `0x0001_0000` (`memlayout.rs:72`), with the stack pointer starting at `0x0001_1000` and growing down. An 8192-byte local pushes `sp` below `0x0001_0000` into the unmapped guard gap, so the first write to the buffer takes a page fault. The gap is deliberate: without it the program would silently overwrite its own image at address 0.
+**(c)** It faults. A local array lives on the stack, and a user program on rv6 gets exactly one 4 KiB stack page at `0x0001_0000` (`USER_STACK` in `memlayout.rs`), with the stack pointer starting at `0x0001_1000` and growing down. An 8192-byte local pushes `sp` below `0x0001_0000` into the unmapped guard gap, so the first write to the buffer takes a page fault. The gap is deliberate: without it the program would silently overwrite its own image at address 0.
 
 **(d)** `cat` and `wc` consume bytes one at a time and their correctness does not depend on the chunk size, so 512 is chosen purely for amortisation. `head` and `grep` go through `Lines`, where the buffer *is* the **maximum line length the program can represent** — a longer line comes back truncated. Their size is a semantic limit, not a tuning knob: 1024 is a statement about what counts as a line, while still being only a quarter of the stack page.
 </details>
@@ -586,10 +586,10 @@ You are choosing the buffer size for a filter that will run both on your laptop 
 ## Summary
 
 1. **A file descriptor is a small integer and nothing else.** One interface of four calls hides files, terminals, and pipes, which is why a filter written for a file works in a pipeline unmodified. Errors go to descriptor 2 so redirecting descriptor 1 does not poison the data.
-2. **A short read is normal, not an error.** `read` returns how many bytes it actually got, anywhere from 0 to the buffer size; only `0` means end of file. rv6 clips every file read to 128 bytes (`syscall.rs:497`) and returns exactly one byte from a console (`syscall.rs:489`), so on your own kernel the short read is the common case.
+2. **A short read is normal, not an error.** `read` returns how many bytes it actually got, anywhere from 0 to the buffer size; only `0` means end of file. rv6 clips every file read to 128 bytes (`sys_read()` in `syscall.rs`) and returns exactly one byte from a console (`sys_read()` in `syscall.rs`), so on your own kernel the short read is the common case.
 3. **The copy loop is the load-bearing idea of Module 1.** Read into a fixed buffer, stop at `0`, write exactly `&buf[..n]`, repeat. A single-read implementation passes a 12-byte fixture and silently truncates a real file, with no error to lead you to it.
-4. **`write` can be short too, so use `write_all`.** It loops until every byte is gone (`lib.rs:154`) and returns no count, because "all of it" is the only success. The host harness accepts every write, making this one of two defects your tests structurally cannot catch — the other being a leaked descriptor.
-5. **Buffering amortises the trap, and the first order of magnitude is most of the win.** A 512-byte buffer removes 99.95 % of the syscalls a byte-at-a-time loop would make; past that you meet diminishing returns, a 128-byte ceiling inside rv6, and a 4 KiB stack page (`memlayout.rs:72`) that makes an 8 KiB buffer a page fault rather than a slowdown.
+4. **`write` can be short too, so use `write_all`.** It loops until every byte is gone (`lib.rs`) and returns no count, because "all of it" is the only success. The host harness accepts every write, making this one of two defects your tests structurally cannot catch — the other being a leaked descriptor.
+5. **Buffering amortises the trap, and the first order of magnitude is most of the win.** A 512-byte buffer removes 99.95 % of the syscalls a byte-at-a-time loop would make; past that you meet diminishing returns, a 128-byte ceiling inside rv6, and a 4 KiB stack page (`USER_STACK` in `memlayout.rs`) that makes an 8 KiB buffer a page fault rather than a slowdown.
 6. **The kernel boundary is bytes, because bytes are what it has.** `char` is a 4-byte scalar and `&str` carries a validity invariant; a disk block carries neither. Validation costs image space out of 64 KiB, and UTF-8's ASCII transparency makes byte-wise copying, newline splitting, and substring search correct on UTF-8 text anyway.
-7. **Lines come out of a fixed buffer by compacting and refilling.** `ulib::Lines` returns slices into a buffer you declared, refills only when it must, and reports truncation rather than growing (`lines.rs:52`). The `'b` lifetime makes the returned slice safe by construction — a discipline C leaves to your memory.
+7. **Lines come out of a fixed buffer by compacting and refilling.** `ulib::Lines` returns slices into a buffer you declared, refills only when it must, and reports truncation rather than growing (`lines.rs`). The `'b` lifetime makes the returned slice safe by construction — a discipline C leaves to your memory.
 8. **The five commands are one idea told five times.** `echo` has no input; `cat` streams; `wc` streams with O(1) state by counting whitespace-to-word transitions instead of splitting; `head` stops early, a correctness property rather than an optimization; `grep` matches, and its three edge cases are three distinct classes of bug. All five together fit in under 9 KiB, which is why they can run on your kernel in December.

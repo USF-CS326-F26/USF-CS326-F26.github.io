@@ -91,15 +91,15 @@ should the interrupted instruction run again?**
 | `13` | Load page fault | Yes |
 | `15` | Store/AMO page fault | Yes |
 | `2` | Illegal instruction | Never resumes — kill the process |
-| `3` | Breakpoint | No — step over it (`trap.rs:75`–`77`) |
+| `3` | Breakpoint | No — step over it (`kerneltrap()` in `trap.rs`) |
 | bit 63 set | Interrupt, not exception | Yes — nothing was wrong with it |
 
 A page fault is a statement about the *machine*: this address is not usable,
 do something about it. An `ecall` is a statement about the *program*: I would
 like this done, and my registers say what. A complaint versus a request. rv6
-handles them a few lines apart in `usertrap` — `usermode.rs:399` for the
-`ecall`, `usermode.rs:428`–`433` for everything else, which kills the process —
-and the difference between the branches is one line, `usermode.rs:401`.
+handles them a few lines apart in `usertrap` — `usermode.rs` for the
+`ecall`, `usermode.rs` for everything else, which kills the process —
+and the difference between the branches is one line, `usermode.rs`.
 
 > Key distinction: `ecall` is the *only* instruction whose entire purpose is to
 > trap. It computes nothing, touches no memory, and has no operands. Its one
@@ -159,7 +159,7 @@ libc wrapper for `write(fd, buf, len)` finds its three arguments already in the
 right registers, loads a constant into `a7`, and executes `ecall`.
 
 Here is exercise 48k's first user program doing exactly that by hand
-(`usermode.rs:249`–`262` in the exercise-18 tree):
+(`usermode.rs` in the exercise-18 tree):
 
 ```asm
     la   a1, user_msg           # a1 = buffer address (user virtual!)
@@ -175,7 +175,7 @@ At the instant `ecall` executes, the arguments are in registers, and one
 instruction later the kernel is running and about to use those same registers
 for its own purposes. So `uservec` — the trampoline half that runs first —
 spills all 31 general-purpose registers into the process's trapframe page before
-a single line of Rust executes (`usermode.rs:96`–`127`).
+a single line of Rust executes (`usermode.rs`).
 
 By the time `usertrap` reads an argument it is not reading a register at all.
 It is reading a field of a struct:
@@ -192,10 +192,10 @@ It is reading a field of a struct:
   a0 = 2      <--userret--  tf.a0
 ```
 
-The struct is `Trapframe` (`usermode.rs:33`–`71`); the offsets in its comments
+The struct is `Trapframe` (`usermode.rs`); the offsets in its comments
 are the load/store displacements in the trampoline assembly, which is why the
-field order is frozen. The read-out is four lines (`usermode.rs:402`–`407`), the
-write-back one (`usermode.rs:408`):
+field order is frozen. The read-out is four lines (`usertrap()` in `usermode.rs`), the
+write-back one (`usertrap()` in `usermode.rs`):
 
 ```rust
 let ret = crate::syscall::dispatch(
@@ -227,7 +227,7 @@ squeezed into that one word.
 ## 3. Dispatch: A Table Indexed by a Number
 
 The kernel now has a number in hand and needs to run the right handler. rv6's
-answer is `syscall.rs:33`–`46`:
+answer is `dispatch()` in `syscall.rs`:
 
 ```rust
 pub fn dispatch(num: usize, a0: usize, a1: usize, a2: usize) -> isize {
@@ -258,7 +258,7 @@ check. Linux does the same at industrial scale — `sys_call_table`, indexed by
 the number in `rax` (x86-64) or `a7` (riscv64), guarded against `NR_syscalls`.
 Dispatch is O(1) however many calls exist, which matters when the count is 350+.
 
-**The default arm returns, it does not panic.** `_ => -1` at `syscall.rs:44` is
+**The default arm returns, it does not panic.** `_ => -1` at `dispatch()` (`syscall.rs`) is
 a security property, not politeness: the number in `a7` is chosen entirely by the
 user program. If an unrecognized number could panic, index out of bounds, or jump
 through an uninitialized slot, any program could halt the machine with two
@@ -274,7 +274,7 @@ with a bad argument* has its first application right here.
 ### The numbers themselves
 
 rv6 uses xv6's numbers verbatim, which is why they have gaps
-(`syscall.rs:21`–`29`):
+(`syscall.rs`):
 
 | # | rv6 | # | rv6 |
 |---|---|---|---|
@@ -317,7 +317,7 @@ disaster: the call has already been performed by the time the kernel returns.
 The symptom is a program that prints its message over and over and never reaches
 its second system call. It is not a hang: the kernel is doing useful work tens of
 thousands of times a second for a program making no progress. rv6 fixes it in one
-line, at `usermode.rs:401`:
+line, in `usertrap` (`usermode.rs`):
 
 ```rust
 (*tf).epc += 4;
@@ -325,14 +325,14 @@ line, at `usermode.rs:401`:
 
 Note *where* it is written. The kernel does not modify the `sepc` CSR here; it
 modifies the saved copy in the trapframe, which `usertrapret` installs into
-`sepc` much later (`usermode.rs:459`). Every trap saves `sepc` into `tf.epc`
-first (`usermode.rs:396`–`397`), and everything after works on that copy —
+`sepc` much later (`usermode.rs`). Every trap saves `sepc` into `tf.epc`
+first (`usertrap()` in `usermode.rs`), and everything after works on that copy —
 which matters because the process may be descheduled and resumed several times
 in between, overwriting the CSR, while the trapframe field survives.
 
 Why 4 and never 2? RISC-V's compressed extension gives many instructions 2-byte
 forms, and rv6 targets `riscv64gc`. But `ecall` has no compressed encoding: it
-is always 32 bits, so `+= 4` is always right. `trap.rs:75`–`77` does the same
+is always 32 bits, so `+= 4` is always right. `kerneltrap()` in `trap.rs` does the same
 for `ebreak`, also never compressed.
 
 > Key distinction: advance `sepc` when the trap **completed** the work
@@ -369,9 +369,9 @@ any two and the third still sinks you.
 
 A virtual address has no meaning without a page table. The user's `buf = 0x28`
 was translated through the *user's* table; the kernel is running with `satp`
-pointing at the *kernel's* (`uservec` switched it at `usermode.rs:134`). The
+pointing at the *kernel's* (`uservec` switched it at `usermode.rs`). The
 same 64-bit number now names a completely different byte of physical memory —
-or none. rv6's kernel table, built by `kvmmake` (`vm.rs:125`–`174`), maps:
+or none. rv6's kernel table, built by `kvmmake` (`vm.rs`), maps:
 
 ```text
   user's view                        the kernel's view of the SAME number
@@ -398,7 +398,7 @@ and reason 2 walks in: supervisor mode outranks every check that stops the user
 program.
 
 Consider `buf = 0x3F_FFFF_E000` — `TRAPFRAME`. That page *is* mapped in the
-user's table (`proc.rs:165`), so a naive translation succeeds. But it is mapped
+user's table (`proc_pagetable()` in `proc.rs`), so a naive translation succeeds. But it is mapped
 **without `PTE_U`**, precisely so user code cannot touch it. A user program that
 loads from it faults; a kernel that copies from it on the user's behalf hands
 the program its own saved registers, `kernel_satp` and the address of `usertrap`
@@ -422,11 +422,11 @@ rv6 never sets SUM, so hardware backs the software discipline.
 The quietest reason. Suppose `buf` is simply not mapped — null, stale, or past
 the end of the program's memory. In user mode that is a page fault, and rv6
 handles it gracefully: `usertrap`'s final `else` records the cause and ends the
-process (`usermode.rs:428`–`433`). One program dies; the machine lives.
+process (`usermode.rs`). One program dies; the machine lives.
 
 Take the same fault in kernel mode. It goes to `kernelvec` and `kerneltrap`
-(`trap.rs:46`), which handles interrupts and `scause == 3` and falls off the end
-of the function for anything else (`trap.rs:73`–`80`). The assembly restores
+(`trap.rs`), which handles interrupts and `scause == 3` and falls off the end
+of the function for anything else (`trap.rs`). The assembly restores
 registers and executes `sret`, returning to `sepc` — the faulting instruction —
 which faults again, immediately, forever. A user pointer of `0` has hung the
 whole kernel, and there is no process to kill, because the faulting code *is*
@@ -443,7 +443,7 @@ whose only purpose is to make one load survivable. rv6 takes the simpler road.
 `copyin` and `copyout` do in software what the hardware would have done: walk
 the *user's* page table, apply the checks the hardware would have applied, and
 copy through the resulting physical address — which the kernel can reach because
-RAM is identity-mapped. The checks live in `walkaddr` (`vm.rs:252`–`261`):
+RAM is identity-mapped. The checks live in `walkaddr` (`vm.rs`):
 
 ```rust
 pub unsafe fn walkaddr(table: *mut Pte, va: usize) -> usize {
@@ -467,7 +467,7 @@ the user cannot reach itself, the kernel will not reach on its behalf.** That
 one conjunct is why `buf = TRAPFRAME` returns an error instead of a register
 dump.
 
-With translation available, the copy is a loop over pages (`vm.rs:291`–`309`):
+With translation available, the copy is a loop over pages (`copyin()` in `vm.rs`):
 
 ```rust
 while copied < dst.len() {
@@ -500,8 +500,8 @@ out at unrelated times.
   two iterations, two walks, two copies, one apparently simple buffer
 ```
 
-`copyout` (`vm.rs:268`–`286`) is the same loop reversed; `copyinstr`
-(`vm.rs:317`–`342`) is the same loop for a value whose length the kernel does not
+`copyout` (`vm.rs`) is the same loop reversed; `copyinstr`
+(`vm.rs`) is the same loop for a value whose length the kernel does not
 know in advance — a path string — copying byte by byte, watching for the NUL, and
 giving up rather than running past the destination.
 
@@ -510,19 +510,19 @@ giving up rather than running past the destination.
 Pointers are the dramatic case, but the rule is general: **every value that
 crossed the wall is adversarial input, pointer or not.**
 
-- **The call number.** Bounded by `_ => -1` at `syscall.rs:44`.
-- **The file descriptor.** `getfile` (`syscall.rs:312`–`322`) tests
+- **The call number.** Bounded by `_ => -1` at `dispatch()` (`syscall.rs`).
+- **The file descriptor.** `getfile` (`syscall.rs`) tests
   `fd >= NOFILE` *before* indexing `(*p).ofile[fd]`, and then tests that the
   slot is actually open. Rust's bounds check would catch the first, but as a
   panic — which in a `no_std` kernel is a halt. A user-triggerable panic is a
   denial-of-service, so the check comes first and returns `-1`.
 - **The length.** `sys_write` never allocates a buffer of the user's size. It
-  declares a fixed 64-byte kernel buffer and loops (`syscall.rs:528`–`537`), so
+  declares a fixed 64-byte kernel buffer and loops (`syscall.rs`), so
   `len = 0xFFFF_FFFF` costs time, not memory. A kernel stack in rv6 is one 4 KiB
   page; a user-controlled stack allocation is a stack overflow waiting to be
   requested.
 - **The access mode.** `sys_write` rejects a descriptor that is not `writable`
-  (`syscall.rs:522`) even though the same process opened it — the check belongs
+  (`syscall.rs`) even though the same process opened it — the check belongs
   at use, not only at open.
 
 And one rv6 avoids by construction but you should know: **time of check to time
@@ -536,23 +536,23 @@ rv6 runs on one hart, so the window does not exist — but the habit is the poin
 
 ## 6. The Return Path
 
-The way back is `usertrapret` (`usermode.rs:440`–`467`), which prepares, and
-`userret` (`usermode.rs:139`–`181`), which executes. The split is not stylistic:
+The way back is `usertrapret` (`usermode.rs`), which prepares, and
+`userret` (`usermode.rs`), which executes. The split is not stylistic:
 everything doable in Rust is done in Rust, and what is left is the handful of
 instructions that cannot survive being on an ordinary page.
 
 | Step | Code | Why here, why now |
 |---|---|---|
-| 1. Point `stvec` back at `uservec` | `usermode.rs:443`–`445` | While kernel code ran, `stvec` pointed at `kernelvec` (set at `usermode.rs:387`). The next trap will come from user mode and must land on the trampoline. |
-| 2. Refill `kernel_satp`, `kernel_sp`, `kernel_trap` | `usermode.rs:447`–`451` | Notes the *next* `uservec` will read to get back into the kernel. They are re-written every time because the process may have been rescheduled. |
-| 3. `sstatus.SPP = 0` | `usermode.rs:455` | `sret` returns to the mode named by `SPP`. Leave it at 1 and you return to supervisor mode running user code — total privilege escalation. |
-| 4. `sstatus.SPIE = 1` | `usermode.rs:456` | `sret` copies `SPIE` into `SIE`, so the program runs with interrupts on and the timer can preempt it. |
-| 5. `sepc = tf.epc` | `usermode.rs:459` | The resume address, `+ 4` past the `ecall`. |
-| 6. Compute the user `satp` | `usermode.rs:461` | Mode bits plus the page-table root; not installed yet. |
-| 7. Jump to `userret` on the trampoline | `usermode.rs:463`–`466` | A `transmute` to a function pointer at `TRAMPOLINE + offset`, passing `satp` in `a0`. |
-| 8. `csrw satp` + `sfence.vma` | `usermode.rs:140`–`142` | The address space changes underfoot. Only code on the doubly-mapped trampoline survives it. |
-| 9. Reload 31 registers from `TRAPFRAME` | `usermode.rs:146`–`178` | Including the modified `a0` — the return value. |
-| 10. `sret` | `usermode.rs:181` | `pc = sepc`, mode = `SPP`, `SIE = SPIE`. |
+| 1. Point `stvec` back at `uservec` | `usertrapret()` in `usermode.rs` | While kernel code ran, `stvec` pointed at `kernelvec` (set at `usermode.rs`). The next trap will come from user mode and must land on the trampoline. |
+| 2. Refill `kernel_satp`, `kernel_sp`, `kernel_trap` | `usertrapret()` in `usermode.rs` | Notes the *next* `uservec` will read to get back into the kernel. They are re-written every time because the process may have been rescheduled. |
+| 3. `sstatus.SPP = 0` | `usermode.rs` | `sret` returns to the mode named by `SPP`. Leave it at 1 and you return to supervisor mode running user code — total privilege escalation. |
+| 4. `sstatus.SPIE = 1` | `usermode.rs` | `sret` copies `SPIE` into `SIE`, so the program runs with interrupts on and the timer can preempt it. |
+| 5. `sepc = tf.epc` | `usermode.rs` | The resume address, `+ 4` past the `ecall`. |
+| 6. Compute the user `satp` | `usermode.rs` | Mode bits plus the page-table root; not installed yet. |
+| 7. Jump to `userret` on the trampoline | `usertrapret()` in `usermode.rs` | A `transmute` to a function pointer at `TRAMPOLINE + offset`, passing `satp` in `a0`. |
+| 8. `csrw satp` + `sfence.vma` | `usermode.rs` | The address space changes underfoot. Only code on the doubly-mapped trampoline survives it. |
+| 9. Reload 31 registers from `TRAPFRAME` | `usermode.rs` | Including the modified `a0` — the return value. |
+| 10. `sret` | `usermode.rs` | `pc = sepc`, mode = `SPP`, `SIE = SPIE`. |
 
 Two details in that sequence repay a second look.
 
@@ -560,18 +560,18 @@ Two details in that sequence repay a second look.
 instruction *after* it is fetched through the new table. At an ordinary kernel
 address — unmapped in the user's table — the CPU would fetch garbage or fault
 with no reachable vector. The trampoline is mapped at the identical virtual
-address `TRAMPOLINE` in the kernel table (`vm.rs:169`) and in every user table
-(`proc.rs:164`), so the program counter's meaning does not change when
+address `TRAMPOLINE` in the kernel table (`kvmmake()` in `vm.rs`) and in every user table
+(`proc_pagetable()` in `proc.rs`), so the program counter's meaning does not change when
 everything else's does.
 
 **Step 9 has an ordering puzzle.** `userret` needs a pointer to the trapframe to
 reload registers, but it is about to overwrite every register, including the one
-holding that pointer. The fix is `li a0, TRAPFRAME` (`usermode.rs:144`): the
+holding that pointer. The fix is `li a0, TRAPFRAME` (`usermode.rs`): the
 trapframe's *virtual* address is a compile-time constant, identical in every
 process, so it can be materialized from nothing. The last instruction before
-`sret` is then `csrrw a0, sscratch, a0` (`usermode.rs:180`), which restores the
+`sret` is then `csrrw a0, sscratch, a0` (`usermode.rs`), which restores the
 user's `a0` from `sscratch` and leaves `TRAPFRAME` in `sscratch` — where
-`uservec` finds it on the next trap (`usermode.rs:94`).
+`uservec` finds it on the next trap (`usermode.rs`).
 
 ---
 
@@ -635,15 +635,15 @@ system call — or, with a polling kernel thread, zero.
 | System call | A request from user mode for a service only the kernel can perform, made by trapping deliberately | `write(1, buf, 2)` |
 | `ecall` | The RISC-V instruction whose only effect is to raise an environment-call exception | `scause = 8` from U-mode |
 | System-call ABI | The register contract for crossing the boundary | number in `a7`, args `a0`–`a2`, result in `a0` |
-| Trapframe | The per-process page where all 31 user registers are parked on every trap | `tf.a7` at offset 168, `usermode.rs:56` |
-| Dispatch table | A kernel-owned mapping from call number to handler, indexed not searched | `syscall.rs:33`–`46` |
-| `sepc` advance | Adding the instruction width to the saved PC so a completed trap does not re-run | `(*tf).epc += 4`, `usermode.rs:401` |
-| `PTE_U` | The page-table bit that says "user mode may touch this page" | `vm.rs:23`; trampoline and trapframe lack it |
-| `walkaddr` | Software translation of a user VA to a PA, with the checks that make it safe | `vm.rs:252`–`261` |
-| `copyin` / `copyout` | Page-at-a-time copy across address spaces using the user's page table | `vm.rs:291`, `vm.rs:268` |
+| Trapframe | The per-process page where all 31 user registers are parked on every trap | `tf.a7` at offset 168, `usermode.rs` |
+| Dispatch table | A kernel-owned mapping from call number to handler, indexed not searched | `dispatch()` in `syscall.rs` |
+| `sepc` advance | Adding the instruction width to the saved PC so a completed trap does not re-run | `(*tf).epc += 4`, `usermode.rs` |
+| `PTE_U` | The page-table bit that says "user mode may touch this page" | `vm.rs`; trampoline and trapframe lack it |
+| `walkaddr` | Software translation of a user VA to a PA, with the checks that make it safe | `vm.rs` |
+| `copyin` / `copyout` | Page-at-a-time copy across address spaces using the user's page table | `vm.rs` |
 | Confused deputy | A privileged agent tricked into using its authority for a caller who lacks it | `write(1, TRAPFRAME, 288)` |
 | SUM bit | `sstatus` bit that, when clear, forbids supervisor access to `PTE_U` pages | RISC-V's SMAP/PAN |
-| `usertrapret` / `userret` | The prepare-then-execute return path ending in `sret` | `usermode.rs:440`, `usermode.rs:139` |
+| `usertrapret` / `userret` | The prepare-then-execute return path ending in `sret` | `usermode.rs` |
 
 ---
 
@@ -667,17 +667,17 @@ and say which branch of `usertrap` handles it in rv6.
 
 **(a)** `scause = 8`: environment call from U-mode, a system call. **Advance**
 `sepc` by 4 — the call has been performed, and re-running it would repeat it
-forever. The `if scause == 8` branch, `usermode.rs:399`.
+forever. The `if scause == 8` branch, `usertrap()` (`usermode.rs`).
 
 **(b)** `scause = 13`: load page fault, with `stval = 0x9000` the untranslatable
 address. With demand paging you would map the page and **not** advance `sepc`, so
 the load retries. rv6 has no demand paging, so this falls into the final `else`
-at `usermode.rs:428` and kills the process.
+at `usertrap()` (`usermode.rs`) and kills the process.
 
 **(c)** Bit 63 set means *interrupt*, not exception; low bits say cause 1, a
 supervisor software interrupt — rv6's forwarded timer tick. **Do not advance**
 `sepc`; the interrupted instruction never ran. Handled at
-`usermode.rs:409`–`427`, which clears the pending bit in `sip`.
+`usertrap()` in `usermode.rs`, which clears the pending bit in `sip`.
 
 **(d)** `scause = 2`: illegal instruction, most likely a CSR read, which U-mode
 may not do. Advancing `sepc` is meaningless — the process is not resuming.
@@ -713,7 +713,7 @@ restores every register to its pre-trap value.
 **(b)** Neither a hang nor a panic: a **livelock**. The kernel runs correctly
 and at full speed, forever. Under the OSlings harness the user-tick watchdog does
 not fire — the process traps constantly rather than spinning in user mode — so it
-is the wall-clock deadline (`SCHED_TIMEOUT_TICKS`, `usermode.rs:221`) that
+is the wall-clock deadline (`SCHED_TIMEOUT_TICKS`, `usermode.rs`) that
 eventually reports `TimedOut`. Recognize the repeated line on sight.
 
 **(c)** `+= 8` skips one instruction after each `ecall`. Execution resumes at
@@ -741,22 +741,22 @@ which function rejects it.
 <summary>Click to reveal solution</summary>
 
 All three return **-1**, and all three are stopped inside `walkaddr`
-(`vm.rs:252`–`261`), which `copyin` calls once per page.
+(`vm.rs`), which `copyin` calls once per page.
 
 **(i)** `TRAPFRAME`. The address *is* mapped in the user's table — that is how
 `uservec` reaches it — so `walk` succeeds and the PTE is valid. The rejection is
-the third conjunct at `vm.rs:257`, `flags() & PTE_U == 0`: `proc_pagetable` maps
-it `PTE_R | PTE_W` only (`proc.rs:165`). The important case, because two of the
+the third conjunct at `vm.rs`, `flags() & PTE_U == 0`: `proc_pagetable` maps
+it `PTE_R | PTE_W` only (`proc.rs`). The important case, because two of the
 four checks passed; without the `PTE_U` test the kernel would have handed the
 program `kernel_satp` and the address of `usertrap`.
 
 **(ii)** A kernel address, below `MAXVA` (`1 << 38` = `0x40_0000_0000`), so the
 first test passes — but nothing in the *user's* table maps it; the kernel's
 identity mapping lives in a different tree. `walk` returns null or an invalid
-PTE, and `vm.rs:257` rejects it. The address would be perfectly readable if
+PTE, and `walkaddr()` (`vm.rs`) rejects it. The address would be perfectly readable if
 dereferenced raw: the protection comes entirely from consulting the right table.
 
-**(iii)** Exactly `MAXVA`. Rejected by the first test, `vm.rs:253`, before `walk`
+**(iii)** Exactly `MAXVA`. Rejected by the first test, `vm.rs`, before `walk`
 runs at all — `walk` indexes page-table pages with 9-bit slices of the address,
 and an out-of-range VA would produce a nonsense index the kernel then
 dereferences.
@@ -828,7 +828,7 @@ The kernel dies at the instruction *immediately after* `csrw satp`.
 
 `usertrapret` is ordinary kernel code living somewhere in the kernel image, at a
 virtual address around `0x8000_xxxx`, mapped by `kvmmake`'s identity mapping of
-`KERNBASE..PHYSTOP` (`vm.rs:141`–`149`). The user page table does not map that
+`KERNBASE..PHYSTOP` (`vm.rs`). The user page table does not map that
 range at all — a user table has the program's pages, the stack page, the
 trampoline, and the trapframe, and nothing else.
 
@@ -846,7 +846,7 @@ into the kernel's stack page, likewise unmapped, so the next `sd` would fault.
 This is the whole justification for the trampoline in one experiment. Only code
 whose *own* address means the same thing before and after the `satp` write can
 survive the write, and the trampoline is the one page mapped at the same VA in
-both tables (`vm.rs:169`, `proc.rs:164`).
+both tables (`kvmmake()` (`vm.rs`), `proc_pagetable()` (`proc.rs`)).
 
 </details>
 
@@ -871,8 +871,8 @@ the user's `a0` register at each.
 in memory. The values exist only in the register file.
 
 **(2)** The `2` is in the trapframe page in RAM, at `TRAPFRAME + 128`
-(`usermode.rs:51`), *and* in a kernel register as `dispatch`'s third parameter —
-`uservec` stored it, `usertrap` loaded it back (`usermode.rs:406`). `a0` in the
+(`Trapframe` in `usermode.rs`), *and* in a kernel register as `dispatch`'s third parameter —
+`uservec` stored it, `usertrap` loaded it back (`usermode.rs`). `a0` in the
 user's saved state is still `1`, at `TRAPFRAME + 112`; the CPU's live `a0` is
 now the kernel's first argument to `dispatch`.
 
@@ -880,13 +880,13 @@ now the kernel's first argument to `dispatch`.
 stack — one page from `kalloc`, `(*p).kstack`. The *user's* `a0` is untouched,
 still `1` in the trapframe. The buffer bytes are read from wherever `walkaddr`
 resolved `0x28` and written into `sys_write`'s 64-byte kernel buffer
-(`syscall.rs:528`).
+(`syscall.rs`).
 
 **(4)** `a2` still holds `2` — the kernel never changed `tf.a2`, and `userret`
-reloaded it (`usermode.rs:159`). `a0` now holds `2` as well, but for an entirely
+reloaded it (`usermode.rs`). `a0` now holds `2` as well, but for an entirely
 different reason: it is the *return value*, written by `(*tf).a0 = ret as u64`
-at `usermode.rs:408` and reloaded by the final `csrrw a0, sscratch, a0` at
-`usermode.rs:180`. Two registers with the same value and no relationship.
+at `usertrap()` (`usermode.rs`) and reloaded by the final `csrrw a0, sscratch, a0` at
+`usermode.rs`. Two registers with the same value and no relationship.
 
 **(5)** Unchanged — `li a7, 11` touches only `a7`, so `a0` is still `2`. That
 is harmless because `getpid` takes no arguments and the kernel overwrites `a0`

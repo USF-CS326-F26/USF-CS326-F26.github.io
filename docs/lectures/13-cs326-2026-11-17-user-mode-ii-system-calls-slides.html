@@ -313,7 +313,7 @@ let ret = crate::syscall::dispatch(
     (*tf).a1 as usize,
     (*tf).a2 as usize,
 );
-(*tf).a0 = ret as u64;      // usermode.rs:408
+(*tf).a0 = ret as u64;      // usermode.rs
 ```
 
 <div class="highlight-box">
@@ -344,7 +344,7 @@ pub fn dispatch(num: usize, a0: usize, a1: usize, a2: usize) -> isize {
         SYS_EXIT   => sys_exit(a0 as isize),
         SYS_WRITE  => sys_write(a0, a1, a2),
         // ...
-        _ => -1,                       // syscall.rs:44
+        _ => -1,                       // syscall.rs
     }
 }
 ```
@@ -400,7 +400,7 @@ Hardware saves the address **of** the faulting instruction, not the next one.
          sepc = 0x18 --+ forever            sepc = 0x1c
 ```
 
-One line, `usermode.rs:401`: `(*tf).epc += 4;`
+One line, `usermode.rs`: `(*tf).epc += 4;`
 
 ---
 

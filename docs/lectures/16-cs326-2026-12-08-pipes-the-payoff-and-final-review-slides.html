@@ -316,8 +316,8 @@ stateDiagram-v2
 
 ## Where "Block" Comes From in rv6
 
-- rv6 has no `sleep`/`wakeup` — it has `proc_yield` (`usermode.rs:363`) and round robin (`sched.rs:20`)
-- So blocking is a **poll**: lock, test, unlock, yield, repeat — same shape as `sys_wait` (`syscall.rs:141`)
+- rv6 has no `sleep`/`wakeup` — it has `proc_yield` (`usermode.rs`) and round robin (`RoundRobin::pick_next()` in `sched.rs`)
+- So blocking is a **poll**: lock, test, unlock, yield, repeat — same shape as `sys_wait` (`syscall.rs`)
 - Correct on one hart, but a blocked process stays `Runnable` and burns a timeslice each rotation
 - xv6 does it properly with `sleep(chan, lock)` / `wakeup(chan)`, where the channel is just an address
 
@@ -409,7 +409,7 @@ flowchart LR
     PB --> B0
 </div>
 
-`exec` contributes **nothing**: it swaps the address space and leaves the fd table alone (`exec.rs:753`).
+`exec` contributes **nothing**: it swaps the address space and leaves the fd table alone (`exec_into()` in `exec.rs`).
 
 ---
 
@@ -470,13 +470,13 @@ ulib::write_all(STDOUT, line)?;     // grep.rs, unchanged since September
 On your laptop → `write(2)`. On `riscv64gc-unknown-none-elf` →
 
 ```asm
-li    a7, 16        # SYS_WRITE — the number from syscall.rs:28
+li    a7, 16        # SYS_WRITE — the number from syscall.rs
                     # a0 = fd, a1 = buffer, a2 = length
 ecall
 ```
 
-→ your trampoline → `usertrap` (`usermode.rs:385`) → `dispatch` (`syscall.rs:33`)
-→ `sys_write` (`syscall.rs:517`) → `getfile` → `uart::putc`.
+→ your trampoline → `usertrap` (`usermode.rs`) → `dispatch` (`syscall.rs`)
+→ `sys_write` (`syscall.rs`) → `getfile` → `uart::putc`.
 
 ---
 
@@ -490,7 +490,7 @@ ecall
   rv6/src/userbin/grep.bin      2,854 bytes
         |  include_bytes!
   the kernel image              exec::lookup("mygrep")
-        |  build_addrspace -> load_segment (vm.rs:196)
+        |  build_addrspace -> load_segment (vm.rs)
   a page table                  image at 0x0 (R X U), stack at 0x1_0000 (R W U)
                                 sret; the CPU executes byte 0
 ```
@@ -507,7 +507,7 @@ ecall
 | `head` | 2,713 bytes | 1 | 4.1% |
 | `grep` | 2,854 bytes | 1 | 4.4% |
 
-Budget = `MAX_PROG_PAGES` × 4 KiB (`memlayout.rs:65`). All five together: 9,028 bytes — **14% of what one program is allowed**.
+Budget = `MAX_PROG_PAGES` × 4 KiB (`memlayout.rs`). All five together: 9,028 bytes — **14% of what one program is allowed**.
 
 ---
 
@@ -516,7 +516,7 @@ Budget = `MAX_PROG_PAGES` × 4 KiB (`memlayout.rs:65`). All five together: 9,028
 - No allocator, no standard library, no runtime, no dynamic linker, no unwinder, no `.bss`
 - `#![no_std]` deletes formatting and collections; `panic = "abort"` plus one handler in `ulib` deletes unwinding
 - Statically linked glibc hello world: well over half a megabyte. musl: ~20 KB. Neither does anything.
-- Image pages are `R X U` with **no `W`** (`vm.rs:227`) — a shipped command cannot have a mutable global
+- Image pages are `R X U` with **no `W`** (`vm.rs`) — a shipped command cannot have a mutable global
 
 <div class="highlight-box">
 A real substring search, with argv parsing, file opening, and line splitting across buffer boundaries, in <strong>2,854 bytes</strong>. Most of the size of ordinary software is infrastructure nobody decided they needed.
@@ -528,15 +528,15 @@ A real substring search, with argv parsing, file opening, and line splitting acr
 
 <div class="mermaid">
 flowchart TD
-    R["reset: hart 0, machine mode\nQEMU ROM jumps to 0x8000_0000"] --> E["_entry: sp = top of STACK0\nentry.rs:18"]
-    E --> S["start: M-mode setup, then mret\nstart.rs:25"]
-    S --> K["kmain, now in SUPERVISOR mode\nmain.rs:97"]
-    K --> A["kalloc::init: free list end..PHYSTOP\nkalloc.rs:21"]
-    A --> V["kvmmake + kvminithart: satp, MMU ON\nvm.rs:125, vm.rs:177"]
+    R["reset: hart 0, machine mode\nQEMU ROM jumps to 0x8000_0000"] --> E["_entry: sp = top of STACK0\nentry.rs"]
+    E --> S["start: M-mode setup, then mret\nstart.rs"]
+    S --> K["kmain, now in SUPERVISOR mode\nmain.rs"]
+    K --> A["kalloc::init: free list end..PHYSTOP\nkalloc.rs"]
+    A --> V["kvmmake + kvminithart: satp, MMU ON\nvm.rs, vm.rs"]
     V --> P["proc::init, trap::init, FS.init"]
-    P --> C["console::init: UART RX, PLIC, sie.SEIE\nconsole.rs:58"]
-    C --> I["intr_on: sstatus.SIE — deliberately last\ntrap.rs:39"]
-    I --> SH["shell::run: print rv6$, then getc spins on wfi\nshell.rs:343"]
+    P --> C["console::init: UART RX, PLIC, sie.SEIE\nconsole.rs"]
+    C --> I["intr_on: sstatus.SIE — deliberately last\ntrap.rs"]
+    I --> SH["shell::run: print rv6$, then getc spins on wfi\nshell.rs"]
 </div>
 
 ---
@@ -561,11 +561,11 @@ flowchart TD
 |---|---|---|
 | Physical allocator | free list of 4 KiB pages | buddy + SLUB (`mm/page_alloc.c`) |
 | PCB | `Proc`, fixed `[Proc; 64]` | `task_struct`, one per **thread** |
-| Scheduler | round robin (`sched.rs:20`) | EEVDF, per-CPU runqueues |
+| Scheduler | round robin (`sched.rs`) | EEVDF, per-CPU runqueues |
 | Trap entry | trampoline + trapframe | `pt_regs` on the kernel stack |
 | Syscall ABI | `ecall`, `a7` = number | **identical**, ~350 numbers |
 | fd table | `[File; 16]` by value | `files_struct` → `struct file *`, refcounted |
-| `read` | `syscall.rs:468` | `ksys_read` → `vfs_read` (`fs/read_write.c`) |
+| `read` | `syscall.rs` | `ksys_read` → `vfs_read` (`fs/read_write.c`) |
 | `fork` | copies every page | `clone3` + copy-on-write (`kernel/fork.c`) |
 | Program loading | flat image at VA 0 | ELF, `binfmt_elf`, dynamic linker |
 

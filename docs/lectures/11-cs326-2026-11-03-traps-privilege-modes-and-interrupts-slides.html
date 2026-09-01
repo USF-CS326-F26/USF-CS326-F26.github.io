@@ -216,11 +216,11 @@ flowchart LR
     M["M · machine\nstart.rs, timervec"]
     S["S · supervisor\nthe rv6 kernel"]
     U["U · user\nprograms"]
-    M -->|"mret · start.rs:54"| S
+    M -->|"mret · start.rs"| S
     S -->|"sret · userret"| U
     U -->|"ecall / fault / interrupt"| S
     S -->|"undelegated trap"| M
-    M -.->|"mret · start.rs:106"| S
+    M -.->|"mret · start.rs"| S
 </div>
 
 The lower mode never chooses where it lands — the upper mode wrote that address into `mtvec` or `stvec` first.
@@ -255,17 +255,17 @@ RISC-V traps are <strong>precise</strong>: everything before the trapping instru
 ## The M &rarr; S Handoff
 
 ```text
-  start.rs:25  start()        in M-mode, no page table, full power
+  start.rs  start()        in M-mode, no page table, full power
     |
-    |  1. mstatus.MPP = 01        where mret goes        start.rs:28-31
-    |  2. mepc = kmain            what pc mret loads     start.rs:34
-    |  3. satp = 0                paging off for now     start.rs:37
-    |  4. medeleg = mideleg       send traps to S        start.rs:40
-    |  5. pmpaddr0 / pmpcfg0      let S touch memory     start.rs:43-44
-    |     mcounteren              let S read `time`      start.rs:47
-    |  6. timerinit()             arm the CLINT          start.rs:51
+    |  1. mstatus.MPP = 01        where mret goes        start.rs
+    |  2. mepc = kmain            what pc mret loads     start.rs
+    |  3. satp = 0                paging off for now     start.rs
+    |  4. medeleg = mideleg       send traps to S        start.rs
+    |  5. pmpaddr0 / pmpcfg0      let S touch memory     start.rs
+    |     mcounteren              let S read `time`      start.rs
+    |  6. timerinit()             arm the CLINT          start.rs
     v
-  start.rs:54  mret  --------->  kmain, in S-mode
+  start.rs  mret  --------->  kmain, in S-mode
 ```
 
 Six registers. All of them must be right.
@@ -282,7 +282,7 @@ Six registers. All of them must be right.
 Neither was saved by a real trap. <code>start()</code> forges both, and <code>mret</code> cannot tell the difference — you enter a lower mode by <em>pretending you were already there</em>.
 </div>
 
-`mstatus` packs a dozen fields, so it is read-modify-write (`start.rs:28-31`), never a blind `csrw`.
+`mstatus` packs a dozen fields, so it is read-modify-write (`start.rs`), never a blind `csrw`.
 
 ---
 
@@ -290,7 +290,7 @@ Neither was saved by a real trap. <code>start()</code> forges both, and <code>mr
 
 - By default **every** trap is taken in M-mode
 - `medeleg` = bitmask over exception causes; `mideleg` = over interrupt causes
-- `start.rs:40` writes `0xffff` to both: causes 0&ndash;15 go straight to S-mode
+- `start.rs` writes `0xffff` to both: causes 0&ndash;15 go straight to S-mode
 
 <div class="highlight-box">
 Some bits are hardwired zero: <code>medeleg</code> bit 11 (<code>ecall</code> from M), and <code>mideleg</code> bits 3, 7, 11. <strong>Machine-level interrupts cannot be delegated at all</strong> — which is why the timer needs a detour.
@@ -318,8 +318,8 @@ If <strong>no</strong> PMP entry matches an S/U access and at least one entry is
 Skip it and: `mret` &rarr; S-mode at `kmain` &rarr; first fetch faults (cause 1) &rarr; delegated to `stvec`, still 0 &rarr; jump to 0 &rarr; fault &rarr; forever. **No output at all.**
 
 ```rust
-asm!("li t0, 0x3fffffffffffff", "csrw pmpaddr0, t0", out("t0") _);  // start.rs:43
-asm!("li t0, 0xf", "csrw pmpcfg0, t0", out("t0") _);                // start.rs:44
+asm!("li t0, 0x3fffffffffffff", "csrw pmpaddr0, t0", out("t0") _);  // start.rs
+asm!("li t0, 0xf", "csrw pmpcfg0, t0", out("t0") _);                // start.rs
 ```
 
 ---
@@ -380,7 +380,7 @@ Step 4 is free non-reentrancy: **traps arrive with interrupts disabled**.
 rv6 uses Direct and dispatches in software, which is why `kerneltrap` starts by reading `scause`.
 
 <div class="info-box">
-<code>kernelvec</code> is declared <code>.align 4</code> (<code>trap.rs:89</code>) so the low bits are zero. A misaligned handler silently selects Vectored mode with a BASE three bytes off.
+<code>kernelvec</code> is declared <code>.align 4</code> (<code>trap.rs</code>) so the low bits are zero. A misaligned handler silently selects Vectored mode with a BASE three bytes off.
 </div>
 
 ---
@@ -389,14 +389,14 @@ rv6 uses Direct and dispatches in software, which is why `kerneltrap` starts by 
 
 ```asm
 kernelvec:
-    addi sp, sp, -128      # trap.rs:91   frame on the CURRENT stack
-    sd ra,   0(sp)         # trap.rs:92   save 16 caller-saved regs
+    addi sp, sp, -128      # trap.rs   frame on the CURRENT stack
+    sd ra,   0(sp)         # trap.rs   save 16 caller-saved regs
     ...                    #              ra, t0-t2, a0-a7, t3-t6
-    call kerneltrap        # trap.rs:109  into Rust
-    ld ra,   0(sp)         # trap.rs:111  restore all sixteen
+    call kerneltrap        # trap.rs  into Rust
+    ld ra,   0(sp)         # trap.rs  restore all sixteen
     ...
-    addi sp, sp, 128       # trap.rs:127
-    sret                   # trap.rs:129  resume at sepc, mode from SPP
+    addi sp, sp, 128       # trap.rs
+    sret                   # trap.rs  resume at sepc, mode from SPP
 ```
 
 Sixteen, not thirty-one: the C calling convention already preserves `s0`&ndash;`s11`. Assembly covers one half, the compiler the other.
@@ -406,10 +406,10 @@ Sixteen, not thirty-one: the C calling convention already preserves `s0`&ndash;`
 ## Decoding `scause`
 
 ```rust
-if (scause >> 63) == 1 {          // trap.rs:55
-    match scause & 0xff { ... }   // trap.rs:57  an interrupt
+if (scause >> 63) == 1 {          // trap.rs
+    match scause & 0xff { ... }   // trap.rs  an interrupt
 } else {
-    if scause == 3 { ... }        // trap.rs:75  an exception
+    if scause == 3 { ... }        // trap.rs  an exception
 }
 ```
 
@@ -438,7 +438,7 @@ Miss the top-bit test and a page fault gets "handled" as a timer tick.
 ```rust
 if scause == 3 {
     TRAP_COUNT += 1;
-    asm!("csrw sepc, {}", in(reg) sepc + 4);   // trap.rs:77
+    asm!("csrw sepc, {}", in(reg) sepc + 4);   // trap.rs
 }
 ```
 
@@ -478,7 +478,7 @@ sequenceDiagram
 
 - **Level-triggered**: the only way to clear it is to push `mtimecmp` forward
 - `INTERVAL = 1_000_000` at 10 MHz = 0.1 s &rarr; ten ticks a second
-- `start.rs:74` sets `mie.MTIE` (bit 7)
+- `timerinit()` (`start.rs`) sets `mie.MTIE` (bit 7)
 
 ---
 
@@ -498,13 +498,13 @@ So the trap is taken in M-mode at <code>mtvec</code>, whatever the kernel wants.
 <div class="mermaid">
 flowchart TD
     A["mtime reaches mtimecmp"] --> B["machine timer interrupt, cause 7\ncannot be delegated"]
-    B --> C["timervec · M-mode · start.rs:80"]
+    B --> C["timervec · M-mode · start.rs"]
     C --> D["csrrw a0, mscratch, a0\nget a scratch register"]
     D --> E["mtimecmp += INTERVAL\nrearm, or it re-fires"]
     E --> F["li a1, 2 ; csrw sip, a1\nraise sip.SSIP"]
     F --> G["mret"]
     G --> H["supervisor software interrupt, cause 1\nscause = 0x8000...0001"]
-    H --> I["kernelvec → kerneltrap · trap.rs:58"]
+    H --> I["kernelvec → kerneltrap · trap.rs"]
 </div>
 
 rv6's tick is a *software* interrupt carrying a *timer's* meaning — which is why `scause` reads 1, not 5.
@@ -514,8 +514,8 @@ rv6's tick is a *software* interrupt carrying a *timer's* meaning — which is w
 ## Three Gates, All Must Be Open
 
 ```rust
-asm!("csrs sie, {}", in(reg) 1usize << 1);      // trap.rs:40  SSIE
-asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs:41  SIE
+asm!("csrs sie, {}", in(reg) 1usize << 1);      // trap.rs  SSIE
+asm!("csrs sstatus, {}", in(reg) 1usize << 1);  // trap.rs  SIE
 ```
 
 An interrupt fires only when: bit set in `sie` **and** bit set in `sip` **and** `sstatus.SIE` = 1.
@@ -530,7 +530,7 @@ Use <code>csrs</code>, not <code>csrw</code> — a blind write clears <code>sie.
 
 ```rust
 asm!("csrr {}, sip", out(reg) sip);
-asm!("csrw sip, {}", in(reg) sip & !2);   // trap.rs:63
+asm!("csrw sip, {}", in(reg) sip & !2);   // trap.rs
 ```
 
 <div class="highlight-box">

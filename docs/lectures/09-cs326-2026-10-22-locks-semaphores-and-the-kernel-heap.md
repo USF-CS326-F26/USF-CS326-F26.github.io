@@ -4,7 +4,7 @@
 
 Every structure you have built so far — the free list, the process table, the
 scheduler cursor — has had one writer, because the kernel has done one thing at
-a time. That ends here. Interrupts already fire (`trap.rs:39`), real hardware
+a time. That ends here. Interrupts already fire (`intr_on()` in `trap.rs`), real hardware
 has more than one hart, and two flows of control can now be inside the same data
 structure at the same instant. This session builds mutual exclusion from
 nothing: first a race condition, traced instruction by instruction so you see
@@ -146,7 +146,7 @@ the lock was free and is now yours. One instruction, no failure path — but the
 only state it expresses is "busy".
 
 **Compare-and-swap** is conditional: change `x` to `new` only if it is currently
-`old`. That is what rv6 uses, `spinlock.rs:25`:
+`old`. That is what rv6 uses, `spinlock.rs`:
 
 ```rust
 self.locked
@@ -164,7 +164,7 @@ states, which is how lock-free queues and reference counts work.
 
 ### What rv6 actually compiles to
 
-Compile `spinlock.rs:22`–`spinlock.rs:31` for `riscv64gc-unknown-none-elf` at
+Compile `SpinLock::lock()` in `spinlock.rs` for `riscv64gc-unknown-none-elf` at
 `-O` and the loop is not what you would guess:
 
 ```asm
@@ -191,7 +191,7 @@ and on this type the distinction you just learned collapses. The same
 `compare_exchange` on an `AtomicUsize` cannot be reduced: it becomes the retry
 loop `lr.d.aq` / `bne` (fail) / `sc.d` / `bnez` (reservation lost, try again).
 
-`core::hint::spin_loop()` (`spinlock.rs:28`) becomes `pause`, a Zihintpause hint
+`core::hint::spin_loop()` (`spinlock.rs`) becomes `pause`, a Zihintpause hint
 that the core is busy-waiting. Note that **every** spin iteration is a write, and
 a write takes the cache line exclusive, so many spinners ping-pong one line while
 doing no work; the standard fix, *test-and-test-and-set*, spins on a plain load
@@ -235,14 +235,14 @@ sequenceDiagram
 
 Everything the previous holder did before its `Release` is visible to the next
 holder after its matching `Acquire`. That sentence is what makes a lock protect
-*data* and not merely a flag. rv6's unlock (`spinlock.rs:46`,
+*data* and not merely a flag. rv6's unlock (`spinlock.rs`,
 `store(false, Ordering::Release)`) is two instructions: `fence rw, w` — all prior
 reads and writes, before this write — then `sb zero, 0(a0)`.
 
 Two details reward a second look. **The failure ordering is `Relaxed`**
-(`spinlock.rs:25`): a failed CAS acquired nothing, and a contended lock fails on
+(`spinlock.rs`): a failed CAS acquired nothing, and a contended lock fails on
 most iterations, so `Acquire` there would buy a fence per spin. **`is_locked`
-uses `Relaxed`** (`spinlock.rs:50`) — deliberate, and a warning: the answer is
+uses `Relaxed`** (`spinlock.rs`) — deliberate, and a warning: the answer is
 stale the instant you have it. Use it for assertions, never for
 `if !lock.is_locked() { ... }`, which is §1's racy flag rebuilt from an atomic.
 
@@ -257,7 +257,7 @@ Everything so far exists in C. What Rust adds is that you cannot use it wrong.
 `SpinLock::lock` takes `&self` and must hand back something you can write
 through — but `&T` means nobody may mutate. The one escape is `UnsafeCell<T>`,
 the only type the compiler treats as opting out and the only sound way to get
-`*mut T` from a `&`. Hence `spinlock.rs:7`–`spinlock.rs:10`:
+`*mut T` from a `&`. Hence `spinlock.rs`:
 
 ```rust
 pub struct SpinLock<T> {
@@ -267,19 +267,19 @@ pub struct SpinLock<T> {
 ```
 
 `UnsafeCell` checks nothing; it grants permission, and the lock supplies the
-correctness. `Deref`/`DerefMut` (`spinlock.rs:58`–`spinlock.rs:69`) do the raw
+correctness. `Deref`/`DerefMut` (`spinlock.rs`) do the raw
 dereference inside `unsafe`, sound only because holding a guard means you won
 the atomic.
 
 ### `Drop` is the unlock
 
-The guard is a borrow of the lock and nothing else, `spinlock.rs:54`:
+The guard is a borrow of the lock and nothing else, `SpinLockGuard` (`spinlock.rs`):
 
 ```rust
 pub struct SpinLockGuard<'a, T> { lock: &'a SpinLock<T> }
 
 impl<T> Drop for SpinLockGuard<'_, T> {
-    fn drop(&mut self) { self.lock.unlock(); }     // spinlock.rs:71
+    fn drop(&mut self) { self.lock.unlock(); }     // spinlock.rs
 }
 ```
 
@@ -289,9 +289,9 @@ is now impossible. You cannot forget to unlock; an early `return` or a panic
 cannot skip it. You cannot unlock twice — `Drop` runs once. You cannot reach the
 data without the lock, since the only path to the `UnsafeCell` is through a
 guard. You cannot keep a reference past the release, since `deref` borrows the
-guard. And `'a` (`spinlock.rs:55`) stops the lock being moved or dropped while a
+guard. And `'a` (`SpinLockGuard` in `spinlock.rs`) stops the lock being moved or dropped while a
 guard lives. In C each is a code review; here they are type errors. To release
-early, call `drop(guard)` — `shell.rs:102` does.
+early, call `drop(guard)` — `Shell::cmd_cd()` (`shell.rs`) does.
 
 ### `Send`, `Sync`, and a promise the compiler cannot check
 
@@ -300,7 +300,7 @@ early, call `drop(guard)` — `shell.rs:102` does.
 
 Both are auto traits, derived structurally. `UnsafeCell<T>` is deliberately
 **not** `Sync`, so `SpinLock<T>` is not either and a `static SpinLock` would be
-rejected outright. `spinlock.rs:12` overrides that:
+rejected outright. `impl Sync for SpinLock` (`spinlock.rs`) overrides that:
 
 ```rust
 unsafe impl<T: Send> Sync for SpinLock<T> {}
@@ -312,8 +312,8 @@ not `T: Sync`, for a precise reason: the lock hands `&mut T` to whichever hart
 wins, so `T` is effectively passed between threads; it never hands out two `&T`
 at once, so `Sync` is not needed.
 
-`SpinLock::new` is a `const fn` (`spinlock.rs:15`), which is what lets a lock
-live in a `static` with no lazy initialization: `fs.rs:277` is
+`SpinLock::new` is a `const fn` (`spinlock.rs`), which is what lets a lock
+live in a `static` with no lazy initialization: `fs.rs` is
 `pub static FS: SpinLock<FileSystem> = SpinLock::new(FileSystem::new());`.
 
 ---
@@ -370,14 +370,14 @@ rv6's `SpinLock` does none of this, and the exercise says so. Three assumptions
 make that survivable, all worth suspicion: one hart; interrupt handlers that take
 no locks; and a console that avoids needing one, using a
 single-producer/single-consumer ring with separate head and tail
-(`console.rs:13`–`console.rs:15`) where the handler only advances `TAIL`
-(`console.rs:18`) and the reader only `HEAD`.
+(`console.rs`) where the handler only advances `TAIL`
+(`push()` in `console.rs`) and the reader only `HEAD`.
 
 ### Never sleep holding a spinlock
 
 Waiters burn CPU. If the holder blocks, every waiter spins for the duration, and
 on one hart nobody can run the holder again. rv6's scheduler recognizes the
-shape: the `None` arm at `usermode.rs:300`, reached when nothing is runnable,
+shape: the `None` arm at `usermode.rs`, reached when nothing is runnable,
 comments "either the root finished, or we deadlocked." Hence two lock types —
 **spinlocks** for short sections with interrupts off, and **sleeping locks**
 (xv6's `sleeplock`, Linux's `mutex`) built on §6's machinery.
@@ -407,7 +407,7 @@ DMA channels, "at most 8 processes in this region."
 
 ### rv6's semaphore
 
-`semaphore.rs:5`–`semaphore.rs:7` is three lines and no new ideas:
+`Semaphore` in `semaphore.rs` is three lines and no new ideas:
 
 ```rust
 pub struct Semaphore {
@@ -417,8 +417,8 @@ pub struct Semaphore {
 
 The count is shared mutable state, so it lives behind the lock you just built —
 composition, the cheapest kind of correctness. `try_wait`
-(`semaphore.rs:16`–`semaphore.rs:24`) locks, tests, decrements, returns `bool`;
-`post` (`semaphore.rs:26`–`semaphore.rs:29`) locks and increments. Both take
+(`semaphore.rs`) locks, tests, decrements, returns `bool`;
+`post` (`semaphore.rs`) locks and increments. Both take
 `&self` and change the count: interior mutability, laundered through the lock.
 
 It is `try_wait`, not `wait`, because blocking needs a sleep queue and somebody
@@ -507,38 +507,38 @@ memory. You supply it by implementing `GlobalAlloc`, two methods over a `Layout`
 
 ```rust
 unsafe impl GlobalAlloc for KernelHeap {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {           // kheap.rs:23
-        if layout.size() > PGSIZE || layout.align() > PGSIZE {    // kheap.rs:26
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {           // kheap.rs
+        if layout.size() > PGSIZE || layout.align() > PGSIZE {    // kheap.rs
             return ptr::null_mut();
         }
         kalloc::kalloc()
     }
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {     // kheap.rs:32
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {     // kheap.rs
         kalloc::kfree(ptr);
     }
 }
 
-#[global_allocator]                                               // kheap.rs:40
+#[global_allocator]                                               // kheap.rs
 static ALLOCATOR: KernelHeap = KernelHeap;
 ```
 
 `#[global_allocator]` is a language item, not a library registration: one per
 binary, and from that point every heap allocation in the program — including
-ones inside library code you never wrote — routes through it. `main.rs:26` is
+ones inside library code you never wrote — routes through it. `main.rs` is
 the matching `extern crate alloc;`. A null return is the failure signal, which
 the runtime turns into `handle_alloc_error` — a panic, not a `Result`.
 
 ```text
-   Box::new / Vec::push / Arc::clone      alloc crate      main.rs:26
+   Box::new / Vec::push / Arc::clone      alloc crate      main.rs
         |  Layout { size, align }
         v
-   GlobalAlloc::alloc                    kheap.rs:23      KernelHeap
-        |  reject if > 4096 bytes        kheap.rs:26
+   GlobalAlloc::alloc                    kheap.rs      KernelHeap
+        |  reject if > 4096 bytes        kheap.rs
         v
-   kalloc::kalloc()                      kalloc.rs:40     page allocator
-        |  pop the head of FREELIST      kalloc.rs:11
+   kalloc::kalloc()                      kalloc.rs     page allocator
+        |  pop the head of FREELIST      kalloc.rs
         v
-   one 4096-byte page, end .. PHYSTOP    memlayout.rs:13  0x8800_0000
+   one 4096-byte page, end .. PHYSTOP    memlayout.rs  0x8800_0000
 ```
 
 ### What `Box`, `Vec`, and `Arc` now cost
@@ -563,19 +563,19 @@ now built both halves.
 ### Why the heap arrives this late and stays this small
 
 **Late, because of the dependency chain.** The heap allocates from `kalloc`,
-whose free list is only populated by `kalloc::init()` (`main.rs:89`), walking
-from the linker symbol `end` (`kalloc.rs:14`) to `PHYSTOP`. Nothing may allocate
+whose free list is only populated by `kalloc::init()` (`main.rs`), walking
+from the linker symbol `end` (`kalloc.rs`) to `PHYSTOP`. Nothing may allocate
 before that. Pedagogically, forcing exercises `30k`–`37k` to work without dynamic
 memory is what makes the fixed `PROCS` table comprehensible — and it mirrors
 practice: xv6 has no kernel `malloc` at all, only pages and fixed arrays.
 
 **Small, because a real allocator is a course of its own.** Linux uses a buddy
 allocator for pages and SLUB above it for objects; rv6's forty lines need not
-compete, since the shell's `Vec<(String, usize)>` (`shell.rs:24`) and a few
+compete, since the shell's `Vec<(String, usize)>` (`Shell` in `shell.rs`) and a few
 `Arc`s are the whole workload.
 
 One more reason closes the loop: **rv6's heap is not thread-safe.** `kalloc`
-manipulates a bare `static mut FREELIST` (`kalloc.rs:11`) with no lock, so two
+manipulates a bare `static mut FREELIST` (`kalloc.rs`) with no lock, so two
 harts allocating at once would corrupt it. Fixing that means wrapping the free
 list in a `SpinLock` — the type you build in `37k_spinlocks`. The exercises come
 in this order for a reason.
@@ -589,16 +589,16 @@ in this order for a reason.
 | Race condition | Two flows touch shared data at overlapping times; the result depends on the interleaving | Both see `BUSY == false` and both enter (§1) |
 | Critical section | Code that must not run in two flows at once | The body between `FS.lock()` and the guard's drop |
 | Atomic operation | An operation no observer can see half-completed | `amoor.w.aq` — a read-modify-write in one instruction |
-| Test-and-set vs CAS | TAS writes `true` unconditionally; CAS only on a match | `swap(true, Acquire)` vs `compare_exchange` (`spinlock.rs:25`) |
-| `Acquire`/`Release` | Acquire forbids later accesses moving up; Release earlier ones moving down | `spinlock.rs:25` and `spinlock.rs:46` (`fence rw, w`) |
-| Spinlock | A lock whose waiters busy-wait instead of sleeping | `AtomicBool` + `UnsafeCell<T>` (`spinlock.rs:7`) |
-| Interior mutability | Legally obtaining `*mut T` from a shared reference | `UnsafeCell::get` behind `Deref` (`spinlock.rs:61`) |
-| RAII guard | A value whose destructor releases the resource | `SpinLockGuard`'s `Drop` calls `unlock` (`spinlock.rs:71`) |
-| `Send` / `Sync` | `Send`: movable to another thread. `Sync`: `&T` shareable | `unsafe impl<T: Send> Sync` (`spinlock.rs:12`) |
+| Test-and-set vs CAS | TAS writes `true` unconditionally; CAS only on a match | `swap(true, Acquire)` vs `compare_exchange` (`spinlock.rs`) |
+| `Acquire`/`Release` | Acquire forbids later accesses moving up; Release earlier ones moving down | `spinlock.rs` (`fence rw, w`) |
+| Spinlock | A lock whose waiters busy-wait instead of sleeping | `AtomicBool` + `UnsafeCell<T>` (`spinlock.rs`) |
+| Interior mutability | Legally obtaining `*mut T` from a shared reference | `UnsafeCell::get` behind `Deref` (`spinlock.rs`) |
+| RAII guard | A value whose destructor releases the resource | `SpinLockGuard`'s `Drop` calls `unlock` (`spinlock.rs`) |
+| `Send` / `Sync` | `Send`: movable to another thread. `Sync`: `&T` shareable | `unsafe impl<T: Send> Sync` (`spinlock.rs`) |
 | Deadlock | A cycle of waiting that never breaks; all four Coffman conditions | A handler taking the lock its interrupted code holds (§5) |
-| Counting semaphore | A non-negative count with atomic `wait`/`post`, metering *n* units | `SpinLock<i64>` (`semaphore.rs:5`) |
+| Counting semaphore | A non-negative count with atomic `wait`/`post`, metering *n* units | `SpinLock<i64>` (`semaphore.rs`) |
 | Lost wakeup | A `post` landing between the condition test and the sleep | Consumer sleeps forever with a permit available (§6) |
-| `#[global_allocator]` | The language item naming the binary's one `GlobalAlloc` | `static ALLOCATOR: KernelHeap` (`kheap.rs:40`) |
+| `#[global_allocator]` | The language item naming the binary's one `GlobalAlloc` | `static ALLOCATOR: KernelHeap` (`kheap.rs`) |
 
 ---
 
@@ -641,7 +641,7 @@ violating `count >= 0`. A lost update is worse still: if both stores computed
 `1 - 1` from the values loaded at times 1 and 3, `count` would end at `0` — two
 permits from a stock of one, with a count that looks healthy.
 
-The fix is `semaphore.rs:17`: lock *before* the test. Making only the decrement
+The fix is `Semaphore::try_wait()` (`semaphore.rs`): lock *before* the test. Making only the decrement
 atomic (`fetch_sub`) does not help — the window is between them.
 
 </details>
@@ -760,7 +760,7 @@ in the opposite order.**
 
 ### Problem 5: Predict what QEMU prints
 
-`PGSIZE = 4096` (`memlayout.rs:7`), one page per allocation. Assume `Vec` grows
+`PGSIZE = 4096` (`memlayout.rs`), one page per allocation. Assume `Vec` grows
 capacity `4 → 8 → 16`, allocating the new block before freeing the old.
 
 ```rust
@@ -784,7 +784,7 @@ at the end. Capacity is irrelevant — 32 and 128 bytes both cost one page.
 (b) 16 × 8 = 128 bytes of 4096. **3968 bytes wasted**, 97% of a page, for ten
 `u64` values.
 
-(c) `2048 × 4 = 8192` bytes, and `kheap.rs:26` rejects anything larger than
+(c) `2048 × 4 = 8192` bytes, and `kheap.rs` rejects anything larger than
 `PGSIZE`, returning `ptr::null_mut()`. `alloc` treats null as failure and calls
 `handle_alloc_error`, reaching the panic handler. QEMU prints the panic and stops
 — not an out-of-memory message and not a `Result` you can handle. Over 100 MiB is
@@ -826,36 +826,36 @@ free; the failure is purely the one-page ceiling.
    closes it.
 
 3. **Test-and-set writes unconditionally; compare-and-swap writes only on a
-   match.** `compare_exchange(false, true, Acquire, Relaxed)` (`spinlock.rs:25`)
+   match.** `compare_exchange(false, true, Acquire, Relaxed)` (`SpinLock::lock()` in `spinlock.rs`)
    reduces on an `AtomicBool` to one `amoor.w.aq` — CAS on a bool *is*
    test-and-set. A general CAS becomes an `lr.d`/`sc.d` retry loop.
 
 4. **Acquire and Release are a pair, and they protect the data, not the flag.**
    Acquire forbids later accesses moving above the lock; Release forbids earlier
-   ones moving below the unlock (`fence rw, w`, `spinlock.rs:46`), so the next
+   ones moving below the unlock (`fence rw, w`, `spinlock.rs`), so the next
    holder sees everything the previous one wrote.
 
 5. **The guard converts a convention into a type rule.** `UnsafeCell` makes
    `&mut T` from `&self` legal, `Deref` reaches it only through a guard, and
-   `Drop` (`spinlock.rs:71`) unlocks on every path. `unsafe impl<T: Send> Sync`
-   (`spinlock.rs:12`) is the promise the compiler cannot verify — and
+   `Drop` (`spinlock.rs`) unlocks on every path. `unsafe impl<T: Send> Sync`
+   (`impl Sync for SpinLock` in `spinlock.rs`) is the promise the compiler cannot verify — and
    `let _ = lock.lock()` silently discards all of it.
 
 6. **A kernel disables interrupts while holding a spinlock, or it deadlocks
    against itself.** The handler spins waiting for code that will never resume.
    Lock ordering fixes cycles between locks; only interrupt masking
    (`push_off`/`pop_off`) fixes this one. rv6 omits it and survives on one hart
-   with lock-free interrupt handlers (`console.rs:13`).
+   with lock-free interrupt handlers (`BUF` in `console.rs`).
 
 7. **A semaphore is a count with `P` and `V`, and the hard part is blocking.**
    `count = initial + Vs − Ps`, never negative; one permit is a mutex, *n*
    permits meter a resource. Naive sleep/wakeup loses the wakeup landing between
    the test and the sleep — hence the lock-releasing `sleep` and the `while`
-   re-test. rv6's `try_wait` (`semaphore.rs:16`) is non-blocking for that reason.
+   re-test. rv6's `try_wait` (`semaphore.rs`) is non-blocking for that reason.
 
 8. **The heap is one page per allocation, arriving as late as it can.**
-   `#[global_allocator]` (`kheap.rs:40`) installs `KernelHeap`; every `Box`,
-   `Vec`, and `Arc` routes to `kalloc` (`kalloc.rs:40`), so a 32-byte `Arc` costs
+   `#[global_allocator]` (`kheap.rs`) installs `KernelHeap`; every `Box`,
+   `Vec`, and `Arc` routes to `kalloc` (`kalloc.rs`), so a 32-byte `Arc` costs
    4096 bytes and anything over a page fails outright. It stays unsynchronized
    because `kalloc` has no lock — exactly what `37k_spinlocks` and `38k_semaphores`
    give you the tools to fix.

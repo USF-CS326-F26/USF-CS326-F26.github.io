@@ -57,7 +57,7 @@ Both have one shape: *code that must call a method without knowing the type it i
 
 ## 2. Traits: A Contract Between Types
 
-A **trait** is a named list of method signatures — the real one from the kernel, `shell.rs:17`:
+A **trait** is a named list of method signatures — the real one from the kernel, `Out` (`shell.rs`):
 
 ```rust
 pub trait Out {
@@ -69,7 +69,7 @@ pub trait Out {
 
 ### 2.1 Implementing it
 
-`impl Trait for Type` is a separate block from L04's plain `impl Type`. This one supplies a trait's methods — all of them, or the compiler names the one you missed (`shell.rs:334`):
+`impl Trait for Type` is a separate block from L04's plain `impl Type`. This one supplies a trait's methods — all of them, or the compiler names the one you missed (`ConsoleOut` in `shell.rs`):
 
 ```rust
 struct ConsoleOut;
@@ -198,7 +198,7 @@ That is **dynamic dispatch**: an extra load and an indirect jump per call, no in
 
 The last line decides most cases: a generic `O` is fixed to *one* type per call site, so no `Vec<O>` can hold a `ConsoleOut` and a test buffer at once, whereas a `&mut dyn Out` can be stored, passed through twelve layers, and swapped at run time.
 
-That is why the shell chose `dyn`: `shell.rs:39` threads `out: &mut dyn Out` through `cmd_ls` (`shell.rs:77`), `cmd_cat` (`shell.rs:141`), and `put_num` (`shell.rs:313`), where generics would copy the command set once per sink to save one indirect call per line at 115200 baud. `sched.rs` chose static dispatch, because `pick_next` runs on every timer tick.
+That is why the shell chose `dyn`: `shell.rs` threads `out: &mut dyn Out` through `cmd_ls` and `cmd_cat` (`shell.rs`), and `put_num` (`shell.rs`), where generics would copy the command set once per sink to save one indirect call per line at 115200 baud. `sched.rs` chose static dispatch, because `pick_next` runs on every timer tick.
 
 > **Object safety:** a trait is usable as `dyn Trait` only if a vtable can be built for it — which a method generic over another type parameter, or one taking `self` by value, prevents.
 
@@ -208,7 +208,7 @@ That is why the shell chose `dyn`: `shell.rs:39` threads `out: &mut dyn Out` thr
 
 ### 5.1 `Scheduler` — policy apart from mechanism
 
-`sched.rs:5`:
+`sched.rs`:
 
 ```rust
 pub trait Scheduler {
@@ -216,7 +216,7 @@ pub trait Scheduler {
 }
 ```
 
-Three things there are decisions. `&mut self`, because a policy may remember something between calls: round-robin remembers where the rotation stopped, and `sched.rs:20` scans forward from a stored cursor. A stateless policy ignores the ability — the trait sets a ceiling, not a floor.
+Three things there are decisions. `&mut self`, because a policy may remember something between calls: round-robin remembers where the rotation stopped, and `sched.rs` scans forward from a stored cursor. A stateless policy ignores the ability — the trait sets a ceiling, not a floor.
 
 `&[ProcState]`, not `&mut [Proc]`: the policy sees the states and nothing else, and cannot mark a process running, free one, or touch a page table. Giving an abstraction the smallest input that lets it work is a security property — a buggy policy can pick the wrong process, and that is the worst it can do.
 
@@ -226,7 +226,7 @@ The lineage is direct. xv6's `scheduler()` hardcodes the round-robin scan inline
 
 ### 5.2 `Out` — one seam, two destinations
 
-`shell.rs:17` declares the trait, `shell.rs:334` gives the console implementation, and `shell.rs:345` picks one at the top of the read-eval-print loop:
+`shell.rs` declares the trait, `ConsoleOut` (`shell.rs`) gives the console implementation, and `run()` (`shell.rs`) picks one at the top of the read-eval-print loop:
 
 ```rust
 let mut sh = Shell::new();
@@ -263,11 +263,11 @@ enum Result<T, E> { Ok(T),   Err(E) }
 
 `Option<T>` is for **absence**: a question whose honest answer may be "nothing". Which slot holds pid 7? Possibly none, and nothing has gone wrong. `Result<T, E>` is for **failure**: an operation that should have produced a `T` and could not, so it produces an `E` explaining itself. That `E` is the whole difference — `None` says nothing happened, `Err(FsError::NameTooLong)` says *what* went wrong, letting the caller give up, retry, or print something useful. `Result` is `#[must_use]`, so discarding one is a compiler warning: one attribute fixing the most common bug in C systems programming.
 
-> **Key distinction:** "this name is not in the directory" is absence to the routine that scanned it and failure to the routine trying to open a file. Keeping them separate — `find` returning `Option`, `lookup` returning `Result` — puts the *policy* in one visible place, and `.ok_or(e)` is the line it lives on, as at `exec.rs:649`: `lookup(name).ok_or(ExecError::NotFound)?`.
+> **Key distinction:** "this name is not in the directory" is absence to the routine that scanned it and failure to the routine trying to open a file. Keeping them separate — `find` returning `Option`, `lookup` returning `Result` — puts the *policy* in one visible place, and `.ok_or(e)` is the line it lives on, as in `exec.rs`: `lookup(name).ok_or(ExecError::NotFound)?`.
 
 ### 6.2 Your own error type
 
-`E` is any type you like; in kernel code it is an enum you wrote (`fs.rs:19`):
+`E` is any type you like; in kernel code it is an enum you wrote (`fs.rs`):
 
 ```rust
 pub enum FsError {
@@ -276,7 +276,7 @@ pub enum FsError {
 }
 ```
 
-One variant per way this subsystem can fail. The caller `match`es on the specific failure instead of decoding an integer — `shell.rs:135` treats `Err(FsError::AlreadyExists)` as success, because that is what real `touch` does — and exhaustiveness runs in reverse when you *grow* the type: add a variant and every `match` needing a new decision stops compiling. In C, adding an `errno` value silently does nothing.
+One variant per way this subsystem can fail. The caller `match`es on the specific failure instead of decoding an integer — `Shell::cmd_touch()` (`shell.rs`) treats `Err(FsError::AlreadyExists)` as success, because that is what real `touch` does — and exhaustiveness runs in reverse when you *grow* the type: add a variant and every `match` needing a new decision stops compiling. In C, adding an `errno` value silently does nothing.
 
 ### 6.3 `?`, and the desugaring you should know
 
@@ -292,7 +292,7 @@ match expr {
 }
 ```
 
-`From::from`. The error is **converted** on the way out. When inner and outer types match this is free — the blanket `impl<T> From<T> for T` is the identity — which is why `fs.rs:139` writes `slot.ok_or(FsError::DirFull)?` inside a `Result<usize, FsError>` function and never thinks about it.
+`From::from`. The error is **converted** on the way out. When inner and outer types match this is free — the blanket `impl<T> From<T> for T` is the identity — which is why `FileSystem::dircreate()` (`fs.rs`) writes `slot.ok_or(FsError::DirFull)?` inside a `Result<usize, FsError>` function and never thinks about it.
 
 ### 6.4 `From`, and layered errors
 
@@ -316,14 +316,14 @@ A user program cannot receive a `Result`; it gets one integer in `a0`, so at the
   layer                      type it speaks in          what it can say
   ─────────────────────────────────────────────────────────────────────
   cat.rs (user program)      Result<usize,ulib::Error>  Error(-1)
-  ulib::read    lib.rs:104   isize, read out of a0      -1
+  ulib::read    lib.rs   isize, read out of a0      -1
   ══ trap boundary ══ one register, no types, another address space ══
-  sys_read      syscall.rs:468  isize                   -1   <- cause lost
-  FS.read_at    fs.rs:231    Result<usize, FsError>     IsADirectory, ...
-  dirlookup     fs.rs:109    Result<usize, FsError>     NotFound
+  sys_read      syscall.rs  isize                   -1   <- cause lost
+  FS.read_at    fs.rs    Result<usize, FsError>     IsADirectory, ...
+  dirlookup     fs.rs    Result<usize, FsError>     NotFound
 ```
 
-The collapse belongs in one place: the boundary. `syscall.rs:403` is representative — a `match` whose `Err(_)` arm returns `-1` and discards the reason — and because rv6 answers every failure with `-1`, `ulib`'s `Error` (`lib.rs:55`) is deliberately a thin wrapper around that number. The Unix convention we adopt later: `>= 0` is success, negative is minus an `errno` code (2 `ENOENT`, 21 `EISDIR`, 36 `ENAMETOOLONG`).
+The collapse belongs in one place: the boundary. `sys_open()` (`syscall.rs`) is representative — a `match` whose `Err(_)` arm returns `-1` and discards the reason — and because rv6 answers every failure with `-1`, `ulib`'s `Error` (`lib.rs`) is deliberately a thin wrapper around that number. The Unix convention we adopt later: `>= 0` is success, negative is minus an `errno` code (2 `ENOENT`, 21 `EISDIR`, 36 `ENAMETOOLONG`).
 
 > **On panicking:** `unwrap()` and `expect()` panic on `Err` — fine in tests, close to banned in kernel code, and right only for a broken invariant such as `allocproc` returning a null page table. The rule of thumb is **`Result` for what the outside world did to you, panic for what you did to yourself.**
 
@@ -362,9 +362,9 @@ mod host;
 pub(crate) use host::*;
 ```
 
-Both backends expose the same five private functions — `sys_read`, `sys_write`, `sys_open`, `sys_close`, `sys_exit` — so `lib.rs` above them contains **no `#[cfg]` at all**. `ulib::read` (`lib.rs:104`) calls `sys::sys_read`, checks for a negative return, and wraps it in a `Result`: the same eight lines on both targets, over a `sys/host.rs:33` that writes through `std::io::Write` and a `sys/rv6.rs:21` that is one `asm!` block around `ecall`.
+Both backends expose the same five private functions — `sys_read`, `sys_write`, `sys_open`, `sys_close`, `sys_exit` — so `lib.rs` above them contains **no `#[cfg]` at all**. `ulib::read` (`lib.rs`) calls `sys::sys_read`, checks for a negative return, and wraps it in a `Result`: the same eight lines on both targets, over a `sys/host.rs` that writes through `std::io::Write` and a `sys/rv6.rs` that is one `asm!` block around `ecall`.
 
-The rv6 backend also holds the image's one `#[panic_handler]` (`sys/rv6.rs:66`), so no file you write contains one. `ulib::main!(run)` (`entry.rs:13`) is the other half: an ordinary `fn main` on the host, and on rv6 the `_start` symbol `exec` jumps to, with `argc`/`argv` unpacked from the stack `exec` built (`entry.rs:32`). A command's whole two-target ceremony is two lines, `cat.rs:15` and `cat.rs:19`.
+The rv6 backend also holds the image's one `#[panic_handler]` (`sys/rv6.rs`), so no file you write contains one. `ulib::main!(run)` (`entry.rs`) is the other half: an ordinary `fn main` on the host, and on rv6 the `_start` symbol `exec` jumps to, with `argc`/`argv` unpacked from the stack `exec` built (`entry.rs`). A command's whole two-target ceremony is two lines, `cat.rs`.
 
 ### 7.2 Why `target_os`, and not a Cargo feature
 
@@ -378,9 +378,9 @@ A feature is an independent knob. **Forget it and the build is nonsense:** build
 
 ### 7.3 Testing through the seam
 
-What is *missing* from the façade is instructive: no `println!`, because `write!` would drag 12–18 KiB of `core::fmt` into an image with a hard size budget, and arguments are `&[u8]` rather than `&str` (`lib.rs:63`) because that is what `exec` pushes onto the stack. It is the *intersection* of what both sides can honestly do.
+What is *missing* from the façade is instructive: no `println!`, because `write!` would drag 12–18 KiB of `core::fmt` into an image with a hard size budget, and arguments are `&[u8]` rather than `&str` (`Args` in `lib.rs`) because that is what `exec` pushes onto the stack. It is the *intersection* of what both sides can honestly do.
 
-The host backend then has a third mode: `testing::run` (`testing.rs:28`) installs a capture buffer in a thread-local and calls your `run` directly, so a command is tested with no process spawned and no temporary files — and the source under test is byte-identical to what will run on rv6.
+The host backend then has a third mode: `testing::run` (`testing.rs`) installs a capture buffer in a thread-local and calls your `run` directly, so a command is tested with no process spawned and no temporary files — and the source under test is byte-identical to what will run on rv6.
 
 ---
 
@@ -388,16 +388,16 @@ The host backend then has a third mode: `testing::run` (`testing.rs:28`) install
 
 | Concept | Definition | Example |
 |---|---|---|
-| Trait | Named set of method signatures a type promises to provide; not itself a type | `pub trait Out { fn puts(&mut self, s: &str); }` at `shell.rs:17` |
+| Trait | Named set of method signatures a type promises to provide; not itself a type | `pub trait Out { fn puts(&mut self, s: &str); }` at `shell.rs` |
 | Required / default method | Signature only, which implementers must supply; or a body in the trait, inherited free | `pick_next` is required; `write_line` is a default |
 | Trait bound | Constraint granting the body that trait's methods | `fn log_all<O: Out>(out: &mut O, ...)` |
 | Monomorphization | One specialized copy compiled per concrete type used | `trace::<Priority, StringOut>` |
 | Static dispatch | Target resolved at compile time; direct call, inlinable | `&mut impl Out`, `<O: Out>` |
-| Dynamic dispatch | Target looked up in a vtable at run time; one indirect call | `&mut dyn Out` at `shell.rs:39` |
+| Dynamic dispatch | Target looked up in a vtable at run time; one indirect call | `&mut dyn Out` at `shell.rs` |
 | `Option<T>` | Absence: the honest answer may be "nothing" | `pick_next` returns `None` when nothing is runnable |
-| `Result<T, E>` | Failure: could not produce a `T`, and says why; `#[must_use]` | `dirlookup` at `fs.rs:109` |
-| `?` operator | Early-returns `Err(From::from(e))`, or unwraps `Ok` | `let n = ulib::read(fd, &mut buf)?;` at `cat.rs:25` |
-| `#[cfg(target_os = "none")]` | Compilation switched by the target triple, not a flag | `sys/mod.rs:4` picking the `ecall` backend |
+| `Result<T, E>` | Failure: could not produce a `T`, and says why; `#[must_use]` | `dirlookup` at `fs.rs` |
+| `?` operator | Early-returns `Err(From::from(e))`, or unwraps `Ok` | `let n = ulib::read(fd, &mut buf)?;` at `cat.rs` |
+| `#[cfg(target_os = "none")]` | Compilation switched by the target triple, not a flag | `sys/mod.rs` picking the `ecall` backend |
 
 ---
 
@@ -454,7 +454,7 @@ trace(&mut rr,   &mut log,     9);   // RoundRobin, StringOut
 **(a)** How many machine-code copies of `trace` are emitted, and why is it neither 4 nor 2×2?
 **(b)** `O` is replaced by `out: &mut dyn Out`. How many now?
 **(c)** Both parameters become `dyn`. How many, and what does each `out` call now cost?
-**(d)** rv6's shell has eleven handlers taking the sink, and two sinks exist. How many handler bodies if they were generic, and why did the kernel pick `dyn Out` at `shell.rs:39`?
+**(d)** rv6's shell has eleven handlers taking the sink, and two sinks exist. How many handler bodies if they were generic, and why did the kernel pick `dyn Out` at `Shell::exec()` (`shell.rs`)?
 
 <details>
 <summary>Click to reveal solution</summary>

@@ -259,7 +259,7 @@ oslings doctor
 ```
 
 Six checks, each printed as `[ ok ]` or `[MISS]` with the exact fix command
-(`main.rs:536-584`). It exits non-zero if anything is missing.
+(`cmd_class_grade()` in `main.rs`). It exits non-zero if anything is missing.
 
 | Check | What it actually runs | Fix it prints |
 |---|---|---|
@@ -303,7 +303,7 @@ Failures `doctor` cannot see:
 | `oslings` says `no exercises have been released yet` | A fresh clone holds no exercises until you pull them. Run `oslings update`. |
 | `warmup/src` is empty, or `warmup/src/lib.rs` does not exist | It is not shipped in the repo — `oslings` creates it from the exercise's skeleton when you open the app. Run `oslings update` if you have not, then `oslings`. (Before **0.3.4** this happened only on the first test run, so on an older CLI, run `oslings run` once.) |
 | You edited `exercises/<name>/skeleton/…` and nothing changed | Nothing builds from `exercises/`. Your work goes in the staging directory — `warmup/src/lib.rs` for the Rust exercises. Restore the skeleton with `git checkout -- exercises/`. |
-| `oslings update` says a course file has uncommitted changes | You edited a file the course owns (`exercises/`, `info.toml`, `oslings-cli`, `setup.sh`, `SETUP.md`, `README.md` — see `git.rs:15-22`). Run the `git checkout` command it prints, then update again. Your own work under `rv6/src`, `warmup/src`, `commands/src/bin`, `asmlab/src`, `my-work/`, and `submissions/` is never touched. |
+| `oslings update` says a course file has uncommitted changes | You edited a file the course owns (`exercises/`, `info.toml`, `oslings-cli`, `setup.sh`, `SETUP.md`, `README.md` — see `git.rs`). Run the `git checkout` command it prints, then update again. Your own work under `rv6/src`, `warmup/src`, `commands/src/bin`, `asmlab/src`, `my-work/`, and `submissions/` is never touched. |
 | `oslings submit` fails to push | Check `git remote -v`. `origin` must be your own `oslings-<username>` repo; if it is the course repo you cloned the wrong one (§4). If `origin` is right, you have not accepted your repo's invitation. |
 | `git clone` over SSH fails | Use the HTTPS URL, or add an SSH key at `https://github.com/settings/keys` |
 | A newly released exercise did not appear | It may not be released yet; otherwise check your network and re-run `oslings update` |
@@ -356,7 +356,7 @@ host-side fallback, and nothing after that date works without QEMU either.
 ## Checking it by hand
 
 If you want to confirm the toolchain independently of `oslings`, this is exactly
-what the harness does (`runner.rs:242-256`):
+what the harness does (`run_with_timeout()` in `runner.rs`):
 
 ```bash
 cd asmlab

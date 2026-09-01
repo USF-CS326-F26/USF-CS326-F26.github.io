@@ -334,7 +334,7 @@ So where are the caller's live `t` and `a` registers?
 
 And the frame holding them is reached through `sp` — one of the registers the switch saves.
 
-That leaves **14**: `s0`–`s11`, `sp`, and `ra`. 112 bytes. `swtch.rs:7`.
+That leaves **14**: `s0`–`s11`, `sp`, and `ra`. 112 bytes. `swtch.rs`.
 
 ---
 
@@ -342,9 +342,9 @@ That leaves **14**: `s0`–`s11`, `sp`, and `ra`. 112 bytes. `swtch.rs:7`.
 
 | Structure | Saves | Size | Why |
 |---|---|---|---|
-| `Context` (`swtch.rs:7`) | `ra`, `sp`, `s0`–`s11` | 14 regs | Entered by a **call** — caller already spilled |
-| `kernelvec` frame (`trap.rs:91`) | `ra`, `t0`–`t6`, `a0`–`a7` | 16 regs | Entered by an **interrupt** — nothing spilled. Calls Rust, which preserves `s*` free |
-| `Trapframe` (`usermode.rs:34`) | all 31 + `epc` | 35+ | Resumed much later, from elsewhere. Nothing may be lost |
+| `Context` (`swtch.rs`) | `ra`, `sp`, `s0`–`s11` | 14 regs | Entered by a **call** — caller already spilled |
+| `kernelvec` frame (`trap.rs`) | `ra`, `t0`–`t6`, `a0`–`a7` | 16 regs | Entered by an **interrupt** — nothing spilled. Calls Rust, which preserves `s*` free |
+| `Trapframe` (`usermode.rs`) | all 31 + `epc` | 35+ | Resumed much later, from elsewhere. Nothing may be lost |
 
 <div class="highlight-box">
 A <strong>call</strong> is cooperative — both compilers know it is coming. A <strong>trap</strong> lands between any two instructions, in any state.
@@ -504,7 +504,7 @@ pub extern "C" fn kmain() -> ! { /* ... */ }
 - `extern "C"` fixes the **convention**
 - You normally need both
 
-Same pair on `_entry` (`entry.rs:10-12`) and on every `static mut` the assembly reaches with `la`: `CO_STACK`, `MAIN_CTX`, `CO_CTX` (`main.rs:138-147`).
+Same pair on `_entry` (`entry.rs`) and on every `static mut` the assembly reaches with `la`: `CO_STACK`, `MAIN_CTX`, `CO_CTX` (`main.rs`).
 
 ---
 
@@ -650,7 +650,7 @@ A <strong>hang with no output</strong> is the signature of a <code>ret</code> to
 
 ## Scaling Up
 
-`swtch.rs:46-82` is the same function with ten more registers:
+`swtch.rs` is the same function with ten more registers:
 
 - fourteen `sd`s at offsets 0 … 104
 - fourteen `ld`s at the same offsets
@@ -658,7 +658,7 @@ A <strong>hang with no output</strong> is the signature of a <code>ret</code> to
 
 Same shape. Same argument. Same punchline.
 
-`init_context` (`swtch.rs:38-44`) forges a first context the same way the harness does — `ra` = the function a new process should start in, `sp` = top of its kernel stack.
+`init_context` (`swtch.rs`) forges a first context the same way the harness does — `ra` = the function a new process should start in, `sp` = top of its kernel stack.
 
 `35k_context_switch` writes it. `36k_scheduling` calls it in a loop, and one CPU starts pretending to be many.
 

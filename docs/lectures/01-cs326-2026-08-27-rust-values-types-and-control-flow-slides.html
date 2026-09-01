@@ -209,7 +209,7 @@ free_pages -= 1;
 
 - A **binding** gives a name to a value
 - Immutable **by default** — reassignment is an error, not a warning
-- `mut` is how you say "this one moves"
+- `mut` is how you say "this one can change"
 - `let x = 5; let x = x + 1;` is **shadowing**, not assignment
 
 ---
@@ -220,7 +220,7 @@ free_pages -= 1;
   almost nobody writes
 - Rust inverts it, so the common case (computed once, then read) needs no
   ceremony
-- `let mut p = pgroundup(start);` in `kalloc.rs:27` tells you something
+- `let mut p = pgroundup(start);` in `free_range()` (`kalloc.rs`) tells you something
   **true**: `p` walks, everything else stands still
 
 <div class="info-box">
@@ -233,9 +233,9 @@ mutability is written down. This is the wall the language sits on.
 ## `const` vs `let`
 
 ```rust
-pub const PGSIZE: usize = 4096;                          // memlayout.rs:7
-pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs:10
-pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs:13
+pub const PGSIZE: usize = 4096;                          // memlayout.rs
+pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs
+pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs
 ```
 
 - A `const` is **not a binding** — it is substituted at every use site
@@ -263,9 +263,9 @@ Rust integers name their size. There is no `int` you have to look up.
 ## A PTE Is Exactly 64 Bits
 
 ```rust
-#[repr(transparent)]                  // vm.rs:25
+#[repr(transparent)]                  // vm.rs
 #[derive(Clone, Copy)]
-pub struct Pte(pub usize);            // vm.rs:27
+pub struct Pte(pub usize);            // vm.rs
 ```
 
 - Sv39 says so: bits 0–9 flags, bits 10–53 physical page number
@@ -279,10 +279,10 @@ pub struct Pte(pub usize);            // vm.rs:27
 ## A UART Register Is Exactly 8 Bits
 
 ```rust
-const LSR_DR:   u8 = 1 << 0;   // uart.rs:14  Data Ready
-const LSR_THRE: u8 = 1 << 5;   // uart.rs:15  Tx Holding Empty
+const LSR_DR:   u8 = 1 << 0;   // uart.rs  Data Ready
+const LSR_THRE: u8 = 1 << 5;   // uart.rs  Tx Holding Empty
 
-unsafe fn reg_read(off: usize) -> u8 {              // uart.rs:18
+unsafe fn reg_read(off: usize) -> u8 {              // uart.rs
     read_volatile((UART0 + off) as *const u8)
 }
 ```
@@ -348,7 +348,7 @@ A 4 KiB page needs 12 offset bits = **exactly three hex digits**.
 
 - `_` may go anywhere inside a numeric literal; the compiler discards it
 - Group hex in **fours** — four digits is 16 bits, what an eye can count
-- Works in decimal too: `const INTERVAL: u64 = 1_000_000;` (`start.rs:19`)
+- Works in decimal too: `const INTERVAL: u64 = 1_000_000;` (`start.rs`)
 - Suffixes pin the type when context does not: `42u8`, `1usize`
 
 ---
@@ -397,7 +397,7 @@ semicolon <em>before</em> you look anywhere else.
 ```rust
 fn add(a: u64, b: u64) -> u64 { a + b }
 
-pub unsafe extern "C" fn _entry() -> ! {    // entry.rs:18
+pub unsafe extern "C" fn _entry() -> ! {    // entry.rs
     asm!( /* set up a stack, then call start */ , options(noreturn));
 }
 ```
@@ -406,7 +406,7 @@ pub unsafe extern "C" fn _entry() -> ! {    // entry.rs:18
   at the boundary, because a signature is a contract
 - No `->` means the return type is `()`
 - `-> !` is the **never type**: control does not return here at all
-- `_entry` → `start` (`start.rs:25`) → `mret` into `kmain`, never back
+- `_entry` → `start` (`start.rs`) → `mret` into `kmain`, never back
 
 ---
 
@@ -415,7 +415,7 @@ pub unsafe extern "C" fn _entry() -> ! {    // entry.rs:18
 ```rust
 let bigger = if a > b { a } else { b };
 
-pub fn set_loopback(on: bool) {                              // uart.rs:69
+pub fn set_loopback(on: bool) {                              // uart.rs
     unsafe { reg_write(MCR, if on { MCR_LOOP } else { 0 }) }
 }
 ```
@@ -446,7 +446,7 @@ for i in 0..4 { }                           // i = 0, 1, 2, 3
 ## `while`: Walking Physical Memory
 
 ```rust
-unsafe fn free_range(start: usize, stop: usize) {   // kalloc.rs:26
+unsafe fn free_range(start: usize, stop: usize) {   // kalloc.rs
     let mut p = pgroundup(start);
     while p + PGSIZE <= stop {
         kfree(p as *mut u8);
@@ -476,7 +476,7 @@ flowchart TD
 ## `loop`: The Idle Path
 
 ```rust
-pub fn getc() -> u8 {           // console.rs:47
+pub fn getc() -> u8 {           // console.rs
     loop {
         if let Some(b) = try_getc() {
             return b;
@@ -569,11 +569,11 @@ flowchart TD
 ## Wrapping On Purpose
 
 ```rust
-let tail = *addr_of!(TAIL);                     // console.rs:20
+let tail = *addr_of!(TAIL);                     // console.rs
 let head = *addr_of!(HEAD);
-if tail.wrapping_sub(head) < BUF_LEN {          // console.rs:22
+if tail.wrapping_sub(head) < BUF_LEN {          // console.rs
     *addr_of_mut!(BUF[tail % BUF_LEN]) = b;
-    *addr_of_mut!(TAIL) = tail.wrapping_add(1); // console.rs:24
+    *addr_of_mut!(TAIL) = tail.wrapping_add(1); // console.rs
 }
 ```
 
@@ -596,7 +596,7 @@ match addr.checked_add(PGSIZE - 1) {
 - `Option<T>` is `Some(value)` or `None` — Rust has **no null**
 - Different type from `usize`, so the compiler forces you to handle `None`
 - `match` covers every shape, and is itself an expression
-- You have seen it: `uart::getc() -> Option<u8>` (`uart.rs:53`)
+- You have seen it: `uart::getc() -> Option<u8>` (`uart.rs`)
 
 ---
 
@@ -605,11 +605,11 @@ match addr.checked_add(PGSIZE - 1) {
 | Today | In the kernel | Exercise |
 |---|---|---|
 | `const … : usize` | the memory map, `memlayout.rs` | 31k |
-| `u8` registers | the UART driver, `uart.rs:14`–`24` | 41k |
+| `u8` registers | the UART driver, `uart.rs` | 41k |
 | `usize` addresses | `Pte`, `walk`, `mappages`, `vm.rs` | 33k |
-| `while p + PGSIZE <= stop` | `free_range`, `kalloc.rs:26` | 32k |
-| `loop { }` | the idle path, `console.rs:47` | 45k |
-| `wrapping_add` | the ring buffer, `console.rs:24` | 45k |
+| `while p + PGSIZE <= stop` | `free_range`, `kalloc.rs` | 32k |
+| `loop { }` | the idle path, `console.rs` | 45k |
+| `wrapping_add` | the ring buffer, `console.rs` | 45k |
 
 ---
 

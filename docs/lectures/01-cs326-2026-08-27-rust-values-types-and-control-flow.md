@@ -69,7 +69,7 @@ C has this backwards: `int x = 5;` is mutable and you write `const` to give
 that up, which almost nobody does, so the compiler is told nothing and can
 prove nothing. Rust inverts the default: the common case — computed once, then
 read — needs no ceremony, and `mut` becomes a real signal. In
-`let mut p = pgroundup(start);` (`kalloc.rs:27`), the `mut` says something
+`let mut p = pgroundup(start);` (`kalloc.rs`), the `mut` says something
 true: `p` walks. Every other local in that function stands still.
 
 The payoff is larger than style. In three weeks we cover **ownership and
@@ -88,9 +88,9 @@ A `const` is not a binding. It is a value substituted at every use site; it
 needs an explicit type and must be computable at compile time:
 
 ```rust
-pub const PGSIZE: usize = 4096;                          // memlayout.rs:7
-pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs:10
-pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs:13
+pub const PGSIZE: usize = 4096;                          // memlayout.rs
+pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs
+pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs
 ```
 
 `PHYSTOP` is arithmetic over another `const`, evaluated at compile time. Those
@@ -123,9 +123,9 @@ wraps that in a one-field struct, so the type system can tell a PTE from a
 number:
 
 ```rust
-#[repr(transparent)]                  // vm.rs:25
+#[repr(transparent)]                  // vm.rs
 #[derive(Clone, Copy)]
-pub struct Pte(pub usize);            // vm.rs:27
+pub struct Pte(pub usize);            // vm.rs
 ```
 
 `#[repr(transparent)]` means "in memory this is *exactly* a `usize`" — no
@@ -139,10 +139,10 @@ one-byte registers at consecutive addresses, and the driver says so in the
 types:
 
 ```rust
-const LSR_DR:   u8 = 1 << 0;   // uart.rs:14  Data Ready
-const LSR_THRE: u8 = 1 << 5;   // uart.rs:15  Transmit Holding Empty
+const LSR_DR:   u8 = 1 << 0;   // uart.rs  Data Ready
+const LSR_THRE: u8 = 1 << 5;   // uart.rs  Transmit Holding Empty
 
-unsafe fn reg_read(off: usize) -> u8 {              // uart.rs:18
+unsafe fn reg_read(off: usize) -> u8 {              // uart.rs
     read_volatile((UART0 + off) as *const u8)
 }
 ```
@@ -153,7 +153,7 @@ real hardware some reads have side effects. The type is the bus transaction.
 
 **An address is `usize`**, defined as "wide enough to hold a pointer on this
 machine". Every address, size, offset, and index in rv6 is one
-(`memlayout.rs:7`–`memlayout.rs:57`) — which is why `KERNBASE` is `usize` and
+(`memlayout.rs`) — which is why `KERNBASE` is `usize` and
 not `u64` even though they are identical on rv64. The type says what the
 number *means*, not only how wide it is.
 
@@ -169,7 +169,7 @@ let low: u8 = addr as u8;    // 0x00 — the other 56 bits are GONE
 ```
 
 That is the one C-shaped footgun Rust hands you, so `as` in kernel code
-deserves a second look: `(v % 10) as u8` (`main.rs:154`) is safe only because
+deserves a second look: `(v % 10) as u8` (`put_num()` in `main.rs`) is safe only because
 the modulus already proved the value is 0–9.
 
 ---
@@ -220,9 +220,9 @@ without moving:
 ```
 
 Decimal takes underscores too: `const INTERVAL: u64 = 1_000_000;`
-(`start.rs:19`) is a million timer ticks, and you can *see* that it is a
+(`start.rs`) is a million timer ticks, and you can *see* that it is a
 million. A literal may also carry its type as a suffix — `42u8`, `1usize`
-(`trap.rs:40`) — when context does not pin the type down.
+(`intr_on()` in `trap.rs`) — when context does not pin the type down.
 
 ---
 
@@ -297,19 +297,19 @@ returns **never** is written `-> !`:
 ```rust
 #[no_mangle]
 #[link_section = ".entry"]
-pub unsafe extern "C" fn _entry() -> ! {    // entry.rs:18
+pub unsafe extern "C" fn _entry() -> ! {    // entry.rs
     asm!( /* set up a stack, then call start */ , options(noreturn));
 }
 ```
 
 `!` is the **never type**: not "returns nothing" but "control does not return
-here at all". `_entry` hands off to `start` (`start.rs:25`, also `-> !`), which
+here at all". `_entry` hands off to `start` (`start.rs`, also `-> !`), which
 `mret`s into `kmain`, and the kernel never unwinds back through the boot path.
 Saying so in the type lets the compiler drop the return sequence entirely, and
 lets it accept a body that is nothing but `loop {}`.
 
 You will also meet `const fn`, a function the compiler runs at compile time so
-its result can initialize a `const` (`Pte::new`, `vm.rs:30`); L04 covers it.
+its result can initialize a `const` (`Pte::new`, `vm.rs`); L04 covers it.
 
 ---
 
@@ -334,7 +334,7 @@ Four rules, all compiler-enforced:
 Here it is in the real driver, as an argument:
 
 ```rust
-pub fn set_loopback(on: bool) {                              // uart.rs:69
+pub fn set_loopback(on: bool) {                              // uart.rs
     unsafe { reg_write(MCR, if on { MCR_LOOP } else { 0 }) }
 }
 ```
@@ -346,14 +346,14 @@ Chain with `else if`, and let an `if` be a whole function body. The trap
 dispatcher opens on one bit test:
 
 ```rust
-if (scause >> 63) == 1 {     // trap.rs:55
+if (scause >> 63) == 1 {     // trap.rs
     // top bit set: an interrupt
 } else {
     // top bit clear: an exception
 }
 ```
 
-> Key distinction: `if let Some(b) = try_getc() { … }` (`console.rs:49`) is not
+> Key distinction: `if let Some(b) = try_getc() { … }` (`getc()` in `console.rs`) is not
 > a different `if` — it is pattern matching, covered in L05. Read it today as
 > "if this optional value is present, name it `b` and run the block."
 
@@ -377,7 +377,7 @@ neither overlap nor gap, and it is how rv6 describes memory: RAM is
 physical memory:
 
 ```rust
-unsafe fn free_range(start: usize, stop: usize) {   // kalloc.rs:26
+unsafe fn free_range(start: usize, stop: usize) {   // kalloc.rs
     let mut p = pgroundup(start);
     while p + PGSIZE <= stop {
         kfree(p as *mut u8);
@@ -404,7 +404,7 @@ flowchart TD
 the idle path — a loop with no exit at all:
 
 ```rust
-pub fn getc() -> u8 {           // console.rs:47
+pub fn getc() -> u8 {           // console.rs
     loop {
         if let Some(b) = try_getc() {
             return b;
@@ -431,7 +431,7 @@ must run at least once so that zero prints as `"0"`, which is exactly why it
 is not a `while`:
 
 ```rust
-let mut i = buf.len();       // main.rs:151
+let mut i = buf.len();       // main.rs
 loop {
     i -= 1;
     buf[i] = b'0' + (v % 10) as u8;
@@ -478,7 +478,7 @@ arithmetic in a memory manager:
 
 ```rust
 fn pgroundup(addr: usize) -> usize {
-    (addr + PGSIZE - 1) & !(PGSIZE - 1)   // kalloc.rs:17
+    (addr + PGSIZE - 1) & !(PGSIZE - 1)   // kalloc.rs
 }
 ```
 
@@ -538,11 +538,11 @@ buffer, whose head and tail run past the buffer length forever and are reduced
 modulo it only when indexing:
 
 ```rust
-let tail = *addr_of!(TAIL);                     // console.rs:20
+let tail = *addr_of!(TAIL);                     // console.rs
 let head = *addr_of!(HEAD);
-if tail.wrapping_sub(head) < BUF_LEN {          // console.rs:22
+if tail.wrapping_sub(head) < BUF_LEN {          // console.rs
     *addr_of_mut!(BUF[tail % BUF_LEN]) = b;
-    *addr_of_mut!(TAIL) = tail.wrapping_add(1); // console.rs:24
+    *addr_of_mut!(TAIL) = tail.wrapping_add(1); // console.rs
 }
 ```
 
@@ -573,7 +573,7 @@ match addr.checked_add(PGSIZE - 1) {
 Each arm is `pattern => value`; `Some(bumped)` both matches and names the
 inner value; `match` is an expression, so the block has a type. L05 covers
 enums and patterns. You have met the shape already: `uart::getc` returns
-`Option<u8>` (`uart.rs:53`) because there may be no byte waiting.
+`Option<u8>` (`uart.rs`) because there may be no byte waiting.
 
 ---
 
@@ -584,13 +584,13 @@ in the kernel you finish in December.
 
 | Today | In rv6 | Exercise |
 |---|---|---|
-| `const … : usize = 0x…` | the memory map, `memlayout.rs:7`–`57` | 31k |
-| `u8` for a device register | the UART driver, `uart.rs:14`–`24` | 41k |
+| `const … : usize = 0x…` | the memory map, `memlayout.rs` | 31k |
+| `u8` for a device register | the UART driver, `uart.rs` | 41k |
 | `usize` as an address | `Pte`, `walk`, `mappages`, `vm.rs` | 33k |
-| `while p + PGSIZE <= stop`, `pgroundup` | `free_range`, `kalloc.rs:17`–`32` | 32k |
-| `loop { }` with no break | the idle path, `console.rs:47` | 45k |
-| `wrapping_add` | the ring buffer, `console.rs:24` | 45k |
-| `if (scause >> 63) == 1` | the trap dispatcher, `trap.rs:55` | 43k |
+| `while p + PGSIZE <= stop`, `pgroundup` | `free_range`, `kalloc.rs` | 32k |
+| `loop { }` with no break | the idle path, `console.rs` | 45k |
+| `wrapping_add` | the ring buffer, `console.rs` | 45k |
+| `if (scause >> 63) == 1` | the trap dispatcher, `trap.rs` | 43k |
 
 Today's exercises are the laptop-sized version of all of it.
 **00r_hello_rust** is bindings, integer types, and hex literals — including
@@ -705,7 +705,7 @@ variable`. **Write `let mut pages = 0;`.**
 
 ### Problem 3: Trace the decimal printer
 
-This is `main.rs:149`–`159`, the kernel's integer-to-string loop. Trace it for
+This is `put_num()` in `main.rs`, the kernel's integer-to-string loop. Trace it for
 `n = 205`, giving `buf[i..]` and the final `i`. `buf.len()` is 20.
 
 ```rust
@@ -814,7 +814,7 @@ address below RAM.** `addr - (addr % PGSIZE)` is a correct round-down for
 every `usize`, and cannot underflow because `addr % PGSIZE <= addr`.
 
 The clamp is the problem. For any `addr` below `KERNBASE` — say
-`0x1000_0005`, a UART address (`memlayout.rs:17`) — it returns `KERNBASE`,
+`0x1000_0005`, a UART address (`UART0` in `memlayout.rs`) — it returns `KERNBASE`,
 which is **not a page at or below `addr`**: it is 1.75 GiB *above* it. The
 name promises a result ≤ `addr`; the body silently returns one greater, so
 every caller that writes `while p < addr`, or treats the result as describing
@@ -861,11 +861,11 @@ Inventing a plausible wrong answer is how an allocator hands out address 0.
 ## Summary
 
 1. **Bindings are immutable by default, and that is a design decision.** `let`
-   names a value; `mut` states that the value moves. Because mutability is
+   names a value; `mut` states that the value can change. Because mutability is
    written down, the ownership rules of L03 are checkable.
 2. **Integer types name their exact width, and in a kernel width is
-   hardware.** A page table entry is 64 bits (`vm.rs:27`), a UART register 8
-   (`uart.rs:14`), an address `usize` (`memlayout.rs:10`).
+   hardware.** A page table entry is 64 bits (`Pte` in `vm.rs`), a UART register 8
+   (`uart.rs`), an address `usize` (`memlayout.rs`).
 3. **One hex digit is exactly four bits.** That is why hardware documentation
    and kernel source are written in hex, and why `0x8000_1234` yields its page
    number and offset by inspection.
@@ -879,10 +879,10 @@ Inventing a plausible wrong answer is how an allocator hands out address 0.
    a real `bool`, braces are mandatory, and every branch shares one type —
    which is why a value-producing `if` needs an `else`.
 7. **Three loop forms, one of which returns a value.** `for` walks a half-open
-   range, `while` re-tests before every pass (`kalloc.rs:28`), and `loop` runs
+   range, `while` re-tests before every pass (`kalloc.rs`), and `loop` runs
    until a `break` — the only form that can carry a value out.
 8. **Integer overflow panics in debug and wraps in release, so say what you
-   mean.** `wrapping_*` when wrapping is the intent (`console.rs:24`),
+   mean.** `wrapping_*` when wrapping is the intent (`push()` in `console.rs`),
    `checked_*` when the caller must handle failure, `saturating_*` when
    clamping is right. Address arithmetic that silently wraps is how "round up"
    returns an address below its input, and an allocator hands out page zero.

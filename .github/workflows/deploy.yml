@@ -43,6 +43,12 @@ jobs:
           pip install pyyaml
           python3 utils/check_links.py
 
+      # Lecture material cites rv6 by file and item, never by line number, so a
+      # renamed function silently orphans every citation of it. No-ops until the
+      # OSlings sources are checked out beside the site (OSLINGS_ROOT).
+      - name: Check code citations
+        run: python3 utils/check_refs.py
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

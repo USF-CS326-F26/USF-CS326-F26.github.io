@@ -248,7 +248,7 @@ stateDiagram-v2
 </div>
 
 Dropping S → U is exercise 43k's `mret` one level down: clear `sstatus.SPP`,
-set `sepc`, `sret` (`usermode.rs:455`, `:459`).
+set `sepc`, `sret` (`usermode.rs`).
 
 ---
 
@@ -304,20 +304,20 @@ One page table per process since `34k_processes` — today `satp` finally points
 
 ## `PTE_U` Is the Wall
 
-`PTE_U = 1 << 4` (`vm.rs:23`) — one bit per leaf PTE.
+`PTE_U = 1 << 4` (`Pte::pa()` in `vm.rs`) — one bit per leaf PTE.
 
 - The kernel's UART, PLIC, and 128 MiB of RAM are simply **absent** from the user table
-- The two entries that *are* present — trampoline, trapframe — have `PTE_U` **clear** (`proc.rs:164-165`)
+- The two entries that *are* present — trampoline, trapframe — have `PTE_U` **clear** (`proc.rs`)
 
 **It cuts both ways.** With `sstatus.SUM = 0` the *kernel* may not load or store
 through a `PTE_U` page either — a deliberate guard against dereferencing a user
-pointer by accident. Hence `walkaddr` (`vm.rs:252-261`), which translates by hand.
+pointer by accident. Hence `walkaddr` (`vm.rs`), which translates by hand.
 
 ---
 
 ## `MAXVA`, Address 0, the Gap
 
-- **`MAXVA = 1 << 38`** (`memlayout.rs:49`) — Sv39 gives 39 bits, but bits 63:39 must
+- **`MAXVA = 1 << 38`** (`memlayout.rs`) — Sv39 gives 39 bits, but bits 63:39 must
   sign-extend bit 38. Stop one bit short and never think about it again.
 - **Address 0 is ordinary.** Nothing sacred about zero in a private space; it is
   where xv6 loads programs. Null-pointer traps are a luxury of `49k_exec`.
@@ -391,10 +391,10 @@ The assembly is linked into the kernel image, sharing a page with unrelated
 code. Mapping *that* page would expose the neighbors.
 
 ```rust
-let tramp = kalloc::kalloc();                    // vm.rs:158
-ptr::copy_nonoverlapping(src as *const u8, tramp, len);  // vm.rs:167
-asm!("fence.i");                                 // vm.rs:168
-mappages(root, TRAMPOLINE, PGSIZE, tramp as usize, PTE_R | PTE_X)?; // vm.rs:169
+let tramp = kalloc::kalloc();                    // vm.rs
+ptr::copy_nonoverlapping(src as *const u8, tramp, len);  // vm.rs
+asm!("fence.i");                                 // vm.rs
+mappages(root, TRAMPOLINE, PGSIZE, tramp as usize, PTE_R | PTE_X)?; // vm.rs
 ```
 
 `fence.i`: we just wrote **instructions** through the data path. RISC-V does not
@@ -404,7 +404,7 @@ promise the fetch path sees them without it.
 
 ## Mapped Without `PTE_U`
 
-`vm.rs:169` and `proc.rs:164` — `PTE_R | PTE_X`, no `PTE_U`, in the *user's* table.
+`kvmmake()` (`vm.rs`) and `proc_pagetable()` (`proc.rs`) — `PTE_R | PTE_X`, no `PTE_U`, in the *user's* table.
 
 - The trampoline is kernel code that happens to be addressable in the user's space
 - If user code could execute it: jump past the `csrw satp` in `userret`, reload
@@ -436,7 +436,7 @@ failure is *intermittent*, which is worse.
 
 The `ecall` retires. Privilege is S — and every register still holds the **user
 program's** value, all 31 of which must come back bit-exact. `kernelvec`
-(`trap.rs:90-107`) solves this by pushing:
+(`trap.rs`) solves this by pushing:
 
 ```asm
 addi sp, sp, -128
@@ -457,8 +457,8 @@ That works because a kernel trap interrupts **kernel** code. From user mode:
 
 ```text
  offset  field          who writes it
-      0  kernel_satp    usertrapret   (usermode.rs:449)
-      8  kernel_sp      usertrapret   (usermode.rs:450)
+      0  kernel_satp    usertrapret   (usermode.rs)
+      8  kernel_sp      usertrapret   (usermode.rs)
      16  kernel_trap    usertrapret: address of usertrap  (:451)
      24  epc            usertrap on entry; +4 for ecall   (:397, :401)
      32  kernel_hartid  unused; keeps the xv6 layout
@@ -466,7 +466,7 @@ That works because a kernel trap interrupts **kernel** code. From user mode:
      72  t0  ...  112  a0  ...  168  a7  ...  280  t6
 ```
 
-`#[repr(C)]` (`usermode.rs:33-71`) is what makes the Rust field offsets and the
+`#[repr(C)]` (`Trapframe` in `usermode.rs`) is what makes the Rust field offsets and the
 assembly's byte offsets the same numbers. **Do not reorder.**
 
 ---
@@ -489,7 +489,7 @@ The ABI has promised nothing about the moment a trap arrives.
 must destroy a register. Every register holds unsaved user state.
 
 ```asm
-csrrw a0, sscratch, a0      # usermode.rs:94
+csrrw a0, sscratch, a0      # usermode.rs
 ```
 
 One instruction **swaps** register and CSR:
@@ -503,7 +503,7 @@ Zero memory accesses. No stack. Nothing lost.
 
 ## Who Arms `sscratch`?
 
-`userret` does, on the way **out** (`usermode.rs:180`):
+`userret` does, on the way **out** (`usermode.rs`):
 
 ```asm
 li a0, {trapframe}          # :144   a0 = TRAPFRAME
@@ -530,7 +530,7 @@ graph LR
     D --> E["jr t0\ninto usertrap"]
 </div>
 
-`stvec` points here while user code runs (`usermode.rs:443-445`).
+`stvec` points here while user code runs (`usertrapret()` in `usermode.rs`).
 
 ---
 
@@ -577,15 +577,15 @@ Note the ordering: `sp` is a kernel address, still unmapped. Load it; do not tou
 
 ## The Road Back
 
-`usertrapret` (`usermode.rs:440-466`), in Rust, with full addressability:
+`usertrapret` (`usermode.rs`), in Rust, with full addressability:
 
-1. `stvec` ← `TRAMPOLINE + (uservec - trampoline)` (`:443-445`)
-2. Write `kernel_satp`, `kernel_sp`, `kernel_trap` into the trapframe (`:449-451`)
-3. `sstatus.SPP = 0`, `SPIE = 1` (`:455-456`)
-4. `sepc` ← saved `epc` (`:459`)
-5. Call `userret` at its trampoline address with the user `satp` in `a0` (`:461-466`)
+1. `stvec` ← `TRAMPOLINE + (uservec - trampoline)`
+2. Write `kernel_satp`, `kernel_sp`, `kernel_trap` into the trapframe
+3. `sstatus.SPP = 0`, `SPIE = 1`
+4. `sepc` ← saved `epc`
+5. Call `userret` at its trampoline address with the user `satp` in `a0`
 
-Symmetrically, `usertrap`'s first act is `stvec` ← `kernelvec` (`:387`).
+Symmetrically, `usertrap`'s first act is `stvec` ← `kernelvec` (`usertrap()` in `usermode.rs`).
 
 ---
 

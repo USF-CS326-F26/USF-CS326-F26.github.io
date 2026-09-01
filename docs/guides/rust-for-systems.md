@@ -27,9 +27,9 @@ warmup to reread.
 | `08r_errors` | `Result`, `?`, error enums | `40k` `dirlookup`, `49k` `exec` |
 | `21r_unsafe_bridge` | `unsafe`, raw pointers, MMIO | `31k` onward — see [Unsafe Rust and no_std](rust-unsafe-nostd.md) |
 
-All rv6 code is Rust **edition 2021**. Line references below are to the
-reference kernel sources (`rv6/src/*.rs`); your files will differ by a few lines
-once you have written your own bodies, but the shapes are identical.
+All rv6 code is Rust **edition 2021**. References below name the file and the
+function or constant inside it, in the reference kernel sources (`rv6/src/*.rs`);
+your own bodies will differ, but the names and shapes are the same.
 
 ---
 
@@ -71,7 +71,7 @@ table entries:
 
 ```rust
 #[derive(Clone, Copy)]
-pub struct File {          // file.rs:39
+pub struct File {          // file.rs
     pub kind: FileKind,
     pub inum: usize,
     pub off: usize,
@@ -84,7 +84,7 @@ Because `File` is `Copy`, the per-process file table is a plain array and
 `getfile` can hand back a *copy* of the entry rather than a borrow:
 
 ```rust
-unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {   // syscall.rs:312
+unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {   // syscall.rs
     if fd >= NOFILE { return None; }
     let f = (*p).ofile[fd];        // a copy — no borrow of `*p` outlives this line
     if f.kind == FileKind::None { None } else { Some(f) }
@@ -92,14 +92,14 @@ unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {   // syscall.rs:312
 ```
 
 That copy is what lets `sys_read` mutate the stored offset a few lines later
-(`(*p).ofile[fd].off += n;`, syscall.rs:505) without the borrow checker
+(`(*p).ofile[fd].off += n;`, syscall.rs) without the borrow checker
 objecting. If `File` were not `Copy`, `getfile` would have to return a borrow
-and `sys_read` would be stuck. The same trick appears in `fs.rs:195`, where
+and `sys_read` would be stuck. The same trick appears in `fs.rs`, where
 `unlink` copies the `DirEnt` out of the array before mutating two different
 inodes through `&mut self`.
 
-`Pte` (vm.rs:26), `Context` (swtch.rs:6), `ProcState` (proc.rs:18) and
-`DirEnt` (fs.rs:30) are all `Copy` for the same reason.
+`Pte` (vm.rs), `Context` (swtch.rs), `ProcState` (proc.rs) and
+`DirEnt` (fs.rs) are all `Copy` for the same reason.
 
 ### Drop
 
@@ -107,7 +107,7 @@ When an owner goes out of scope, `Drop::drop` runs if the type has one. rv6 has
 exactly one interesting `Drop`, and it is the point of the spinlock:
 
 ```rust
-impl<T> Drop for SpinLockGuard<'_, T> {   // spinlock.rs:71
+impl<T> Drop for SpinLockGuard<'_, T> {   // spinlock.rs
     fn drop(&mut self) {
         self.lock.unlock();
     }
@@ -117,7 +117,7 @@ impl<T> Drop for SpinLockGuard<'_, T> {   // spinlock.rs:71
 You never call `unlock()`. The lock is released when the guard's owner goes out
 of scope — including on an early `return`, which is where hand-written
 lock/unlock pairs go wrong. If you want it released sooner, `drop(guard)` ends
-the scope by hand; the shell does this at `shell.rs:102` so it is not holding
+the scope by hand; the shell does this at `Shell::cmd_cd()` (`shell.rs`) so it is not holding
 the filesystem lock while it allocates a `String`.
 
 ### Where ownership stops
@@ -127,7 +127,7 @@ you. The page allocator is that level. `kalloc` hands out a `*mut u8` — a raw
 pointer, which is `Copy`, carries no ownership, and is never dropped:
 
 ```rust
-pub unsafe fn kalloc() -> *mut u8 {   // kalloc.rs:40
+pub unsafe fn kalloc() -> *mut u8 {   // kalloc.rs
     let r = FREELIST;
     if !r.is_null() {
         FREELIST = (*r).next;
@@ -177,13 +177,13 @@ each statement finishes its borrow before the next begins:
 ```rust
 let mut slot = None;
 for i in 0..NDIRENT {
-    if !self.inodes[dir].entries[i].used {   // fs.rs:134 — borrow ends on this line
+    if !self.inodes[dir].entries[i].used {   // fs.rs — borrow ends on this line
         slot = Some(i);
         break;
     }
 }
-let slot = slot.ok_or(FsError::DirFull)?;    // fs.rs:139 — `slot` is a usize, not a borrow
-let inum = self.alloc(kind)?;                // fs.rs:141 — free to take &mut self
+let slot = slot.ok_or(FsError::DirFull)?;    // fs.rs — `slot` is a usize, not a borrow
+let inum = self.alloc(kind)?;                // fs.rs — free to take &mut self
 ```
 
 Had the loop written `let e = &mut self.inodes[dir].entries[i];` and kept `e`
@@ -198,8 +198,8 @@ length, two machine words, no copy. `&mut [T]` is the exclusive version. The
 kernel's copy routines are written entirely in these terms:
 
 ```rust
-pub unsafe fn copyin(table: *mut Pte, dst: &mut [u8], mut srcva: usize) -> Result<(), ()>   // vm.rs:291
-pub unsafe fn load_segment(table: *mut Pte, image: &[u8]) -> Result<(), ()>                 // vm.rs:196
+pub unsafe fn copyin(table: *mut Pte, dst: &mut [u8], mut srcva: usize) -> Result<(), ()>   // vm.rs
+pub unsafe fn load_segment(table: *mut Pte, image: &[u8]) -> Result<(), ()>                 // vm.rs
 ```
 
 `load_segment` cannot accidentally write to the program image; `copyin` cannot
@@ -215,7 +215,7 @@ reference, because there is no rule to guess from. That is exactly the spinlock
 guard:
 
 ```rust
-pub struct SpinLockGuard<'a, T> {   // spinlock.rs:54
+pub struct SpinLockGuard<'a, T> {   // spinlock.rs
     lock: &'a SpinLock<T>,
 }
 ```
@@ -224,7 +224,7 @@ Read it as: a `SpinLockGuard<'a, T>` may not outlive the `SpinLock<T>` it
 points at. Omit the `'a` and you get `E0106`. The lock method connects the two:
 
 ```rust
-pub fn lock(&self) -> SpinLockGuard<'_, T> { ... }   // spinlock.rs:22
+pub fn lock(&self) -> SpinLockGuard<'_, T> { ... }   // spinlock.rs
 ```
 
 `'_` means "the anonymous lifetime the compiler already inferred" — here, the
@@ -242,7 +242,7 @@ let guard = {
 literals (`&'static str`) and statics. The program table uses both:
 
 ```rust
-pub struct Program {          // exec.rs:564
+pub struct Program {          // exec.rs
     pub name: &'static str,
     pub image: &'static [u8],
 }
@@ -256,11 +256,11 @@ not a workaround.
 Put together, the three ideas make the lock:
 
 ```rust
-impl<T> Deref for SpinLockGuard<'_, T> {      // spinlock.rs:58
+impl<T> Deref for SpinLockGuard<'_, T> {      // spinlock.rs
     type Target = T;
     fn deref(&self) -> &T { unsafe { &*self.lock.data.get() } }
 }
-impl<T> DerefMut for SpinLockGuard<'_, T> {   // spinlock.rs:65
+impl<T> DerefMut for SpinLockGuard<'_, T> {   // spinlock.rs
     fn deref_mut(&mut self) -> &mut T { unsafe { &mut *self.lock.data.get() } }
 }
 ```
@@ -270,7 +270,7 @@ lifetime `'a` means a reference obtained through the guard cannot outlive it.
 So a use-after-unlock is a compile error rather than a 3 a.m. debugging session:
 
 ```rust
-pub fn try_wait(&self) -> bool {   // semaphore.rs:16
+pub fn try_wait(&self) -> bool {   // semaphore.rs
     let mut count = self.count.lock();   // SpinLockGuard<'_, i64>
     if *count > 0 {                      // Deref
         *count -= 1;                     // DerefMut
@@ -320,20 +320,20 @@ constantly, because a `static` must be fully initialized before the machine
 starts running any code:
 
 ```rust
-static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];    // proc.rs:65
-pub static FS: SpinLock<FileSystem> = SpinLock::new(FileSystem::new());  // fs.rs:277
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];    // proc.rs
+pub static FS: SpinLock<FileSystem> = SpinLock::new(FileSystem::new());  // fs.rs
 ```
 
-There is no startup code that fills those in. `Proc::new()` (proc.rs:49),
-`FileSystem::new()` (fs.rs:73), `SpinLock::new()` (spinlock.rs:15),
-`Context::zero()` (swtch.rs:25) and `File::none()` (file.rs:54) are all `const
+There is no startup code that fills those in. `Proc::new()` (proc.rs),
+`FileSystem::new()` (fs.rs), `SpinLock::new()` (spinlock.rs),
+`Context::zero()` (swtch.rs) and `File::none()` (file.rs) are all `const
 fn` for this one reason: the process table and the filesystem are laid out in
 `.bss`/`.data` by the linker, and the kernel boots with them already correct.
 
 Rules of thumb: a `const fn` may do arithmetic, call other `const fn`s, and
 construct values. It may not allocate, call trait methods in general, or do
-anything the compiler cannot simulate. `RoundRobin::new()` (sched.rs:14) is
-`const fn`; `Semaphore::new()` (semaphore.rs:10) is not, and does not need to
+anything the compiler cannot simulate. `RoundRobin::new()` (sched.rs) is
+`const fn`; `Semaphore::new()` (semaphore.rs) is not, and does not need to
 be, because semaphores are built at run time.
 
 The `[const { Proc::new() }; NPROC]` syntax is the *inline const* form of an
@@ -351,7 +351,7 @@ set of operations. `Pte` is the example the whole paging exercise hangs on:
 ```rust
 #[repr(transparent)]
 #[derive(Clone, Copy)]
-pub struct Pte(pub usize);        // vm.rs:25
+pub struct Pte(pub usize);        // vm.rs
 
 impl Pte {
     pub const fn new(pa: usize, flags: usize) -> Pte { Pte(((pa >> 12) << 10) | flags) }
@@ -381,8 +381,8 @@ struct. Then you need a `repr`:
 
 | Attribute | Promise | rv6 use |
 |---|---|---|
-| `#[repr(C)]` | fields in declaration order, C alignment rules | `Context` (swtch.rs:5), `Trapframe` (usermode.rs:33), `Run` (kalloc.rs:6) |
-| `#[repr(transparent)]` | identical layout to the single field | `Pte` (vm.rs:25) |
+| `#[repr(C)]` | fields in declaration order, C alignment rules | `Context` (swtch.rs), `Trapframe` (usermode.rs), `Run` (kalloc.rs) |
+| `#[repr(transparent)]` | identical layout to the single field | `Pte` (vm.rs) |
 | default (`Rust`) | no promise at all | everything else |
 
 `Context` is the case to remember, because assembly reads it by offset:
@@ -390,7 +390,7 @@ struct. Then you need a `repr`:
 ```rust
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct Context {   // swtch.rs:5
+pub struct Context {   // swtch.rs
     pub ra: usize,
     pub sp: usize,
     pub s0: usize,
@@ -401,7 +401,7 @@ pub struct Context {   // swtch.rs:5
 
 ```asm
 swtch:
-    sd ra,  0(a0)        # swtch.rs:50 — offset 0 is `ra`
+    sd ra,  0(a0)        # swtch.rs — offset 0 is `ra`
     sd sp,  8(a0)        #               offset 8 is `sp`
     sd s0,  16(a0)
     ...
@@ -412,7 +412,7 @@ Fourteen `usize` fields, eight bytes each, offsets 0 through 104. Without
 `#[repr(C)]` the compiler would be free to put `s11` at offset 0 and `swtch`
 would restore the wrong registers into the wrong places — a bug that will not
 show up as a compile error and will not show up as a clean crash either. The
-`Trapframe` (usermode.rs:33) is the same deal at a larger scale: `uservec` in
+`Trapframe` (usermode.rs) is the same deal at a larger scale: `uservec` in
 the trampoline stores `ra` at offset 40 and `a7` at 168, and those numbers are
 correct only because of one attribute.
 
@@ -432,7 +432,7 @@ in C is an enum in rv6:
 
 ```rust
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ProcState {   // proc.rs:18
+pub enum ProcState {   // proc.rs
     Unused,
     Runnable,
     Running,
@@ -443,7 +443,7 @@ pub enum ProcState {   // proc.rs:18
 
 ```rust
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum InodeKind { Free, File, Dir }   // fs.rs:11
+pub enum InodeKind { Free, File, Dir }   // fs.rs
 ```
 
 The `derive` list is doing real work and is worth reading:
@@ -451,7 +451,7 @@ The `derive` list is doing real work and is worth reading:
 | Derive | Gives you | Needed because |
 |---|---|---|
 | `Clone`, `Copy` | duplication instead of moves | these live inside `Copy` table entries |
-| `PartialEq`, `Eq` | `==` and `!=` | `states[i] == ProcState::Runnable` (sched.rs:24) |
+| `PartialEq`, `Eq` | `==` and `!=` | `states[i] == ProcState::Runnable` (sched.rs) |
 
 Without `PartialEq` on `ProcState`, the round-robin scheduler cannot be written
 at all.
@@ -463,7 +463,7 @@ compiler will not let you read them without first checking which variant you
 have:
 
 ```rust
-pub enum RunOutcome {        // usermode.rs:192
+pub enum RunOutcome {        // usermode.rs
     Exited(isize),           // ... and this is the exit status
     Faulted(usize),          // ... and this is scause
     TimedOut,                // ... and there is nothing more to say
@@ -486,15 +486,15 @@ forget to check, because you cannot use the `T` without unwrapping:
 
 | rv6 function | Signature | `None` means |
 |---|---|---|
-| `RoundRobin::pick_next` | `fn(&mut self, &[ProcState]) -> Option<usize>` | nothing is runnable (sched.rs:20) |
-| `uart::getc` | `fn() -> Option<u8>` | no byte in the receive register (uart.rs:53) |
-| `console::try_getc` | `fn() -> Option<u8>` | the input ring buffer is empty (console.rs:31) |
-| `exec::lookup` | `fn(&str) -> Option<Program>` | no program by that name (exec.rs:594) |
-| `syscall::getfile` | `unsafe fn(*mut Proc, usize) -> Option<File>` | fd out of range or not open (syscall.rs:312) |
-| `SpinLock::try_lock` | `fn(&self) -> Option<SpinLockGuard<'_, T>>` | somebody else holds the lock (spinlock.rs:33) |
+| `RoundRobin::pick_next` | `fn(&mut self, &[ProcState]) -> Option<usize>` | nothing is runnable (sched.rs) |
+| `uart::getc` | `fn() -> Option<u8>` | no byte in the receive register (uart.rs) |
+| `console::try_getc` | `fn() -> Option<u8>` | the input ring buffer is empty (console.rs) |
+| `exec::lookup` | `fn(&str) -> Option<Program>` | no program by that name (exec.rs) |
+| `syscall::getfile` | `unsafe fn(*mut Proc, usize) -> Option<File>` | fd out of range or not open (syscall.rs) |
+| `SpinLock::try_lock` | `fn(&self) -> Option<SpinLockGuard<'_, T>>` | somebody else holds the lock (spinlock.rs) |
 
 Compare `kalloc`, which returns a raw `*mut u8` and uses null as its "nothing"
-value (kalloc.rs:40). Every caller has to remember `if page.is_null()`. That is
+value (kalloc.rs). Every caller has to remember `if page.is_null()`. That is
 the C convention, kept deliberately because the allocator lives below the safe
 layer — and the contrast is the argument for `Option` everywhere above it.
 
@@ -505,7 +505,7 @@ compiler lists every `match` that no longer covers everything. This is the
 feature that makes a kernel refactor survivable.
 
 ```rust
-match self.inodes[inum].kind {              // fs.rs:232
+match self.inodes[inum].kind {              // fs.rs
     InodeKind::Free => return Err(FsError::NotFound),
     InodeKind::Dir  => return Err(FsError::IsADirectory),
     InodeKind::File => {}                   // the case we actually want
@@ -519,32 +519,32 @@ Forms you will use:
 
 ```rust
 // a catch-all arm
-match cmd {                                 // shell.rs:47
+match cmd {                                 // shell.rs
     "pwd" => self.cmd_pwd(out),
     "ls"  => self.cmd_ls(out),
     _ => { out.puts(cmd); out.puts(": command not found\n"); }
 }
 
 // a match guard: an extra condition on an arm
-match getfile(p, fd) {                      // syscall.rs:471-472
+match getfile(p, fd) {                      // syscall.rs
     Some(f) if f.readable => f,
     _ => return -1,
 }
 
 // `if let` — one arm you care about
-if let Some(b) = try_getc() { return b; }   // console.rs:49
+if let Some(b) = try_getc() { return b; }   // console.rs
 
 // `while let` — loop until it stops matching
-while let Some(b) = uart::getc() { push(b); }   // console.rs:73
+while let Some(b) = uart::getc() { push(b); }   // console.rs
 
 // match as an expression producing a value
-let inum = match fsg.dirlookup(dir, name.as_bytes()) {   // shell.rs:144
+let inum = match fsg.dirlookup(dir, name.as_bytes()) {   // shell.rs
     Ok(i) => i,
     Err(_) => { out.puts("cat: no such file\n"); return; }
 };
 ```
 
-The system call dispatcher is one big `match` on a number (syscall.rs:34), which
+The system call dispatcher is one big `match` on a number (syscall.rs), which
 is the one place the enum-less form is right: the numbers come from user mode
 and must match xv6's.
 
@@ -567,13 +567,13 @@ Kernels prefer the first. A fixed array cannot fail to allocate, cannot
 fragment, and its size is a number you can reason about at 3 a.m.:
 
 ```rust
-static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65, NPROC = 64
-pub ofile: [File; NOFILE],                                          // proc.rs:39, NOFILE = 16
-inodes: [Inode; NINODE],                                            // fs.rs:69,   NINODE = 64
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs, NPROC = 64
+pub ofile: [File; NOFILE],                                          // proc.rs, NOFILE = 16
+inodes: [Inode; NINODE],                                            // fs.rs,   NINODE = 64
 ```
 
 "Out of processes" is `allocproc` scanning 64 slots and finding none free
-(proc.rs:108) — an ordinary `null` return, not an allocation failure deep inside
+(proc.rs) — an ordinary `null` return, not an allocation failure deep inside
 a heap. The cost is a hard limit, and rv6 accepts it, as every real kernel does
 for its core tables.
 
@@ -583,8 +583,8 @@ for its core tables.
 genuinely unbounded:
 
 ```rust
-pub struct Shell { stack: Vec<(String, usize)> }   // shell.rs:23 — the cwd path
-let args: Vec<&str> = words.collect();             // shell.rs:267
+pub struct Shell { stack: Vec<(String, usize)> }   // shell.rs — the cwd path
+let args: Vec<&str> = words.collect();             // shell.rs
 ```
 
 ### Slices
@@ -592,32 +592,32 @@ let args: Vec<&str> = words.collect();             // shell.rs:267
 A slice is the shape everything else passes around. `&arr` where `arr: [T; N]`
 coerces to `&[T]` automatically; `&arr[a..b]` is a window. Indexing a slice
 out of range **panics**, and in rv6 a panic prints `OSLINGS:FAIL (panic)` and
-halts the machine (main.rs:281) — so range arithmetic is checked, not
+halts the machine (exec_self_check() (main.rs)) — so range arithmetic is checked, not
 undefined, but it is still fatal. Prefer the slice operations that carry their
 own lengths:
 
 ```rust
-buf[..n].copy_from_slice(&node.data[..n]);              // fs.rs:105
-self.inodes[inum].data[off..off + data.len()].copy_from_slice(data);   // fs.rs:258
-&e.name[..e.len] == name                                 // fs.rs:114 — compare two &[u8]
+buf[..n].copy_from_slice(&node.data[..n]);              // fs.rs
+self.inodes[inum].data[off..off + data.len()].copy_from_slice(data);   // fs.rs
+&e.name[..e.len] == name                                 // fs.rs — compare two &[u8]
 ```
 
 `copy_from_slice` panics if the two slices differ in length, which is why the
-`n` above is computed with `core::cmp::min` first (fs.rs:104).
+`n` above is computed with `core::cmp::min` first (fs.rs).
 
 Two conversions you will use constantly at the syscall boundary:
 
 ```rust
-core::str::from_utf8(&buf[..n])         // &[u8] -> Result<&str, Utf8Error>  (shell.rs:154)
-name.as_bytes()                         // &str -> &[u8]                     (fs.rs:114 callers)
-usize::from_le_bytes(ptrbuf)            // [u8; 8] -> usize                  (syscall.rs:216)
+core::str::from_utf8(&buf[..n])         // &[u8] -> Result<&str, Utf8Error>  (shell.rs)
+name.as_bytes()                         // &str -> &[u8]                     (fs.rs callers)
+usize::from_le_bytes(ptrbuf)            // [u8; 8] -> usize                  (syscall.rs)
 ```
 
 And the one place a slice is conjured from raw parts, because the program images
 are linker symbols rather than Rust values:
 
 ```rust
-unsafe fn image(start: *const u8, end: *const u8) -> &'static [u8] {   // exec.rs:570
+unsafe fn image(start: *const u8, end: *const u8) -> &'static [u8] {   // exec.rs
     core::slice::from_raw_parts(start, end as usize - start as usize)
 }
 ```
@@ -629,7 +629,7 @@ compile down to the loop you would have written. `RoundRobin::pick_next` is the
 densest example in the kernel and repays reading slowly:
 
 ```rust
-impl Scheduler for RoundRobin {           // sched.rs:19
+impl Scheduler for RoundRobin {           // sched.rs
     fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
         let n = states.len();
         (0..n)
@@ -651,22 +651,22 @@ The adapters rv6 actually uses:
 
 | Form | Yields | Example |
 |---|---|---|
-| `for i in 0..NPROC` | each index | proc.rs:75, the table scans |
-| `for e in &self.inodes[dir].entries` | `&DirEnt`, borrowed | fs.rs:113 `dirlookup` |
-| `.iter().any(\|e\| e.used)` | `bool` | fs.rs:211 `dir_is_empty` |
-| `.into_iter().find(...)` | `Option<Program>`, by value | exec.rs:595 `lookup` |
-| `.iter().enumerate()` | `(index, &item)` | shell.rs:68 `pwd` |
-| `.map(...)` / `.find(...)` | adapted iterator / `Option` | sched.rs:22 |
-| `line.split_whitespace()` | `&str` words | shell.rs:40 command parsing |
-| `.collect()` | a `Vec` (or any collection) | shell.rs:267 |
-| `for b in s.bytes()` | `u8` | uart.rs:64 `puts` |
+| `for i in 0..NPROC` | each index | proc.rs, the table scans |
+| `for e in &self.inodes[dir].entries` | `&DirEnt`, borrowed | fs.rs `dirlookup` |
+| `.iter().any(\|e\| e.used)` | `bool` | fs.rs `dir_is_empty` |
+| `.into_iter().find(...)` | `Option<Program>`, by value | exec.rs `lookup` |
+| `.iter().enumerate()` | `(index, &item)` | shell.rs `pwd` |
+| `.map(...)` / `.find(...)` | adapted iterator / `Option` | sched.rs |
+| `line.split_whitespace()` | `&str` words | shell.rs command parsing |
+| `.collect()` | a `Vec` (or any collection) | shell.rs |
+| `for b in s.bytes()` | `u8` | uart.rs `puts` |
 
 `iter()` borrows, `into_iter()` consumes, `iter_mut()` borrows exclusively.
 Choosing `into_iter()` in `lookup` is what lets it return an owned `Program`
 rather than a borrow of a temporary table.
 
 > **Where you need this:** the fixed `PROCS` table in `34k` (`proc.rs`), the
-> `states` array the scheduler builds each pass in `36k` (`usermode.rs:285`),
+> `states` array the scheduler builds each pass in `36k` (`usertrap()` in `usermode.rs`),
 > and the per-process `ofile` fd table in `50k` (`file.rs`, `syscall.rs`).
 
 ---
@@ -679,13 +679,13 @@ A trait is a named set of methods a type promises to provide. It has no data
 and you never build one. rv6's two teaching traits are deliberately tiny:
 
 ```rust
-pub trait Scheduler {                                              // sched.rs:5
+pub trait Scheduler {                                              // sched.rs
     fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
 }
 ```
 
 ```rust
-pub trait Out {                          // shell.rs:17
+pub trait Out {                          // shell.rs
     fn puts(&mut self, s: &str);
 }
 ```
@@ -697,7 +697,7 @@ it can then assert on. The shell commands do not know which they have.
 
 ```rust
 struct ConsoleOut;
-impl Out for ConsoleOut {                // shell.rs:335
+impl Out for ConsoleOut {                // shell.rs
     fn puts(&mut self, s: &str) { uart::puts(s); }
 }
 ```
@@ -711,7 +711,7 @@ are small enough not to need it.
 A generic type or function is written once against a type parameter:
 
 ```rust
-pub struct SpinLock<T> {          // spinlock.rs:7
+pub struct SpinLock<T> {          // spinlock.rs
     locked: AtomicBool,
     data: UnsafeCell<T>,
 }
@@ -720,8 +720,8 @@ pub struct SpinLock<T> {          // spinlock.rs:7
 At compile time the compiler **monomorphizes**: for every concrete `T` you
 actually use, it stamps out a separate copy with `T` substituted. rv6 uses two:
 
-- `SpinLock<i64>` — inside `Semaphore` (semaphore.rs:6)
-- `SpinLock<FileSystem>` — the global `FS` (fs.rs:277)
+- `SpinLock<i64>` — inside `Semaphore` (semaphore.rs)
+- `SpinLock<FileSystem>` — the global `FS` (fs.rs)
 
 so the compiled kernel contains two complete, separately optimized spinlocks.
 Nothing is looked up at run time; `*count -= 1` through a
@@ -732,7 +732,7 @@ not speed.
 **Trait bounds** constrain a type parameter. rv6 has one, and it is load-bearing:
 
 ```rust
-unsafe impl<T: Send> Sync for SpinLock<T> {}   // spinlock.rs:12
+unsafe impl<T: Send> Sync for SpinLock<T> {}   // spinlock.rs
 ```
 
 Read: a `SpinLock<T>` may be shared between threads (`Sync`), provided `T`
@@ -747,14 +747,14 @@ Two ways to use a trait, and rv6 has one of each:
 
 ```rust
 // static: the concrete type is known, the call is direct, it can inline.
-let mut policy = RoundRobin::new();        // usermode.rs:279
-match policy.pick_next(&states) { ... }    // usermode.rs:290
+let mut policy = RoundRobin::new();        // usermode.rs
+match policy.pick_next(&states) { ... }    // usermode.rs
 ```
 
 ```rust
 // dynamic: `out` is a fat pointer (data pointer + vtable pointer);
 // the call goes through the vtable.
-pub fn exec(&mut self, line: &str, out: &mut dyn Out) { ... }   // shell.rs:39
+pub fn exec(&mut self, line: &str, out: &mut dyn Out) { ... }   // shell.rs
 ```
 
 `&mut dyn Out` is a **trait object**. The shell uses it because `Shell::exec`
@@ -778,7 +778,7 @@ parameter — static dispatch, no `dyn`, no name for the type. rv6 uses it to ta
 a closure:
 
 ```rust
-pub fn for_each_entry(&self, dir: usize, mut f: impl FnMut(&[u8], InodeKind)) {   // fs.rs:175
+pub fn for_each_entry(&self, dir: usize, mut f: impl FnMut(&[u8], InodeKind)) {   // fs.rs
     for e in &self.inodes[dir].entries {
         if e.used {
             let kind = self.inodes[e.inum].kind;
@@ -789,17 +789,17 @@ pub fn for_each_entry(&self, dir: usize, mut f: impl FnMut(&[u8], InodeKind)) { 
 ```
 
 `FnMut` is the trait for closures that may mutate what they capture. The shell's
-`ls` passes a closure that writes through `out` (shell.rs:80), which is why it
+`ls` passes a closure that writes through `out` (shell.rs), which is why it
 must be `FnMut` and not `Fn`.
 
 ### Standard traits rv6 implements
 
 | Trait | Implemented on | Effect |
 |---|---|---|
-| `Deref` / `DerefMut` | `SpinLockGuard` (spinlock.rs:58, 65) | `*guard` reaches the protected data |
-| `Drop` | `SpinLockGuard` (spinlock.rs:71) | unlock on scope exit |
-| `Sync` | `SpinLock<T>` (spinlock.rs:12) | may be a `static` |
-| `GlobalAlloc` | `KernelHeap` (kheap.rs:22) | turns on `Box`, `Vec`, `String` |
+| `Deref` / `DerefMut` | `SpinLockGuard` (spinlock.rs, 65) | `*guard` reaches the protected data |
+| `Drop` | `SpinLockGuard` (spinlock.rs) | unlock on scope exit |
+| `Sync` | `SpinLock<T>` (spinlock.rs) | may be a `static` |
+| `GlobalAlloc` | `KernelHeap` (kheap.rs) | turns on `Box`, `Vec`, `String` |
 | `Clone`, `Copy`, `PartialEq`, `Eq` | derived on `Pte`, `File`, `ProcState`, `InodeKind`, ... | duplication and `==` |
 
 > **Where you need this:** `36k` — the `Scheduler` trait and `RoundRobin`
@@ -824,15 +824,15 @@ rv6 uses two grades of error type, and the choice is deliberate:
 
 ```rust
 // vm.rs — the caller can do nothing but give up, so the error carries nothing.
-pub unsafe fn mappages(...) -> Result<(), ()>            // vm.rs:75
-pub unsafe fn load_segment(table: *mut Pte, image: &[u8]) -> Result<(), ()>   // vm.rs:196
-pub unsafe fn copyin(table: *mut Pte, dst: &mut [u8], mut srcva: usize) -> Result<(), ()>  // vm.rs:291
+pub unsafe fn mappages(...) -> Result<(), ()>            // vm.rs
+pub unsafe fn load_segment(table: *mut Pte, image: &[u8]) -> Result<(), ()>   // vm.rs
+pub unsafe fn copyin(table: *mut Pte, dst: &mut [u8], mut srcva: usize) -> Result<(), ()>  // vm.rs
 ```
 
 ```rust
 // fs.rs — the caller (and the user) wants to know which thing went wrong.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum FsError {          // fs.rs:18
+pub enum FsError {          // fs.rs
     NotFound, AlreadyExists, NotADirectory, IsADirectory,
     NoFreeInode, DirFull, NameTooLong, FileTooBig,
 }
@@ -841,7 +841,7 @@ pub enum FsError {          // fs.rs:18
 ```rust
 // exec.rs — three genuinely different failures, three different shell messages.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ExecError { NotFound, NoMem, BadArgs }   // exec.rs:602
+pub enum ExecError { NotFound, NoMem, BadArgs }   // exec.rs
 ```
 
 An error enum is just an enum, so all of section 4 applies: the compiler will
@@ -854,7 +854,7 @@ the enclosing function immediately. It replaces the `if (ret < 0) goto fail;`
 ladder that runs through every C kernel.
 
 ```rust
-pub unsafe fn proc_pagetable(p: *mut Proc) -> Result<(), ()> {   // proc.rs:162
+pub unsafe fn proc_pagetable(p: *mut Proc) -> Result<(), ()> {   // proc.rs
     let pt = (*p).pagetable;
     vm::mappages(pt, TRAMPOLINE, PGSIZE, vm::trampoline_page(), PTE_R | PTE_X)?;
     vm::mappages(pt, TRAPFRAME, PGSIZE, (*p).trapframe as usize, PTE_R | PTE_W)?;
@@ -868,9 +868,9 @@ not match, `map_err` converts:
 
 ```rust
 vm::mappages(pt, TRAMPOLINE, PGSIZE, vm::trampoline_page(), PTE_R | PTE_X)
-    .map_err(|_| ExecError::NoMem)?;                     // exec.rs:680
-vm::load_segment(pt, image).map_err(|_| ExecError::NoMem)?;     // exec.rs:684
-vm::map_user_stack(pt).map_err(|_| ExecError::NoMem)?;          // exec.rs:685
+    .map_err(|_| ExecError::NoMem)?;                     // exec.rs
+vm::load_segment(pt, image).map_err(|_| ExecError::NoMem)?;     // exec.rs
+vm::map_user_stack(pt).map_err(|_| ExecError::NoMem)?;          // exec.rs
 ```
 
 `Result<(), ()>` in, `Result<_, ExecError>` out, one closure per line.
@@ -879,8 +879,8 @@ vm::map_user_stack(pt).map_err(|_| ExecError::NoMem)?;          // exec.rs:685
 named error:
 
 ```rust
-let prog = lookup(name).ok_or(ExecError::NotFound)?;   // exec.rs:649
-let slot = slot.ok_or(FsError::DirFull)?;              // fs.rs:139
+let prog = lookup(name).ok_or(ExecError::NotFound)?;   // exec.rs
+let slot = slot.ok_or(FsError::DirFull)?;              // fs.rs
 ```
 
 ### The full combinator set rv6 uses
@@ -888,14 +888,14 @@ let slot = slot.ok_or(FsError::DirFull)?;              // fs.rs:139
 | Form | On | Does |
 |---|---|---|
 | `?` | `Result` / `Option` | unwrap or return early |
-| `.ok_or(e)?` | `Option` | `None` becomes `Err(e)` (exec.rs:649) |
-| `.map_err(\|_\| e)?` | `Result` | replace the error type (exec.rs:680) |
-| `.is_err()` / `.is_ok()` | `Result` | test without unwrapping (vm.rs:132) |
-| `.unwrap_or(d)` | `Option` | a default instead of `None` (shell.rs:45) |
-| `let _ = expr;` | `Result` | deliberately ignore (shell.rs:181) |
+| `.ok_or(e)?` | `Option` | `None` becomes `Err(e)` (exec.rs) |
+| `.map_err(\|_\| e)?` | `Result` | replace the error type (exec.rs) |
+| `.is_err()` / `.is_ok()` | `Result` | test without unwrapping (vm.rs) |
+| `.unwrap_or(d)` | `Option` | a default instead of `None` (shell.rs) |
+| `let _ = expr;` | `Result` | deliberately ignore (shell.rs) |
 | `match` | either | handle each case differently |
 
-`let _ = fsg.unlink(dir, name.as_bytes());` (shell.rs:181) is worth calling out:
+`let _ = fsg.unlink(dir, name.as_bytes());` (Shell::cmd_rm() (shell.rs)) is worth calling out:
 it says *I have already checked this cannot fail* and silences the unused-result
 warning. It is not the same as ignoring an error by accident, and reviewers read
 it that way.
@@ -906,7 +906,7 @@ it that way.
 program, so somewhere the `Result` has to become a number:
 
 ```rust
-match crate::exec::exec_into(p, name, rest) {    // syscall.rs:267
+match crate::exec::exec_into(p, name, rest) {    // syscall.rs
     Ok(argc) => argc as isize,
     Err(_) => -1,
 }
@@ -919,7 +919,7 @@ Two more shapes worth recognizing. `dircreate` uses a `match` on a `Result`
 purely to *distinguish* one error from the rest:
 
 ```rust
-match self.dirlookup(dir, name) {          // fs.rs:126
+match self.dirlookup(dir, name) {          // fs.rs
     Ok(_) => return Err(FsError::AlreadyExists),  // it already exists
     Err(FsError::NotFound) => {}                  // good — that is what we wanted
     Err(e) => return Err(e),                      // anything else propagates
@@ -930,7 +930,7 @@ And `touch` in the shell treats one error as success, because that is what real
 `touch` does:
 
 ```rust
-match fsg.dircreate(dir, name.as_bytes(), InodeKind::File) {   // shell.rs:133
+match fsg.dircreate(dir, name.as_bytes(), InodeKind::File) {   // shell.rs
     Ok(_) => {}
     Err(FsError::AlreadyExists) => {}      // already there: fine
     Err(_) => out.puts("touch: cannot create file\n"),
@@ -1014,12 +1014,12 @@ that line and the code compiles, which is non-lexical lifetimes in action.
 
 In kernel code the fix is nearly always to stop holding references into a table.
 `fs.rs` is written this way throughout: `dircreate` records `slot: usize` rather
-than `&mut DirEnt` (fs.rs:132–139), and `unlink` copies the entry out —
+than `&mut DirEnt` (`FileSystem::dircreate` in `fs.rs`), and `unlink` copies the entry out —
 
 ```rust
-let e = self.inodes[dir].entries[i];        // fs.rs:195 — a copy; DirEnt is Copy
+let e = self.inodes[dir].entries[i];        // fs.rs — a copy; DirEnt is Copy
 if e.used && e.len == name.len() && &e.name[..e.len] == name {
-    self.inodes[e.inum] = Inode::new();     // fs.rs:197 — now free to write elsewhere
+    self.inodes[e.inum] = Inode::new();     // fs.rs — now free to write elsewhere
     self.inodes[dir].entries[i].used = false;
 ```
 
@@ -1054,7 +1054,7 @@ wants to write `self.inodes[...]`; the answer is the same as for `E0499`.
 
 You will also meet it with a lock guard: `FS.lock()` borrows nothing of yours,
 but a value you pulled out of the guard borrows the guard. `drop(fsg)`
-(shell.rs:102) ends that borrow explicitly.
+(Shell::cmd_cd() (shell.rs)) ends that borrow explicitly.
 
 ### `E0106` — missing lifetime specifier
 
@@ -1074,11 +1074,11 @@ help: consider introducing a named lifetime parameter
   |              +++             ++
 ```
 
-Take the suggestion — it is right, and it is precisely `spinlock.rs:54`. The
+Take the suggestion — it is right, and it is precisely `spinlock.rs`. The
 error appears whenever a struct field, or a returned reference with no
 unambiguous input to borrow from, holds a `&`. Elision has no rule to apply, so
 you must supply the name. In a return type where the source is obvious, `'_` is
-enough: `fn lock(&self) -> SpinLockGuard<'_, T>` (spinlock.rs:22).
+enough: `fn lock(&self) -> SpinLockGuard<'_, T>` (spinlock.rs).
 
 ### A few more you will meet
 

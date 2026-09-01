@@ -8,7 +8,7 @@ is one of the first real design decisions in a kernel. This session covers the
 three ways Rust holds a run of values — the array `[T; N]`, the borrowed view
 `&[T]`, and the growable `Vec<T>` — and what each is in memory. Then it makes
 the argument the rest of the course rests on: rv6's process table is
-`static mut PROCS: [Proc; NPROC]` (`proc.rs:65`), a plain array of 64 slots,
+`static mut PROCS: [Proc; NPROC]` (`proc.rs`), a plain array of 64 slots,
 and it is an array rather than a `Vec` for reasons that have nothing to do
 with taste. No allocator exists when the table is first needed, the trap path
 may not allocate, and a hard limit fails honestly — a principle that recurs in
@@ -139,7 +139,7 @@ let n = ulib::read(fd, &mut buf)?;
 for &b in &buf[..n] { ... }
 ```
 
-That is `wc.rs:36` and `wc.rs:40`. `read` got the whole 512-byte buffer and
+That is `count_fd()` (`wc.rs`). `read` got the whole 512-byte buffer and
 returns how many bytes it actually delivered; `&buf[..n]` is the prefix
 holding real data. Iterating `&buf` would count 512 bytes every time, most of
 them stale. The slice says "this many of those" without a second variable that
@@ -156,10 +156,10 @@ pub trait Scheduler {
 }
 ```
 
-That is `sched.rs:6`. The policy never learns how big the process table is; it
+That is `sched.rs`. The policy never learns how big the process table is; it
 reads `states.len()` and works, so changing `NPROC` from 64 to 8 cannot make
-it wrong. The caller at `usermode.rs:285` builds a `[ProcState; NPROC]` on its
-stack, fills it, and passes `&states` (`usermode.rs:290`). Write your own
+it wrong. The caller at `scheduler()` (`usermode.rs`) builds a `[ProcState; NPROC]` on its
+stack, fills it, and passes `&states` (`scheduler()` in `usermode.rs`). Write your own
 signatures the same way: `&[T]` to read, `&mut [T]` to write, and a concrete
 `[T; N]` or `Vec<T>` only when you need the length at compile time or need to
 own the storage.
@@ -220,7 +220,7 @@ unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {
 }
 ```
 
-`syscall.rs:312`. That `fd` came out of a user register — it is whatever the
+`syscall.rs`. That `fd` came out of a user register — it is whatever the
 program put there — and `getfile` refuses it before touching the array.
 
 !!! warning "A panic in the kernel is not a failed test"
@@ -287,7 +287,7 @@ You need about eight of the hundred-odd methods on `Iterator`.
 
 rv6's line reader finds a newline with
 `self.buf[self.start..self.len].iter().position(|&b| b == b'\n')`
-(`lines.rs:34`): subslice first, then search, so the position is relative to
+(`lines.rs`): subslice first, then search, so the position is relative to
 the region that holds data. The round-robin scheduler is one chain:
 
 ```rust
@@ -300,7 +300,7 @@ fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
 }
 ```
 
-`sched.rs:20`. Read it as English: consider `n` offsets, wrap each into a
+`RoundRobin::pick_next()` (`sched.rs`). Read it as English: consider `n` offsets, wrap each into a
 table index starting from where we left off, take the first that is runnable,
 remember to resume after it next time.
 
@@ -316,20 +316,20 @@ put the results *somewhere*.
 
 ## 5. The Kernel Argument: Why `PROCS` Is an Array
 
-The line the whole session aims at, from `proc.rs:65`:
+The line the whole session aims at, from `proc.rs`:
 
 ```rust
 static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];
 ```
 
-with `pub const NPROC: usize = 64;` at `param.rs:7`. Sixty-four slots, decided
+with `pub const NPROC: usize = 64;` at `param.rs`. Sixty-four slots, decided
 when the kernel is compiled, never sixty-five. In ordinary Rust that looks
 like a beginner's mistake — surely a `Vec<Proc>` that grows is better. It is
 not, and the reasons generalize.
 
 ### Reason 1: there is no allocator yet
 
-Look at the order rv6 brings itself up, in `main.rs:87`:
+Look at the order rv6 brings itself up, in `BANNER` (`main.rs`):
 
 ```mermaid
 flowchart TD
@@ -346,13 +346,13 @@ flowchart TD
 The table is used at `proc::init()`, the fourth line of `kinit`. A `Vec<Proc>`
 calls the **global allocator**, and rv6 has none until exercise 38k, where
 `kheap.rs` provides a `GlobalAlloc` impl and `#[global_allocator]` registers
-it (`kheap.rs:40`). Before that, `extern crate alloc` does not even compile:
-`34k_processes` has no `kheap.rs`, and `38k_semaphores/main.rs:18` is the first
+it (`ALLOCATOR` in `kheap.rs`). Before that, `extern crate alloc` does not even compile:
+`34k_processes` has no `kheap.rs`, and `38k_semaphores/main.rs` is the first
 file in the course to declare it.
 
 That is the shape of every boot, not an accident of our ordering. The
 allocator is itself a data structure, and something must run before it works:
-`kalloc::init()` (`kalloc.rs:21`) walks physical memory pushing pages onto a
+`kalloc::init()` (`kalloc.rs`) walks physical memory pushing pages onto a
 free list, so it *is* what makes allocation possible and cannot allocate.
 Anything needed earlier must exist without code running, as a fixed-size
 static. `PROCS` sits in `.bss`: 36,352 bytes reserved at link time.
@@ -376,7 +376,7 @@ do the wrong thing beats code that is careful not to.
 ### Reason 3: a hard limit fails honestly
 
 With `[Proc; NPROC]`, `allocproc` scans for an `Unused` slot and returns null
-if there is none (`proc.rs:107`, failing return at `proc.rs:134`); `fork` turns
+if there is none (the failing return in `allocproc`, `proc.rs`); `fork` turns
 that into `-1` and the machine keeps running. The failure lands at the exact
 call that asked for too much, and it is testable: fill the table and check that
 the sixty-fifth `fork` fails.
@@ -409,14 +409,14 @@ bans `malloc`, and seL4 has no kernel heap at all.
 
 ## 6. Sizing the Constant
 
-If the size is fixed you can compute it. From `Proc` at `proc.rs:27`:
+If the size is fixed you can compute it. From `Proc` in `proc.rs`:
 
 | Field | Type | Bytes |
 |---|---|---|
 | `state` | `ProcState` (5 variants, no payload) | 1 |
 | `pid`, `kstack`, `xstate` | `usize` / `isize` | 8 each |
 | `pagetable`, `trapframe`, `parent` | raw pointers | 8 each |
-| `context` | `Context`, 14 saved registers (`swtch.rs:7`) | 112 |
+| `context` | `Context`, 14 saved registers (`swtch.rs`) | 112 |
 | `ofile` | `[File; 16]`, `File` is 24 bytes | 384 |
 | `name` | `[u8; 16]` | 16 |
 | | **`size_of::<Proc>()`** | **568** |
@@ -428,23 +428,23 @@ case can never surprise you. rv6 makes it in half a dozen places:
 
 | Constant | Value | Where | Bounds |
 |---|---|---|---|
-| `NPROC` | 64 | `param.rs:7` | processes in the system |
-| `NOFILE` | 16 | `file.rs:19` | open files **per process** |
-| `NINODE` | 64 | `fs.rs:5` | files in the filesystem |
-| `NDIRENT` | 16 | `fs.rs:6` | entries per directory |
-| `NAMELEN` | 14 | `fs.rs:7` | bytes in a filename |
-| `FILESIZE` | 128 | `fs.rs:8` | bytes in one file |
-| `BUF_LEN` | 256 | `console.rs:8` | buffered keystrokes |
+| `NPROC` | 64 | `param.rs` | processes in the system |
+| `NOFILE` | 16 | `file.rs` | open files **per process** |
+| `NINODE` | 64 | `fs.rs` | files in the filesystem |
+| `NDIRENT` | 16 | `fs.rs` | entries per directory |
+| `NAMELEN` | 14 | `fs.rs` | bytes in a filename |
+| `FILESIZE` | 128 | `fs.rs` | bytes in one file |
+| `BUF_LEN` | 256 | `console.rs` | buffered keystrokes |
 
 Each is a hard limit with a defined failure: `fork` and `open` return -1,
 `dircreate` returns `FsError::DirFull`, and the console `push`
-(`console.rs:22`) drops the keystroke when the ring is full — there is nobody
+(`console.rs`) drops the keystroke when the ring is full — there is nobody
 to report to inside an interrupt handler.
 
 ### The lowest-free-slot rule
 
 Both tables are searched the same way — walk from index 0, take the first free
-slot: `allocproc` at `proc.rs:108`, `fdalloc` at `syscall.rs:298`.
+slot: `allocproc` at `proc.rs`, `fdalloc` at `syscall.rs`.
 
 ```text
    ofile:  fd 0     fd 1     fd 2     fd 3     fd 4    ...  fd 15
@@ -477,7 +477,7 @@ growable list in another, and knowing which you are in is the skill.
 
 Inside the kernel `Vec` becomes legal at exercise 38k, under two standing
 rules. Allocate at initialization, never on the trap path. And know what your
-allocator does: `KernelHeap::alloc` (`kheap.rs:23`) hands out one whole
+allocator does: `KernelHeap::alloc` (`kheap.rs`) hands out one whole
 4096-byte page per allocation and refuses anything larger, so a `Vec` of eight
 `usize`s costs a page and one that grows past 4096 bytes fails.
 
@@ -487,17 +487,17 @@ allocator does: `KernelHeap::alloc` (`kheap.rs:23`) hands out one whole
 
 | Concept | Definition | Example |
 |---|---|---|
-| Array `[T; N]` | N values inline; length in the type, size fixed at compile time | `static mut PROCS: [Proc; NPROC]` (`proc.rs:65`) |
-| Slice `&[T]` | Borrowed view: pointer plus length, 16 bytes, owns nothing | `pick_next(states: &[ProcState])` (`sched.rs:6`) |
-| Mutable slice `&mut [T]` | Exclusive borrowed view; writable through the borrow | `ulib::read(fd, &mut buf)` (`lib.rs:104`) |
+| Array `[T; N]` | N values inline; length in the type, size fixed at compile time | `static mut PROCS: [Proc; NPROC]` (`proc.rs`) |
+| Slice `&[T]` | Borrowed view: pointer plus length, 16 bytes, owns nothing | `pick_next(states: &[ProcState])` (`sched.rs`) |
+| Mutable slice `&mut [T]` | Exclusive borrowed view; writable through the borrow | `ulib::read(fd, &mut buf)` (`lib.rs`) |
 | `Vec<T>` | Heap-owning growable buffer: ptr, len, cap — 24 bytes | `live_pids()` in `06r`, host code only |
 | Fat pointer | A reference carrying metadata beside the address | `size_of::<&[u32]>() == 16` vs `size_of::<&u32>() == 8` |
 | Unsized type | Size unknown at compile time; usable only behind a pointer | `[T]`, `str` |
 | Bounds check | Compare-and-branch inserted before an indexed load | `bgeu a1, t0, .Lpanic` |
-| Boundary validation | Range-checking an untrusted index once, where it enters | `if fd >= NOFILE { return None }` (`syscall.rs:313`) |
-| Iterator adapter | Lazy wrapper; transforms without materialising a list | `.map(..).find(..)` (`sched.rs:22`) |
+| Boundary validation | Range-checking an untrusted index once, where it enters | `if fd >= NOFILE { return None }` (`syscall.rs`) |
+| Iterator adapter | Lazy wrapper; transforms without materialising a list | `.map(..).find(..)` (`sched.rs`) |
 | `.bss` | Zero-initialized static region reserved by the linker | Where `PROCS` lives before code runs |
-| Global allocator | The `GlobalAlloc` impl `Box`/`Vec` call; absent until ex 08 | `KernelHeap` (`kheap.rs:40`) |
+| Global allocator | The `GlobalAlloc` impl `Box`/`Vec` call; absent until ex 08 | `KernelHeap` (`kheap.rs`) |
 | Static resource bound | Compile-time cap with a defined failure | `NPROC = 64`; `fork` returns -1 when full |
 
 ---
@@ -550,7 +550,7 @@ returns, and say where step 7's bytes land.
 <details>
 <summary>Click to reveal solution</summary>
 
-`fdalloc` (`syscall.rs:298`) scans from index 0 and takes the first slot whose
+`fdalloc` (`syscall.rs`) scans from index 0 and takes the first slot whose
 `kind` is `FileKind::None`.
 
 | Step | Returns | Table afterwards (0..5) |
@@ -647,7 +647,7 @@ would happen in C, where `ofile` is a plain array? (c) Of `ofile[fd]`,
 <details>
 <summary>Click to reveal solution</summary>
 
-**(a)** `ofile` is `[File; 16]` (`proc.rs:39`), so `ofile[99]` fails the
+**(a)** `ofile` is `[File; 16]` (`Proc` in `proc.rs`), so `ofile[99]` fails the
 bounds check and calls `panic_bounds_check`; the panic handler prints and
 halts the hart. The machine is dead, and any user program can do it with one
 system call and no privileges. The check turned a memory-safety bug into an
@@ -669,7 +669,7 @@ confused-deputy privilege escalation.
   than at the boundary. The kernel wants one validation point per untrusted
   value, near where it enters, so downstream code may assume a good value —
   concretely, `sys_read` later writes `(*p).ofile[fd].off += n`
-  (`syscall.rs:505`), indexing directly, which is sound only because `getfile`
+  (`syscall.rs`), indexing directly, which is sound only because `getfile`
   already vouched for `fd`.
 - The explicit check documents the interface: `NOFILE` appears in the
   condition, so the limit and the failure mode are visible in two lines.
@@ -677,7 +677,7 @@ confused-deputy privilege escalation.
 
 ### Problem 5: Trace the scheduler
 
-`RoundRobin` (`sched.rs:20`) is called with `self.next == 3` and this state
+`RoundRobin` (`sched.rs`) is called with `self.next == 3` and this state
 array (`n = 8`):
 
 ```text
@@ -731,15 +731,15 @@ from "does not compile" to "compiles, runs, and is still wrong".
 <summary>Click to reveal solution</summary>
 
 1. **It does not compile in Module 2.** `Vec` lives in `alloc`, which needs a
-   `#[global_allocator]`; rv6 gains one only in exercise 38k (`kheap.rs:40`),
+   `#[global_allocator]`; rv6 gains one only in exercise 38k (`ALLOCATOR` in `kheap.rs`),
    so the type is unavailable when the table is needed.
 
 2. **Even with an allocator, the sizes do not work.** A 64-slot `Vec<Proc>`
    needs a single 36 KB buffer, and rv6's heap serves one 4096-byte page per
-   allocation and *refuses anything larger* (`kheap.rs:26`). The allocation
+   allocation and *refuses anything larger* (`kheap.rs`). The allocation
    returns null and the boot fails.
 
-3. **The addresses stop being stable.** `proc_at` (`proc.rs:70`) hands out
+3. **The addresses stop being stable.** `proc_at` (`proc.rs`) hands out
    `*mut Proc` pointers into the table and the kernel stores them — `CURPROC`,
    the `parent` field of every child. A `Vec` moves its buffer when it grows,
    so any later `push` invalidates every stored pointer at once: a
@@ -747,7 +747,7 @@ from "does not compile" to "compiles, runs, and is still wrong".
    link time and can never move.
 
 4. **The failure semantics get worse.** Today `allocproc` returns null when no
-   slot is free (`proc.rs:134`) and the error appears at the request that
+   slot is free (`proc.rs`) and the error appears at the request that
    caused it. A growable table has no such point: it grows until an unrelated
    allocation elsewhere fails, possibly *on the trap path*, where there is
    nowhere to report it.
@@ -784,7 +784,7 @@ promises never to exceed it.
    with the pointer.
 
 3. **Slices are the right parameter type.** `&[T]` to read, `&mut [T]` to
-   write. rv6's scheduler takes `&[ProcState]` (`sched.rs:6`) and works for
+   write. rv6's scheduler takes `&[ProcState]` (`Scheduler` in `sched.rs`) and works for
    any `NPROC`.
 
 4. **Bounds checks are three instructions and usually free.** An unsigned
@@ -792,7 +792,7 @@ promises never to exceed it.
    insurance that pays out by halting the machine.
 
 5. **Untrusted indices are checked at the boundary.** `getfile` rejects
-   `fd >= NOFILE` before touching `ofile` (`syscall.rs:313`), so downstream
+   `fd >= NOFILE` before touching `ofile` (`syscall.rs`), so downstream
    code may index directly. In C the missing check reads into a neighboring
    process control block.
 

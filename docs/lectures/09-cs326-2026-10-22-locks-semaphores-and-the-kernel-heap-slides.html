@@ -199,13 +199,13 @@ L15 · October 22, 2026 · exercises `37k_spinlocks` and `38k_semaphores` (Oct 2
 
 Every structure so far has had exactly one writer:
 
-- the free list (`kalloc.rs:11`)
+- the free list (`FREELIST` in `kalloc.rs`)
 - the process table
 - the scheduler cursor
 
 That assumption ends here.
 
-- Interrupts already fire (`trap.rs:39`)
+- Interrupts already fire (`intr_on()` in `trap.rs`)
 - Real hardware has more than one hart
 - Two flows of control can now be **inside the same structure at the same instant**
 
@@ -324,7 +324,7 @@ self.locked
     .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
 ```
 
-`spinlock.rs:25` — `Ok(_)` you made the transition, `Err(actual)` you did not.
+`SpinLock::lock()` (`spinlock.rs`) — `Ok(_)` you made the transition, `Err(actual)` you did not.
 
 <div class="info-box">
 <strong>ABA:</strong> CAS compares <em>values</em>, so a word that went A → B → A looks untouched. LR/SC watches the <em>address</em>, so it is immune.
@@ -374,7 +374,7 @@ Ordering matters in rv6 even with one CPU — the reordering an interrupt handle
 
 They are useless alone. They work as a **pair**.
 
-`spinlock.rs:46` compiles to `fence rw, w` then `sb zero, 0(a0)`. Two details:
+`spinlock.rs` compiles to `fence rw, w` then `sb zero, 0(a0)`. Two details:
 the **failure ordering is `Relaxed`** (a failed CAS acquired nothing, and a
 contended lock fails on most iterations), and **`is_locked` is `Relaxed` too** —
 its answer is stale the instant you have it.
@@ -405,7 +405,7 @@ sequenceDiagram
 ```rust
 pub struct SpinLock<T> {
     locked: AtomicBool,
-    data: UnsafeCell<T>,     // spinlock.rs:7
+    data: UnsafeCell<T>,     // spinlock.rs
 }
 ```
 
@@ -421,7 +421,7 @@ pub struct SpinLock<T> {
 pub struct SpinLockGuard<'a, T> { lock: &'a SpinLock<T> }
 
 impl<T> Drop for SpinLockGuard<'_, T> {
-    fn drop(&mut self) { self.lock.unlock(); }     // spinlock.rs:71
+    fn drop(&mut self) { self.lock.unlock(); }     // spinlock.rs
 }
 ```
 
@@ -441,7 +441,7 @@ let _  = lock.lock();   // held for ZERO statements
 
 - `_` is a *pattern*, not a binding — the temporary drops at the end of that statement
 - No warning. The code is well-formed and means what was written
-- `drop(guard)` releases early on purpose — `shell.rs:102`
+- `drop(guard)` releases early on purpose — `Shell::cmd_cd()` (`shell.rs`)
 
 ---
 
@@ -453,12 +453,12 @@ let _  = lock.lock();   // held for ZERO statements
 `UnsafeCell` is deliberately **not** `Sync`, so `SpinLock<T>` isn't either.
 
 ```rust
-unsafe impl<T: Send> Sync for SpinLock<T> {}    // spinlock.rs:12
+unsafe impl<T: Send> Sync for SpinLock<T> {}    // spinlock.rs
 ```
 
 - The `unsafe` is a **signature**: *I checked that the lock serializes access*
 - `T: Send`, not `T: Sync` — the lock hands `&mut T` to whichever hart wins
-- `const fn new` (`spinlock.rs:15`) is why `fs.rs:277` can be a plain `static`
+- `const fn new` (`spinlock.rs`) is why `FS` (`fs.rs`) can be a plain `static`
 
 ---
 
@@ -501,7 +501,7 @@ flowchart TD
 
 **2. Never sleep holding a spinlock.** Waiters burn CPU; on one hart nobody can run the holder again.
 
-rv6 does neither — one hart, lock-free interrupt handlers (`console.rs:13`).
+rv6 does neither — one hart, lock-free interrupt handlers (`BUF` in `console.rs`).
 
 ---
 
@@ -527,13 +527,13 @@ A mutex has an **owner**; a semaphore does not — which is why it is good at *s
 
 ```rust
 pub struct Semaphore {
-    count: SpinLock<i64>,        // semaphore.rs:6
+    count: SpinLock<i64>,        // semaphore.rs
 }
 ```
 
 - The count is shared mutable state, so it lives behind the lock you just built
-- `try_wait` (`semaphore.rs:16`) locks, tests, decrements
-- `post` (`semaphore.rs:26`) locks and increments
+- `try_wait` (`semaphore.rs`) locks, tests, decrements
+- `post` (`semaphore.rs`) locks and increments
 - Both take `&self` — interior mutability, laundered through the lock
 
 `try_wait`, not `wait`: blocking needs a sleep queue and somebody else to run.
@@ -594,8 +594,8 @@ Swap `P(mutex)` and `P(empty)` and you block **holding the mutex** — deadlock.
 
 ```rust
 unsafe impl GlobalAlloc for KernelHeap {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {         // kheap.rs:23
-        if layout.size() > PGSIZE || layout.align() > PGSIZE {  // kheap.rs:26
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {         // kheap.rs
+        if layout.size() > PGSIZE || layout.align() > PGSIZE {  // kheap.rs
             return ptr::null_mut();
         }
         kalloc::kalloc()
@@ -603,7 +603,7 @@ unsafe impl GlobalAlloc for KernelHeap {
     unsafe fn dealloc(&self, ptr: *mut u8, _l: Layout) { kalloc::kfree(ptr) }
 }
 
-#[global_allocator]                                             // kheap.rs:40
+#[global_allocator]                                             // kheap.rs
 static ALLOCATOR: KernelHeap = KernelHeap;
 ```
 
@@ -627,12 +627,12 @@ A **language item**: one per binary, and every allocation in the program routes 
 
 ## Why So Late, Why So Small
 
-**Late** — the heap allocates from `kalloc`, whose free list is only populated by `kalloc::init()` (`main.rs:89`). Nothing may allocate before that.
+**Late** — the heap allocates from `kalloc`, whose free list is only populated by `kalloc::init()` (`main.rs`). Nothing may allocate before that.
 
 **Small** — Linux uses a buddy allocator plus SLUB; xv6 has no kernel `malloc` at all. rv6's forty lines serve a `Vec<(String, usize)>` and a few `Arc`s.
 
 <div class="highlight-box">
-And it is <strong>not thread-safe</strong>: <code>kalloc</code> walks a bare <code>static mut FREELIST</code> (<code>kalloc.rs:11</code>) with no lock. Fixing it means wrapping the free list in the <code>SpinLock</code> you are about to write.
+And it is <strong>not thread-safe</strong>: <code>kalloc</code> walks a bare <code>static mut FREELIST</code> (<code>FREELIST (kalloc.rs)</code>) with no lock. Fixing it means wrapping the free list in the <code>SpinLock</code> you are about to write.
 </div>
 
 ---

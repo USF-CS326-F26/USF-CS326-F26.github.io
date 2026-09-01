@@ -97,7 +97,7 @@ In exercise `43k_traps` your kernel dropped from M-mode to S-mode with an `mret`
 after setting `mstatus.MPP` to say where it was going. Dropping to user mode is
 the same move one level down: clear `sstatus.SPP` (bit 8) to 0, put the target
 address in `sepc`, and execute `sret`. rv6 does exactly this in `usertrapret`
-(`usermode.rs:455`, `usermode.rs:459`).
+(`usermode.rs`).
 
 What changes when `SPP` is 0 and `sret` retires:
 
@@ -147,10 +147,10 @@ decides *when*.
 
 Privilege alone still leaves the kernel readable, so each process gets its own
 page table. You have been allocating one per process since exercise
-`34k_processes` (`proc.rs:116`); this is the exercise where `satp` finally points
+`34k_processes` (`freeproc()` in `proc.rs`); this is the exercise where `satp` finally points
 at it.
 
-The layout in `memlayout.rs:29-75` is deliberately spartan:
+The layout in `memlayout.rs` is deliberately spartan:
 
 ```text
  kernel page table                      a user page table
@@ -173,11 +173,11 @@ The layout in `memlayout.rs:29-75` is deliberately spartan:
 
 Three things deserve attention.
 
-**`PTE_U` is the wall** (`vm.rs:17-23`). One bit in each leaf PTE decides whether
+**`PTE_U` is the wall** (`PTE_V` in `vm.rs`). One bit in each leaf PTE decides whether
 user mode may touch that page. The kernel's own mappings — the UART, the PLIC,
 all 128 MiB of RAM at `KERNBASE` — are simply absent from the user's table, but
 the two entries that *are* present (trampoline and trapframe) sit inside the
-user's address space with `PTE_U` clear (`proc.rs:164-165`). They are visible to
+user's address space with `PTE_U` clear (`proc.rs`). They are visible to
 the MMU and invisible to the program.
 
 The bit works in the other direction too, which surprises people. When
@@ -185,16 +185,16 @@ The bit works in the other direction too, which surprises people. When
 through a `PTE_U` page either. That is not an accident of the encoding; it is a
 deliberate guard against the kernel dereferencing a user pointer by mistake,
 which is the single most productive bug class in OS history. It is also why
-`walkaddr` (`vm.rs:252-261`) exists: the kernel translates user addresses *by
+`walkaddr` (`vm.rs`) exists: the kernel translates user addresses *by
 hand*, through the user's page table, and refuses anything without `PTE_U`
-(`vm.rs:257`). We will use it in L23.
+(`vm.rs`). We will use it in L23.
 
 **Address 0 is an ordinary address.** In a fresh, private address space nothing
 is sacred about zero, and it is where xv6 loads programs. Hosted Unix leaves the
 first page unmapped so null-pointer dereferences fault; rv6 gets that luxury in
 exercise `49k_exec`, not here.
 
-**`MAXVA` is `1 << 38`, not `1 << 39`** (`memlayout.rs:49`). Sv39 gives 39 bits,
+**`MAXVA` is `1 << 38`, not `1 << 39`** (`memlayout.rs`). Sv39 gives 39 bits,
 but bits 63:39 of any valid virtual address must all equal bit 38 — the
 sign-extension rule. Stopping one bit short means rv6 never has to think about
 it. The trampoline at `MAXVA - PGSIZE` is therefore the highest page that is
@@ -254,9 +254,9 @@ the same bytes before and after. The switch becomes invisible to the fetch
 stream.
 
 That page is the **trampoline**. rv6 puts it at `TRAMPOLINE`, the top page of
-every address space (`memlayout.rs:53`), and maps it into the kernel table at
-boot (`vm.rs:169`) and into every process's table at creation
-(`proc.rs:164`).
+every address space (`memlayout.rs`), and maps it into the kernel table at
+boot (`kvmmake()` in `vm.rs`) and into every process's table at creation
+(`proc_pagetable()` in `proc.rs`).
 
 ```mermaid
 graph TB
@@ -271,7 +271,7 @@ graph TB
 
 Every table, one page. The virtual address is a constant of the design, not a
 per-process value, which is why `userret` can materialize the trapframe address
-with a bare `li` (`usermode.rs:144`) — `TRAPFRAME` is likewise the same VA
+with a bare `li` (`usermode.rs`) — `TRAPFRAME` is likewise the same VA
 everywhere.
 
 ### Three consequences worth stating
@@ -281,12 +281,12 @@ linked into the kernel image alongside everything else, so its physical page is
 shared with unrelated kernel code. Mapping *that* page at `TRAMPOLINE` would
 expose whatever else is on it. So `kvmmake` allocates a fresh page, copies the
 bytes from `trampoline` to `trampoline_end` onto it, and maps the copy
-(`vm.rs:158-172`). The `fence.i` at `vm.rs:168` matters: the kernel just wrote
+(`vm.rs`). The `fence.i` at `vm.rs` matters: the kernel just wrote
 *instructions* through the data path, and RISC-V does not promise the
 instruction fetch path sees them without it.
 
-**It is mapped without `PTE_U`, even in the user's table** (`vm.rs:169`,
-`proc.rs:164`). The trampoline is kernel code that happens to be addressable in
+**It is mapped without `PTE_U`, even in the user's table** (`vm.rs`,
+`proc_pagetable()` (`proc.rs`)). The trampoline is kernel code that happens to be addressable in
 the user's address space. If the user could execute it, it could jump to the
 middle of `userret`, past the `csrw satp`, and reload registers of its choosing
 — or simply read the kernel's `satp` value out of the trapframe. Without
@@ -294,8 +294,8 @@ middle of `userret`, past the `csrw satp`, and reload registers of its choosing
 raised privilege to S before the first byte is fetched. The page is
 simultaneously *in* the address space and *unreachable from* it.
 
-**`sfence.vma` brackets every `satp` write** (`usermode.rs:133-135`,
-`usermode.rs:140-142`). The fence before flushes stale entries from the table
+**`sfence.vma` brackets every `satp` write** (`usermode.rs`,
+`usermode.rs`). The fence before flushes stale entries from the table
 you are leaving; the fence after guarantees the MMU consults the new one. QEMU
 often forgives their absence; hardware with a real TLB does not, and the failure
 is intermittent, which is worse.
@@ -316,7 +316,7 @@ when the program resumes.
 
 ### Why not a stack?
 
-A kernel trap solves this by pushing. Look at `kernelvec` (`trap.rs:90-107`): it
+A kernel trap solves this by pushing. Look at `kernelvec` (`trap.rs`): it
 does `addi sp, sp, -128` and stores sixteen registers. That works because a
 kernel trap interrupts *kernel* code, so `sp` already points at a valid kernel
 stack.
@@ -332,17 +332,17 @@ From user mode, neither half of that sentence holds:
    register at the moment `uservec` begins.
 
 So rv6 gives each process a dedicated page — the **trapframe** — and each
-process a separate **kernel stack** (`proc.rs:117-118`). The trapframe is mapped
-at `TRAPFRAME` in that process's page table, `R|W` and no `U` (`proc.rs:165`).
-It is a fixed-layout structure (`usermode.rs:33-71`), `#[repr(C)]` so that the
+process a separate **kernel stack** (`allocproc()` in `proc.rs`). The trapframe is mapped
+at `TRAPFRAME` in that process's page table, `R|W` and no `U` (`proc.rs`).
+It is a fixed-layout structure (`Trapframe` in `usermode.rs`), `#[repr(C)]` so that the
 field offsets in the Rust struct and the byte offsets in the assembly are the
 same numbers:
 
 ```text
  offset  field          who writes it
  ------  ------------   ---------------------------------------
-      0  kernel_satp    usertrapret, before leaving  (usermode.rs:449)
-      8  kernel_sp      usertrapret                  (usermode.rs:450)
+      0  kernel_satp    usertrapret, before leaving  (usermode.rs)
+      8  kernel_sp      usertrapret                  (usermode.rs)
      16  kernel_trap    usertrapret: address of usertrap  (:451)
      24  epc            usertrap on entry; +4 for ecall   (:397, :401)
      32  kernel_hartid  unused here; keeps the xv6 layout
@@ -380,7 +380,7 @@ user's `a0` is parked in a CSR that user mode cannot read, and the kernel has
 the one pointer it needs. One instruction, zero memory accesses, no stack.
 
 Who arms `sscratch` the first time? `userret` does, on its way out
-(`usermode.rs:180`): its last act before `sret` is another `csrrw a0, sscratch,
+(`usermode.rs`): its last act before `sret` is another `csrrw a0, sscratch,
 a0`, which restores the user's `a0` *and* leaves `TRAPFRAME` in `sscratch`,
 ready for the next trap. The exit path arms the entry path. Since a process can
 only reach user mode through `userret`, the invariant "`sscratch` holds
@@ -391,8 +391,8 @@ instruction the program ever executes.
 
 ## 6. `uservec`, Line by Line
 
-`stvec` points here while user code runs (`usermode.rs:443-445`). Read
-`usermode.rs:92-137` alongside this. Four phases:
+`stvec` points here while user code runs (`usertrapret()` in `usermode.rs`). Read
+`usermode.rs` alongside this. Four phases:
 
 ```mermaid
 graph LR
@@ -402,7 +402,7 @@ graph LR
     D --> E["jr t0\ninto usertrap"]
 ```
 
-**Phase 1 — get a pointer (`usermode.rs:94`).**
+**Phase 1 — get a pointer (`usermode.rs`).**
 
 ```asm
 csrrw a0, sscratch, a0      # a0 = TRAPFRAME, sscratch = user a0
@@ -413,7 +413,7 @@ page table, `sepc` holds the user PC, `scause` holds the reason, and 30 of 31
 registers still hold user values. The trapframe is reachable because it is
 mapped in the user's table.
 
-**Phase 2 — park everything (`usermode.rs:96-127`).** Thirty `sd` instructions
+**Phase 2 — park everything (`usermode.rs`).** Thirty `sd` instructions
 at fixed offsets from `a0`, `a0` itself skipped. Then the tail:
 
 ```asm
@@ -425,7 +425,7 @@ sd   t0, 112(a0)            # park it at offset 112
 these two lines come last. `sp` is saved at offset 48 like any other register:
 the kernel will not use the user's stack, but it must give it back.
 
-**Phase 3 — pick up the kernel's notes (`usermode.rs:129-131`).**
+**Phase 3 — pick up the kernel's notes (`usermode.rs`).**
 
 ```asm
 ld sp, 8(a0)                # kernel_sp: this process's kernel stack top
@@ -434,14 +434,14 @@ ld t1, 0(a0)                # kernel_satp
 ```
 
 All three were written by `usertrapret` before the last `sret`
-(`usermode.rs:449-451`). The trick is worth naming: **the kernel cannot look
+(`usermode.rs`). The trick is worth naming: **the kernel cannot look
 anything up on entry, so it leaves itself a note on exit.** The process's own
 trapframe is the only memory reachable at this instant, so everything needed is
 already in it. Note the ordering — `sp` now holds a kernel address that is
 unmapped in the table currently installed, so `uservec` loads it but must not
 touch it.
 
-**Phase 4 — cross (`usermode.rs:133-137`).**
+**Phase 4 — cross (`usermode.rs`).**
 
 ```asm
 sfence.vma zero, zero
@@ -450,33 +450,33 @@ sfence.vma zero, zero
 jr t0                       # into usertrap(), never returns here
 ```
 
-The `csrw` at `usermode.rs:134` is the instruction that made this whole page
+The `csrw` at `usermode.rs` is the instruction that made this whole page
 necessary. The `jr` at line 137 is fetched through the *new* table and lands
 correctly, because we are standing on the trampoline; `t0` and `sp` now hold
 kernel addresses that finally mean something. The next thing that runs is Rust:
-`usertrap` (`usermode.rs:385`), on the process's own kernel stack, with all 31
+`usertrap` (`usermode.rs`), on the process's own kernel stack, with all 31
 user registers safely in memory.
 
 ---
 
 ## 7. The Road Back
 
-`usertrapret` (`usermode.rs:440-466`) is the mirror image, and it runs in the
+`usertrapret` (`usermode.rs`) is the mirror image, and it runs in the
 kernel with full addressability, so it does its work in Rust:
 
 1. Point `stvec` back at the trampoline's `uservec`, computed as
-   `TRAMPOLINE + (uservec - trampoline)` (`usermode.rs:443-445`) — the offset
+   `TRAMPOLINE + (uservec - trampoline)` (`usermode.rs`) — the offset
    within the page is the same wherever the page is mapped. Symmetrically,
-   `usertrap` aims `stvec` at `kernelvec` on entry (`usermode.rs:387`): a trap
+   `usertrap` aims `stvec` at `kernelvec` on entry (`usermode.rs`): a trap
    taken *in the kernel* must not go through `uservec`.
-2. Write the three notes into the trapframe for next time (`usermode.rs:449-451`).
+2. Write the three notes into the trapframe for next time (`usertrapret()` in `usermode.rs`).
 3. Clear `sstatus.SPP` so `sret` goes to U-mode, set `SPIE` so interrupts are
-   enabled once there (`usermode.rs:455-456`).
-4. Set `sepc` from the trapframe's saved `epc` (`usermode.rs:459`).
-5. Compute the user's `satp` value (`usermode.rs:461`) and call `userret` at its
-   trampoline address, passing that value in `a0` (`usermode.rs:463-466`).
+   enabled once there (`usertrapret()` in `usermode.rs`).
+4. Set `sepc` from the trapframe's saved `epc` (`usermode.rs`).
+5. Compute the user's `satp` value (`usermode.rs`) and call `userret` at its
+   trampoline address, passing that value in `a0` (`usermode.rs`).
 
-`userret` (`usermode.rs:139-181`) then switches `satp` to the user table
+`userret` (`usermode.rs`) then switches `satp` to the user table
 (line 141) — legal, because it stands on the trampoline — materializes
 `TRAPFRAME` with `li a0, {trapframe}` (line 144), stashes the user's `a0` in
 `sscratch` (lines 146-147), reloads the other 30 registers, and finishes with
@@ -499,18 +499,18 @@ working child by copying the parent's trapframe and zeroing one field.
 
 | Concept | Definition | Example |
 |---|---|---|
-| User mode (U) | The weakest RISC-V privilege level: no CSR access, no privileged instructions, no non-`PTE_U` pages | Entered by `sret` with `sstatus.SPP = 0` (`usermode.rs:455`) |
-| `PTE_U` | Leaf-PTE bit permitting user-mode access; with `SUM = 0` it also *bars* kernel access | `PTE_U = 1 << 4` (`vm.rs:23`) |
-| Per-process page table | The address space a process sees; the kernel is simply absent from it | `(*p).pagetable`, allocated in `allocproc` (`proc.rs:116`) |
-| `MAXVA` | One past the highest VA rv6 uses; `1 << 38`, one bit short of Sv39's 39 | `memlayout.rs:49` |
-| `TRAMPOLINE` | The top page of every address space, holding `uservec`/`userret` | `0x3F_FFFF_F000` (`memlayout.rs:53`) |
-| Trampoline page | One physical page mapped at the same VA in every table, so `satp` can change mid-stream | Copied and mapped in `kvmmake` (`vm.rs:158-172`) |
-| `TRAPFRAME` | The page below the trampoline; this process's register parking lot | `0x3F_FFFF_E000` (`memlayout.rs:57`) |
-| Trapframe | 31 saved user registers plus four notes the kernel leaves itself | `struct Trapframe`, `#[repr(C)]` (`usermode.rs:33-71`) |
-| `sscratch` | A supervisor CSR holding `TRAPFRAME` while user code runs; bootstraps register access | `csrrw a0, sscratch, a0` (`usermode.rs:94`) |
-| Kernel stack (`kstack`) | A per-process page the kernel runs on after a trap, never the user's `sp` | Loaded as `kernel_sp` (`usermode.rs:129`) |
-| `uservec` / `userret` | The two halves of the trampoline: in from U, out to U | `usermode.rs:93`, `usermode.rs:139` |
-| `sfence.vma` | Flushes stale address translations; brackets every `satp` write | `usermode.rs:133-135` |
+| User mode (U) | The weakest RISC-V privilege level: no CSR access, no privileged instructions, no non-`PTE_U` pages | Entered by `sret` with `sstatus.SPP = 0` (`usermode.rs`) |
+| `PTE_U` | Leaf-PTE bit permitting user-mode access; with `SUM = 0` it also *bars* kernel access | `PTE_U = 1 << 4` (`vm.rs`) |
+| Per-process page table | The address space a process sees; the kernel is simply absent from it | `(*p).pagetable`, allocated in `allocproc` (`proc.rs`) |
+| `MAXVA` | One past the highest VA rv6 uses; `1 << 38`, one bit short of Sv39's 39 | `memlayout.rs` |
+| `TRAMPOLINE` | The top page of every address space, holding `uservec`/`userret` | `0x3F_FFFF_F000` (`memlayout.rs`) |
+| Trampoline page | One physical page mapped at the same VA in every table, so `satp` can change mid-stream | Copied and mapped in `kvmmake` (`vm.rs`) |
+| `TRAPFRAME` | The page below the trampoline; this process's register parking lot | `0x3F_FFFF_E000` (`memlayout.rs`) |
+| Trapframe | 31 saved user registers plus four notes the kernel leaves itself | `struct Trapframe`, `#[repr(C)]` (`usermode.rs`) |
+| `sscratch` | A supervisor CSR holding `TRAPFRAME` while user code runs; bootstraps register access | `csrrw a0, sscratch, a0` (`usermode.rs`) |
+| Kernel stack (`kstack`) | A per-process page the kernel runs on after a trap, never the user's `sp` | Loaded as `kernel_sp` (`usermode.rs`) |
+| `uservec` / `userret` | The two halves of the trampoline: in from U, out to U | `usermode.rs` |
+| `sfence.vma` | Flushes stale address translations; brackets every `satp` write | `usermode.rs` |
 
 ---
 
@@ -525,7 +525,7 @@ physical page `0x8020_1000` with the permissions rv6 actually uses.
 <details>
 <summary>Click to reveal solution</summary>
 
-`px(level, va) = (va >> (12 + level * 9)) & 0x1ff` (`vm.rs:44-46`).
+`px(level, va) = (va >> (12 + level * 9)) & 0x1ff` (`vm.rs`).
 
 `TRAMPOLINE = 2^38 - 4096`:
 
@@ -537,7 +537,7 @@ So **(255, 511, 511)**. `TRAPFRAME` is one page lower, so only L0 changes:
 **(255, 511, 510)**. They share both upper-level page-table pages — the walk
 allocates two interior tables and both entries land in the same L0 table.
 
-The PTE (`vm.rs:30-32`): `((pa >> 12) << 10) | flags`. `0x8020_1000 >> 12 =
+The PTE (`Pte::new()` in `vm.rs`): `((pa >> 12) << 10) | flags`. `0x8020_1000 >> 12 =
 0x80201`, `<< 10 = 0x2008_0400`. Flags for the trampoline are `PTE_R | PTE_X |
 PTE_V` = `2 | 8 | 1` = `0xB` — deliberately **no** `PTE_U` and no `PTE_W`.
 Result: **`0x2008_040B`**.
@@ -628,7 +628,7 @@ has to be a *rule* precisely because violating it is silent.
 **(b)** The program never executes an instruction. `sret` retires, the CPU is in
 U-mode with `pc = 0`, and the very first fetch hits a PTE without `PTE_U`:
 **instruction page fault, `scause = 12`, `stval = 0`**. rv6's `usertrap` takes
-the `else` branch (`usermode.rs:428-433`), records `FAULTED`, and kills the
+the `else` branch (`usermode.rs`), records `FAULTED`, and kills the
 process. This is the most common failure in exercise `48k_user_mode` and the
 error message names the address: `0`.
 </details>
@@ -682,16 +682,16 @@ G. `csrw stvec, tramp_uservec` in `usertrapret`
 
 **F → B → G → E → A → C → D.**
 
-- **F** (`vm.rs:167`) happens once at boot, when `kvmmake` copies the trampoline
+- **F** (`vm.rs`) happens once at boot, when `kvmmake` copies the trampoline
   onto its own page.
-- **B** (`proc.rs:164`) happens when the process is created, mapping that same
+- **B** (`proc_pagetable()` in `proc.rs`) happens when the process is created, mapping that same
   physical page into the new table.
-- **G** (`usermode.rs:445`) and **E** (`usermode.rs:449`) run in `usertrapret`:
+- **G** and **E** run in `usertrapret` (`usermode.rs`):
   aim `stvec` at `uservec`, then leave the notes.
-- **A** (`usermode.rs:141`) is the first instruction group of `userret`,
+- **A** (`usermode.rs`) is the first instruction group of `userret`,
   standing on the trampoline.
-- **C** (`usermode.rs:180`) is the last instruction before `sret`.
-- **D** (`usermode.rs:181`) enters U-mode.
+- **C** (`usermode.rs`) is the last instruction before `sret`.
+- **D** (`usermode.rs`) enters U-mode.
 
 **C establishes the invariant.** At that moment `a0` holds `TRAPFRAME` (put
 there by `li` at line 144) and `sscratch` holds the user's `a0`; the swap
@@ -737,11 +737,11 @@ anywhere in rv6, and none is needed.
 
 3. **`PTE_U` is the wall, and it cuts both ways.** With `sstatus.SUM = 0` the
    kernel may not dereference user pages either, which is why the kernel
-   translates user addresses by hand through `walkaddr` (`vm.rs:252-261`).
+   translates user addresses by hand through `walkaddr` (`vm.rs`).
 
 4. **Every process gets its own page table, and the kernel is not in it.** Only
    two kernel pages are mapped — the trampoline and this process's trapframe —
-   both without `PTE_U` (`proc.rs:164-165`).
+   both without `PTE_U` (`proc.rs`).
 
 5. **The trampoline exists because of the instruction *after* `csrw satp`.**
    That fetch is translated by the new table. Code that switches `satp` must
@@ -749,7 +749,7 @@ anywhere in rv6, and none is needed.
    instruction.
 
 6. **One physical page, one virtual address, every table.** `kvmmake` copies the
-   trampoline onto a private page (`vm.rs:158-172`); every page table maps it at
+   trampoline onto a private page (`vm.rs`); every page table maps it at
    `TRAMPOLINE` with `R|X` and no `U`, so only a trap can land there.
 
 7. **The trapframe exists because there is no usable stack on entry.** `sp`
@@ -758,7 +758,7 @@ anywhere in rv6, and none is needed.
    kernel stack.
 
 8. **`sscratch` breaks the chicken-and-egg, and `userret` arms it.** One
-   `csrrw a0, sscratch, a0` (`usermode.rs:94`) trades a user register for the
+   `csrrw a0, sscratch, a0` (`usermode.rs`) trades a user register for the
    trapframe pointer with nothing lost; the identical swap at
-   `usermode.rs:180` re-arms it on the way out, which is why the invariant holds
+   `usermode.rs` re-arms it on the way out, which is why the invariant holds
    from the program's first instruction.

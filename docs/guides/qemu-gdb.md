@@ -75,7 +75,7 @@ qemu-system-riscv64 -machine virt -bios none -m 128M -smp 1 \
   -s -S
 ```
 
-That is the standard course command line (`runner.rs:242-256`) plus two flags:
+That is the standard course command line (`runner.rs`) plus two flags:
 
 | Flag | Long form | Meaning |
 |---|---|---|
@@ -96,7 +96,7 @@ qemu-system-riscv64: -s: gdbstub: couldn't create chardev
 ```
 
 `oslings` builds kernel exercises with `--features harness`, which makes the
-kernel run its self-check and then power off (`main.rs:106-114`). A plain
+kernel run its self-check and then power off (`main.rs`). A plain
 `cargo build` gives you the interactive kernel instead. Debug whichever one is
 failing — they take different paths through `kmain`.
 
@@ -140,7 +140,7 @@ just means no symbol covers `0x1000` — correct, since that ROM is not part of
 your ELF.
 
 `p/x $satp` here reads `0x0`: paging is off, and stays off until `kvminithart`
-writes it (`vm.rs:177-181`).
+writes it (`vm.rs`).
 
 ## Breakpoints in `no_std` code
 
@@ -151,7 +151,7 @@ normally because the DWARF is normal.
 |---|---|---|
 | Rust path | `b rv6::vm::walk` | Any Rust function. Crate name first |
 | `#[no_mangle]` name | `b kmain` | Symbols exported for the linker: `kmain`, `start`, `_entry`, `usertrap` |
-| File and line | `b vm.rs:52` | The usual workhorse. Bare filename is enough |
+| File and line | `b vm.rs` | The usual workhorse. Bare filename is enough |
 | Assembly label | `b uservec` | Labels inside `global_asm!` are real symbols |
 | Raw address | `b *0x80000000` | No prologue skipping — the exact instruction |
 
@@ -162,23 +162,23 @@ Two things bite people:
 saves. Use `b *kernelvec` for the first instruction.
 
 **Line numbers inside `asm!` all report the macro's opening line.** Every
-instruction in `_entry`'s block shows as `entry.rs:19`, because that is where
-the `asm!` starts (`entry.rs:19`). Do not conclude the kernel is stuck; switch
+instruction in `_entry`'s block shows as `entry.rs`, because that is where
+the `asm!` starts (`entry.rs`). Do not conclude the kernel is stuck; switch
 to instruction stepping.
 
 A backtrace works all the way down to the reset:
 
 ```text
-Breakpoint 1, rv6::vm::walk (table=0x87fff000, va=268435456, alloc=true) at src/vm.rs:53
+Breakpoint 1, rv6::vm::walk (table=0x87fff000, va=268435456, alloc=true) at src/vm.rs
 53	    let mut level = 2;
 (gdb) bt
-#0  rv6::vm::walk (table=0x87fff000, va=268435456, alloc=true) at src/vm.rs:53
-#1  0x000000008000d270 in rv6::vm::mappages (...) at src/vm.rs:86
-#2  0x000000008000d006 in rv6::vm::kvmmake () at src/vm.rs:132
-#3  0x000000008000dae2 in rv6::kinit () at src/main.rs:90
-#4  0x000000008000db3c in rv6::kmain () at src/main.rs:99
-#5  0x00000000800049aa in rv6::start::start () at src/start.rs:51
-#6  0x0000000080000014 in rv6::entry::_entry () at src/entry.rs:19
+#0  rv6::vm::walk (table=0x87fff000, va=268435456, alloc=true) at src/vm.rs
+#1  0x000000008000d270 in rv6::vm::mappages (...) at src/vm.rs
+#2  0x000000008000d006 in rv6::vm::kvmmake () at src/vm.rs
+#3  0x000000008000dae2 in rv6::kinit () at src/main.rs
+#4  0x000000008000db3c in rv6::kmain () at src/main.rs
+#5  0x00000000800049aa in rv6::start::start () at src/start.rs
+#6  0x0000000080000014 in rv6::entry::_entry () at src/entry.rs
 Backtrace stopped: frame did not save the PC
 ```
 
@@ -217,7 +217,7 @@ stval  0x10fc0
 
 `scause 0xf` is 15, a store/AMO page fault. `sepc 0x12` is the user PC of the
 faulting instruction. `stval 0x10fc0` is the address it tried to write —
-inside the user stack page at `USER_STACK = 0x1_0000` (`memlayout.rs:72`). The
+inside the user stack page at `USER_STACK = 0x1_0000` (`memlayout.rs`). The
 cause table lives in [RISC-V](riscv.md); the three you will see are 12
 (instruction), 13 (load), and 15 (store) page faults.
 
@@ -231,7 +231,7 @@ cause table lives in [RISC-V](riscv.md); the three you will see are 12
 | `finish` | Run to the end of the current frame, print the return value |
 | `layout asm` / `layout split` | Curses view of disassembly, auto-updating |
 
-Stepping through `_entry` (`entry.rs:18-28`) shows what the assembler actually
+Stepping through `_entry` (`entry.rs`) shows what the assembler actually
 emitted, which is not what you typed:
 
 ```text
@@ -248,14 +248,14 @@ emitted, which is not what you typed:
 places: those are compressed (`c.*`) instructions from the `c` extension in
 `riscv64gc`. Three `si`s from the top and `p/x $sp` reads `0x80016e10` — the *base* of
 `STACK0`. The fourth instruction, `add sp, sp, t0`, adds `0x4000` to reach the
-top, because the stack grows down (`entry.rs:20-22`). Establishing that one
+top, because the stack grows down (`entry.rs`). Establishing that one
 register is the entire job of `_entry`.
 
 `finish` is the fastest way to answer "what did that return?":
 
 ```text
 (gdb) finish
-Run till exit from #0  rv6::vm::walk (...) at src/vm.rs:53
+Run till exit from #0  rv6::vm::walk (...) at src/vm.rs
 Value returned is $4 = (*mut rv6::vm::Pte) 0x87ffd000
 ```
 
@@ -264,7 +264,7 @@ Value returned is $4 = (*mut rv6::vm::Pte) 0x87ffd000
 **This is the highest-value technique on this page.** From `33k_paging` to the
 end of the course, most kernel bugs are one wrong bit in one PTE, and the only
 way to see it is to follow the pointers the hardware follows. Your kernel's own
-`walk` (`vm.rs:52-73`) is often the thing under suspicion, so you cannot use it
+`walk` (`vm.rs`) is often the thing under suspicion, so you cannot use it
 to check itself. Do it with `x/gx`.
 
 The layout is in [Sv39 Paging](sv39-paging.md); here is only what you type.
@@ -272,7 +272,7 @@ The layout is in [Sv39 Paging](sv39-paging.md); here is only what you type.
 ### Step 1 — find the root table
 
 `satp` holds the mode in bits 63:60 and the root table's **physical page
-number** in bits 43:0 (`vm.rs:104-108`). Shift the PPN back into an address:
+number** in bits 43:0 (`SATP_SV39` in `vm.rs`). Shift the PPN back into an address:
 
 ```text
 (gdb) p/x $satp
@@ -285,7 +285,7 @@ $2 = 0x87fff000
 The leading `8` is `SATP_SV39`. A root table address always ends in `000`; if
 yours does not, you shifted wrong.
 
-Because the kernel's own table identity-maps all of RAM (`vm.rs:141-147`) and
+Because the kernel's own table identity-maps all of RAM (`kvmmake()` in `vm.rs`) and
 paging is off before `kvminithart`, physical addresses are directly readable
 with `x` in both cases. That is a property of *this* kernel, not of RISC-V.
 
@@ -317,7 +317,7 @@ L0: index   0  pte=0x000000002000000f  flags=0x00f -> pa 0x80000000
 ```
 
 Flags `0xf` = V+R+W+X: the kernel's identity mapping of RAM, exactly what
-`kvmmake` asked for (`vm.rs:141-147`). Virtual `0x8000_0000` is physical
+`kvmmake` asked for (`vm.rs`). Virtual `0x8000_0000` is physical
 `0x8000_0000` — boring, and that is the point: when it is *not* boring you have
 found your bug.
 
@@ -348,7 +348,7 @@ printf "L0: idx %3d pte=0x%016lx flags=0x%03lx -> pa 0x%lx\n", $i0, $p0, $p0 & 0
 |---|---|---|
 | `0x001` | V only — a branch | Interior nodes at L2 and L1 |
 | `0x00f` | V+R+W+X | Kernel identity map of RAM |
-| `0x007` | V+R+W | MMIO: UART, PLIC, test finisher (`vm.rs:132-140`) |
+| `0x007` | V+R+W | MMIO: UART, PLIC, test finisher (`vm.rs`) |
 | `0x00b` | V+R+X, no U | The trampoline page |
 | `0x01b` | V+R+X+U | A user code page |
 | `0x017` | V+R+W+U | A user stack page |
@@ -364,7 +364,7 @@ A process's root is in its `Proc`, so let GDB read it for you rather than
 copying hex:
 
 ```text
-Breakpoint 1, rv6::usermode::usertrapret (p=0x80017da0 <rv6::proc::PROCS>) at src/usermode.rs:441
+Breakpoint 1, rv6::usermode::usertrapret (p=0x80017da0 <rv6::proc::PROCS>) at src/usermode.rs
 (gdb) set $root = (*p).pagetable
 (gdb) p/x $root
 $1 = 0x87fb2000
@@ -375,7 +375,7 @@ $3 = 0x10fe0
 ```
 
 `epc = 0` is `USER_CODE`, `sp = 0x10fe0` is just below `USER_STACK_TOP`
-(`memlayout.rs:61,75`). Then walk `$va = 0x10000` and confirm the level-0 entry
+(`memlayout.rs,75`). Then walk `$va = 0x10000` and confirm the level-0 entry
 reads `0x17`. If it reads `0x13` — V+R+U, no W — the program will die on its
 first push with `scause 15`, which is exactly the fault shown earlier.
 
@@ -403,7 +403,7 @@ vaddr            paddr            size             attr
 
 Line 1 is the test finisher, lines 2-3 the PLIC's 4 MiB, line 4 the UART, then
 RAM in chunks, and the last line is the trampoline at `TRAMPOLINE`
-(`memlayout.rs:53`). It is excellent for "is it mapped at all?" and for
+(`memlayout.rs`). It is excellent for "is it mapped at all?" and for
 spotting a missing region in one glance.
 
 Two caveats. It shows the table the hardware is using *now*, so it tells you
@@ -443,8 +443,8 @@ add-auto-load-safe-path /Users/you/oslings/rv6
 | **Reset loop** — the banner prints over and over | Something returns to `_entry`, or the machine re-enters at `0x8000_0000` | `b *0x80000000`, then `continue` twice and `bt` on the second hit. Also check `p/x $mepc` and `p/x $mcause` |
 | **Store page fault** (`scause` 15) | A user page mapped without `PTE_W`, or a store through a stale/unmapped VA | `info registers sepc scause stval`, then walk `stval` and read the leaf flags. `0x13` instead of `0x17` on the stack page is the classic |
 | **"It worked until I turned the MMU on"** | The kernel's own text is not mapped in the table you installed, so the instruction *after* `csrw satp` cannot be fetched | Attach and read `pc`, `scause`, `satp`. The real transcript: `pc = 0x0`, `satp = 0x8000000000087fff`, `scause = 0xc` (instruction page fault). `pc = 0` means it trapped and `stvec` was still 0. Check `kvmmake` maps `KERNBASE..PHYSTOP` and that `trap::init` runs |
-| **QEMU exits immediately**, status 0 | Your kernel wrote `0x5555` to the test finisher at `0x10_0000` — `exit_success` (`testdev.rs:17-25`), usually via the harness self-check or a panic path | `b rv6::testdev::exit_success` and `b rv6::testdev::exit_failure`, then `bt` to see who called it. `OSLINGS:FAIL (panic)` in the log means the panic handler (`main.rs:281-285`) |
-| **QEMU hangs** — no output, no exit; `oslings` reports a timeout after 10s (`runner.rs:14`) | An infinite loop, a spin on a device bit that never sets, or a fault loop with `stvec` pointing somewhere harmless | Attach with `-s`, press `Ctrl-C` in GDB, then `bt` and `x/8i $pc`. A `pc` that never leaves three instructions is a spin; a `pc` that keeps returning to your trap vector is a fault loop |
+| **QEMU exits immediately**, status 0 | Your kernel wrote `0x5555` to the test finisher at `0x10_0000` — `exit_success` (`testdev.rs`), usually via the harness self-check or a panic path | `b rv6::testdev::exit_success` and `b rv6::testdev::exit_failure`, then `bt` to see who called it. `OSLINGS:FAIL (panic)` in the log means the panic handler (`main.rs`) |
+| **QEMU hangs** — no output, no exit; `oslings` reports a timeout after 10s (`runner.rs`) | An infinite loop, a spin on a device bit that never sets, or a fault loop with `stvec` pointing somewhere harmless | Attach with `-s`, press `Ctrl-C` in GDB, then `bt` and `x/8i $pc`. A `pc` that never leaves three instructions is a spin; a `pc` that keeps returning to your trap vector is a fault loop |
 | GDB connects but registers and disassembly are nonsense, or it complains about the remote `g` packet | Wrong GDB architecture | `set architecture riscv:rv64`, or use a `riscv64-*` GDB |
 | Breakpoints never hit, symbols look wrong | Stale ELF — you rebuilt after starting QEMU | Kill both, `cargo build`, restart. QEMU loaded the ELF at launch |
 | Source lines say `asm!(` forever | You are inside an `asm!` block | `si` and `x/8i $pc` instead of `s` |

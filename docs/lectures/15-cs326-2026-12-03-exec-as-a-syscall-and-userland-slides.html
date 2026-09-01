@@ -216,7 +216,7 @@ With <code>exec</code> reachable through <code>ecall</code>, the shell can leave
 - **Zombie** is the real state name — `ps` prints `Z` beside `<defunct>`
 
 ```rust
-// usermode.rs:371
+// usermode.rs
 pub unsafe fn exit_current(status: isize) -> ! {
     let p = CURPROC;
     (*p).xstate = status;                // the message
@@ -244,7 +244,7 @@ stateDiagram-v2
 
 ## What a Zombie Costs, and the Status Word
 
-- rv6 keeps **everything** until `freeproc` (`proc.rs:139`): trapframe, kernel stack, page table
+- rv6 keeps **everything** until `freeproc` (`proc.rs`): trapframe, kernel stack, page table
 - Linux tears the address space down at exit, keeping only a few hundred bytes of `task_struct`
 - Same principle: *the identity and the result survive; the memory need not*
 
@@ -265,7 +265,7 @@ stateDiagram-v2
 3. **Children, but none finished** &rarr; `proc_yield` and scan again later
 
 ```rust
-// syscall.rs:147 — the reaping scan
+// syscall.rs — the reaping scan
 if (*q).parent == p && (*q).state == ProcState::Zombie {
     let pid = (*q).pid;
     let st = (*q).xstate as i32;
@@ -302,7 +302,7 @@ flowchart TD
     X -.->|"kernel re-points C.parent"| I
 </div>
 
-One parent pointer per process (`syscall.rs:108`) — because `wait` needs a
+One parent pointer per process (`syscall.rs`) — because `wait` needs a
 **unique** collector.
 
 ---
@@ -323,7 +323,7 @@ One parent pointer per process (`syscall.rs:108`) — because `wait` needs a
 ## What rv6 Does Instead
 
 ```rust
-// usermode.rs:344 — the whole tree dies with the command you typed
+// usermode.rs — the whole tree dies with the command you typed
 unsafe fn cleanup_except(root: *mut Proc) {
     for i in 0..crate::param::NPROC {
         let q = proc::proc_at(i);
@@ -334,7 +334,7 @@ unsafe fn cleanup_except(root: *mut Proc) {
 }
 ```
 
-- `wait` compares parents by **pointer** (`syscall.rs:147`), and slots are recycled
+- `wait` compares parents by **pointer** (`sys_wait()` in `syscall.rs`), and slots are recycled
 - A stale `parent` could let a new process adopt a child it never forked
 - rv6 avoids it: `freeproc` nulls `parent`, and no tree outlives its root
 
@@ -346,7 +346,7 @@ unsafe fn cleanup_except(root: *mut Proc) {
 - After `sys_fork` returns there are two `Runnable` processes and a real choice
 
 ```rust
-// sched.rs:20 — exercise 36k, unchanged, finally load-bearing
+// sched.rs — exercise 36k, unchanged, finally load-bearing
 fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
     let n = states.len();
     (0..n).map(|off| (self.next + off) % n)
@@ -362,7 +362,7 @@ The cursor advances past the winner: no runnable process is skipped twice.
 ## forktest, Scheduled
 
 A child never "returns from `fork`": `ready` sets `ra = forkret`
-(`usermode.rs:245`), so the first `swtch` lands in `forkret` &rarr;
+(`usermode.rs`), so the first `swtch` lands in `forkret` &rarr;
 `usertrapret`, restoring the parent's trapframe with `a0` = 0.
 
 <div class="mermaid">
@@ -412,7 +412,7 @@ The answer is not tradition. Between <code>fork</code> and <code>exec</code> the
         +-- parent: wait(&status)                         # shell's fd 1 untouched
 ```
 
-- `fdalloc` (`syscall.rs:295`) returns the **lowest free** descriptor
+- `fdalloc` (`syscall.rs`) returns the **lowest free** descriptor
 - Close 1, and the next `open` is handed 1
 - `ls` never learns anything changed
 
@@ -421,10 +421,10 @@ The answer is not tradition. Between <code>fork</code> and <code>exec</code> the
 ## Two Lines Make It Work
 
 ```rust
-// syscall.rs:107 — fork copies the whole fd table
+// syscall.rs — fork copies the whole fd table
 (*child).ofile = (*parent).ofile;
 
-// exec.rs:753 — exec_into replaces pagetable, epc, sp, a0, a1
+// exec.rs — exec_into replaces pagetable, epc, sp, a0, a1
 // ...and never mentions ofile
 ```
 
@@ -506,7 +506,7 @@ The process keeps its identity; only the program changes.
 ## exec_into: The Swap
 
 ```rust
-// exec.rs:753
+// exec.rs
 pub unsafe fn exec_into(p: *mut Proc, name: &str, args: &[&str])
     -> Result<usize, ExecError>
 {
@@ -528,9 +528,9 @@ pub unsafe fn exec_into(p: *mut Proc, name: &str, args: &[&str])
 ## Order Matters, and Why Freeing Is Safe
 
 - A failed `exec` must leave the caller **running its own code, memory intact** —
-  so `build_addrspace` builds everything first and cleans up after itself (`exec.rs:662`)
+  so `build_addrspace` builds everything first and cleans up after itself (`exec.rs`)
 - Freeing the old table is safe because the user program is **not running**:
-  `uservec` switched `satp` to the kernel table on the way in (`usermode.rs:134`)
+  `uservec` switched `satp` to the kernel table on the way in (`usermode.rs`)
 - The trampoline is shared; the trapframe page belongs to the `Proc`, not the table
 
 <div class="highlight-box">
@@ -542,7 +542,7 @@ pub unsafe fn exec_into(p: *mut Proc, name: &str, args: &[&str])
 ## exec Does Not Return — and a0 Proves It
 
 - `usertrap` advances `epc` past the `ecall`, dispatches, then stores the
-  handler's return into `a0` (`usermode.rs:408`)
+  handler's return into `a0` (`usermode.rs`)
 - But `exec_into` already set `epc`, `sp`, `a0`, `a1` for the **new** program
 - So that final store lands on a trapframe describing `hello`, not the caller
 
@@ -551,7 +551,7 @@ This is why <code>sys_exec</code> returns <strong>argc</strong> and not 0: the v
 </div>
 
 On failure: nothing swapped, &minus;1 in `a0`, caller lives on — that is what
-`execfail` (`exec.rs:542`) proves.
+`execfail` (`exec.rs`) proves.
 
 ---
 
@@ -570,7 +570,7 @@ On failure: nothing swapped, &minus;1 in `a0`, caller lives on — that is what
   0x1_0000  USER_STACK ------> +-----------------------+ low
 ```
 
-Built by `push_argv` (`exec.rs:781`) with `copyout`, **into an address space
+Built by `push_argv` (`exec.rs`) with `copyout`, **into an address space
 nobody is running yet**. `argv` is bytes on a stack plus a convention.
 
 ---
@@ -589,9 +589,9 @@ nobody is running yet**. `argv` is bytes on a stack plus a convention.
   }
 ```
 
-`sh` (`exec.rs:354`) returns to user mode with `SPP = 0`, cannot call
+`sh` (`exec.rs`) returns to user mode with `SPP = 0`, cannot call
 `FS.lock()` or `kalloc`, and reaches the kernel only through the nine numbers
-in `syscall.rs:21`.
+in `SYS_FORK` (`syscall.rs`).
 
 ---
 
@@ -603,7 +603,7 @@ in `syscall.rs:21`.
   on the shell process itself (`exit` likewise)
 
 <div class="highlight-box">
-A blocking <code>read</code> needs interrupts back on: the keypress arrives as a UART interrupt, but a trap enters the kernel with interrupts off. <code>sys_read</code> re-enables them at that one call (<code>syscall.rs:488</code>) — not everywhere — so <code>exec</code> keeps running on a quiet 4 KiB kernel stack.
+A blocking <code>read</code> needs interrupts back on: the keypress arrives as a UART interrupt, but a trap enters the kernel with interrupts off. <code>sys_read</code> re-enables them at that one call (<code>sys_read() (syscall.rs)</code>) — not everywhere — so <code>exec</code> keeps running on a quiet 4 KiB kernel stack.
 </div>
 
 ---

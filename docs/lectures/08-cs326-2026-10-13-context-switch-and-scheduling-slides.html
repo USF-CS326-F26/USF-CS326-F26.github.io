@@ -256,7 +256,7 @@ pub struct Context {
 }
 ```
 
-`swtch.rs:5`-`swtch.rs:22`
+`Context` in `swtch.rs`
 
 - Rust's default `repr(Rust)` **may reorder fields** to reduce padding
 - `#[repr(C)]` = declaration order, C alignment rules &rarr; fixed offsets
@@ -298,7 +298,7 @@ swtch:
     ret                    # jump to the ra we just LOADED
 ```
 
-`swtch.rs:46`-`swtch.rs:82`
+`swtch.rs`
 
 ---
 
@@ -346,7 +346,7 @@ Ten more registers. Same ABI, same ordering rule, same `ret`.
 
 - A Rust function gets a prologue/epilogue that adjust `sp`
 - `swtch` is *about* `sp`, so it cannot tolerate a wrapper
-- `extern "C"` (`swtch.rs:34`) declares the symbol; calling it is `unsafe`
+- `extern "C"` (`swtch.rs`) declares the symbol; calling it is `unsafe`
 
 **Save all fourteen before loading any**
 
@@ -402,8 +402,8 @@ Cost: 28 stores + 28 loads per handover instead of 14 + 14. Noise.
 ## Per-CPU, With N = 1
 
 ```rust
-static mut SCHED_CTX: Context = Context::zero();   // usermode.rs:204
-static mut CURPROC:  *mut Proc = ptr::null_mut();  // usermode.rs:206
+static mut SCHED_CTX: Context = Context::zero();   // usermode.rs
+static mut CURPROC:  *mut Proc = ptr::null_mut();  // usermode.rs
 ```
 
 - rv6 is single-hart, so these are two statics
@@ -434,7 +434,7 @@ loop {
 }
 ```
 
-`usermode.rs:278`. One textual call at line 297; unbounded time inside it.
+`usermode.rs`. One textual call at line 297; unbounded time inside it.
 
 ---
 
@@ -447,7 +447,7 @@ pub unsafe fn proc_yield(p: *mut Proc) {
 }
 ```
 
-`usermode.rs:363`
+`proc_yield()` (`usermode.rs`)
 
 <div class="highlight-box">
 Mark yourself <code>Runnable</code> <strong>before</strong> switching away — after the <code>swtch</code> you are not running and cannot mark anything.
@@ -483,7 +483,7 @@ pub unsafe fn ready(p: *mut Proc) {
 }
 ```
 
-`usermode.rs:245`-`249` (ex 05's `init_context` in general form)
+`ready()` in `usermode.rs` (ex 05's `init_context` in general form)
 
 - **`ra` = entry function** &rarr; the first `swtch` turns `ret` into the call
 - **`sp` = `kstack + PGSIZE`** &rarr; the *top*; RISC-V stacks grow **down**
@@ -515,7 +515,7 @@ pub trait Scheduler {
 }
 ```
 
-`sched.rs:5`-`7` — the loop names the *trait*, not the implementation.
+`sched.rs` — the loop names the *trait*, not the implementation.
 
 - `&mut self` lets a policy carry state (a cursor, a priority table, a clock)
 - The interface decides which policies are expressible: states alone are **not** enough for SJF (needs burst estimates) or CFS (needs runtime)
@@ -538,7 +538,7 @@ fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
 }
 ```
 
-`sched.rs:20`-`29`
+`RoundRobin::pick_next()` in `sched.rs`
 
 ---
 
@@ -565,7 +565,7 @@ next=3 -> scan 3,0,1,2 -> pick 3 (p4), next=0
 The exercise is **cooperative**: the process calls `proc_yield`. A process that loops forever owns the machine.
 
 - **Quantum** = max CPU held before the scheduler runs again, enforced by a timer
-- rv6 already has the hardware: `INTERVAL = 1_000_000` at `start.rs:19`, `time` CSR at 10 MHz &rarr; a tick every ~0.1 s
+- rv6 already has the hardware: `INTERVAL = 1_000_000` at `start.rs`, `time` CSR at 10 MHz &rarr; a tick every ~0.1 s
 - Preemption is exercise **44k**; cooperative is deterministic, so a wrong `pick_next` gives a wrong *order*, not a heisenbug
 
 Too small &rarr; overhead dominates. Too large &rarr; round robin becomes FCFS.

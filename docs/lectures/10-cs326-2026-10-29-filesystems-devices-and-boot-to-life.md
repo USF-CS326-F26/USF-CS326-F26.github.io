@@ -59,7 +59,7 @@ object holding a file's contents does not hold its name.** Contents and metadata
 live in an *inode*; names live in *directories*, tables mapping a name to an inode
 number.
 
-rv6 keeps the split exactly. An inode (`fs.rs:50`–`fs.rs:55`) has a kind, a size,
+rv6 keeps the split exactly. An inode (`Inode` in `fs.rs`) has a kind, a size,
 and its contents, and no name field anywhere:
 
 ```rust
@@ -71,11 +71,11 @@ pub struct Inode {
 }
 ```
 
-A directory entry (`fs.rs:31`–`fs.rs:36`) is the other half: a name, the `inum`
+A directory entry (`DirEnt` in `fs.rs`) is the other half: a name, the `inum`
 it points at, and a `used` flag. An **inode number** is an index, not a pointer —
 an index survives being written to disk and reloaded elsewhere. Inode 1 is the
-root (`fs.rs:83`); `alloc` scans upward from `ROOT` for the first `Free` slot
-(`fs.rs:86`).
+root (`fs.rs`); `alloc` scans upward from `ROOT` for the first `Free` slot
+(`fs.rs`).
 
 ```mermaid
 flowchart LR
@@ -111,11 +111,11 @@ number means nothing outside the filesystem that assigned it.
 answered by counting. A real inode carries `nlink` and is freed only at zero
 *and* when no process still has it open.
 
-> Key distinction: rv6's `unlink` (`fs.rs:190`–`fs.rs:203`) frees the inode
+> Key distinction: rv6's `unlink` (`fs.rs`) frees the inode
 > immediately, with no link count. That is correct only because rv6 has no way to
 > make a second link. Practice Problem 2 shows what breaks the moment you add one.
 
-rv6's inode also stores the bytes inline (`fs.rs:53`); a real inode stores *block
+rv6's inode also stores the bytes inline (`Inode` in `fs.rs`); a real inode stores *block
 numbers*.
 
 ---
@@ -127,12 +127,12 @@ Unix it was literally a file you could `read()`; `readdir` became a call only on
 filesystems switched to B-trees. The idea survives: a directory is data,
 interpreted by the filesystem.
 
-rv6's limits are at `fs.rs:5`–`fs.rs:9`: 64 inodes, 16 entries per directory,
+rv6's limits are at the top of `fs.rs`: 64 inodes, 16 entries per directory,
 `NAMELEN` 14, `FILESIZE` 128. That 14 is historically exact — V7 directory entries
 were 16 bytes, a 2-byte inode number and a 14-character name. 4.2BSD's Fast File
 System introduced variable-length entries in 1983 and raised the cap to 255.
 
-`dirlookup` (`fs.rs:109`–`fs.rs:119`) is a linear scan that checks the kind first:
+`dirlookup` (`fs.rs`) is a linear scan that checks the kind first:
 
 ```rust
 pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError> {
@@ -151,14 +151,14 @@ pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError> {
 That kind check is the entire reason `cat /etc/passwd/foo` reports `ENOTDIR`
 instead of garbage. "No such entry" and "you asked a non-directory for an entry"
 are different facts, so they get different variants — and `dircreate` reuses both,
-treating `NotFound` as permission to proceed (`fs.rs:126`).
+treating `NotFound` as permission to proceed (`fs.rs`).
 
 The scan is O(entries). At 16 that is free; ext4 switches to hashed B-trees once a
 directory outgrows a block, and XFS uses B+trees, because the workload nobody plans
 for is a build cache with a million files in one directory.
 
 > Resource ordering, quietly done right: `dircreate` takes the directory slot
-> *before* it allocates the inode (`fs.rs:132`–`fs.rs:141`) — reverse those and a
+> *before* it allocates the inode (`fs.rs`) — reverse those and a
 > create into a full directory leaks an inode every time.
 
 ---
@@ -193,8 +193,8 @@ the **dentry cache**, a hash table keyed on (parent, name).
 xv6 packages the loop as `namei` and `nameiparent` — the latter returns the
 parent plus the final component, because `create` and `unlink` need the parent,
 not the target. **rv6 has no `namei`.** The shell resolves one component at a time
-against its current directory (`shell.rs:98`–`shell.rs:104`), keeping that
-directory as a stack of `(name, inum)` pairs (`shell.rs:22`–`shell.rs:34`) — which
+against its current directory (`Shell::cmd_cd()` in `shell.rs`), keeping that
+directory as a stack of `(name, inum)` pairs (`shell.rs`) — which
 is why rv6 prints `pwd` without storing `..` anywhere.
 
 Real Unix goes the other way: `.` and `..` are genuine entries written into every
@@ -207,7 +207,7 @@ rule and symlink limits (Linux gives up after 40) exist to contain.
 ## 4. What rv6's Filesystem Trades Away
 
 The structures and the logic are real; the storage is not. rv6's filesystem is one
-static behind one lock (`fs.rs:277`).
+static behind one lock (`FS` in `fs.rs`).
 
 | Property | rv6 | xv6 | ext4 |
 |---|---|---|---|
@@ -246,7 +246,7 @@ each region starts. Without it the layout is baked into the kernel — and it is
 offset) is integer division. rv6's `self.inodes[inum]` *is* that arithmetic.
 
 **Free bitmaps.** One bit per data block, one per inode — because rv6's scan of
-every inode for `Free` (`fs.rs:87`) would cost a disk read per candidate.
+every inode for `Free` (`fs.rs`) would cost a disk read per candidate.
 
 **Buffer cache.** In-RAM copies of disk blocks, with the invariant that *at most
 one buffer exists per block*. That uniqueness is what makes locking a block
@@ -265,8 +265,8 @@ is harmless.
 > Durability is `fsync`.
 
 None of that is denied, only deferred: `50k_file_descriptors` builds `open` and file descriptors
-on the same `Inode`, using offset primitives that already exist (`fs.rs:231`,
-`fs.rs:249`), where `read_at` returning `Ok(0)` (`fs.rs:238`) is how `cat` learns
+on the same `Inode`, using offset primitives that already exist (`fs.rs`,
+`fs.rs`), where `read_at` returning `Ok(0)` (`fs.rs`) is how `cat` learns
 to stop.
 
 ---
@@ -279,11 +279,11 @@ its **registers**, checking its **status** before every transfer.
 
 Registers are memory-mapped: certain physical addresses are wired to a chip
 instead of to RAM. On the `virt` machine the UART sits at `0x1000_0000`
-(`memlayout.rs:17`), the PLIC at `0x0c00_0000` (`memlayout.rs:26`), the power-off
-device at `0x10_0000` (`memlayout.rs:21`) — all below `KERNBASE = 0x8000_0000`
-(`memlayout.rs:10`), where RAM begins.
+(`UART0` in `memlayout.rs`), the PLIC at `0x0c00_0000` (`memlayout.rs`), the power-off
+device at `0x10_0000` (`TEST_FINISHER` in `memlayout.rs`) — all below `KERNBASE = 0x8000_0000`
+(`memlayout.rs`), where RAM begins.
 
-The chip is an **NS16550A** (`uart.rs:6`–`uart.rs:12`):
+The chip is an **NS16550A** (`uart.rs`):
 
 ```text
 address        off  read                       write
@@ -294,7 +294,7 @@ address        off  read                       write
 0x1000_0004     4   MCR  modem control         MCR  loopback bit
 0x1000_0005     5   LSR  LINE STATUS           (read-only)
 
-LSR bit layout (uart.rs:14, uart.rs:15)
+LSR bit layout (uart.rs, uart.rs)
    7      6      5      4      3      2      1      0
 +------+------+------+------+------+------+------+------+
 | ERR  | TEMT | THRE |  BI  |  FE  |  PE  |  OE  |  DR  |
@@ -314,7 +314,7 @@ in exactly the order written.
 ### A driver is a state machine over a status register
 
 Every polled driver asks the same three questions — *is it ready*, *transfer*,
-*acknowledge* — and rv6's is four functions (`uart.rs:40`–`uart.rs:59`):
+*acknowledge* — and rv6's is four functions (`uart.rs`):
 
 ```rust
 pub fn tx_ready() -> bool { unsafe { reg_read(LSR) & LSR_THRE != 0 } }
@@ -341,11 +341,11 @@ instructions while one character goes out the wire. QEMU's emulated UART swallow
 bytes instantly, so blind writes look fine; on hardware a banner overruns the
 transmit register and most of it vanishes.
 
-`init` (`uart.rs:26`–`uart.rs:32`) is three writes: `IER = 0` (we poll),
+`init` (`uart.rs`) is three writes: `IER = 0` (we poll),
 `LCR = 0x03` (8 data bits, no parity, one stop bit), `FCR = 0x07` (enable and clear
 the FIFOs). xv6 adds one rv6 skips — the baud divisor, written by setting `LCR` to
 `0x80`, sending two bytes through the aliased offsets 0 and 1, then restoring
-`0x03`. `MCR` also carries a **loopback** bit (`uart.rs:16`, `uart.rs:69`) wiring
+`0x03`. `MCR` also carries a **loopback** bit (`MCR_LOOP` and `set_loopback()` (`uart.rs`)) wiring
 the transmitter into the receiver, so a board can test its own serial port.
 
 > The lineage is worth knowing, because you will meet it again: 8250 (IBM PC,
@@ -359,8 +359,8 @@ Polling burns CPU proportional to the wait; an interrupt costs a fixed few hundr
 cycles. Hence the rule: **poll when the expected wait is shorter than the interrupt
 overhead, interrupt when it is longer.** A UART transmitter (µs) is fine to poll; a
 disk (ms) is not. rv6 moves *input* to interrupts in L19 —
-`uart::enable_rx_interrupt` (`uart.rs:36`), PLIC source 10 (`plic.rs:14`),
-`console::intr` (`console.rs:68`) — but output stays polled forever, because the
+`uart::enable_rx_interrupt` (`uart.rs`), PLIC source 10 (`UART0_IRQ` in `plic.rs`),
+`console::intr` (`console.rs`) — but output stays polled forever, because the
 console must work when everything else is broken.
 
 ---
@@ -371,7 +371,7 @@ To a compiler an ordinary read is a pure function of memory: cacheable, movable,
 duplicable, deletable, as long as no other code in the same thread could tell.
 Device registers violate all of that — they change without anyone writing them, and
 reading one has side effects. Hence `read_volatile`/`write_volatile` on every
-access (`uart.rs:18`–`uart.rs:24`).
+access (`uart.rs`).
 
 Drop it and you get three specific miscompilations, all of which have shipped:
 
@@ -389,7 +389,7 @@ What `volatile` gives you is narrow: the access **happens**, **exactly once**, a
 **in program order with respect to other volatile accesses**. It is not atomic,
 not a barrier against ordinary accesses, and says nothing about caches — real
 hardware also wants a non-cacheable mapping and sometimes a fence. rv6 gets away
-with it because QEMU does not cache MMIO (`vm.rs:132`).
+with it because QEMU does not cache MMIO (`kvmmake()` in `vm.rs`).
 
 Rust has no `volatile` type qualifier, deliberately. C's propagates through every
 expression touching the type; Rust makes volatility a property of the *access*,
@@ -400,7 +400,7 @@ want at the hardware boundary.
 
 ## 7. Boot Is a Dependency Graph
 
-`kinit` is six lines (`main.rs:87`–`main.rs:94`), with an argument behind each
+`kinit` is six lines (`main.rs`), with an argument behind each
 one. The exercise-12 version is the first four.
 
 ```rust
@@ -430,19 +430,19 @@ flowchart TD
 console goes first because every later failure has to be able to say so.
 
 **`kalloc` before `kvmmake` is mechanical.** `kvmmake`'s first act is
-`kalloc::kalloc()` for the root page table (`vm.rs:126`), and `mappages` allocates
-another page per missing level. With the free list still null (`kalloc.rs:11`),
-`kalloc` returns null (`kalloc.rs:40`), `kvmmake` returns null, and `kvminithart`
+`kalloc::kalloc()` for the root page table (`vm.rs`), and `mappages` allocates
+another page per missing level. With the free list still null (`FREELIST` in `kalloc.rs`),
+`kalloc` returns null (`kalloc.rs`), `kvmmake` returns null, and `kvminithart`
 installs a `satp` pointing at physical page 0. The heap rides the same edge: the
-global allocator forwards every request straight to `kalloc` (`kheap.rs:29`).
+global allocator forwards every request straight to `kalloc` (`kheap.rs`).
 
 **Turning the MMU on is the load-bearing step.** The instant `csrw satp` retires
-(`vm.rs:178`), every address goes through that page table — including the address
+(`vm.rs`), every address goes through that page table — including the address
 of the *next instruction*. rv6 survives because `kvmmake` identity-maps
-`KERNBASE..PHYSTOP` R/W/X (`vm.rs:141`–`vm.rs:149`), so the program counter means
+`KERNBASE..PHYSTOP` R/W/X (`vm.rs`), so the program counter means
 the same thing on both sides of the write. It also maps the UART, test finisher,
-and PLIC (`vm.rs:132`–`vm.rs:139`) — miss those and the kernel is alive, mute, and
-unable to power off. The following `sfence.vma` (`vm.rs:180`) flushes stale TLB
+and PLIC (`vm.rs`) — miss those and the kernel is alive, mute, and
+unable to power off. The following `sfence.vma` (`kvminithart()` in `vm.rs`) flushes stale TLB
 entries.
 
 **`fs::FS.lock().init()` has almost no predecessor** — the inode table is a static
@@ -451,13 +451,13 @@ from a conventional one.
 
 ### The confusing part: at exercise 42k the MMU is armed but inert
 
-Up through exercise 42k, `_entry` calls `kmain` directly (`entry.rs:18`), so the
+Up through exercise 42k, `_entry` calls `kmain` directly (`entry.rs`), so the
 kernel runs in **machine mode**, where `satp` does not translate anything: the
 write lands, the mode field reads back as 8, and nothing is being translated.
 
 From exercise 43k on, `_entry` goes through `start`, which sets `mstatus.MPP` to
-supervisor (`start.rs:29`), points `mepc` at `kmain` (`start.rs:34`), and `mret`s
-(`start.rs:54`). Only then does the page table take effect — so **a broken page
+supervisor (`start.rs`), points `mepc` at `kmain` (`start.rs`), and `mret`s
+(`start.rs`). Only then does the page table take effect — so **a broken page
 table can pass exercise 42k and hang exercise 43k**, with no code change in between.
 
 ### The same problem at Linux scale
@@ -535,17 +535,17 @@ since boot, so a gap between two lines is time spent inside one initialization, 
 
 | Concept | Definition | Example |
 |---|---|---|
-| Inode | A file's metadata and contents, never its name | `fs.rs:50`: `kind`, `size`, `data`, `entries` |
-| Inode number (`inum`) | An index identifying an inode within one filesystem | `ROOT = 1` (`fs.rs:9`); `alloc` returns the first `Free` index |
-| Directory entry | A (name, `inum`) pair stored in a directory's contents | `fs.rs:31`: `name`, `len`, `inum`, `used` |
+| Inode | A file's metadata and contents, never its name | `fs.rs`: `kind`, `size`, `data`, `entries` |
+| Inode number (`inum`) | An index identifying an inode within one filesystem | `ROOT = 1` (`fs.rs`); `alloc` returns the first `Free` index |
+| Directory entry | A (name, `inum`) pair stored in a directory's contents | `fs.rs`: `name`, `len`, `inum`, `used` |
 | Hard link | Two directory entries holding the same `inum` | Neither name is the "real" one; `stat` has no name field |
 | Link count | Entries pointing at an inode; free the inode at zero | rv6 has none — why its `unlink` is unsafe under links |
 | Path resolution | Repeated `dirlookup`, each result the next directory | `/sub/inner` = `dirlookup(1,"sub")`, then `dirlookup(3,"inner")` |
 | Write-ahead log | Log a group of block writes, commit, then install | Makes create atomic across a power failure; replaced `fsck` |
-| MMIO register | A physical address wired to a device, not to RAM | `UART0 = 0x1000_0000` (`memlayout.rs:17`) |
-| Status flag | One bit of a status register reporting device state | `LSR_THRE = 1 << 5`, `LSR_DR = 1 << 0` (`uart.rs:14`) |
-| `volatile` access | Happens, once, in program order with other such accesses | `read_volatile`/`write_volatile` (`uart.rs:18`) |
-| Initialization order | A topological sort of subsystem dependencies | `kalloc::init()` before `kvmmake()` (`main.rs:88`) |
+| MMIO register | A physical address wired to a device, not to RAM | `UART0 = 0x1000_0000` (`memlayout.rs`) |
+| Status flag | One bit of a status register reporting device state | `LSR_THRE = 1 << 5`, `LSR_DR = 1 << 0` (`uart.rs`) |
+| `volatile` access | Happens, once, in program order with other such accesses | `read_volatile`/`write_volatile` (`uart.rs`) |
+| Initialization order | A topological sort of subsystem dependencies | `kalloc::init()` before `kvmmake()` (`main.rs`) |
 
 ---
 
@@ -570,13 +570,13 @@ Give the four inode numbers and the slot each name lands in. Then say what
 <details>
 <summary>Click to reveal solution</summary>
 
-`alloc` scans `ROOT..NINODE` for the first `Free` (`fs.rs:87`) and inode 1 is the
+`alloc` scans `ROOT..NINODE` for the first `Free` (`fs.rs`) and inode 1 is the
 root, so `a` → **2** (slot 0), `b` → **3** (slot 1), `c` → **4** (slot 2).
-`unlink` returns inode 3 to `Free` and clears slot 1 (`fs.rs:197`–`fs.rs:198`).
+`unlink` returns inode 3 to `Free` and clears slot 1 (`fs.rs`).
 `d` then takes the first unused slot, **1**, and the first free inode, **3** —
 both recycled lowest-index-first.
 
-`for_each_entry` walks slots in order (`fs.rs:179`), so it visits `a`, `d`, `c`.
+`for_each_entry` walks slots in order (`fs.rs`), so it visits `a`, `d`, `c`.
 Directory order is slot order, an artifact of allocation history rather than
 creation time — which is why `ls` sorts its output and `ls -f` does not.
 </details>
@@ -599,10 +599,10 @@ on the *next* `dircreate`? Name the field a real inode has that prevents this.
 <summary>Click to reveal solution</summary>
 
 `unlink` sets `inodes[5] = Inode::new()` — kind `Free` — and clears the slot
-(`fs.rs:196`–`fs.rs:199`), never checking whether another entry points at inode 5.
+(`fs.rs`), never checking whether another entry points at inode 5.
 
 `dirlookup(ROOT, "notes2")` still returns 5, but `read(5, ..)` sees `Free` and
-returns `Err(NotFound)` (`fs.rs:100`). The real damage is the next `dircreate`:
+returns `Err(NotFound)` (`fs.rs`). The real damage is the next `dircreate`:
 `alloc` returns the lowest `Free` inode, now 5, so `notes2` silently names an
 unrelated new file — no error, wrong data.
 
@@ -631,12 +631,12 @@ and the result for each:
 Directory 3 exists; it just has no such entry. POSIX `ENOENT`.
 
 (c) `dirlookup(1,"log")` → `Ok(4)`; `dirlookup(4,"notes")` → the kind check at
-`fs.rs:110` fires because inode 4 is a `File` → `Err(NotADirectory)`, POSIX
+`fs.rs` fires because inode 4 is a `File` → `Err(NotADirectory)`, POSIX
 `ENOTDIR`. The walk failed at a component that *exists*, which is why the two
 errors are separate variants.
 
 (d) Resolution succeeds and yields 7; the failure is one layer up. `read(7, ..)`
-matches `InodeKind::Dir` → `Err(IsADirectory)` (`fs.rs:101`), POSIX `EISDIR`.
+matches `InodeKind::Dir` → `Err(IsADirectory)` (`fs.rs`), POSIX `EISDIR`.
 Resolution failing and the operation on the resolved inode failing are different
 stages, and a good message says which.
 </details>
@@ -653,16 +653,16 @@ You break in GDB during boot and `x/1xb 0x10000005` reports `0x61`.
 <details>
 <summary>Click to reveal solution</summary>
 
-(a) `UART0` is `0x1000_0000` (`memlayout.rs:17`) and `LSR` is offset 5
-(`uart.rs:12`).
+(a) `UART0` is `0x1000_0000` (`memlayout.rs`) and `LSR` is offset 5
+(`uart.rs`).
 
 (b) `0x61 = 0b0110_0001`: bit 0 `DR`, bit 5 `THRE`, bit 6 `TEMT`. No error bits.
 
-(c) `tx_ready()` is `LSR & (1 << 5)` (`uart.rs:41`) → **true**; `rx_ready()` is
-`LSR & (1 << 0)` (`uart.rs:45`) → **true**. A byte is waiting *and* there is room
+(c) `tx_ready()` is `LSR & (1 << 5)` (`uart.rs`) → **true**; `rx_ready()` is
+`LSR & (1 << 0)` (`uart.rs`) → **true**. A byte is waiting *and* there is room
 to send one — independent halves of the chip.
 
-(d) `getc()` returns `Some(reg_read(RBR))` (`uart.rs:53`). That read **removes**
+(d) `getc()` returns `Some(reg_read(RBR))` (`uart.rs`). That read **removes**
 the byte from the receive FIFO, and if the FIFO is now empty the hardware clears
 `DR`, so the second `getc()` returns `None`. *Reading a device register can change
 the machine* — which also means `x/1xb 0x10000000` in GDB is not a harmless
@@ -689,7 +689,7 @@ release build.
 <summary>Click to reveal solution</summary>
 
 **Bug 1: the poll is on the wrong side of the write.** The check must happen
-*before* handing a byte to `THR` (`uart.rs:48`–`uart.rs:51`); waiting afterwards
+*before* handing a byte to `THR` (`putc()` in `uart.rs`); waiting afterwards
 protects nothing, since the previous byte may still have been in flight when this
 one landed on top of it. Invisible in QEMU; on hardware, characters vanish
 whenever output outruns the wire.
@@ -725,10 +725,10 @@ unsafe fn kinit() {
 <summary>Click to reveal solution</summary>
 
 (a) `kvmmake` runs first, and its first act is `kalloc::kalloc()` for the root
-page table (`vm.rs:126`–`vm.rs:131`). `FREELIST` is still null (`kalloc.rs:11`), so
-`kalloc` returns null (`kalloc.rs:40`) and `kvmmake` returns null immediately.
+page table (`vm.rs`). `FREELIST` is still null (`kalloc.rs`), so
+`kalloc` returns null (`kalloc.rs`) and `kvmmake` returns null immediately.
 `kvminithart` computes `make_satp(null) = SATP_SV39 | 0` = `0x8000_0000_0000_0000`
-(`vm.rs:106`–`vm.rs:108`) — mode Sv39, root page number 0 — and writes it.
+(`vm.rs`) — mode Sv39, root page number 0 — and writes it.
 
 (b) It **passes**. Through exercise 42k the kernel runs in machine mode, where
 `satp` translates nothing, so nothing faults: the remaining three calls run, the
@@ -736,7 +736,7 @@ banner prints, and the self-check finds a working allocator, a `satp` whose mode
 field is 8, and a process table that hands out a `Proc`.
 
 (c) From exercise 43k, `start` `mret`s into supervisor mode with that `satp` loaded
-(`start.rs:29`–`start.rs:54`). Translation is now live against a page table at
+(`start.rs`). Translation is now live against a page table at
 physical address 0. The first fetch faults, no handler exists yet, and the machine
 hangs or resets before printing anything — the same bug, invisible for one
 exercise and fatal in the next.
@@ -744,8 +744,8 @@ exercise and fatal in the next.
 (d) The MMU check reads a register and concludes the MMU is up; that proves the
 register's *value*, not that translation works. Every test has a boundary between
 what it observes and what it claims, and finding it is a skill you want before you
-trust a green result. The fix is `main.rs:87`–`main.rs:91`: console, allocator,
-MMU, processes.
+trust a green result. The fix is the boot order in `kinit` (`main.rs`): console,
+allocator, MMU, processes.
 </details>
 
 ---
@@ -785,7 +785,7 @@ MMU, processes.
 2. **An inode number is an index, not a pointer.** That is what lets it be written
    to disk, and what makes `inum` → block arithmetic on a real filesystem.
 3. **A directory is a file with structure** — for rv6, 16 entries of a 14-byte
-   name and an `inum` (`fs.rs:31`). `dirlookup` scans it linearly and checks the
+   name and an `inum` (`fs.rs`). `dirlookup` scans it linearly and checks the
    kind first, which is why `ENOTDIR` exists.
 4. **Path resolution is repeated `dirlookup`**, and it is where errors, mount
    points, symlink loops, and the dentry cache all live. rv6 has no `namei`.

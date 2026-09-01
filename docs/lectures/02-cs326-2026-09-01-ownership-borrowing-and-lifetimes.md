@@ -51,8 +51,8 @@ reference.
 
 Start with the object. A **physical page allocator** manages RAM in fixed-size
 blocks called **pages** — 4096 bytes on RISC-V, the constant `PGSIZE`
-(`memlayout.rs:7`). It keeps a list of unused pages, hands one out (`kalloc`),
-takes one back (`kfree`). Here is the real one, in full, `kalloc.rs:40`:
+(`memlayout.rs`). It keeps a list of unused pages, hands one out (`kalloc`),
+takes one back (`kfree`). Here is the real one, in full, `kalloc.rs`:
 
 ```rust
 pub unsafe fn kalloc() -> *mut u8 {
@@ -64,7 +64,7 @@ pub unsafe fn kalloc() -> *mut u8 {
 }
 ```
 
-The free list is a `static mut` raw pointer (`kalloc.rs:11`) whose nodes live
+The free list is a `static mut` raw pointer (`FREELIST` in `kalloc.rs`) whose nodes live
 *inside the free pages themselves*: a free page's first eight bytes hold the
 next free page's address, so the allocator needs no memory of its own.
 
@@ -254,10 +254,10 @@ is the **borrow checker**.
 a length — two machine words, no copy of the data — and it is the safe-code
 shape of everything a kernel passes around: a page from the allocator, a
 512-byte disk block, the typed-so-far part of a console buffer. The reference
-kernel uses it throughout: `fs.rs:97` reads a file into a caller-provided
-buffer, `fs.rs:109` looks a name up without owning it, and `ulib::read`
-(`ulib/src/lib.rs:104`) is called with a stack buffer at
-`commands/src/bin/wc.rs:36`. In C both would be `(char *buf, int n)`, and the
+kernel uses it throughout: `fs.rs` reads a file into a caller-provided
+buffer, `FileSystem::dirlookup()` (`fs.rs`) looks a name up without owning it, and `ulib::read`
+(`ulib/src/lib.rs`) is called with a stack buffer at
+`count_fd()` (`commands/src/bin/wc.rs`). In C both would be `(char *buf, int n)`, and the
 length would be the caller's problem forever.
 
 ### 4.2 The two kinds
@@ -314,7 +314,7 @@ reader and a writer at once, is what shreds a process table.
 And a kernel is concurrent *even on one CPU*: an interrupt can land between any
 two instructions, run a handler on your stack, touch your structures, and
 return, and your code never knows. rv6's console is exactly that
-(`console.rs:13`–`console.rs:15`):
+(`console.rs`):
 
 ```rust
 static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];
@@ -381,7 +381,7 @@ fn longest<'a>(a: &'a [u8], b: &'a [u8]) -> &'a [u8]
 `'a` (say "tick A") is a lifetime parameter. Read it as: *for some region `'a`,
 give me two references valid at least that long, and I return one also valid
 that long.* A struct storing a reference is annotated the same way, meaning
-"this struct may not outlive what it points at" — as in `ulib/src/lib.rs:63`:
+"this struct may not outlive what it points at" — as in `Args` (`ulib/src/lib.rs`):
 
 ```rust
 pub struct Args<'a> {
@@ -394,8 +394,8 @@ process's stack, and `Args` is a window onto them.
 
 ### 6.1 The destination: `SpinLockGuard<'a, T>`
 
-Everything above converges on one type, built in exercise 37k — `spinlock.rs:22`,
-`:54`, `:71`:
+Everything above converges on one type, built in exercise 37k — `SpinLock::lock()`,
+`SpinLockGuard`, and its `Drop` (`spinlock.rs`):
 
 ```rust
 pub fn lock(&self) -> SpinLockGuard<'_, T> { /* spin */ SpinLockGuard { lock: self } }
@@ -424,7 +424,7 @@ The guard holds a `&'a SpinLock<T>`, so it cannot outlive the lock. The guard's
 `Drop` is the unlock, so the lock is held for exactly the guard's scope — no
 `release()` to forget, no early `return` that skips it. "Only touch this data
 while you hold the lock" stops being a rule people remember and becomes one the
-compiler enforces. See `semaphore.rs:17` and `fs.rs:277`, where the whole
+compiler enforces. See `Semaphore::try_wait()` (`semaphore.rs`) and `FS` (`fs.rs`), where the whole
 filesystem is a `SpinLock<FileSystem>`. In xv6 the equivalent code can read the
 structure after `release()` and nothing complains. The `Guard<'a>` in
 `03r_borrowing` is this idea with the atomics removed.
@@ -458,7 +458,7 @@ Ownership describes values the compiler can see. A kernel also handles values it
 cannot reason about: memory whose address came from a linker symbol, a device
 register at a fixed address, a process table reachable from an interrupt
 handler. For those, Rust offers raw pointers and `unsafe`, and checking stops.
-`proc.rs:65` declares `static mut PROCS`; `proc.rs:70` deliberately hands out a
+`proc.rs` declares `static mut PROCS`; `proc_at()` (`proc.rs`) deliberately hands out a
 raw pointer rather than a reference:
 
 ```rust
@@ -507,14 +507,14 @@ a page allocator from nothing but a `Vec<usize>` and move semantics, and
 | Owner | The single binding responsible for a value and its release | `let label = String::from("kernel");` |
 | Move | Transfer of ownership; the source binding becomes unusable | `let b = a;` — naming `a` is now E0382 |
 | `Copy` | Trait for types duplicated bitwise instead of moved | `let p = 3usize; let q = p;` — `p` still usable |
-| `Drop` | Code run automatically when an owner goes out of scope | `SpinLockGuard::drop` calls `unlock()` (`spinlock.rs:71`) |
+| `Drop` | Code run automatically when an owner goes out of scope | `SpinLockGuard::drop` calls `unlock()` (`spinlock.rs`) |
 | Borrow | Access to a value without taking ownership | `checksum(&page)` keeps `page` |
-| `&T` | Shared, read-only borrow; unlimited simultaneous copies | `fn dirlookup(&self, dir: usize, name: &[u8])` (`fs.rs:109`) |
-| `&mut T` | Exclusive borrow; the only live path to the value | `fn read(&self, inum: usize, buf: &mut [u8])` (`fs.rs:97`) |
+| `&T` | Shared, read-only borrow; unlimited simultaneous copies | `fn dirlookup(&self, dir: usize, name: &[u8])` (`fs.rs`) |
+| `&mut T` | Exclusive borrow; the only live path to the value | `fn read(&self, inum: usize, buf: &mut [u8])` (`fs.rs`) |
 | Aliasing XOR mutation | Many `&` or one `&mut`, never both at once | two `&mut page` in one scope is E0499 |
-| Slice `&[T]` | Pointer + length over a contiguous run, no copy | `&buf[..n]` in `wc` (`commands/src/bin/wc.rs:40`) |
+| Slice `&[T]` | Pointer + length over a contiguous run, no copy | `&buf[..n]` in `wc` (`commands/src/bin/wc.rs`) |
 | Lifetime `'a` | The region over which a reference stays valid | `fn longest<'a>(a: &'a [u8], b: &'a [u8]) -> &'a [u8]` |
-| Guard | A value whose existence *is* the held resource | `SpinLockGuard<'a, T>` (`spinlock.rs:54`) |
+| Guard | A value whose existence *is* the held resource | `SpinLockGuard<'a, T>` (`spinlock.rs`) |
 
 ---
 
@@ -737,7 +737,7 @@ needlessly.
 ### Problem 6: What the guard does not protect you from
 
 Using the real `SpinLock` and `pub static FS: SpinLock<FileSystem>`
-(`fs.rs:277`):
+(`fs.rs`):
 
 (i) Why does `fn root_size() -> usize { let fs = FS.lock(); fs.inodes[1].size }`
 work while `fn leak() -> &'static FileSystem { &*FS.lock() }` does not?
@@ -768,14 +768,14 @@ local temporary, so the compiler rejects it.
 `lock()`. A `match` scrutinee is a temporary whose lifetime extends to the end
 of the whole `match`, so the first guard is still alive — and the lock still
 held — while the `Ok` arm runs. The second `lock()` finds `locked == true` and
-spins in `core::hint::spin_loop()` (`spinlock.rs:28`) waiting for a release that
+spins in `core::hint::spin_loop()` (`spinlock.rs`) waiting for a release that
 can only happen after the `match` ends, which requires the arm to finish, which
 requires the lock. On one hart nothing breaks the tie.
 
 The borrow checker does not stop it because **nothing violates ownership or
 aliasing**: two guards on one `SpinLock` are two `&SpinLock<T>` shared borrows
 of a static, and the interior mutability lives behind `UnsafeCell`
-(`spinlock.rs:9`) — the type that tells the compiler to stop reasoning about the
+(`spinlock.rs`) — the type that tells the compiler to stop reasoning about the
 contents. Rust prevents *data races* and *forgetting to unlock*; it does not
 prevent *deadlock*, a liveness property rather than a memory-safety one. Fix by
 ending the first borrow before taking the second:
@@ -829,7 +829,7 @@ common way a working rv6 kernel stops booting in Module 2.
 
 4. **`Drop` is where `free()` went.** Release happens at the owner's closing
    brace, in reverse declaration order, with no call to forget.
-   `SpinLockGuard`'s entire `Drop` is `self.lock.unlock()` (`spinlock.rs:71`).
+   `SpinLockGuard`'s entire `Drop` is `self.lock.unlock()` (`impl Drop for SpinLockGuard` in `spinlock.rs`).
 
 5. **Borrowing lends a value without giving it away.** `&T` is shared and
    read-only, with no limit on count; `&mut T` is exclusive and, while it lives,
@@ -842,8 +842,8 @@ common way a working rv6 kernel stops booting in Module 2.
 
 7. **A lifetime says how long a reference stays valid; you write one only when
    inference fails.** E0106 means the signature does not say which input the
-   returned reference borrows from. `Args<'a>` (`ulib/src/lib.rs:63`) and
-   `SpinLockGuard<'a, T>` (`spinlock.rs:54`) are the shapes of the semester.
+   returned reference borrows from. `Args<'a>` (`ulib/src/lib.rs`) and
+   `SpinLockGuard<'a, T>` (`spinlock.rs`) are the shapes of the semester.
 
 8. **The guard pattern turns a locking convention into a checked fact.** The
    data reference cannot outlive the guard, the guard cannot outlive the lock,

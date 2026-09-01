@@ -40,7 +40,7 @@ September 11).
 
 ## 1. The Problem: a Kernel Written in Integers
 
-A real signature from the rv6 reference kernel, `vm.rs:73`:
+A real signature from the rv6 reference kernel, `walk()` (`vm.rs`):
 
 ```rust
 pub unsafe fn mappages(table: *mut Pte, va: usize, size: usize,
@@ -84,7 +84,7 @@ let ram = MemRegion { start: 0x8000_0000, end: 0x8800_0000 };
 
 `pub` on the struct exports the type; `pub` on a field exports access to it.
 Leaving it off is how a module stops the rest of the kernel from corrupting its
-data — `FileSystem` (`fs.rs:68`) keeps its `inodes` array private so every change
+data — `FileSystem` (`fs.rs`) keeps its `inodes` array private so every change
 goes through a method that validates it.
 
 A struct is a **product type**: a `MemRegion` is a `start` *and* an `end`. Hold
@@ -99,11 +99,11 @@ the hardware boundary: `size_of::<Pte>()` is 8, so `size_of::<[Pte; 512]>()` is
 
 The central struct in any Unix kernel is the **process control block** (PCB):
 everything the kernel knows about one process. In rv6 that is `Proc`
-(`proc.rs:27`) — `state`, `pid`, `pagetable`, `context`, `trapframe`, `kstack`,
+(`proc.rs`) — `state`, `pid`, `pagetable`, `context`, `trapframe`, `kstack`,
 `ofile`, `parent`, `xstate`, `name`. The `context` — a fourteen-register save
 area — is embedded **by value**, so switching to a process needs no second
 allocation and no second dereference. And the whole table is one static array
-(`proc.rs:65`):
+(`PROCS` in `proc.rs`):
 
 ```text
 static mut PROCS: [Proc; NPROC]                        NPROC = 64
@@ -141,8 +141,8 @@ type with `::`. An associated function is the right shape for anything whose job
 is to *produce* a value, because there is no value yet to call a method on.
 
 Rust has no `constructor` keyword; `new` is only a convention. Hence
-`Proc::new()` (`proc.rs:49`), `Context::zero()` (`swtch.rs:25`), `File::none()`
-and `File::console()` (`file.rs:54`, `:65`), `RoundRobin::new()` (`sched.rs:14`)
+`Proc::new()` (`proc.rs`), `Context::zero()` (`swtch.rs`), `File::none()`
+and `File::console()` (`file.rs`), `RoundRobin::new()` (`sched.rs`)
 — each named for what it makes. Inside an `impl` block the type's own name may be
 written `Self`.
 
@@ -160,10 +160,10 @@ Choosing the receiver is the ownership decision from L03, applied to methods.
 guarantees no other reference to that value exists anywhere.
 
 `self` by value on a small type is the interesting case. `Pte::flags`
-(`vm.rs:36`) is `pub const fn flags(self) -> usize { self.0 & 0x3ff }`. Without
-`#[derive(Clone, Copy)]` on `Pte` (`vm.rs:26`), calling `entry.flags()` would
+(`vm.rs`) is `pub const fn flags(self) -> usize { self.0 & 0x3ff }`. Without
+`#[derive(Clone, Copy)]` on `Pte` (`vm.rs`), calling `entry.flags()` would
 **move** `entry` and the next line touching it would not compile. With `Copy` the
-call copies eight bytes and `entry` survives; `is_valid` (`vm.rs:39`) then calls
+call copies eight bytes and `entry` survives; `is_valid` (`vm.rs`) then calls
 `self.flags()` on the same value for the same reason.
 
 > Key distinction: `Copy` does not make copying cheap — copying eight bytes was
@@ -178,7 +178,7 @@ call copies eight bytes and `entry` survives; `is_valid` (`vm.rs:39`) then calls
 ## 4. The Newtype Pattern
 
 A struct with unnamed fields is a **tuple struct**; one with a single field is a
-**newtype**. In rv6 (`vm.rs:25`):
+**newtype**. In rv6 (`Pte` in `vm.rs`):
 
 ```rust
 #[repr(transparent)]
@@ -192,7 +192,7 @@ you buy is at compile time.
 
 ### What it catches
 
-The Sv39 walk (`vm.rs:52`) reads an entry, pulls a physical address out of it,
+The Sv39 walk (`vm.rs`) reads an entry, pulls a physical address out of it,
 and treats that address as the next level's table:
 
 ```rust
@@ -226,7 +226,7 @@ The physical page number is the address with its low twelve bits removed
 (`pa >> 12`), which loses nothing: a page is 4096 = 2^12 bytes, so a page's base
 address ends in twelve zero bits, and those freed bits hold the flags.
 Building an entry is "shift down 12, shift up 10, OR in the flags" — literally
-`vm.rs:31`, `Pte(((pa >> 12) << 10) | flags)`. Worked once:
+`Pte::new()` (`vm.rs`), `Pte(((pa >> 12) << 10) | flags)`. Worked once:
 `0x8000_0000 >> 12 = 0x8_0000`, `<< 10 = 0x2000_0000`, `| (V|R|W) = 0x2000_0007`.
 
 `#[repr(transparent)]` promises the wrapper has the *exact* layout and ABI of the
@@ -261,13 +261,13 @@ flowchart LR
     E --> F["srli / slli / or at run time"]
 ```
 
-`const` only *adds* an ability: `vm.rs:66` calls `Pte::new` at runtime, mid-walk,
+`const` only *adds* an ability: `vm.rs` calls `Pte::new` at runtime, mid-walk,
 on a page address that does not exist until `kalloc` returns it.
 
 ### Why a kernel needs this
 
 ```rust
-static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs
 ```
 
 Sixty-four process control blocks, each with a fourteen-field `Context`, a
@@ -310,9 +310,9 @@ library, or a saved image.
 
 ### `Context` and the assembly that indexes it
 
-`swtch.rs:5` declares a `#[repr(C)]` struct with fields `ra`, `sp`, `s0` … `s11`.
+`swtch.rs` declares a `#[repr(C)]` struct with fields `ra`, `sp`, `s0` … `s11`.
 Thirty lines later, in the same file, hand-written assembly reads it by numeric
-offset (`swtch.rs:51`, `:66`). The contract is that field *i* lives at offset
+offset (`swtch.rs`). The contract is that field *i* lives at offset
 8*i*:
 
 ```text
@@ -326,10 +326,10 @@ offset  +--------------------------+
         +--------------------------+       112 bytes = 14 x 8
 ```
 
-`Trapframe` (`usermode.rs:33`) is the same argument at larger scale: its 35
+`Trapframe` (`usermode.rs`) is the same argument at larger scale: its 35
 fields each carry their byte offset in a comment, because the trampoline assembly
-saves every user register by that offset — `sd sp, 48(a0)` (`usermode.rs:97`)
-matches `pub sp: u64, // 48` (`:41`).
+saves every user register by that offset — `sd sp, 48(a0)` in `uservec`
+matches `pub sp: u64, // 48` in `Trapframe` (`usermode.rs`).
 
 !!! warning "This failure is silent at compile time"
 
@@ -345,8 +345,8 @@ that it breaks — it is that nothing *promises* it will not.
 | Attribute | Guarantee | Used in rv6 for |
 |---|---|---|
 | `repr(Rust)` | None; optimize freely | Everything internal |
-| `#[repr(C)]` | Source order, C alignment | `Context`, `Trapframe`, `Run` (`kalloc.rs:6`) |
-| `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs:25`) |
+| `#[repr(C)]` | Source order, C alignment | `Context`, `Trapframe`, `Run` (`kalloc.rs`) |
+| `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs`) |
 | `#[repr(packed)]` | No padding at all | Nothing — refs to unaligned fields are UB |
 
 ---
@@ -357,7 +357,7 @@ A struct is "this *and* that". An enum is "this *or* that" — a **sum type**.
 
 ```rust
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ProcState { Unused, Runnable, Running, Sleeping, Zombie }   // proc.rs:19
+pub enum ProcState { Unused, Runnable, Running, Sleeping, Zombie }   // proc.rs
 ```
 
 Each name is a **variant**, and the type has five values in total — not five
@@ -369,8 +369,8 @@ xv6 writes the same idea as a C `enum`, which is an `int` wearing a costume:
 needs revisiting when a sixth state is added. Both have shipped as real kernel
 bugs; Rust closes the first with the type, the second with exhaustiveness. rv6
 uses enums wherever the possibilities are closed and known — `InodeKind`
-(`fs.rs:12`), `FileKind` (`file.rs:23`), `FsError` (`fs.rs:19`), `ExecError`
-(`exec.rs:603`).
+(`fs.rs`), `FileKind` (`file.rs`), `FsError` (`fs.rs`), `ExecError`
+(`lookup()` in `exec.rs`).
 
 ```mermaid
 stateDiagram-v2
@@ -389,7 +389,7 @@ arrow a move the kernel must refuse.
 
 ### Variants that carry data
 
-A variant may hold fields of its own (`usermode.rs:193`):
+A variant may hold fields of its own (`RunOutcome` in `usermode.rs`):
 
 ```rust
 pub enum RunOutcome {
@@ -419,8 +419,8 @@ mistake" in 2009: the problem is not that absence exists, but that in C and Java
 an absent value has the same type as a present one, so the compiler cannot say
 which dereferences need checking. `Option<File>` and `File` are different types,
 so it can. rv6 uses this wherever an answer might not exist: `getfile` returns
-`Option<File>` (`syscall.rs:312`), `pick_next` returns `Option<usize>`
-(`sched.rs:6`) where `None` means "nothing is runnable". Below the safe layer
+`Option<File>` (`syscall.rs`), `pick_next` returns `Option<usize>`
+(`sched.rs`) where `None` means "nothing is runnable". Below the safe layer
 `kalloc()` still hands back a raw `*mut u8` that may be null.
 
 ---
@@ -460,17 +460,17 @@ needing a decision, by file and line, before boot.
 
 `_` switches the check off forever: a catch-all covers variants that do not exist
 yet, so adding one produces no error and no warning. rv6 uses `_` twice, and both
-are right — `syscall.rs:44` (`_ => -1`, unknown syscall number) and `trap.rs:71`
+are right — `dispatch()` in `syscall.rs` (`_ => -1`, unknown syscall number) and `kerneltrap()` in `trap.rs`
 (`_ => {}`, unhandled interrupt cause). Both match a raw integer arriving from
 outside the kernel, chosen by a user program or by hardware, so the domain is
-genuinely open. Contrast `fs.rs:99`, which matches `InodeKind` with one arm per
+genuinely open. Contrast `FileSystem::read()` (`fs.rs`), which matches `InodeKind` with one arm per
 variant and no catch-all, including an empty `InodeKind::File => {}` arm whose
 only job is to say "handled, deliberately". The rule: `_` for open domains, never
 for closed ones you defined yourself.
 
 ### Guards
 
-An arm may carry an `if` condition, a **guard** (`syscall.rs:472`):
+An arm may carry an `if` condition, a **guard** (`sys_read()` in `syscall.rs`):
 
 ```rust
 let file = match getfile(p, fd) {
@@ -512,16 +512,16 @@ under `cargo test` — no QEMU, no kernel. Read the tests at the bottom of each
 | Concept | Definition | Example |
 |---|---|---|
 | Struct | Named product type bundling fields that travel as a unit | `struct MemRegion { start, end }` |
-| Method vs associated function | With a `self` receiver, called with `.`; without, with `::` | `ram.contains(addr)` vs `Context::zero()` (`swtch.rs:25`) |
-| Receiver | `&self` reads, `&mut self` mutates, `self` takes by value | `fn flags(self) -> usize` (`vm.rs:36`) |
+| Method vs associated function | With a `self` receiver, called with `.`; without, with `::` | `ram.contains(addr)` vs `Context::zero()` (`swtch.rs`) |
+| Receiver | `&self` reads, `&mut self` mutates, `self` takes by value | `fn flags(self) -> usize` (`vm.rs`) |
 | `Copy` | Assignment copies instead of moving | `#[derive(Clone, Copy)] pub struct Pte(pub usize)` |
-| Newtype | One-field tuple struct giving a representation a new type; `#[repr(transparent)]` fixes its layout | `pub struct Pte(pub usize)` (`vm.rs:25`) |
+| Newtype | One-field tuple struct giving a representation a new type; `#[repr(transparent)]` fixes its layout | `pub struct Pte(pub usize)` (`vm.rs`) |
 | `const fn` | Function the compiler may evaluate before run time | `const ROOT: Pte = Pte::new(0x8000_5000, PTE_V);` |
-| `#[repr(C)]` | Source order and C alignment; layout becomes a contract | `Context`, read by `sd sp, 8(a0)` (`swtch.rs:51`) |
-| Enum / variant | Sum type: exactly one of a fixed set of named cases | `ProcState::{Unused, Runnable, ...}` (`proc.rs:19`) |
+| `#[repr(C)]` | Source order and C alignment; layout becomes a contract | `Context`, read by `sd sp, 8(a0)` (`swtch.rs`) |
+| Enum / variant | Sum type: exactly one of a fixed set of named cases | `ProcState::{Unused, Runnable, ...}` (`proc.rs`) |
 | Exhaustiveness | Every value must be covered, or `E0004` | Adding a variant breaks each incomplete `match` |
-| `Option<T>` | `Some(T)` or `None`: absence with its own type | `fn pick_next(..) -> Option<usize>` (`sched.rs:6`) |
-| Match guard | `if` on an arm; failure falls through to the next arm | `Some(f) if f.readable => f` (`syscall.rs:472`) |
+| `Option<T>` | `Some(T)` or `None`: absence with its own type | `fn pick_next(..) -> Option<usize>` (`sched.rs`) |
+| Match guard | `if` on an arm; failure falls through to the next arm | `Some(f) if f.readable => f` (`syscall.rs`) |
 
 ---
 
@@ -552,8 +552,7 @@ entry pointing at the next level. Address: `0x2000_1400 >> 10 = 0x8_0005`,
 and nothing puts it back, so `0x234` is lost on the way in. Not a defect — those
 bits come from the virtual address at translation time.
 
-**4.** All of them; `new`, `pa`, and `flags` are `const fn` (`vm.rs:30`, `:33`,
-`:36`). But the arithmetic runs in the compiler only if the result is demanded in
+**4.** All of them; `new`, `pa`, and `flags` are `const fn` (`vm.rs`). But the arithmetic runs in the compiler only if the result is demanded in
 a const context. In an ordinary `let` the optimizer usually folds it anyway;
 `const` *guarantees* it and errors if it cannot.
 
@@ -569,7 +568,7 @@ field, leaving `swtch`'s assembly untouched:
 pub struct Context { pub epc: usize, pub ra: usize, pub sp: usize, /* s0..s11 */ }
 ```
 
-`init_context` (`swtch.rs:37`) still does `(*ctx).ra = entry; (*ctx).sp = stack_top;`
+`init_context` (`swtch.rs`) still does `(*ctx).ra = entry; (*ctx).sp = stack_top;`
 
 1. After `init_context`, which offsets hold `entry` and `stack_top`?
 2. What does `swtch` load into `ra` and `sp` when switching *to* this context?
@@ -598,7 +597,7 @@ reason to reorder them. That is the **worst** outcome — the code would depend 
 unspecified behavior that happens to hold, and would break silently on a
 compiler upgrade, or the day someone changes `ra` to a `u32`.
 
-**5.** `#[repr(transparent)]` (`vm.rs:25`) makes a `Pte` exactly its `usize` — no
+**5.** `#[repr(transparent)]` (`vm.rs`) makes a `Pte` exactly its `usize` — no
 tag, no padding — so 512 of them are 4096 bytes back to back, and a RISC-V page
 table is *defined* as one 4096-byte page of 512 eight-byte entries. Add a `bool`
 field and the struct pads to 16 bytes: the array becomes two pages and the MMU
@@ -643,7 +642,7 @@ not.
 
 **3.** `is_valid` calls `self.flags()`, which takes `self` by value and therefore
 moves it: **E0382, use of moved value**. Fixes: add `Copy` to the derive, as
-`vm.rs:26` does, so the call copies eight bytes; or make both receivers `&self`,
+`Pte` (`vm.rs`) does, so the call copies eight bytes; or make both receivers `&self`,
 since borrowing never moves — the answer for any type too large or too
 resource-owning to copy.
 
@@ -693,7 +692,7 @@ Adding `Stopped` then breaks the build and forces a decision.
 
 **4.** Exhaustiveness only protects the matches that let it: one arm per variant
 for closed domains you own, `_` only for open ones such as syscall numbers
-(`syscall.rs:44`). C adds a second lesson — `==` bypasses the check, so a chain
+(`dispatch()` in `syscall.rs`). C adds a second lesson — `==` bypasses the check, so a chain
 of `if`s over an enum buys back the C behavior in full.
 
 </details>

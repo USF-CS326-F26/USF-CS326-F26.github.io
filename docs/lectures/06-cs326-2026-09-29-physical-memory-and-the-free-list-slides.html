@@ -200,9 +200,9 @@ L11 · Module 2 · Exercise `32k_physical_memory`
 At `kmain`: one CPU, one UART, one flat array of bytes.
 
 ```rust
-pub const PGSIZE: usize = 4096;                          // memlayout.rs:7
-pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs:11
-pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs:13
+pub const PGSIZE: usize = 4096;                          // memlayout.rs
+pub const KERNBASE: usize = 0x8000_0000;                 // memlayout.rs
+pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024; // memlayout.rs
 ```
 
 134,217,728 bytes = **exactly 32,768 pages**. The allocator answers two questions:
@@ -225,8 +225,8 @@ Every subsystem depends on it. It depends on nothing.
 - **`kfree` must never be able to fail**
 
 ```rust
-kalloc::kfree((*p).trapframe as *mut u8);   // proc.rs:143
-kalloc::kfree((*p).kstack as *mut u8);      // proc.rs:147
+kalloc::kfree((*p).trapframe as *mut u8);   // proc.rs
+kalloc::kfree((*p).kstack as *mut u8);      // proc.rs
 ```
 
 <div class="highlight-box">
@@ -241,7 +241,7 @@ Sv39 translates at 4096-byte granularity. A PTE stores a page *number*:
 
 ```rust
 pub const fn new(pa: usize, flags: usize) -> Pte {
-    Pte(((pa >> 12) << 10) | flags)          // vm.rs:30
+    Pte(((pa >> 12) << 10) | flags)          // vm.rs
 }
 ```
 
@@ -287,12 +287,12 @@ External fragmentation makes requests <strong>fail</strong>. Internal fragmentat
 ## Internal Fragmentation: the Honest Extreme
 
 ```rust
-//! (a 16-byte `Arc` still costs 4096 bytes)     // kheap.rs:11
+//! (a 16-byte `Arc` still costs 4096 bytes)     // kheap.rs
 unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
     if layout.size() > PGSIZE || layout.align() > PGSIZE {
         return ptr::null_mut();
     }
-    kalloc::kalloc()                             // kheap.rs:29
+    kalloc::kalloc()                             // kheap.rs
 }
 ```
 
@@ -308,9 +308,9 @@ Low 12 bits zero. Two cheap facts, both used by rv6:
 
 ```rust
 fn pgroundup(addr: usize) -> usize {
-    (addr + PGSIZE - 1) & !(PGSIZE - 1)     // kalloc.rs:18
+    (addr + PGSIZE - 1) & !(PGSIZE - 1)     // kalloc.rs
 }
-fn pgrounddown(a: usize) -> usize { a & !(PGSIZE - 1) }   // vm.rs:49
+fn pgrounddown(a: usize) -> usize { a & !(PGSIZE - 1) }   // vm.rs
 ```
 
 - `& !(PGSIZE - 1)` clears the low bits — rounds **down**
@@ -332,10 +332,10 @@ Allocated from where?)
 ```rust
 #[repr(C)]
 struct Run {
-    next: *mut Run,                                  // kalloc.rs:8
+    next: *mut Run,                                  // kalloc.rs
 }
 
-static mut FREELIST: *mut Run = ptr::null_mut();     // kalloc.rs:11
+static mut FREELIST: *mut Run = ptr::null_mut();     // kalloc.rs
 ```
 
 `Run` is a lie the kernel tells itself. There is no `Run` in RAM — there is a page, and `pa as *mut Run` reads its first eight bytes as a pointer.
@@ -374,9 +374,9 @@ The free list's capacity is automatically equal to the resource it manages. You 
 
 ```rust
 pub unsafe fn kfree(pa: *mut u8) {
-    let r = pa as *mut Run;         // kalloc.rs:35
-    (*r).next = FREELIST;           // kalloc.rs:36
-    FREELIST = r;                   // kalloc.rs:37
+    let r = pa as *mut Run;         // kalloc.rs
+    (*r).next = FREELIST;           // kalloc.rs
+    FREELIST = r;                   // kalloc.rs
 }
 ```
 
@@ -409,15 +409,15 @@ after:   FREELIST ──▶ [ A ] ──▶ [ B ] ──▶ [ C ] ──▶ NULL
 
 ```rust
 pub unsafe fn kalloc() -> *mut u8 {
-    let r = FREELIST;               // kalloc.rs:41
+    let r = FREELIST;               // kalloc.rs
     if !r.is_null() {
-        FREELIST = (*r).next;       // kalloc.rs:43
+        FREELIST = (*r).next;       // kalloc.rs
     }
-    r as *mut u8                    // kalloc.rs:45
+    r as *mut u8                    // kalloc.rs
 }
 ```
 
-- Null head **is** the out-of-memory answer; callers check (`vm.rs:63`, `proc.rs:119`)
+- Null head **is** the out-of-memory answer; callers check (`walk()` (`vm.rs`), `allocproc()` (`proc.rs`))
 - The page comes off the list *before* the caller can touch it
 - It still holds a stale `next` — `kalloc` does not clean up after itself
 
@@ -440,15 +440,15 @@ The self-test checks exactly this: `kfree(b); kalloc() == b` — the signature o
 The linker marks the end of the kernel image; hardcoding it would break on every commit.
 
 ```text
-  PROVIDE(end = .);                     /* kernel.ld:43 */
+  PROVIDE(end = .);                     /* kernel.ld */
 ```
 
 ```rust
-extern "C" { static end: u8; }          // kalloc.rs:14
+extern "C" { static end: u8; }          // kalloc.rs
 
 pub unsafe fn init() {
-    let start = &end as *const u8 as usize;   // kalloc.rs:22
-    free_range(start, PHYSTOP);               // kalloc.rs:23
+    let start = &end as *const u8 as usize;   // kalloc.rs
+    free_range(start, PHYSTOP);               // kalloc.rs
 }
 ```
 
@@ -460,9 +460,9 @@ pub unsafe fn init() {
 
 ```rust
 unsafe fn free_range(start: usize, stop: usize) {
-    let mut p = pgroundup(start);       // kalloc.rs:27
-    while p + PGSIZE <= stop {          // kalloc.rs:28
-        kfree(p as *mut u8);            // kalloc.rs:29
+    let mut p = pgroundup(start);       // kalloc.rs
+    while p + PGSIZE <= stop {          // kalloc.rs
+        kfree(p as *mut u8);            // kalloc.rs
         p += PGSIZE;
     }
 }
@@ -482,7 +482,7 @@ unsafe fn free_range(start: usize, stop: usize) {
         |       32,719 free pages, all on the free list
         |
    0x8003_1000  first free page  = pgroundup(end)
-   0x8003_0748  end              <- PROVIDE(end = .), kernel.ld:43
+   0x8003_0748  end              <- PROVIDE(end = .), kernel.ld
         |       .bss   (includes STACK0, the 16 KiB boot stack)
         |       .data / .rodata / .text
    0x8000_0000  KERNBASE = _entry
@@ -496,16 +496,16 @@ Kernel = 49 pages. 32,768 − 49 = **32,719** free. Your `end` will differ — t
 
 <div class="mermaid">
 flowchart TD
-    A["_entry: set sp (entry.rs:18)"] --> B["start: M-mode setup, mret"]
-    B --> C["kmain → kinit (main.rs:87)"]
+    A["_entry: set sp (entry.rs)"] --> B["start: M-mode setup, mret"]
+    B --> C["kmain → kinit (main.rs)"]
     C --> D["uart::init"]
-    D --> E["kalloc::init (main.rs:89)"]
+    D --> E["kalloc::init (main.rs)"]
     E --> F["vm::kvmmake — needs a page for the root table"]
     F --> G["proc::init — trapframes, kernel stacks"]
     G --> H["everything else"]
 </div>
 
-The ordering is forced: `kvmmake` allocates on its first line (`vm.rs:126`).
+The ordering is forced: `kvmmake` allocates on its first line (`vm.rs`).
 
 ---
 
@@ -533,10 +533,10 @@ The list has no adjacency information; finding an adjacent pair means a search, 
 ```rust
 let page = kalloc::kalloc();
 if page.is_null() { return ptr::null_mut(); }
-ptr::write_bytes(page, 0, PGSIZE);            // vm.rs:66
+ptr::write_bytes(page, 0, PGSIZE);            // vm.rs
 ```
 
-Also `vm.rs:130`, `proc.rs:98`, `proc.rs:123`. An un-zeroed page handed to a user process leaks the previous owner's data.
+Also `kvmmake()` (`vm.rs`), `create_pagetable()` and `allocproc()` (`proc.rs`). An un-zeroed page handed to a user process leaks the previous owner's data.
 
 ---
 
@@ -549,7 +549,7 @@ Also `vm.rs:130`, `proc.rs:98`, `proc.rs:123`. An un-zeroed page handed to a use
 - Free outside RAM → a store into MMIO space
 - xv6 adds cheap checks and poisons freed pages; rv6 does not
 
-**No locking.** `FREELIST` is a `static mut` (`kalloc.rs:11`). One hart only — the spinlock arrives in exercise `37k`.
+**No locking.** `FREELIST` is a `static mut` (`kalloc.rs`). One hart only — the spinlock arrives in exercise `37k`.
 
 ---
 
@@ -641,11 +641,11 @@ Rule: **write the new node's link before you publish the node.** On multicore th
 
 | Caller | What it allocates | Cite |
 |---|---|---|
-| `vm::walk` | an interior page-table page | `vm.rs:62` |
-| `vm::kvmmake` | kernel root table, trampoline | `vm.rs:126`, `:158` |
-| `vm::load_segment` | one page per page of the image | `vm.rs:216` |
-| `proc::allocproc` | page table, trapframe, kstack | `proc.rs:96`, `:117`, `:118` |
-| `kheap` | one page per heap allocation | `kheap.rs:29` |
+| `vm::walk` | an interior page-table page | `vm.rs` |
+| `vm::kvmmake` | kernel root table, trampoline | `vm.rs` |
+| `vm::load_segment` | one page per page of the image | `vm.rs` |
+| `proc::allocproc` | page table, trapframe, kstack | `proc.rs` |
+| `kheap` | one page per heap allocation | `kheap.rs` |
 
 Two functions, forty-six lines, and the whole kernel rests on them.
 
@@ -653,7 +653,7 @@ Two functions, forty-six lines, and the whole kernel rests on them.
 
 ## Summary
 
-1. **First service, depends on nothing** — `kalloc::init()` runs at `main.rs:89`
+1. **First service, depends on nothing** — `kalloc::init()` runs at `main.rs`
 2. **Page-granular because the hardware is** — a PTE stores `pa >> 12`
 3. **Fixed size ⇒ O(1) and no external fragmentation**, paid for in internal waste
 4. **Links live inside the free pages** — eight bytes of out-of-line state, total

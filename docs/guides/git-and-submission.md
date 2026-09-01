@@ -27,9 +27,9 @@ flowchart LR
 once. Half of it is already true before it runs: you cloned your own repo, so
 `origin` is yours from the start. What it adds is `course` — it reads
 `[meta] course_url` out of `info.toml` and adds that as a second remote
-(`sync.rs:125`, `cmd_init_repo`), then sets `course`'s *push* URL to an
+(`sync.rs`, `cmd_init_repo`), then sets `course`'s *push* URL to an
 invalid `no-push://` sentinel so a stray `git push course` fails locally rather
-than publishing your work into the repo the whole class reads (`sync.rs:166`).
+than publishing your work into the repo the whole class reads (`sync.rs`).
 
 It refuses to run when `origin` and the course URL are the same repository:
 that means you cloned `oslings-course` instead of your own, and every `submit`
@@ -45,27 +45,27 @@ exists in no commit you can fetch, so there is nothing to read ahead to.
 ## What `oslings update` does
 
 `oslings update` is a fetch and a merge, with two safety checks in front of it
-(`sync.rs:194`, `cmd_update`). In order:
+(`sync.rs`, `cmd_update`). In order:
 
 1. **Dirty check.** Any uncommitted change — modified, staged, *or untracked* —
    under a course-owned path aborts the command before anything is fetched
-   (`sync.rs:213`, `git.rs:99`).
-2. **Fetch.** `git fetch course` (`sync.rs:227`). Nothing in your working tree
+   (`sync.rs`, `dirty_paths()` (`git.rs`)).
+2. **Fetch.** `git fetch course` (`sync.rs`). Nothing in your working tree
    changes yet. A failure here is reported with the course repo's URL and a
    pointer to its invitation page, because the usual cause is that the
    invitation was never accepted — GitHub reports "no access" and "no such
    repo" identically, so git's own wording ("could not read from remote
    repository") cannot tell you which.
 3. **Divergence check.** `git diff --name-only course/main...HEAD` filtered to
-   course-owned paths (`git.rs:88`). This catches edits you already *committed*
+   course-owned paths (`changed_paths()` in `git.rs`). This catches edits you already *committed*
    to course files — the only thing a merge can conflict on.
-4. **Merge.** `git merge --no-edit course/main` (`sync.rs:269`). Deliberately
+4. **Merge.** `git merge --no-edit course/main` (`cmd_update()` in `sync.rs`). Deliberately
    **not** `--ff-only`.
 5. **Report.** It diffs `info.toml` before and after and prints the exercise
-   names that are new (`sync.rs:15`). No new blocks means
+   names that are new (`new_exercise_names()` in `sync.rs`). No new blocks means
    `Already up to date — no new exercises.`
 6. **Self-update.** If the merge touched `oslings-cli/`, it re-runs
-   `cargo install --path oslings-cli --force` for you (`sync.rs:308`).
+   `cargo install --path oslings-cli --force` for you (`cmd_update()` in `sync.rs`).
 
 `oslings update --from <remote-or-path>` pulls from somewhere other than
 `course`, which you will only use if an instructor tells you to.
@@ -94,7 +94,7 @@ sides never write to the same files; see the ownership table below.
 ## What `oslings submit` commits
 
 `oslings submit` stages exactly these paths, skipping any that do not exist
-(`sync.rs:183`):
+(`cmd_init_repo()` in `sync.rs`):
 
 | Path | What it holds |
 |---|---|
@@ -106,7 +106,7 @@ sides never write to the same files; see the ownership table below.
 
 It then commits with the message `<exercise>: submit (passing)` or
 `<exercise>: submit (in progress)` depending on whether that exercise is in your
-completed list (`sync.rs:32`), and runs `git push origin HEAD`. If nothing is
+completed list (`added()` in `sync.rs`), and runs `git push origin HEAD`. If nothing is
 staged it prints `Nothing new to submit.` and stops — no empty commits.
 
 Two things worth knowing:
@@ -116,7 +116,7 @@ Two things worth knowing:
   where you resume next time.
 - **`commands/src/bin` and `asmlab/src` are not in that list.** Work there
   reaches your repo when OSlings archives it into `my-work/<exercise>/`, which
-  happens whenever you move off the exercise (`model.rs:711`). To push an
+  happens whenever you move off the exercise (`model.rs`). To push an
   in-progress command file *before* moving on, stage it yourself first:
   `git add commands/src/bin` and then `oslings submit` — submit commits whatever
   is already in the index.
@@ -139,8 +139,8 @@ The whole design rests on the two sides never touching the same files.
 | `setup.sh`, `SETUP.md`, `README.md` | `asmlab/src` |
 | | `my-work/`, `submissions/`, `.oslings/state.toml` |
 
-The guarded list is literally `COURSE_PATHS` in `git.rs:15`; the staging
-directories are in `model.rs:598`. Everything else — the crate manifests
+The guarded list is literally `COURSE_PATHS` in `git.rs`; the staging
+directories are in `model.rs`. Everything else — the crate manifests
 (`rv6/Cargo.toml`, `warmup/Cargo.toml`, `commands/Cargo.toml`, `ulib/`), the
 linker scripts (`rv6/kernel.ld`, `commands/user.ld`), `rust-toolchain.toml` — is
 course-maintained but **not** guarded. Editing those will not stop `update` from

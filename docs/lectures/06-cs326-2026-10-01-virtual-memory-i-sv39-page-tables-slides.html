@@ -223,17 +223,17 @@ If a physical page appears in no entry of A's page table, then <strong>no 64-bit
 
 ## Problems 2 and 3: Relocation and Protection
 
-**Relocation** — the linker must pick addresses at build time. With virtual memory it stops caring: `USER_CODE = 0x0` (`memlayout.rs:61`), so *every* rv6 program is linked at virtual 0 and ten of them can run at once, each with a page table sending virtual 0 somewhere different.
+**Relocation** — the linker must pick addresses at build time. With virtual memory it stops caring: `USER_CODE = 0x0` (`memlayout.rs`), so *every* rv6 program is linked at virtual 0 and ten of them can run at once, each with a page table sending virtual 0 somewhere different.
 
 **Protection** — RAM has no opinion about code vs. data; a page table does.
 
 ```rust
-// vm.rs:228  user code pages      // vm.rs:245  user stack page
+// vm.rs  user code pages      // vm.rs  user stack page
 PTE_R | PTE_X | PTE_U              PTE_R | PTE_W | PTE_U
 ```
 
 - Code is **not writable**, the stack is **not executable** — W^X, one line apart
-- `PTE_U` is a **wall**, not a permission: no `U` bit, no user access at all (`vm.rs:21-23`)
+- `PTE_U` is a **wall**, not a permission: no `U` bit, no user access at all (`vm.rs`)
 
 ---
 
@@ -264,7 +264,7 @@ Paging won because fixed-size pages make allocation trivial — which is exactly
          └────── page table lookup ─────────────┘
 ```
 
-- `PGSIZE = 4096 = 2^12` (`memlayout.rs:7`)
+- `PGSIZE = 4096 = 2^12` (`memlayout.rs`)
 - **The offset is never translated.** Translation only ever asks: *which physical page?*
 - So a PTE stores `pa >> 12` — the low 12 bits are always zero anyway
 
@@ -287,7 +287,7 @@ Paging won because fixed-size pages make allocation trivial — which is exactly
  └──────────┴────────────────────────────────────────┴────────────┘
 ```
 
-- Bits 63..39 **must** copy bit 38 or the access faults — the "canonical hole". rv6 dodges it entirely: `MAXVA = 1 << 38` (`memlayout.rs:49`)
+- Bits 63..39 **must** copy bit 38 or the access faults — the "canonical hole". rv6 dodges it entirely: `MAXVA = 1 << 38` (`memlayout.rs`)
 - **56** physical bits vs. **39** virtual — a machine may hold far more RAM than any one process can address
 
 ---
@@ -295,7 +295,7 @@ Paging won because fixed-size pages make allocation trivial — which is exactly
 ## Why Nine Bits, and Why a Tree
 
 ```rust
-// vm.rs:44-46
+// vm.rs
 const fn px(level: usize, va: usize) -> usize {
     (va >> (12 + level * 9)) & 0x1ff
 }
@@ -325,7 +325,7 @@ const fn px(level: usize, va: usize) -> usize {
 ```
 
 ```rust
-// vm.rs:17-23
+// vm.rs
 pub const PTE_V: usize = 1 << 0;
 pub const PTE_R: usize = 1 << 1;
 pub const PTE_W: usize = 1 << 2;
@@ -350,7 +350,7 @@ pub const PTE_U: usize = 1 << 4;
 | 9:8 | `RSW` | Reserved for **software** (Linux: swap markers) |
 | 53:10 | `PPN` | The 44-bit physical page number |
 
-`Pte::flags` masks `0x3ff` — the low **ten** bits (`vm.rs:36-38`).
+`Pte::flags` masks `0x3ff` — the low **ten** bits (`vm.rs`).
 
 ---
 
@@ -364,10 +364,10 @@ A valid PTE with <strong>any</strong> of them set is a <strong>leaf</strong>: it
 There is **no separate "is this a table" bit** — the permission bits carry that meaning.
 
 ```rust
-// vm.rs:67  — linking a new intermediate table: V and nothing else
+// vm.rs  — linking a new intermediate table: V and nothing else
 *pte = Pte::new(page as usize, PTE_V);
 
-// vm.rs:358 — the same rule, running backwards, in free_pt
+// vm.rs — the same rule, running backwards, in free_pt
 let is_leaf = (*pte).flags() & (PTE_R | PTE_W | PTE_X) != 0;
 ```
 
@@ -391,7 +391,7 @@ let is_leaf = (*pte).flags() & (PTE_R | PTE_W | PTE_X) != 0;
 ## Encoding: `Pte::new`
 
 ```rust
-// vm.rs:30-35
+// vm.rs
 pub const fn new(pa: usize, flags: usize) -> Pte {
     Pte(((pa >> 12) << 10) | flags)
 }
@@ -470,7 +470,7 @@ Three memory reads to resolve one address. That is why the TLB exists.
 ## `walk` in rv6
 
 ```rust
-// vm.rs:52-73
+// vm.rs
 pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
     let mut level = 2;
     while level > 0 {
@@ -495,9 +495,9 @@ pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
 
 ## Four Things About `walk`
 
-1. **The loop runs for levels 2 and 1 only.** Level 0 is the return at `vm.rs:72` — the loop's job is to find the level-0 *table*
+1. **The loop runs for levels 2 and 1 only.** Level 0 is the return at `vm.rs` — the loop's job is to find the level-0 *table*
 2. **It returns a pointer to a PTE**, not a physical address — so the caller can write it (`mappages`) or read it (`walkaddr`)
-3. **`alloc` is build-vs-inspect.** `true` creates missing tables (`vm.rs:86`); `false` returns null (`vm.rs:256`). New tables are **zeroed** first (`vm.rs:66`) — a fresh `kalloc` page still holds free-list pointers
+3. **`alloc` is build-vs-inspect.** `true` creates missing tables (`mappages()`); `false` returns null (`walkaddr()`). New tables are **zeroed** first, in `walk()` (`vm.rs`) — a fresh `kalloc` page still holds free-list pointers
 4. **It never checks permissions.** No `R`, `W`, `X`, `U`. The *hardware* enforces those
 
 ---
@@ -505,7 +505,7 @@ pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
 ## `mappages`
 
 ```rust
-// vm.rs:75-98
+// vm.rs
 let mut a = pgrounddown(va);
 let last = pgrounddown(va + size - 1);
 loop {
@@ -519,14 +519,14 @@ loop {
 ```
 
 - The `- 1` in `last` is what makes a `PGSIZE` request map **exactly one** page
-- `vm.rs:90` is the only place `PTE_V` is added to a leaf — callers pass permissions
+- `vm.rs` is the only place `PTE_V` is added to a leaf — callers pass permissions
 - Layering: `mappages` &rarr; `walk` &rarr; `px` &rarr; one shift and one mask
 
 ---
 
 ## Worked Translation 1: The UART Page
 
-Identity-mapped so printing survives the MMU (`vm.rs:132`). Translate `0x1000_0010`:
+Identity-mapped so printing survives the MMU (`kvmmake()` in `vm.rs`). Translate `0x1000_0010`:
 
 ```text
   offset = va & 0xFFF                   = 0x010
@@ -608,7 +608,7 @@ flowchart LR
 |---|---|---|
 | Who reads the PTEs | your `walk`, in Rust | the MMU, in hardware |
 | When | when you call it | every load, store, fetch |
-| Checks `V` | yes (`vm.rs:56`) | yes |
+| Checks `V` | yes (`vm.rs`) | yes |
 | Checks `R`/`W`/`X`/`U` | **no** | **yes**, faults if denied |
 | Leaf vs branch | **no** — follows any valid PTE | **yes** — stops at first `R`/`W`/`X` |
 | Cost of a mistake | a printed `[fail]` | a silent hang |
@@ -623,7 +623,7 @@ flowchart LR
 *pte = Pte::new(page as usize, PTE_V | PTE_R);   // <-- R on a BRANCH
 ```
 
-- **Exercise 33k passes.** `walk` descends on `is_valid()` alone (`vm.rs:56`) and never reads `R`/`W`/`X`. Every translation the harness checks is correct.
+- **Exercise 33k passes.** `walk` descends on `is_valid()` alone (`vm.rs`) and never reads `R`/`W`/`X`. Every translation the harness checks is correct.
 - **Exercise 39k hangs.** The MMU stops at the first `R` — treats a level-2 entry as a **1 GiB superpage leaf**, finds a PPN that is not 1 GiB-aligned, faults on the instruction right after `csrw satp`. No trap handler yet, so nothing prints.
 
 The mirror image: forget `R` on a **leaf** &rarr; hardware reads a fourth level of page table out of your data.
@@ -655,8 +655,8 @@ The MMU asks "is there an entry here, <em>does it stop the walk</em>, and <em>am
 
 - ~0.2% overhead — one 8-byte PTE per 4096-byte page is 1/512. `root[2]` is no accident: each level-2 entry covers 1 GiB and `KERNBASE` is exactly 2 GiB
 - One 1 GiB superpage would cover the same RAM with **zero** extra tables — why production kernels use them for the direct map
-- **xv6-riscv** is nearly line-for-line: `walk`, `mappages`, the `PTE_*` flags, `PX`, `kvmmake`. The differences are Rust's: `*mut Pte` for `pagetable_t`, `Result<(), ()>` (`vm.rs:81`) for a `0` return
-- **Linux on RISC-V** adds what we omit: demand paging (invalid leaf, `RSW` names a swap slot), copy-on-write (rv6's `uvmcopy`, `vm.rs:383-419`, copies eagerly), superpages, ASIDs, Sv48/Sv57
+- **xv6-riscv** is nearly line-for-line: `walk`, `mappages`, the `PTE_*` flags, `PX`, `kvmmake`. The differences are Rust's: `*mut Pte` for `pagetable_t`, `Result<(), ()>` (`vm.rs`) for a `0` return
+- **Linux on RISC-V** adds what we omit: demand paging (invalid leaf, `RSW` names a swap slot), copy-on-write (rv6's `uvmcopy`, `vm.rs`, copies eagerly), superpages, ASIDs, Sv48/Sv57
 
 ---
 

@@ -69,21 +69,21 @@ sequenceDiagram
     participant K as Kernel (usertrap)
     U->>T: ecall — a7 = number, a0..a2 = args
     T->>T: save 31 registers to TRAPFRAME, switch satp
-    T->>K: jump to usertrap (usermode.rs:385)
+    T->>K: jump to usertrap (usermode.rs)
     K->>K: epc += 4, then dispatch(a7, a0, a1, a2)
     K->>T: usertrapret — restore satp, restore registers
     T->>U: sret — resume after the ecall, a0 = return value
 ```
 
 Three facts from that path do all the work today. First, the trapframe
-(`usermode.rs:34`) is a *complete, writable description of where a process will
+(`Trapframe` in `usermode.rs`) is a *complete, writable description of where a process will
 resume*: change `epc` and it resumes elsewhere; change `sp` and it resumes on
 another stack; change `a0` and the syscall it is returning from appears to have
 returned something different. Second, the kernel reaches user memory only
-through `copyin`/`copyout` (`vm.rs:268`, `vm.rs:291`), which walk the *user's*
-page table and refuse any page without `PTE_U` (`vm.rs:257`). Third, a process
-that has never run can still be scheduled, because `ready` (`usermode.rs:245`)
-forges a context whose return address is `forkret` (`usermode.rs:356`), which
+through `copyin`/`copyout` (`vm.rs`), which walk the *user's*
+page table and refuse any page without `PTE_U` (`vm.rs`). Third, a process
+that has never run can still be scheduled, because `ready` (`usermode.rs`)
+forges a context whose return address is `forkret` (`usermode.rs`), which
 dives straight into `usertrapret` — a return from a trap that never happened.
 
 What is missing is *plurality*: one program, no arguments, no files, no second
@@ -127,14 +127,14 @@ Strip away the file formats and `exec` produces four things:
 
 | Product | What it means | In the reference kernel |
 |---|---|---|
-| A fresh address space | A new root page table with the trampoline and this process's trapframe mapped, and nothing else | `exec.rs:648`–`exec.rs:682` |
-| The loaded image | The program's bytes at `USER_CODE`, mapped `R+X+U`, however many pages that takes | `vm::load_segment` (`vm.rs:196`) |
-| A stack | One writable, user-accessible page at a known address | `vm::map_user_stack` (`vm.rs:239`) |
-| Entry register state | `epc`, `sp`, `a0`, `a1` written into the trapframe | `exec.rs:703`–`exec.rs:706` |
+| A fresh address space | A new root page table with the trampoline and this process's trapframe mapped, and nothing else | `exec.rs` |
+| The loaded image | The program's bytes at `USER_CODE`, mapped `R+X+U`, however many pages that takes | `vm::load_segment` (`vm.rs`) |
+| A stack | One writable, user-accessible page at a known address | `vm::map_user_stack` (`vm.rs`) |
+| Entry register state | `epc`, `sp`, `a0`, `a1` written into the trapframe | `fill_addrspace()` in `exec.rs` |
 
 Everything else — pid, kernel stack, parent, open files — is untouched. That
 last one is not an oversight: descriptors survive `exec` by *never being
-mentioned* during it. Look at `exec_into` (`exec.rs:753`–`exec.rs:763`) and
+mentioned* during it. Look at `exec_into` (`exec.rs`) and
 notice `ofile` appears nowhere. Real Unix offers an opt-out, the `FD_CLOEXEC`
 flag, precisely because the default is inherit.
 
@@ -154,15 +154,15 @@ flag, precisely because the default is inherit.
 ```
 
 Two choices there are worth naming. The stack sits at a *fixed* address,
-`USER_STACK = MAX_PROG_PAGES * PGSIZE` (`memlayout.rs:72`), above the largest
+`USER_STACK = MAX_PROG_PAGES * PGSIZE` (`memlayout.rs`), above the largest
 image the loader accepts, so everything between a small program and its stack
 stays unmapped and a runaway pointer faults instead of scribbling on the stack.
 And the trampoline and trapframe are mapped *without* `PTE_U`: the program cannot
 read the registers about to be loaded back into the CPU, which is what makes the
 user/kernel wall hold.
 
-`load_segment` (`vm.rs:196`) is a loop over pages: allocate, zero, copy the
-chunk, map `PTE_R | PTE_X | PTE_U`. The zeroing at `vm.rs:220` matters more than
+`load_segment` (`vm.rs`) is a loop over pages: allocate, zero, copy the
+chunk, map `PTE_R | PTE_X | PTE_U`. The zeroing at `vm.rs` matters more than
 it looks. In a real format the last page is partly file and partly nothing — ELF
 program headers carry both `p_filesz` and `p_memsz`, and the difference is
 `.bss`. A loader that copies `p_filesz` bytes and forgets to zero the rest ships
@@ -170,7 +170,7 @@ a program whose globals hold whatever the page's previous owner left behind. rv6
 has no `.bss` and zeroes anyway, which gives the same guarantee for the tail of a
 partial page.
 
-The `fence.i` at the end (`vm.rs:232`) is a hardware fact, not a formality: you
+The `fence.i` at the end (`load_segment()` in `vm.rs`) is a hardware fact, not a formality: you
 just wrote *instructions* through the data path, and RISC-V does not promise the
 instruction fetch stream sees your stores. x86 does, which is why the line has
 no x86 equivalent and why people who learned there forget it. Every RISC-V
@@ -186,7 +186,7 @@ live in memory the program can read; kernel addresses are unreachable from user
 mode. So `exec` writes the strings and the array into the new address space with
 `copyout` before the program ever runs.
 
-`push_argv` (`exec.rs:781`) builds it downward from `USER_STACK_TOP`. For
+`push_argv` (`exec.rs`) builds it downward from `USER_STACK_TOP`. For
 `run echo hello world` the result is:
 
 ```text
@@ -211,18 +211,18 @@ Five things in that picture are examinable:
 1. **Strings first, array second.** The array needs the strings' addresses, and
    those are known only once they are placed. Push order follows data dependency.
 2. **Every stored pointer is a user virtual address.** The kernel wrote them from
-   a kernel buffer through `copyout` (`exec.rs:812`, `exec.rs:830`), but the
+   a kernel buffer through `copyout` (`exec.rs`, `push_argv()` (`exec.rs`)), but the
    *values* are addresses in the program's own world.
-3. **`argv[argc]` is NULL** (`exec.rs:817`). C carries no array lengths, so the
+3. **`argv[argc]` is NULL** (`push_argv()` in `exec.rs`). C carries no array lengths, so the
    list ends with a sentinel — which is why `argv` can be walked by counting to
    `argc` *or* by scanning for NULL, and why both idioms appear in real code.
 4. **Alignment is required, not tidy.** Strings land on 8-byte boundaries
-   (`exec.rs:805`); the pointer array, and therefore the entry `sp`, on 16
-   (`exec.rs:822`), because the RISC-V ABI demands a 16-byte-aligned `sp` at
+   (`push_argv()` in `exec.rs`); the pointer array, and therefore the entry `sp`, on 16
+   (`push_argv()` in `exec.rs`), because the RISC-V ABI demands a 16-byte-aligned `sp` at
    every procedure entry. Break it and most code still works — until something
    spills a 16-byte-aligned value and faults far from the bug.
 5. **The gaps are real.** Rounding wastes 4, 2, 2, and 8 bytes here. The stack is
-   one page, `MAXARG`/`MAXARGLEN` (`exec.rs:612`) bound the total, and
+   one page, `MAXARG`/`MAXARGLEN` (`exec.rs`) bound the total, and
    `push_argv` checks against `USER_STACK` on every push rather than running off
    the page.
 
@@ -239,9 +239,9 @@ canaries (`AT_RANDOM`), and the vDSO — all read by the dynamic linker before
 
 ### Pointing the trapframe at a program that never called anything
 
-The last step is four assignments (`exec.rs:703`–`exec.rs:706`): `epc` to
+The last step is four assignments (`fill_addrspace()` in `exec.rs`): `epc` to
 `USER_CODE`, `sp` to what `push_argv` returned, `a0` to `argc`, `a1` to `argv`.
-Then `ready` (`usermode.rs:245`) makes the process schedulable, and the first
+Then `ready` (`usermode.rs`) makes the process schedulable, and the first
 `swtch` into it lands at `forkret`, which calls `usertrapret`, which loads all
 31 registers and `sret`s.
 
@@ -254,15 +254,15 @@ forged context in L14, one level up: the scheduler forges a kernel context so
 ### Failure atomicity: build first, destroy second
 
 `exec` has one ordering constraint, easy to state and easy to get wrong: a
-failed `exec` must leave the caller running. `exec_into` (`exec.rs:753`) builds
+failed `exec` must leave the caller running. `exec_into` (`exec.rs`) builds
 the entire new address space and only then swaps the pointer and frees the old
-one (`exec.rs:756`–`exec.rs:762`). If the build fails — no such program, out of
+one (`exec.rs`). If the build fails — no such program, out of
 memory, arguments too long — `?` bails out with the old address space untouched
 and the call returns `-1`.
 
 Two subtleties. Freeing the old address space from inside a system call is safe
 *because the kernel runs on the kernel page table* — you are not standing on the
-ground you are freeing (`exec.rs:744`). And in real Unix the constraint is harder
+ground you are freeing (`exec_into()` in `exec.rs`). And in real Unix the constraint is harder
 than it looks: past the "point of no return" the old program is gone, so a late
 failure cannot be reported to anybody. Linux marks that boundary explicitly
 (`flush_old_exec`) and kills the process for any error after it, which forces
@@ -284,14 +284,14 @@ so be precise about why it holds. The number is not an address, not an inode
 number, not anything the user can compute; it is an index into a table the kernel
 owns and the user cannot see, and every use is revalidated:
 
-- `getfile` (`syscall.rs:312`) rejects `fd >= NOFILE`, so a wild integer indexes
+- `getfile` (`syscall.rs`) rejects `fd >= NOFILE`, so a wild integer indexes
   nothing, and rejects a slot whose `kind` is `FileKind::None`, so an fd never
   opened (or already closed) is not a descriptor.
-- `sys_read` (`syscall.rs:472`) requires `f.readable` and `sys_write`
-  (`syscall.rs:521`) requires `f.writable`: access mode is rechecked on every
+- `sys_read` (`syscall.rs`) requires `f.readable` and `sys_write`
+  (`syscall.rs`) requires `f.writable`: access mode is rechecked on every
   call, not just at `open`.
 - The buffer pointer is validated separately by `walkaddr`'s `PTE_U` test
-  (`vm.rs:257`), so a valid fd cannot be used to write into the kernel.
+  (`vm.rs`), so a valid fd cannot be used to write into the kernel.
 
 A process that writes `7` into `a0` and calls `read` gets `-1` unless the kernel
 put something in slot 7. Authority is *granted* — by `open`, or by inheritance —
@@ -362,9 +362,9 @@ quietly, in ways that surface only under concurrency.
 
 ### What rv6 collapses, and what it costs
 
-rv6 has two levels, not three. `File` (`file.rs:40`) is a small `Copy` struct —
+rv6 has two levels, not three. `File` (`file.rs`) is a small `Copy` struct —
 `kind`, `inum`, `off`, `readable`, `writable` — stored **by value** in the
-per-process `ofile` array (`proc.rs:39`). There is no system-wide open-file table
+per-process `ofile` array (`proc.rs`). There is no system-wide open-file table
 at all; the middle level is folded into the first.
 
 That is a legitimate simplification, and it is worth naming exactly what it
@@ -372,12 +372,12 @@ costs:
 
 | | rv6 | xv6 / Linux |
 |---|---|---|
-| fd table entry | a `File` by value (`proc.rs:39`) | a pointer to a shared description |
-| Where `off` lives | per process (`file.rs:45`) | in the shared description |
-| `fork` | copies the `File`s (`syscall.rs:107`) — offsets diverge | copies pointers — offsets are shared |
+| fd table entry | a `File` by value (`proc.rs`) | a pointer to a shared description |
+| Where `off` lives | per process (`file.rs`) | in the shared description |
+| `fork` | copies the `File`s (`syscall.rs`) — offsets diverge | copies pointers — offsets are shared |
 | `dup` | not implemented | duplicates the pointer, shares the offset |
-| `close` | zeroes the slot (`syscall.rs:573`) | drops a reference; releases at zero |
-| Allocation | lowest free slot (`syscall.rs:295`) | lowest free slot (POSIX requires it) |
+| `close` | zeroes the slot (`syscall.rs`) | drops a reference; releases at zero |
+| Allocation | lowest free slot (`syscall.rs`) | lowest free slot (POSIX requires it) |
 
 The cost is real: with per-process offsets, a forked child writing to an
 inherited descriptor overwrites the parent's bytes instead of appending after
@@ -385,7 +385,7 @@ them. rv6 never notices, because nothing here forks and then writes to a shared
 file — but you should be able to state the bug, because it is the clearest
 demonstration of *why* the middle table exists.
 
-One property rv6 inherits for free: `fdalloc` (`syscall.rs:295`) scans from zero
+One property rv6 inherits for free: `fdalloc` (`syscall.rs`) scans from zero
 and returns the first free slot. "Lowest available descriptor" is not a
 performance choice but a guarantee POSIX mandates, because `close(1)` followed by
 `open("out", O_WRONLY)` is how redirection has been implemented since 1973 — the
@@ -407,15 +407,15 @@ with `f_count`. Two consequences are worth memorizing:
   nothing (`lsof +L1` finds them), and why the standard temp-file trick is
   create, open, unlink, and keep the descriptor.
 
-rv6's `sys_close` (`syscall.rs:567`) just writes `File::none()` into the slot and
-`freeproc` (`proc.rs:140`) clears the table wholesale. With no sharing there is
+rv6's `sys_close` (`syscall.rs`) just writes `File::none()` into the slot and
+`freeproc` (`proc.rs`) clears the table wholesale. With no sharing there is
 nothing to count — but add `dup`, or share descriptions across `fork`, and the
 counter has to arrive in the same commit.
 
 ### 0, 1, 2 — a convention, not a rule
 
 Every rv6 process starts with three descriptors open on the console
-(`proc.rs:128`–`proc.rs:130`): 0 for input, 1 for output, 2 for errors. Nothing
+(`allocproc()` in `proc.rs`): 0 for input, 1 for output, 2 for errors. Nothing
 in the kernel treats those numbers specially — there is no `if fd == 1` anywhere,
 and `sys_write` looks up slot 1 exactly as it looks up slot 7. They are the
 standard streams only because every program agrees they are.
@@ -428,11 +428,11 @@ precisely because it is only a convention.
 
 ### What "everything is a file" buys
 
-Look at `sys_read` (`syscall.rs:468`) and `sys_write` (`syscall.rs:517`). Both
+Look at `sys_read` (`syscall.rs`) and `sys_write` (`syscall.rs`). Both
 look up the `File`, then branch on `file.kind`: console bytes go to the UART,
-inode bytes through `read_at`/`write_at` (`fs.rs:231`, `fs.rs:249`) at the
+inode bytes through `read_at`/`write_at` (`fs.rs`) at the
 descriptor's offset. The branch lives in the kernel. **The caller never
-branches.** `cat` (`exec.rs:188`) reads an fd and writes fd 1 without knowing one
+branches.** `cat` (`exec.rs`) reads an fd and writes fd 1 without knowing one
 is a file and the other a UART, and the same binary would work over a pipe or a
 socket.
 
@@ -459,10 +459,10 @@ with `epoll` had better be a descriptor.
 `fork` creates a near-exact copy of the calling process, and both copies return
 from it. Mechanically it is nothing new: allocate a `Proc`, add the trampoline
 and trapframe mappings, copy the parent's user pages with `uvmcopy`
-(`vm.rs:383`), copy the trapframe, inherit the file table, record the parent, mark
-it runnable (`syscall.rs:92`–`syscall.rs:112`).
+(`vm.rs`), copy the trapframe, inherit the file table, record the parent, mark
+it runnable (`sys_fork()` in `syscall.rs`).
 
-The line that makes it work is `syscall.rs:105`:
+The line that makes it work, in `sys_fork` (`syscall.rs`), is:
 
 ```rust
 *(*child).trapframe = core::ptr::read((*parent).trapframe);
@@ -475,7 +475,7 @@ beginning of the program; it starts exactly where the parent is, mid-system-call
 and returns from it.
 
 A subtle ordering fact is buried there. `usertrap` advances `epc` past the
-`ecall` at `usermode.rs:401`, **before** calling `dispatch`, so the trapframe
+`ecall` at `usermode.rs`, **before** calling `dispatch`, so the trapframe
 `sys_fork` copies already points at the instruction *after* the `ecall`. Do the
 increment after dispatch instead and the child resumes *on* the `ecall` and forks
 again, and again — a fork bomb caused by four bytes of arithmetic in the wrong
@@ -497,11 +497,11 @@ interesting distinctions:
 
 | Aspect | rv6 | Unix |
 |---|---|---|
-| Address space contents | **copied** eagerly, page by page (`vm.rs:403`) | logically copied; physically copy-on-write |
-| File descriptor table | **copied** by value (`syscall.rs:107`) | table copied; the open file *descriptions* are **shared** |
+| Address space contents | **copied** eagerly, page by page (`vm.rs`) | logically copied; physically copy-on-write |
+| File descriptor table | **copied** by value (`syscall.rs`) | table copied; the open file *descriptions* are **shared** |
 | Working directory | none yet (all paths resolve in `ROOT`) | copied — the child gets its own pointer to the same directory |
-| Kernel stack, trapframe page | **new**, from `allocproc` (`proc.rs:117`) | new |
-| pid, parent | **new** (`proc.rs:111`, `syscall.rs:108`) | new |
+| Kernel stack, trapframe page | **new**, from `allocproc` (`proc.rs`) | new |
+| pid, parent | **new** (`proc.rs`, `syscall.rs`) | new |
 | Pending signals, timers, locks | n/a | not inherited |
 
 "Copied" versus "shared" is the axis that matters. Memory is copied, so a child
@@ -573,10 +573,10 @@ sequenceDiagram
     S->>S: loop
 ```
 
-rv6's user-mode shell (`exec.rs:354`) is exactly this loop in about a hundred
+rv6's user-mode shell (`exec.rs`) is exactly this loop in about a hundred
 instructions: prompt, read characters from fd 0 until newline, split the line
-into an `argv` array on its own stack, `fork` (`exec.rs:439`), then `exec` in the
-child (`exec.rs:444`) while the parent `wait`s (`exec.rs:454`). If `exec` returns
+into an `argv` array on its own stack, `fork` (`exec.rs`), then `exec` in the
+child (`exec.rs`) while the parent `wait`s (`exec.rs`). If `exec` returns
 at all the command did not exist, so the child prints `exec: not found` and
 exits — the failure case is the only one in which the instructions after that
 `ecall` are ever reached. That shell is unprivileged: user mode, its own page
@@ -597,18 +597,18 @@ expressible.
 
 | Concept | Definition | Example |
 |---|---|---|
-| `exec` | Replace the calling process's program, keeping its identity | `exec_into` swaps the page table, keeps pid and `ofile` (`exec.rs:753`) |
-| `argv` layout | Strings high, NULL-terminated pointer array below, `sp` at the array | `push_argv` (`exec.rs:781`); `a0 = argc`, `a1 = argv` |
-| Entry state | The four trapframe fields that define where a program starts | `epc`, `sp`, `a0`, `a1` (`exec.rs:703`–`exec.rs:706`) |
-| Failure atomicity | A failed `exec` must leave the caller running | Build new, then free old (`exec.rs:754`–`exec.rs:762`) |
-| File descriptor | A small integer indexing a per-process table of open things | fd 3 is `(*p).ofile[3]` (`proc.rs:39`) |
-| Capability | An unforgeable token that names a resource and grants use of it | `getfile` rejects out-of-range and closed slots (`syscall.rs:312`) |
-| Open file description | The shared object holding offset, mode, and refcount | Where `off` lives in Unix; folded into `File` in rv6 (`file.rs:45`) |
-| Offset | The cursor a descriptor remembers between reads | `(*p).ofile[fd].off += n` (`syscall.rs:505`) |
-| Reference count | How many descriptors name one description | xv6's `f->ref`; rv6 has none — `close` just zeroes the slot (`syscall.rs:573`) |
-| Standard streams | fds 0/1/2 open on the console by convention | `allocproc` (`proc.rs:128`–`proc.rs:130`) |
-| `fork` | Duplicate the caller; parent gets the child's pid, child gets 0 | Trapframe copy then `a0 = 0` (`syscall.rs:105`–`syscall.rs:106`) |
-| Copy-on-write | Share frames read-only; copy on the first write fault | Not in rv6 — `uvmcopy` copies eagerly (`vm.rs:403`) |
+| `exec` | Replace the calling process's program, keeping its identity | `exec_into` swaps the page table, keeps pid and `ofile` (`exec.rs`) |
+| `argv` layout | Strings high, NULL-terminated pointer array below, `sp` at the array | `push_argv` (`exec.rs`); `a0 = argc`, `a1 = argv` |
+| Entry state | The four trapframe fields that define where a program starts | `epc`, `sp`, `a0`, `a1` (`fill_addrspace()` in `exec.rs`) |
+| Failure atomicity | A failed `exec` must leave the caller running | Build new, then free old (`exec.rs`) |
+| File descriptor | A small integer indexing a per-process table of open things | fd 3 is `(*p).ofile[3]` (`proc.rs`) |
+| Capability | An unforgeable token that names a resource and grants use of it | `getfile` rejects out-of-range and closed slots (`syscall.rs`) |
+| Open file description | The shared object holding offset, mode, and refcount | Where `off` lives in Unix; folded into `File` in rv6 (`file.rs`) |
+| Offset | The cursor a descriptor remembers between reads | `(*p).ofile[fd].off += n` (`syscall.rs`) |
+| Reference count | How many descriptors name one description | xv6's `f->ref`; rv6 has none — `close` just zeroes the slot (`syscall.rs`) |
+| Standard streams | fds 0/1/2 open on the console by convention | `allocproc` (`proc.rs`) |
+| `fork` | Duplicate the caller; parent gets the child's pid, child gets 0 | Trapframe copy then `a0 = 0` (`sys_fork()` in `syscall.rs`) |
+| Copy-on-write | Share frames read-only; copy on the first write fault | Not in rv6 — `uvmcopy` copies eagerly (`vm.rs`) |
 
 ---
 
@@ -627,7 +627,7 @@ wasted to alignment.
 <summary>Click to reveal solution</summary>
 
 (a) `argc = 2`. `argv[0]` is the program name `cat`, added by `exec` itself
-(`exec.rs:786`), plus the one argument `notes.txt`.
+(`exec_into()` in `exec.rs`), plus the one argument `notes.txt`.
 
 (b) `"cat\0"` is 4 bytes: `0x11000 - 4 = 0x10FFC`, rounded down to 8 gives
 **`0x10FF8`**. `"notes.txt\0"` is 10 bytes: `0x10FF8 - 10 = 0x10FEE`, rounded
@@ -659,10 +659,10 @@ offset does the parent's last read start at? (c) Which answer does
 <details>
 <summary>Click to reveal solution</summary>
 
-(a) **100.** rv6 stores the `File` by value in `ofile` (`proc.rs:39`) and
-`sys_fork` copies the whole array (`syscall.rs:107`), so the child got its own
+(a) **100.** rv6 stores the `File` by value in `ofile` (`proc.rs`) and
+`sys_fork` copies the whole array (`syscall.rs`), so the child got its own
 `off = 100` and advanced only its copy to 150. The child's `close` writes
-`File::none()` into the child's slot 3 (`syscall.rs:573`) and nothing else — no
+`File::none()` into the child's slot 3 (`sys_close()` in `syscall.rs`) and nothing else — no
 reference count exists, and the parent's slot is untouched.
 
 (b) **150.** The fd tables are separate but both point at one open file
@@ -681,8 +681,8 @@ both would start at 0 and the second would overwrite the first.
 
 A program calls `open("out", 0x601)`.
 
-(a) Which flags is `0x601`, from `file.rs:81`–`file.rs:89`? (b) What `readable`
-and `writable` does `sys_open` compute (`syscall.rs:390`–`syscall.rs:391`)? (c) A
+(a) Which flags is `0x601`, from `file.rs`? (b) What `readable`
+and `writable` does `sys_open` compute (`syscall.rs`)? (c) A
 classmate's `sys_read` copies the right bytes out to the user but never executes
 `(*p).ofile[fd].off += n`. Describe exactly what `run cat notes.txt` does, and
 why the exercise harness reports a timeout rather than wrong output.
@@ -695,12 +695,12 @@ if missing, empty it if it exists, open it for writing.
 
 (b) `writable = true` (the `O_WRONLY` bit is set). `readable = false`, because
 the test is `flags & O_WRONLY == 0`. A later `read` on this fd is rejected by
-`sys_read`'s `Some(f) if f.readable` guard (`syscall.rs:472`) and returns `-1`.
+`sys_read`'s `Some(f) if f.readable` guard (`syscall.rs`) and returns `-1`.
 
 (c) The cursor never moves, so every `read_at` starts at offset 0 and returns the
-same 64 bytes. `cat`'s loop (`exec.rs:201`) ends on `read <= 0`, which now never
+same 64 bytes. `cat`'s loop (`exec.rs`) ends on `read <= 0`, which now never
 happens, so it writes the first chunk forever. The harness sees a program that
-neither exits nor faults and its watchdog (`usermode.rs:221`) fires. Wrong output
+neither exits nor faults and its watchdog (`SCHED_TIMEOUT_TICKS` in `usermode.rs`) fires. Wrong output
 would mean the program finished; a hang means it never will.
 
 </details>
@@ -728,7 +728,7 @@ become possible, and what does that say about the C library?
 
 (a) **`ACBD`**. `A` prints once, before the fork. The parent returns from `fork`
 first — it is the running process, the child is merely Runnable — prints `C`,
-calls `wait`, finds no zombie, and yields (`usermode.rs:363`). The scheduler picks
+calls `wait`, finds no zombie, and yields (`proc_yield()` in `usermode.rs`). The scheduler picks
 the child, which prints `B` and exits; the parent resumes, reaps, prints `D`.
 
 (b) Once each. `A` runs before the fork; only the child reaches `B`; only the
@@ -766,8 +766,8 @@ that the process is in the middle of executing?
 <summary>Click to reveal solution</summary>
 
 (a) 3, 4, 7, 2 — the stack must be mapped before step 2 can `copyout` into it —
-then 6, 5, 1. That is `build_addrspace` (`exec.rs:648`) followed by `exec_into`
-(`exec.rs:754`–`exec.rs:762`).
+then 6, 5, 1. That is `build_addrspace` (`exec.rs`) followed by `exec_into`
+(`exec.rs`).
 
 (b) Moving **1 before 6** (or before 3) is the fatal one: free the old address
 space and *then* fail while building the new one, and the process has no memory
@@ -778,8 +778,8 @@ unmapped stack, so exec fails cleanly.
 
 (c) Because a system call runs on the *kernel* page table. The instructions
 executing, and the stack they run on, live in kernel memory step 1 does not
-touch; `free_user_pagetable` (`vm.rs:350`) frees only `PTE_U` leaves and the
-page-table pages (`exec.rs:744`). Running on the user's page table, this step
+touch; `free_user_pagetable` (`vm.rs`) frees only `PTE_U` leaves and the
+page-table pages (`exec_into()` in `exec.rs`). Running on the user's page table, this step
 would pull the ground out from under itself — the same argument that gives the
 scheduler its own stack in L14.
 
@@ -801,21 +801,21 @@ the line.
 <details>
 <summary>Click to reveal solution</summary>
 
-**`read(9, ...)`** — stopped by `getfile` (`syscall.rs:312`). `9 < NOFILE`, so
+**`read(9, ...)`** — stopped by `getfile` (`syscall.rs`). `9 < NOFILE`, so
 the range check passes, but slot 9 has `kind == FileKind::None`, so `getfile`
-returns `None` and `sys_read` returns `-1` (`syscall.rs:472`). The integer 9 is
+returns `None` and `sys_read` returns `-1` (`syscall.rs`). The integer 9 is
 not a capability; the table is what makes some integers mean something.
 
 **`read(1, ...)`** — **succeeds**, and correctly so. `allocproc` opened fd 1 on
-the console (`proc.rs:129`) with `readable: true` (`file.rs:65`), so this is
+the console (`proc.rs`) with `readable: true` (`file.rs`), so this is
 authority the kernel granted; it blocks until a key is pressed. Expecting it to
 fail confuses the convention (fd 1 is for output) with the mechanism (fd 1 is a
 read-write console descriptor).
 
 **`read(0, 0x3FFFFFE000, 64)`** — the fd is valid, so the check that stops it is
-on the *pointer*. `copyout` (`vm.rs:268`) calls `walkaddr`, which requires a valid
-PTE **with** `PTE_U` (`vm.rs:257`); the trapframe is mapped `PTE_R | PTE_W`
-without it (`exec.rs:682`), so `walkaddr` returns 0 and the call returns `-1`.
+on the *pointer*. `copyout` (`vm.rs`) calls `walkaddr`, which requires a valid
+PTE **with** `PTE_U` (`vm.rs`); the trapframe is mapped `PTE_R | PTE_W`
+without it (`exec.rs`), so `walkaddr` returns 0 and the call returns `-1`.
 Two independent checks, because descriptor and address grant two independent
 kinds of authority.
 
@@ -863,39 +863,39 @@ kinds of authority.
 
 2. **`exec` produces four things.** A fresh page table with the trampoline and
    trapframe, the image loaded page by page, a stack, and four trapframe fields —
-   `epc`, `sp`, `a0`, `a1` (`exec.rs:703`–`exec.rs:706`). Everything else about
+   `epc`, `sp`, `a0`, `a1` (`fill_addrspace()` in `exec.rs`). Everything else about
    the process is deliberately untouched.
 
 3. **`argv` is a layout, not a data structure.** Strings at the top of the new
    stack, a NULL-terminated array of user virtual addresses below them, `sp` and
-   `a1` both pointing at that array, 16-byte aligned (`exec.rs:781`). Kernel and
+   `a1` both pointing at that array, 16-byte aligned (`exec_into()` in `exec.rs`). Kernel and
    C convention must agree because no hardware enforces it.
 
 4. **A failed `exec` must leave the caller running.** Build the new address space
-   first, swap the pointer, then free the old (`exec.rs:754`–`exec.rs:762`) — and
+   first, swap the pointer, then free the old (`exec_into()` in `exec.rs`) — and
    freeing user memory mid-syscall is safe only because the kernel runs on its
    own page table.
 
 5. **A file descriptor is an unforgeable capability.** A small integer meaning
    nothing outside the process holding it, revalidated on every use — range,
-   open, access mode (`syscall.rs:312`, `syscall.rs:472`) — with the buffer
-   pointer checked separately by `PTE_U` (`vm.rs:257`). Authority is granted or
+   open, access mode (`getfile()` and `sys_read()` (`syscall.rs`)) — with the buffer
+   pointer checked separately by `PTE_U` (`vm.rs`). Authority is granted or
    inherited, never manufactured.
 
 6. **The offset lives in the shared open-file description, not the fd table.**
    That placement is what makes `dup` share a cursor and inherited descriptors
-   append instead of overwrite. rv6 folds the two tables into one (`file.rs:45`,
-   `proc.rs:39`) and gives up exactly that behavior — and with no sharing there
+   append instead of overwrite. rv6 folds the two tables into one (`File` (`file.rs`),
+   `Proc` (`proc.rs`)) and gives up exactly that behavior — and with no sharing there
    is nothing to reference count, which is why its `close` is one assignment
-   (`syscall.rs:573`).
+   (`sys_close()` in `syscall.rs`).
 
 7. **fds 0, 1, 2 are a convention the kernel does not enforce.** `allocproc`
-   opens them on the console (`proc.rs:128`); nothing else treats them specially.
+   opens them on the console (`proc.rs`); nothing else treats them specially.
    Redirection is just arranging the table before the program starts, and it
    works because "lowest free descriptor" is a guarantee.
 
 8. **`fork` returns twice, and the difference is the entire API.** Copying the
    trapframe copies the resumption point; the child's `a0 = 0`
-   (`syscall.rs:106`) is the one distinguishing fact two otherwise identical
+   (`sys_fork()` in `syscall.rs`) is the one distinguishing fact two otherwise identical
    processes have. Memory copied, descriptions shared, pid and parent new — and
    rv6 copies eagerly where real kernels use copy-on-write.

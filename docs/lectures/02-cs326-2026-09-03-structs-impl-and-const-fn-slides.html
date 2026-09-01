@@ -187,7 +187,7 @@ Structs, `impl`, `const fn`, and Enums &middot; L04
 
 ## A Kernel Written in Integers
 
-From the rv6 reference kernel, `vm.rs:73`:
+From the rv6 reference kernel, `walk()` (`vm.rs`):
 
 ```rust
 pub unsafe fn mappages(table: *mut Pte, va: usize, size: usize,
@@ -242,7 +242,7 @@ let ram = MemRegion { start: 0x8000_0000, end: 0x8800_0000 };
 
 ## The Process Control Block
 
-`Proc` (`proc.rs:27`) — everything the kernel knows about one process
+`Proc` (`proc.rs`) — everything the kernel knows about one process
 
 | Field | Type | What it is |
 |---|---|---|
@@ -294,10 +294,10 @@ While a <code>&amp;mut self</code> method runs, the borrow checker guarantees
 ## Why `flags(self)` Needs `Copy`
 
 ```rust
-#[derive(Clone, Copy)]                       // vm.rs:26
+#[derive(Clone, Copy)]                       // vm.rs
 pub struct Pte(pub usize);
 
-pub const fn flags(self) -> usize { self.0 & 0x3ff }     // vm.rs:36
+pub const fn flags(self) -> usize { self.0 & 0x3ff }     // vm.rs
 pub const fn is_valid(self) -> bool { self.flags() & PTE_V != 0 }
 ```
 
@@ -314,7 +314,7 @@ Derive it on `Pte`, `File`, `Context`, `ProcState`. Never on anything owning a r
 ```rust
 #[repr(transparent)]
 #[derive(Clone, Copy)]
-pub struct Pte(pub usize);          // vm.rs:25
+pub struct Pte(pub usize);          // vm.rs
 ```
 
 - A one-field tuple struct; reach the value by position, `self.0`
@@ -327,7 +327,7 @@ The cost: `pte + 1` is a type error until you write a method. That is the point.
 
 ## What the Newtype Catches
 
-The Sv39 walk, `vm.rs:52`:
+The Sv39 walk, `vm.rs`:
 
 ```rust
 if (*pte).is_valid() {
@@ -357,7 +357,7 @@ if (*pte).is_valid() {
 
 The PPN is the address with its low 12 bits removed — a page is 2^12 bytes, so a
 page's base address always ends in twelve zero bits. Building an entry is
-`Pte(((pa >> 12) << 10) | flags)` (`vm.rs:31`): for `0x8000_0000` with `V|R|W`,
+`Pte(((pa >> 12) << 10) | flags)` (`Pte::new()` in `vm.rs`): for `0x8000_0000` with `V|R|W`,
 `>> 12` gives `0x8_0000`, `<< 10` gives `0x2000_0000`, `| 0b111` gives
 **`0x2000_0007`**. Reading back is the same shifts reversed; flags are `word & 0x3ff`.
 
@@ -387,7 +387,7 @@ const ROOT: Pte = Pte::new(0x8000_5000, PTE_V);
 
 - The compiler runs `Pte::new` itself: `>> 12` &rarr; `0x8_0005`, `<< 10` &rarr; `0x2000_1400`, `| 1`
 - The literal `0x2000_1401` is baked into the image; no shift instruction exists
-- `const` only **adds** an ability — `vm.rs:66` calls the same function at run time
+- `const` only **adds** an ability — `walk()` (`vm.rs`) calls the same function at run time
 
 ---
 
@@ -407,7 +407,7 @@ flowchart LR
 ## Why a Kernel Needs It
 
 ```rust
-static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs
 ```
 
 - 64 PCBs, each with a 14-field `Context` and a 16-entry file table — fully initialized
@@ -464,7 +464,7 @@ offset  +--------------------------+
         +--------------------------+       112 bytes = 14 x 8
 ```
 
-`swtch.rs:5` declares it; `swtch.rs:51` reads it. The contract is field *i* at offset 8*i*.
+`Context` (`swtch.rs`) declares it; the `swtch` assembly in the same file reads it. The contract is field *i* at offset 8*i*.
 
 ---
 
@@ -480,7 +480,7 @@ now sits at offset 0.
 - Worse: all 14 fields are `usize`, so today's compiler probably keeps the order
 - The bug is not that it breaks — it is that nothing **promises** it will not
 
-Same argument for `Trapframe` (`usermode.rs:33`): `sd sp, 48(a0)` matches `pub sp: u64, // 48`.
+Same argument for `Trapframe` (`usermode.rs`): `sd sp, 48(a0)` matches `pub sp: u64, // 48`.
 
 ---
 
@@ -490,7 +490,7 @@ Same argument for `Trapframe` (`usermode.rs:33`): `sd sp, 48(a0)` matches `pub s
 |---|---|---|
 | `repr(Rust)` | None; optimize freely | Everything internal |
 | `#[repr(C)]` | Source order, C alignment | `Context`, `Trapframe`, `Run` |
-| `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs:25`) |
+| `#[repr(transparent)]` | Identical to the single field | `Pte` (`vm.rs`) |
 | `#[repr(packed)]` | No padding at all | Nothing — refs to unaligned fields are UB |
 | `#[repr(u8)]` | Fixed discriminant width | Enums crossing an ABI boundary |
 
@@ -500,7 +500,7 @@ Same argument for `Trapframe` (`usermode.rs:33`): `sd sp, 48(a0)` matches `pub s
 
 ```rust
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ProcState { Unused, Runnable, Running, Sleeping, Zombie }   // proc.rs:19
+pub enum ProcState { Unused, Runnable, Running, Sleeping, Zombie }   // proc.rs
 ```
 
 - A **sum type**: five values in total, not five valid values out of four billion
@@ -533,7 +533,7 @@ Every arrow a legal transition; every missing arrow a move the kernel must refus
 ## Variants That Carry Data
 
 ```rust
-pub enum RunOutcome {          // usermode.rs:193
+pub enum RunOutcome {          // usermode.rs
     Exited(isize),             // the root process finished, with this status
     Faulted(usize),            // something illegal happened; scause says what
     TimedOut,                  // a watchdog gave up
@@ -557,8 +557,8 @@ enum Option<T> { Some(T), None }        // just a library enum
 - The problem is not absence — it is that an absent value has the **same type** as a present one
 - `Option<File>` and `File` are different types, so the compiler can insist
 
-`getfile -> Option<File>` (`syscall.rs:312`); `pick_next -> Option<usize>`
-(`sched.rs:6`), where `None` means "nothing is runnable". Below the safe layer,
+`getfile -> Option<File>` (`syscall.rs`); `pick_next -> Option<usize>`
+(`sched.rs`), where `None` means "nothing is runnable". Below the safe layer,
 `kalloc()` still hands back a raw pointer that may be null.
 
 ---
@@ -590,8 +590,8 @@ line, before the kernel boots.
 - rv6 uses it twice, and both are right:
 
 ```rust
-match num { SYS_FORK => sys_fork(), /* ... */ _ => -1 }   // syscall.rs:44
-match scause & 0xff { 1 => tick(), 9 => intr(), _ => {} } // trap.rs:71
+match num { SYS_FORK => sys_fork(), /* ... */ _ => -1 }   // syscall.rs
+match scause & 0xff { 1 => tick(), 9 => intr(), _ => {} } // trap.rs
 ```
 
 Both match a raw integer from **outside** the kernel — a user program's syscall
@@ -606,7 +606,7 @@ The rule: <code>_</code> for open domains, never for closed ones you defined you
 ## Match Guards
 
 ```rust
-let file = match getfile(p, fd) {          // syscall.rs:472
+let file = match getfile(p, fd) {          // syscall.rs
     Some(f) if f.readable => f,
     _ => return -1,
 };

@@ -63,7 +63,7 @@ QEMU calls `riscv_virt_board.mrom`.
 **We are in machine mode.** Of RISC-V's three privilege modes — machine (M),
 supervisor (S), user (U) — M is the most privileged and the only one that exists
 at reset. rv6 stays there until exercise 43k, when `start.rs` uses `mret` to drop
-into S-mode so the MMU can take effect (`start.rs:54`).
+into S-mode so the MMU can take effect (`start.rs`).
 
 **Paging is off.** `satp = 0` selects Bare mode: every address reaches the bus
 untranslated. Virtual addresses do not exist until exercise 33k.
@@ -153,11 +153,11 @@ or store in a device's range is not a memory access — it operates the device.
 ```text
  0x0000_1000  +------------------------------------------+
               |  boot ROM (mrom) — 6 instructions          |  reset vector
- 0x0010_0000  |  SiFive test finisher                      |  testdev.rs:11
+ 0x0010_0000  |  SiFive test finisher                      |  testdev.rs
  0x0200_0000  |  CLINT: software interrupts                |
- 0x0200_4000  |  CLINT: mtime @ +0xBFF8, mtimecmp @ +0x4000|  start.rs:17-18
- 0x0c00_0000  |  PLIC — device interrupt router, 6 MiB     |  memlayout.rs:26
- 0x1000_0000  |  NS16550A UART, 8 bytes                    |  memlayout.rs:17
+ 0x0200_4000  |  CLINT: mtime @ +0xBFF8, mtimecmp @ +0x4000|  start.rs
+ 0x0c00_0000  |  PLIC — device interrupt router, 6 MiB     |  memlayout.rs
+ 0x1000_0000  |  NS16550A UART, 8 bytes                    |  memlayout.rs
  0x1000_1000  |  virtio-mmio, pflash, PCIe ECAM  (unused)  |
               |                                            |
  0x8000_0000  +===========================================+  KERNBASE
@@ -174,7 +174,7 @@ command that produced this. Five regions matter to rv6:
 | Region | Base | What it is | rv6 |
 |---|---|---|---|
 | Test finisher | `0x0010_0000` | write a magic word, QEMU exits | ex 01, `testdev.rs` |
-| CLINT | `0x0200_0000` | core-local interruptor: `mtime`, `mtimecmp` | ex 14, `start.rs:17` |
+| CLINT | `0x0200_0000` | core-local interruptor: `mtime`, `mtimecmp` | ex 14, `start.rs` |
 | PLIC | `0x0c00_0000` | routes device IRQs to a hart | ex 15, `plic.rs` |
 | UART0 | `0x1000_0000` | NS16550A serial port, 8 registers | ex 01, `uart.rs` |
 | RAM | `0x8000_0000` | 128 MiB, `KERNBASE`..`PHYSTOP` | everywhere |
@@ -182,13 +182,13 @@ command that produced this. Five regions matter to rv6:
 CLINT versus PLIC confuses people every year. The **CLINT is inside the CPU's
 world**: it drives the timer that interrupts *this* hart and speaks only machine
 mode. The **PLIC is outside**: it collects peripheral interrupt lines — the UART
-is source 10 (`plic.rs:14`) — and delivers them to a hart's privilege context.
+is source 10 (`UART0_IRQ` in `plic.rs`) — and delivers them to a hart's privilege context.
 Timer ticks come from the CLINT; "a key was pressed" comes through the PLIC.
 
 Which answers the question: **why is the kernel at `0x8000_0000`?** Everything
 below it is device space or ROM; RAM begins there and nowhere else, so that is
 the ROM's jump target, so that is where the kernel's first instruction must be.
-`memlayout.rs:11` names it `KERNBASE`; `kernel.ld:16` obeys it.
+`memlayout.rs` names it `KERNBASE`; `kernel.ld` obeys it.
 
 ---
 
@@ -201,37 +201,37 @@ justify every one.
 
 ```text
 OUTPUT_ARCH( "riscv" )
-ENTRY( _entry )              /* kernel.ld:12 */
+ENTRY( _entry )              /* kernel.ld */
 
 SECTIONS
 {
-  . = 0x80000000;            /* kernel.ld:16 */
+  . = 0x80000000;            /* kernel.ld */
 
   .text : {
-    *(.entry)                /* kernel.ld:19  <- the trick */
+    *(.entry)                /* kernel.ld  <- the trick */
     *(.text .text.*)
     . = ALIGN(0x1000);
-    PROVIDE(etext = .);      /* kernel.ld:22 */
+    PROVIDE(etext = .);      /* kernel.ld */
   }
   .rodata : { . = ALIGN(16); *(.srodata .srodata.*) *(.rodata .rodata.*) }
   .data   : { . = ALIGN(16); *(.sdata   .sdata.*)   *(.data   .data.*)   }
   .bss    : { . = ALIGN(16); *(.sbss    .sbss.*)    *(.bss    .bss.*)    }
 
-  PROVIDE(end = .);          /* kernel.ld:43 */
+  PROVIDE(end = .);          /* kernel.ld */
 }
 ```
 
 **`ENTRY(_entry)`** writes `_entry`'s address into the ELF header's entry-point
 field. Be precise about what that does *not* do: QEMU's boot ROM never reads
 that field — it jumps to `0x8000_0000` unconditionally. The two agree only
-because of `kernel.ld:19`.
+because `kernel.ld` puts `*(.entry)` first.
 
 **`. = 0x80000000`** sets the *location counter*, the linker's placement cursor.
 Change this line and your kernel is unbootable, because the ROM's jump target
 does not change with it.
 
 **`*(.entry)` first inside `.text`** is what makes the whole scheme work.
-`.entry` is a section name nothing in Rust's output claims; `entry.rs:11` puts
+`.entry` is a section name nothing in Rust's output claims; `entry.rs` puts
 exactly one function into it. Because the script lists `*(.entry)` before
 `*(.text .text.*)`, `_entry` lands at offset 0 of `.text` — `0x8000_0000`.
 Delete that line and the linker orders functions as it pleases: `0x8000_0000`
@@ -251,12 +251,12 @@ allocator reads it:
 
 ```rust
 extern "C" {
-    static end: u8;                          // kalloc.rs:14
+    static end: u8;                          // kalloc.rs
 }
 
 pub unsafe fn init() {
-    let start = &end as *const u8 as usize;  // kalloc.rs:22
-    free_range(start, PHYSTOP);              // kalloc.rs:23
+    let start = &end as *const u8 as usize;  // kalloc.rs
+    free_range(start, PHYSTOP);              // kalloc.rs
 }
 ```
 
@@ -276,7 +276,7 @@ Section     Address       Size      Note
                                     -> end = 0x8000_5290
 ```
 
-`.text` is exactly `0x1000` bytes because of the `ALIGN` on `kernel.ld:21`. More
+`.text` is exactly `0x1000` bytes because of the `ALIGN` in `kernel.ld`. More
 instructive: **`.eh_frame` is there although the script never mentioned it.** A
 linker script does not restrict output to the sections it names; anything
 unclaimed is placed by the linker's own rules. That is why you read `end` at
@@ -303,13 +303,13 @@ Rust, because the fix would itself have a prologue. **The stack must be
 established by code that does not use a stack**, written by hand:
 
 ```rust
-const STACK_SIZE: usize = 4096 * 4;                 // entry.rs:5
+const STACK_SIZE: usize = 4096 * 4;                 // entry.rs
 
 #[no_mangle]
-static mut STACK0: [u8; STACK_SIZE] = [0; STACK_SIZE];   // entry.rs:8
+static mut STACK0: [u8; STACK_SIZE] = [0; STACK_SIZE];   // entry.rs
 
 #[no_mangle]
-#[link_section = ".entry"]                          // entry.rs:11
+#[link_section = ".entry"]                          // entry.rs
 pub unsafe extern "C" fn _entry() -> ! {
     asm!(
         "la sp, {stack}",     // sp = bottom of our stack
@@ -399,10 +399,10 @@ You are about to print with no operating system, C library, file descriptor, or
 system call. Every line of code involved:
 
 ```rust
-const UART0: *mut u8 = 0x1000_0000 as *mut u8;   // uart.rs:15
+const UART0: *mut u8 = 0x1000_0000 as *mut u8;   // uart.rs
 
 pub fn putc(c: u8) {
-    unsafe { write_volatile(UART0, c); }         // uart.rs:24
+    unsafe { write_volatile(UART0, c); }         // uart.rs
 }
 ```
 
@@ -419,19 +419,19 @@ later, at `0x1000_0000`–`0x1000_0007`.
 
 | Offset | On write | On read | rv6 |
 |---|---|---|---|
-| +0 | THR — transmit holding | RBR — receive buffer | `uart.rs:6-7` |
-| +1 | IER — interrupt enable | IER | `uart.rs:8` |
-| +2 | FCR — FIFO control | IIR — interrupt ident | `uart.rs:9` |
-| +3 | LCR — line control (word size, parity, DLAB) | LCR | `uart.rs:10` |
-| +4 | MCR — modem control (bit 4 = loopback) | MCR | `uart.rs:11` |
-| +5 | — | LSR — line status | `uart.rs:12` |
+| +0 | THR — transmit holding | RBR — receive buffer | `uart.rs` |
+| +1 | IER — interrupt enable | IER | `uart.rs` |
+| +2 | FCR — FIFO control | IIR — interrupt ident | `uart.rs` |
+| +3 | LCR — line control (word size, parity, DLAB) | LCR | `uart.rs` |
+| +4 | MCR — modem control (bit 4 = loopback) | MCR | `uart.rs` |
+| +5 | — | LSR — line status | `uart.rs` |
 | +6 | — | MSR — modem status | unused |
 | +7 | scratch | scratch | unused |
 
-Two LSR bits carry the whole polled driver: bit 0 (`LSR_DR`, `uart.rs:14`) means
-a byte waits in RBR; bit 5 (`LSR_THRE`, `uart.rs:15`) means the transmit register
+Two LSR bits carry the whole polled driver: bit 0 (`LSR_DR`, `uart.rs`) means
+a byte waits in RBR; bit 5 (`LSR_THRE`, `uart.rs`) means the transmit register
 is empty. Exercise 41k's driver spins on THRE before every store
-(`uart.rs:49-50`); exercise 31k's does not, and gets away with it only because
+(`getc()` in `uart.rs`); exercise 31k's does not, and gets away with it only because
 QEMU's emulated UART is infinitely fast.
 
 > Key distinction: the same offset is two different registers depending on
@@ -442,7 +442,7 @@ QEMU's emulated UART is infinitely fast.
 
 ```mermaid
 flowchart TD
-    A["uart::putc(0x48) — uart.rs:24\nwrite_volatile: emit exactly once"] --> C["sb a1, 0(a0)\na0 = 0x1000_0000, a1 = 0x48"]
+    A["uart::putc(0x48) — uart.rs\nwrite_volatile: emit exactly once"] --> C["sb a1, 0(a0)\na0 = 0x1000_0000, a1 = 0x48"]
     C --> D["satp = 0: no translation\n0x1000_0000 goes on the bus"]
     D --> E["decode: 'serial' MemoryRegion, not RAM"]
     E --> F["QEMU serial write, offset 0 = THR"]
@@ -453,7 +453,7 @@ The third step is the one to dwell on. Because `satp` is zero, the address the
 instruction produced *is* the address on the bus: no page table, no fault
 possible. Once exercise 33k turns on Sv39 that stops being automatic — the UART page
 must be explicitly mapped or the very same store faults, which is why
-`memlayout.rs:17` exists. On real hardware a bus fabric routes the address to the
+`memlayout.rs` exists. On real hardware a bus fabric routes the address to the
 chip, which shifts the byte out one bit at a time at the configured baud rate.
 
 ### Why `volatile` is not optional
@@ -495,13 +495,13 @@ kernel reclaims everything. A kernel has nowhere to return to, which is why
 `0x0010_0000`:
 
 ```rust
-const TEST_FINISHER: *mut u32 = 0x10_0000 as *mut u32;   // testdev.rs:11
-const FINISHER_PASS: u32 = 0x5555;                       // testdev.rs:13
-const FINISHER_FAIL: u32 = 0x3333;                       // testdev.rs:14
+const TEST_FINISHER: *mut u32 = 0x10_0000 as *mut u32;   // testdev.rs
+const FINISHER_PASS: u32 = 0x5555;                       // testdev.rs
+const FINISHER_FAIL: u32 = 0x3333;                       // testdev.rs
 
 pub fn exit_failure(code: u16) -> ! {
     unsafe { write_volatile(TEST_FINISHER, FINISHER_FAIL | ((code as u32) << 16)); }
-    loop { core::hint::spin_loop(); }                    // testdev.rs:30-33
+    loop { core::hint::spin_loop(); }                    // testdev.rs
 }
 ```
 
@@ -562,14 +562,14 @@ first page of `head.S`.
 | Firmware / SBI | Resident M-mode software offering services to S-mode | OpenSBI; deleted by `-bios none` |
 | `-bios none` | Load the `-kernel` ELF into RAM, point the reset vector at RAM base | rv6 starts in M-mode, no SBI |
 | Device tree blob | Serialized hardware description passed in `a1` | `0x87e0_0000`; rv6 ignores it, Linux parses it |
-| Entry symbol | The name the linker records as the first instruction | `ENTRY(_entry)`, `kernel.ld:12` |
-| Location counter | The linker's cursor while assigning addresses | `. = 0x80000000`, `kernel.ld:16` |
-| `.entry` section | A section nothing else claims, placed first | `#[link_section = ".entry"]`, `entry.rs:11` |
-| `end` symbol | Linker-computed first address past the kernel image | `kalloc.rs:14`; `0x8000_5290` here |
+| Entry symbol | The name the linker records as the first instruction | `ENTRY(_entry)`, `kernel.ld` |
+| Location counter | The linker's cursor while assigning addresses | `. = 0x80000000`, `kernel.ld` |
+| `.entry` section | A section nothing else claims, placed first | `#[link_section = ".entry"]`, `entry.rs` |
+| `end` symbol | Linker-computed first address past the kernel image | `kalloc.rs`; `0x8000_5290` here |
 | Trampoline | Assembly stub bridging two execution environments | `_entry`: bare hart → Rust with a valid `sp` |
 | MMIO | Device registers mapped into the physical address space | A store to `0x1000_0000` transmits a byte |
-| Volatile access | Access the compiler must emit exactly as written | `write_volatile(UART0, c)`, `uart.rs:24` |
-| Test finisher | `virt` device that exits QEMU with a status | `0x5555` pass, `0x3333` fail, `testdev.rs:13-14` |
+| Volatile access | Access the compiler must emit exactly as written | `write_volatile(UART0, c)`, `uart.rs` |
+| Test finisher | `virt` device that exits QEMU with a status | `0x5555` pass, `0x3333` fail, `testdev.rs` |
 
 ---
 
@@ -662,7 +662,7 @@ between the top of the stack and `end`.
 (d)  0x8000_5430 - 0x8000_5420 = 0x10 = 16 bytes
 ```
 
-(c) is `pgroundup` from `kalloc.rs:17`, called by `free_range`.
+(c) is `pgroundup` from `kalloc.rs`, called by `free_range`.
 
 Part (d) is the interesting one: `STACK0` is *not* the last thing in `.bss` —
 `.bss` is `0x4020` bytes for a `0x4000`-byte array, so 16 bytes follow it.
@@ -767,13 +767,13 @@ a 4-byte store would do.
 **(a) `0x0000_1004`** — boot ROM (`0x1000`–`0xffff`). Read-only; the store is
 discarded. You are overwriting the second reset instruction, except you are not.
 
-**(b) `0x0010_0000`** — the test finisher (`testdev.rs:11`). `0x5555` exits QEMU
+**(b) `0x0010_0000`** — the test finisher (`TEST_FINISHER` in `testdev.rs`). `0x5555` exits QEMU
 with status 0, `0x3333` non-zero, other values are ignored. The one address where
 a single store terminates the machine.
 
 **(c) `0x0c00_0028`** — the PLIC priority array, one 4-byte word per source from
 the PLIC base. `0x28 = 40 = 10 × 4`, so this is **source 10's priority — the
-UART's** (`plic.rs:14`, written by `plic.rs:24`). Storing 1 makes UART
+UART's** (`UART0_IRQ` (`plic.rs`), written by `init()` (`plic.rs`)). Storing 1 makes UART
 interrupts eligible; 0 disables the source.
 
 **(d) `0x1000_0005`** — UART offset 5, the Line Status Register, which is
@@ -785,7 +785,7 @@ sp, 0x1`. RAM is writable and nothing protects it while `satp = 0`, so the store
 corrupts your own boot code. Harmless only because `_entry` never runs twice —
 and a vivid argument for `etext`.
 
-**(f) `0x0200_4000`** — `CLINT_MTIMECMP0` (`start.rs:18`), hart 0's timer compare
+**(f) `0x0200_4000`** — `CLINT_MTIMECMP0` (`start.rs`), hart 0's timer compare
 register; writing it schedules the next timer interrupt. A 4-byte store touches
 only the low half of a 64-bit register, which can briefly put `mtimecmp` in the
 past and fire a spurious interrupt.
@@ -813,8 +813,8 @@ past and fire a spurious interrupt.
 1. **A hart at reset has almost no state you can use.** `pc` holds the board's reset vector (`0x1000` on `virt`), you are in M-mode, `satp = 0` so addresses are physical, `mtvec = 0` so any trap is fatal, and `sp` is meaningless.
 2. **`-bios none` removes firmware, not the boot ROM.** Six ROM instructions always run; OpenSBI and the bootloader disappear. Your kernel *is* the firmware: no SBI, no relocation, M-mode from instruction one.
 3. **`0x8000_0000` is not a choice.** Everything below it on `virt` is device space; RAM starts there, so the ROM jumps there, so `_entry` must be there.
-4. **The linker script guarantees `_entry` is first.** `*(.entry)` at the head of `.text` (`kernel.ld:19`) plus `#[link_section = ".entry"]` (`entry.rs:11`) is the whole mechanism. Without it, an arbitrary Rust function occupies `0x8000_0000`.
-5. **`end` is the linker's answer to "where does the kernel stop".** `PROVIDE(end = .)` (`kernel.ld:43`) is read at runtime by `kalloc.rs:22`, turning everything above it into free pages. It moves with every code change, which is why it is a symbol and not a constant.
+4. **The linker script guarantees `_entry` is first.** `*(.entry)` at the head of `.text` (`kernel.ld`) plus `#[link_section = ".entry"]` (`entry.rs`) is the whole mechanism. Without it, an arbitrary Rust function occupies `0x8000_0000`.
+5. **`end` is the linker's answer to "where does the kernel stop".** `PROVIDE(end = .)` (`kernel.ld`) is read at runtime by `init()` (`kalloc.rs`), turning everything above it into free pages. It moves with every code change, which is why it is a symbol and not a constant.
 6. **The first job of any kernel is to give itself a stack.** Rust prologues dereference `sp` before anything else, so `sp` must be valid before the first Rust instruction — and the code that fixes it cannot itself use a stack. Skip it and you get a silent trap loop at `pc = 0`, not an error message.
 7. **Printing is one store to one address.** `write_volatile(0x1000_0000, byte)` reaches the NS16550A's transmit register and QEMU forwards it onward. `volatile` is load-bearing: without it the optimizer legally deletes thirty of thirty-one stores.
 8. **The board's map is the kernel's API.** UART0, the test finisher, the CLINT, the PLIC, and RAM each reappear as a `memlayout.rs` constant — and after exercise 33k each must be explicitly mapped or it stops working.

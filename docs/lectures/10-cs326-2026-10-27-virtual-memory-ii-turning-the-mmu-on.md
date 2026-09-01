@@ -43,7 +43,7 @@ the [QEMU and GDB](../guides/qemu-gdb.md) guide comes first. Exercise
 
 ### 1.1 The paradox, stated plainly
 
-Here is the whole of `kvminithart` (`vm.rs:177-181`):
+Here is the whole of `kvminithart` (`vm.rs`):
 
 ```rust
 pub unsafe fn kvminithart(root: *mut Pte) {
@@ -90,8 +90,8 @@ nanosecond ago. Now they are virtual addresses that must translate to something.
 
 If the fetch of `pc+4` fails, the hardware raises an instruction page fault and
 jumps to the trap vector. At this point in boot, in rv6, the trap vector has never
-been set: `trap::init` runs *after* `kvminithart` in `kinit` (`main.rs:87-94` in
-the reference kernel; `main.rs:63-68` in exercise 43k). So `stvec` is still zero,
+been set: `trap::init` runs *after* `kvminithart` in `kinit` (`main.rs` in
+the reference kernel; `main.rs` in exercise 43k). So `stvec` is still zero,
 and the trap jumps to virtual address `0`.
 
 Virtual address `0` is not mapped either, so the fetch there faults, traps to
@@ -133,7 +133,7 @@ each translates to itself.
 The mechanism is nothing special: an identity mapping is an ordinary leaf PTE
 whose PPN happens to equal the VPN of the address it is reached by. `mappages`
 does not know it is building one. It is the *arguments* that make it an identity
-map — the same value passed as both `va` and `pa` (`vm.rs:132`):
+map — the same value passed as both `va` and `pa` (`vm.rs`):
 
 ```rust
 mappages(root, UART0, PGSIZE, UART0, PTE_R | PTE_W)
@@ -151,7 +151,7 @@ get an instruction page fault, identity or not.
 
 **It is not for user processes.** The kernel keeps its identity map for the life
 of the machine, but every user process gets a table where virtual `0` maps to some
-arbitrary physical page (`USER_CODE = 0x0`, `memlayout.rs:61`) — the entire point
+arbitrary physical page (`USER_CODE = 0x0`, `memlayout.rs`) — the entire point
 of virtual memory. Identity mapping is a bootstrap technique, not the goal.
 
 **It is not free of consequences.** Kernel virtual addresses now equal physical
@@ -178,9 +178,9 @@ exercises add interrupt handling, so the PLIC joins the list. That is the map.
 ### 2.2 The device pages
 
 ```rust
-mappages(root, UART0,         PGSIZE,    UART0,         PTE_R | PTE_W)?; // vm.rs:132
-mappages(root, TEST_FINISHER, PGSIZE,    TEST_FINISHER, PTE_R | PTE_W)?; // vm.rs:135
-mappages(root, PLIC,          PLIC_SIZE, PLIC,          PTE_R | PTE_W)?; // vm.rs:138
+mappages(root, UART0,         PGSIZE,    UART0,         PTE_R | PTE_W)?; // vm.rs
+mappages(root, TEST_FINISHER, PGSIZE,    TEST_FINISHER, PTE_R | PTE_W)?; // vm.rs
+mappages(root, PLIC,          PLIC_SIZE, PLIC,          PTE_R | PTE_W)?; // vm.rs
 ```
 
 Each is one identity-mapped MMIO region, read plus write, and each earns those
@@ -198,27 +198,27 @@ function pointer, a wild jump, a return through a smashed stack slot — from
 instruction page fault with the faulting address in `stval`. Permissions you do
 not need are free protection.
 
-**Sizes come from the device.** The UART (`memlayout.rs:17`) and the test
-finisher (`memlayout.rs:21`) are one page each. The PLIC is 4 MiB
-(`memlayout.rs:27`) — 1024 pages, two whole level-0 tables at `VPN[1] = 96` and
+**Sizes come from the device.** The UART (`UART0` in `memlayout.rs`) and the test
+finisher (`TEST_FINISHER` in `memlayout.rs`) are one page each. The PLIC is 4 MiB
+(`PLIC_SIZE` in `memlayout.rs`) — 1024 pages, two whole level-0 tables at `VPN[1] = 96` and
 `97`. One `mappages` call still does it; the size argument is what differs.
 
 ### 2.3 RAM, in one call
 
 ```rust
-mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, PTE_R | PTE_W | PTE_X)?; // vm.rs:141-151
+mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, PTE_R | PTE_W | PTE_X)?; // vm.rs
 ```
 
-One call maps all 128 MiB of RAM (`KERNBASE`, `memlayout.rs:10`; `PHYSTOP`,
-`memlayout.rs:13`), and that single line covers four different things the kernel
+One call maps all 128 MiB of RAM (`KERNBASE`, `memlayout.rs`; `PHYSTOP`,
+`memlayout.rs`), and that single line covers four different things the kernel
 needs:
 
 | What | Where it lives | Why the RAM map covers it |
 |---|---|---|
-| Kernel text | `0x8000_0000` upward, `kernel.ld:16-23` | the instruction after `csrw satp` |
-| Kernel rodata, data, bss | above `.text`, `kernel.ld:25-41` | string literals, statics, the free-list head |
-| The boot stack | `STACK0` in `.bss`, `entry.rs:14` | `sp` must keep working |
-| Everything `kalloc` hands out | from `end` (`kernel.ld:43`) to `PHYSTOP`, `kalloc.rs:23` | **including the page tables themselves** |
+| Kernel text | `0x8000_0000` upward, `kernel.ld` | the instruction after `csrw satp` |
+| Kernel rodata, data, bss | above `.text`, `kernel.ld` | string literals, statics, the free-list head |
+| The boot stack | `STACK0` in `.bss`, `entry.rs` | `sp` must keep working |
+| Everything `kalloc` hands out | from `end` (`kernel.ld`) to `PHYSTOP`, `kalloc.rs` | **including the page tables themselves** |
 
 That last row is the subtle one. The root table and its 66-odd children came from
 the same free list as everything else, so they sit between `end` and `PHYSTOP` —
@@ -248,7 +248,7 @@ overflow into `.text` faults instead of taking over the machine.
 rv6 does not do this. It maps all of RAM `PTE_R | PTE_W | PTE_X` in one call,
 because getting the split right is fiddly and one mistake is an instant,
 undebuggable fault. A `.text`-only mapping needs the `etext` boundary provided at
-`kernel.ld:22`, and two calls instead of one — and if the first stops a page
+`kernel.ld`, and two calls instead of one — and if the first stops a page
 short, the last page of `.text` is unmapped and the kernel dies on a fetch it
 cannot report.
 
@@ -258,8 +258,8 @@ cannot report.
 > other choice and pays two extra lines for it (§6).
 
 Notice what rv6 does *not* give up. The user side of the same file is strict:
-user code pages are `PTE_R | PTE_X | PTE_U` (`vm.rs:228`) and the user stack is
-`PTE_R | PTE_W | PTE_U` (`vm.rs:245`). W^X is enforced exactly where an attacker
+user code pages are `PTE_R | PTE_X | PTE_U` (`load_segment()` in `vm.rs`) and the user stack is
+`PTE_R | PTE_W | PTE_U` (`map_user_stack()` in `vm.rs`). W^X is enforced exactly where an attacker
 would be — in user memory — and relaxed only in the kernel's own map.
 
 ### 2.5 What you do not have to map
@@ -271,7 +271,7 @@ unmapped. They must be mapped anyway, because the *kernel* reaches them through
 `*mut Pte` pointers when it calls `walk` again, and those pointers are virtual
 after the switch.
 
-**The CLINT.** The timer registers at `0x0200_0000` (`start.rs:17-18`) are touched
+**The CLINT.** The timer registers at `0x0200_0000` (`CLINT_MTIME` in `start.rs`) are touched
 only by machine-mode code, and machine-mode accesses bypass `satp` entirely (§3.4).
 The kernel page table has no CLINT entry and needs none.
 
@@ -301,8 +301,8 @@ pages.
 ### 2.6 One non-identity mapping, later
 
 From exercise 48k on, `kvmmake` gains a fifth region that is *not* identity-mapped:
-the trampoline (`vm.rs:169`), one page of assembly at `TRAMPOLINE`
-(`memlayout.rs:53`, the top page of the address space) with `PTE_R | PTE_X`. It
+the trampoline (`vm.rs`), one page of assembly at `TRAMPOLINE`
+(`memlayout.rs`, the top page of the address space) with `PTE_R | PTE_X`. It
 sits at the same virtual address in the kernel's table and in every user table, so
 the instruction stream survives the `csrw satp` that switches between them — the
 same paradox as today, on every trap. That is L22's problem; recognize it when it
@@ -340,7 +340,7 @@ addresses meaning.
 
 ### 3.2 `make_satp`
 
-Two lines (`vm.rs:104-108`):
+Two lines (`vm.rs`):
 
 ```rust
 pub const SATP_SV39: usize = 8 << 60;
@@ -390,15 +390,15 @@ Address translation applies to instruction fetches and data accesses made in
 **supervisor** and **user** mode. Machine mode accesses are never translated, no
 matter what `satp` contains.
 
-Now look at how the kernel is entered in exercise 39k. `entry.rs:17` says
+Now look at how the kernel is entered in exercise 39k. `entry.rs` says
 `call kmain`. There is no `start.rs` in this exercise — it first appears in
 `43k_traps` — so the hart is still in **machine mode** when `kvminithart` runs. The
 `csrw satp` executes, the register takes the value, and translation does not
 actually take effect. Your identity map is installed and unused.
 
-From exercise 43k on, `entry.rs:23` says `call start` instead. `start.rs` clears
-`satp` (`start.rs:37`), sets `mstatus.MPP` to supervisor, points `mepc` at `kmain`,
-and executes `mret` (`start.rs:54`). Now `kmain` — and the `kvminithart` inside
+From exercise 43k on, `entry.rs` says `call start` instead. `start.rs` clears
+`satp` (`start.rs`), sets `mstatus.MPP` to supervisor, points `mepc` at `kmain`,
+and executes `mret` (`start.rs`). Now `kmain` — and the `kvminithart` inside
 `kinit` — runs in supervisor mode, and the switch is real.
 
 > Key distinction: exercise 39k asks you to build a *correct* kernel page table and
@@ -465,7 +465,7 @@ uses the sledgehammer.
 ### 4.3 When you must flush
 
 - **After writing `satp`.** The old address space's entries are still in there.
-  `kvminithart` does exactly this at `vm.rs:180`.
+  `kvminithart` does exactly this at `vm.rs`.
 - **After changing any PTE in a page table that is currently installed.** Changing
   permissions, unmapping a page, or remapping one to different physical memory.
 - **After making an invalid PTE valid.** RISC-V is stricter than x86 here: the
@@ -489,7 +489,7 @@ fence.
 
 rv6's `kvminithart` writes `satp` and then fences. The switch between the kernel's
 and a user's address space, which you will meet in L22, fences on *both* sides
-(`usermode.rs:133-135` and `usermode.rs:140-142`):
+(`usermode.rs`):
 
 ```asm
 sfence.vma zero, zero
@@ -557,14 +557,13 @@ and students conflate them:
 
 Because the failure mode is silence, rv6 inverts the usual order: prove the table
 correct while a mistake is still printable, then flip the switch. The exercise
-harness (`39k_virtual_memory`, `main.rs:76-124`) does exactly that. With the MMU
-still off it calls `walk` on each required region and checks that the leaf exists,
-that its physical address equals its own page base (identity), and that the needed
-permission bits are set — `main.rs:85` for the UART, `:89` for the test finisher,
-`:94` for kernel RAM, and `:99-104` for the page the current stack pointer is on,
-located by taking the address of a local. Then it checks `satp` itself: MODE is 8
-(`main.rs:108`) and the PPN really is `root >> 12` (`:112`). Only at `main.rs:118`
-does it call `kvminithart`.
+harness (`run_checks()` in `39k_virtual_memory`'s `main.rs`) does exactly that. With
+the MMU still off it calls `walk` on each required region and checks that the leaf
+exists, that its physical address equals its own page base (identity), and that the
+needed permission bits are set — for the UART, the test finisher, kernel RAM, and
+the page the current stack pointer is on, located by taking the address of a local.
+Then it checks `satp` itself: MODE is 8 and the PPN really is `root >> 12`. Only
+after all of that does it call `kvminithart`.
 
 The pattern generalizes far beyond this exercise: **when the failure mode is
 silence, add a check that runs before the dangerous step and speaks.** You will
@@ -600,7 +599,7 @@ Three diagnostic questions, in order, will localize almost any failure here:
 
 **xv6-riscv** is rv6's parent, and its `kvmmake` differs in two ways. It splits
 kernel text from kernel data — `KERNBASE..etext` read-execute, `etext..PHYSTOP`
-read-write — using the same `etext` symbol `kernel.ld:22` provides and rv6
+read-write — using the same `etext` symbol `kernel.ld` provides and rv6
 ignores. That is real kernel W^X for one extra `mappages` call and one `extern`
 declaration. It also maps the virtio disk's MMIO page, which rv6 does not need.
 Everything else is the same design; reading `kernel/vm.c` beside `vm.rs` is a
@@ -644,16 +643,16 @@ mappings. rv6 has one hart, one ASID, and 4 KiB pages everywhere.
 
 | Concept | Definition | Example |
 |---|---|---|
-| Bootstrap paradox | The instruction after the one enabling translation is itself fetched through translation. | the `sfence.vma` at `vm.rs:180` |
-| Identity mapping | A mapping where `va == pa`, so translation is on but transparent. | `mappages(root, UART0, PGSIZE, UART0, ..)`, `vm.rs:132` |
+| Bootstrap paradox | The instruction after the one enabling translation is itself fetched through translation. | the `sfence.vma` at `vm.rs` |
+| Identity mapping | A mapping where `va == pa`, so translation is on but transparent. | `mappages(root, UART0, PGSIZE, UART0, ..)`, `vm.rs` |
 | `satp` | The CSR naming the active page table: MODE, ASID, root PPN. | `0x8000_0000_0008_7FFF` |
-| `SATP_SV39` | The MODE field value 8, pre-shifted to bit 60. | `8 << 60`, `vm.rs:104` |
+| `SATP_SV39` | The MODE field value 8, pre-shifted to bit 60. | `8 << 60`, `vm.rs` |
 | ASID | Address-space id tagging TLB entries so a switch need not flush. | always 0 in rv6 |
-| MMIO region | Device registers mapped into the physical address space. | `UART0` (`memlayout.rs:17`), `PLIC` (`memlayout.rs:26`) |
-| W^X | No page is both writable and executable. | user code `R X U` (`vm.rs:228`) vs. stack `R W U` (`vm.rs:245`) |
-| `etext` | Linker symbol at the end of `.text`; the W^X boundary rv6 does not use. | `PROVIDE(etext = .)`, `kernel.ld:22` |
+| MMIO region | Device registers mapped into the physical address space. | `UART0` and `PLIC` (`memlayout.rs`) |
+| W^X | No page is both writable and executable. | user code `R X U` (`vm.rs`) vs. stack `R W U` (`vm.rs`) |
+| `etext` | Linker symbol at the end of `.text`; the W^X boundary rv6 does not use. | `PROVIDE(etext = .)`, `kernel.ld` |
 | TLB | Hardware cache of recent virtual-page → physical-page translations. | why three-read walks cost nothing on average |
-| `sfence.vma` | Invalidates cached translations and orders page-table stores. | `sfence.vma zero, zero`, `vm.rs:180` |
+| `sfence.vma` | Invalidates cached translations and orders page-table stores. | `sfence.vma zero, zero`, `vm.rs` |
 | Page fault | The table refused the access (`scause` 12/13/15). | unmapped kernel text after a bad `kvmmake` |
 | Access fault | Memory the hardware needed — including a PTE — could not be read (`scause` 1/5/7). | `satp` PPN built without `>> 12` |
 
@@ -664,7 +663,7 @@ mappings. rv6 has one hart, one ASID, and 4 KiB pages everywhere.
 ### Problem 1: Build and decode `satp`
 
 (a) The root table is at physical `0x8004_2000`. Give the `satp` value
-`make_satp` (`vm.rs:106-108`) returns, in hex, showing the arithmetic.
+`make_satp` (`vm.rs`) returns, in hex, showing the arithmetic.
 (b) Decode `0x8000_0000_0008_7FFF` into MODE, ASID, and root table address.
 (c) A student writes `SATP_SV39 | (root as usize)`, forgetting the shift, with
 `root = 0x87FF_F000`. What does the hardware do on the next instruction fetch, and
@@ -693,7 +692,7 @@ which `scause` results?
 
 Root table at `0x87FF_F000` — the top page of RAM, which is the *first* page
 `kalloc` returns, since `free_range` pushes pages upward onto a stack
-(`kalloc.rs:26-32`).
+(`kalloc.rs`).
 
 **(c)** The PPN field becomes `0x87FF_F000` instead of `0x8_7FFF`. The hardware
 reads that as a page *number* and looks for the root table at
@@ -727,7 +726,7 @@ are not merely conventional but mandatory, and say what breaks if each is revers
 <details>
 <summary>Click to reveal solution</summary>
 
-Order: **G, B, D, H, A, C, E, F** — matching `kinit` at `main.rs:87-94`, where
+Order: **G, B, D, H, A, C, E, F** — matching `kinit` at `main.rs`, where
 `vm::kvminithart(vm::kvmmake())` collapses D-H-A-C-E into one line.
 
 Two orderings are mandatory:
@@ -768,7 +767,7 @@ The third argument is a **size**, not an end address. The correct size is
 maps 2.125 GiB, running from `0x8000_0000` to `0x1_07FF_FFFF`.
 
 Why nothing complains: the harness checks that `KERNBASE` is identity-mapped
-`R|W|X` (`main.rs:94`) and that the stack page is mapped (`main.rs:99-104`). Both
+`R|W|X` and that the stack page is mapped (`run_checks()` in `main.rs`). Both
 are true. Extra mappings are not checked because nothing dereferences them.
 
 What it cost:
@@ -809,7 +808,7 @@ rv6 booting (exercise 39k: virtual memory)...
 OSLINGS:FAIL
 ```
 
-The check at `main.rs:85` runs with the MMU off and calls `walk(root, UART0,
+The check at `run_checks()` (`main.rs`) runs with the MMU off and calls `walk(root, UART0,
 false)`, which returns null because no level-0 table exists for `VPN[1] = 128`.
 QEMU then exits normally via the test finisher. This is §5.3 working as designed:
 a precise sentence instead of a hang.
@@ -910,7 +909,7 @@ boot. In a longer-running loop expect `sepc` and `stval` to be overwritten by th
 *latest* fault — break at the trap vector to catch fault number one.
 
 **Verdict:** the `KERNBASE..PHYSTOP` mapping is missing, too short, or lacks
-`PTE_X` — the call at `vm.rs:141-151`. Given `stval` sits low in the image, "too
+`PTE_X` — the call at `vm.rs`. Given `stval` sits low in the image, "too
 short" is unlikely; check first that `PTE_X` is in the permission argument, then
 that the size argument is `PHYSTOP - KERNBASE`.
 
@@ -938,17 +937,17 @@ that the size argument is `PHYSTOP - KERNBASE`.
 
 2. **Identity mapping is the resolution.** Build the table so `va == pa` for everything the kernel touches, and turning the MMU on changes nothing observable: `pc`, `sp`, and every pointer in flight translate to themselves. Translation is fully on and fully enforced — it just answers with the question.
 
-3. **The rule for `kvmmake` is mechanical.** If the kernel will touch it after the switch, map it now: the UART (`vm.rs:132`), the test finisher (`vm.rs:135`), the PLIC (`vm.rs:138`), and all of RAM (`vm.rs:141-151`) — which in one call covers kernel text, data, the boot stack, and the page tables themselves.
+3. **The rule for `kvmmake` is mechanical.** If the kernel will touch it after the switch, map it now: the UART, the test finisher, the PLIC, and all of RAM — every one of them in `kvmmake` (`vm.rs`) — which in one call covers kernel text, data, the boot stack, and the page tables themselves.
 
-4. **Permissions are where rv6 compromises.** Devices get `R W` and no `X`, so a wild jump faults instead of executing register contents. RAM *deserves* `R X` for text, `R` for rodata, `R W` for data — real W^X — and rv6 gives it `R W X` in one call because the `etext` split (`kernel.ld:22`) is fiddly and one mistake is undebuggable. xv6 makes the other trade in two lines.
+4. **Permissions are where rv6 compromises.** Devices get `R W` and no `X`, so a wild jump faults instead of executing register contents. RAM *deserves* `R X` for text, `R` for rodata, `R W` for data — real W^X — and rv6 gives it `R W X` in one call because the `etext` split (`kernel.ld`) is fiddly and one mistake is undebuggable. xv6 makes the other trade in two lines.
 
-5. **`satp` is MODE, ASID, and a page number.** MODE 8 means Sv39 (`SATP_SV39 = 8 << 60`, `vm.rs:104`); ASID is 0 in rv6; the PPN field is `root >> 12`, not `root`. The kernel's value is `0x8000_0000_0008_7FFF`. Forgetting the shift produces an access fault (`scause` 1); forgetting the MODE produces a silent no-op.
+5. **`satp` is MODE, ASID, and a page number.** MODE 8 means Sv39 (`SATP_SV39 = 8 << 60`, `vm.rs`); ASID is 0 in rv6; the PPN field is `root >> 12`, not `root`. The kernel's value is `0x8000_0000_0008_7FFF`. Forgetting the shift produces an access fault (`scause` 1); forgetting the MODE produces a silent no-op.
 
 6. **Machine mode ignores `satp`, which is why exercise 39k is survivable.** Through exercise 42k `entry.rs` calls `kmain` directly, the hart stays in machine mode, and translation never takes effect. From exercise 43k `start.rs` `mret`s into supervisor mode and the same table becomes load-bearing. Build it as if your life depended on it; in three exercises it will.
 
-7. **The TLB is not coherent with memory, and `sfence.vma` is how you say so.** Flush after writing `satp` (`vm.rs:180`), after changing any live PTE, and — RISC-V specifically — after making an invalid entry valid. QEMU is more forgiving than real hardware, so this is the bug class that passes every test you can run.
+7. **The TLB is not coherent with memory, and `sfence.vma` is how you say so.** Flush after writing `satp` (`vm.rs`), after changing any live PTE, and — RISC-V specifically — after making an invalid entry valid. QEMU is more forgiving than real hardware, so this is the bug class that passes every test you can run.
 
-8. **When the failure mode is silence, check before you commit.** The exercise harness verifies every region with `walk` while the MMU is still off and validates `satp` before installing it (`main.rs:76-124`), so a bug prints a sentence instead of hanging the machine. Read `pc`, `satp`, `scause`, and `stval` in that order; `scause` 12 means your mappings are wrong, `scause` 1 means your `satp` is.
+8. **When the failure mode is silence, check before you commit.** The exercise harness verifies every region with `walk` while the MMU is still off and validates `satp` before installing it (`main.rs`), so a bug prints a sentence instead of hanging the machine. Read `pc`, `satp`, `scause`, and `stval` in that order; `scause` 12 means your mappings are wrong, `scause` 1 means your `satp` is.
 
 ---
 

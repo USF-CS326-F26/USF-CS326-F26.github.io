@@ -47,9 +47,9 @@ When `kmain` runs the machine is embarrassingly simple: one CPU, one UART, and
 one flat array of bytes from `KERNBASE` to `PHYSTOP`.
 
 ```rust
-pub const PGSIZE: usize = 4096;                              // memlayout.rs:7
-pub const KERNBASE: usize = 0x8000_0000;                     // memlayout.rs:11
-pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024;     // memlayout.rs:13
+pub const PGSIZE: usize = 4096;                              // memlayout.rs
+pub const KERNBASE: usize = 0x8000_0000;                     // memlayout.rs
+pub const PHYSTOP: usize = KERNBASE + 128 * 1024 * 1024;     // memlayout.rs
 ```
 
 That is 134,217,728 bytes — exactly 32,768 pages. The kernel's code, data, and
@@ -75,7 +75,7 @@ Every other subsystem depends on this one, and it depends on nothing. So it must
 be correct before anything else can be tested, it cannot call anything that might
 itself allocate, and — crucially — **`kfree` must never be able to fail**.
 Teardown runs when memory is already short: `freeproc` returns a trapframe and a
-kernel stack (`proc.rs:143`, `proc.rs:147`) *after* an allocation has failed. If
+kernel stack (`proc.rs`) *after* an allocation has failed. If
 returning memory required memory, the kernel would deadlock exactly when it was
 already in trouble. Remember that requirement.
 
@@ -92,7 +92,7 @@ table entry has no room to describe anything finer:
 
 ```rust
 pub const fn new(pa: usize, flags: usize) -> Pte {
-    Pte(((pa >> 12) << 10) | flags)                          // vm.rs:30
+    Pte(((pa >> 12) << 10) | flags)                          // vm.rs
 }
 ```
 
@@ -134,12 +134,12 @@ any single-page request succeeds.
 it in abundance; `kheap.rs` is the honest extreme:
 
 ```rust
-//! (a 16-byte `Arc` still costs 4096 bytes) ...              // kheap.rs:11
+//! (a 16-byte `Arc` still costs 4096 bytes) ...              // kheap.rs
 unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
     if layout.size() > PGSIZE || layout.align() > PGSIZE {
         return ptr::null_mut();
     }
-    kalloc::kalloc()                                          // kheap.rs:29
+    kalloc::kalloc()                                          // kheap.rs
 }
 ```
 
@@ -158,9 +158,9 @@ facts follow, both used by rv6:
 
 ```rust
 fn pgroundup(addr: usize) -> usize {
-    (addr + PGSIZE - 1) & !(PGSIZE - 1)                       // kalloc.rs:18
+    (addr + PGSIZE - 1) & !(PGSIZE - 1)                       // kalloc.rs
 }
-fn pgrounddown(a: usize) -> usize { a & !(PGSIZE - 1) }       // vm.rs:49
+fn pgrounddown(a: usize) -> usize { a & !(PGSIZE - 1) }       // vm.rs
 ```
 
 `& !(PGSIZE - 1)` clears the low 12 bits — rounding *down* — and adding
@@ -187,10 +187,10 @@ our own bookkeeping. Put the link *in the page*:
 ```rust
 #[repr(C)]
 struct Run {
-    next: *mut Run,                                           // kalloc.rs:8
+    next: *mut Run,                                           // kalloc.rs
 }
 
-static mut FREELIST: *mut Run = ptr::null_mut();              // kalloc.rs:11
+static mut FREELIST: *mut Run = ptr::null_mut();              // kalloc.rs
 ```
 
 `Run` is a lie the kernel tells itself, and a productive one. There is no `Run`
@@ -220,9 +220,9 @@ Count the bookkeeping bytes outside the managed memory: eight, for `FREELIST` in
 
 ```rust
 pub unsafe fn kfree(pa: *mut u8) {
-    let r = pa as *mut Run;                                   // kalloc.rs:35
-    (*r).next = FREELIST;                                     // kalloc.rs:36
-    FREELIST = r;                                             // kalloc.rs:37
+    let r = pa as *mut Run;                                   // kalloc.rs
+    (*r).next = FREELIST;                                     // kalloc.rs
+    FREELIST = r;                                             // kalloc.rs
 }
 ```
 
@@ -250,17 +250,17 @@ bug that announces itself, because the first word is a physical address.
 
 ```rust
 pub unsafe fn kalloc() -> *mut u8 {
-    let r = FREELIST;                                         // kalloc.rs:41
+    let r = FREELIST;                                         // kalloc.rs
     if !r.is_null() {
-        FREELIST = (*r).next;                                 // kalloc.rs:43
+        FREELIST = (*r).next;                                 // kalloc.rs
     }
-    r as *mut u8                                              // kalloc.rs:45
+    r as *mut u8                                              // kalloc.rs
 }
 ```
 
 Read the head; if it is real, advance the head to whatever that page says comes
 next; return the old head. The null case needs no special handling — a null head
-*is* the out-of-memory answer, and callers check it (`vm.rs:63`, `proc.rs:119`).
+*is* the out-of-memory answer, and callers check it (`walk()` (`vm.rs`), `allocproc()` (`proc.rs`)).
 
 Two subtleties. `FREELIST = (*r).next` reads eight bytes from a page we are in
 the middle of giving away — safe only because the caller cannot write to it
@@ -293,19 +293,19 @@ Instead the linker script emits a symbol at the very end of the image:
 
 ```text
   .bss : { . = ALIGN(16); *(.sbss .sbss.*) *(.bss .bss.*) }
-  PROVIDE(end = .);                                           /* kernel.ld:43 */
+  PROVIDE(end = .);                                           /* kernel.ld */
 ```
 
 and `kalloc.rs` imports it:
 
 ```rust
 extern "C" {
-    static end: u8;                                           // kalloc.rs:14
+    static end: u8;                                           // kalloc.rs
 }
 
 pub unsafe fn init() {
-    let start = &end as *const u8 as usize;                   // kalloc.rs:22
-    free_range(start, PHYSTOP);                               // kalloc.rs:23
+    let start = &end as *const u8 as usize;                   // kalloc.rs
+    free_range(start, PHYSTOP);                               // kalloc.rs
 }
 ```
 
@@ -318,9 +318,9 @@ fiction, and reading the value would be meaningless.
 
 ```rust
 unsafe fn free_range(start: usize, stop: usize) {
-    let mut p = pgroundup(start);                             // kalloc.rs:27
-    while p + PGSIZE <= stop {                                // kalloc.rs:28
-        kfree(p as *mut u8);                                  // kalloc.rs:29
+    let mut p = pgroundup(start);                             // kalloc.rs
+    while p + PGSIZE <= stop {                                // kalloc.rs
+        kfree(p as *mut u8);                                  // kalloc.rs
         p += PGSIZE;
     }
 }
@@ -340,7 +340,7 @@ For one debug build of the exercise-22 kernel:
         |       32,719 free pages, all on the free list
         |
    0x8003_1000  first free page  = pgroundup(end)
-   0x8003_0748  end              <- PROVIDE(end = .), kernel.ld:43
+   0x8003_0748  end              <- PROVIDE(end = .), kernel.ld
         |       .bss   (includes STACK0, the 16 KiB boot stack)
         |       .data
         |       .rodata
@@ -363,18 +363,18 @@ Where that fits into boot:
 
 ```mermaid
 flowchart TD
-    A["_entry: set sp (entry.rs:18)"] --> B["start: M-mode setup, mret"]
-    B --> C["kmain → kinit (main.rs:87)"]
+    A["_entry: set sp (entry.rs)"] --> B["start: M-mode setup, mret"]
+    B --> C["kmain → kinit (main.rs)"]
     C --> D["uart::init"]
-    D --> E["kalloc::init (main.rs:89)\nfree_range(end, PHYSTOP)"]
+    D --> E["kalloc::init (main.rs)\nfree_range(end, PHYSTOP)"]
     E --> F["vm::kvmmake — needs a page for the root table"]
     F --> G["proc::init — needs trapframes, kernel stacks"]
     G --> H["everything else"]
 ```
 
-`kalloc::init` runs at `main.rs:89`, after the UART and before anything that
+`kalloc::init` runs at `main.rs`, after the UART and before anything that
 could need memory. The ordering is forced: `kvmmake` allocates its root page
-table on its first line (`vm.rs:126`).
+table on its first line (`vm.rs`).
 
 ---
 
@@ -397,14 +397,14 @@ and in rv6 they all do:
 ```rust
 let page = kalloc::kalloc();
 if page.is_null() { return ptr::null_mut(); }
-ptr::write_bytes(page, 0, PGSIZE);                            // vm.rs:66
+ptr::write_bytes(page, 0, PGSIZE);                            // vm.rs
 ```
 
-The same pattern appears at `vm.rs:130`, `proc.rs:98`, and `proc.rs:123`. Pushing
+The same pattern appears at `kvmmake()` (`vm.rs`), `create_pagetable()` (`proc.rs`), and `allocproc()` (`proc.rs`). Pushing
 zeroing to callers is a performance choice — a page about to be overwritten
 entirely does not need it — but also a security decision: an un-zeroed page
 handed to a user process leaks the previous owner's data. rv6 is safe only
-because every user page goes through `vm.rs:216-220`, which zeroes.
+because every user page goes through `load_segment()` (`vm.rs`), which zeroes.
 
 **It detects nothing.** `kfree` takes an address, no length, and no way to know
 whether that page was ever allocated. Free a page twice and the list gains a
@@ -414,7 +414,7 @@ checks for all three — panic on a misaligned or out-of-range address, plus
 poisoning freed pages so use-after-free is loud — which rv6 omits to keep the
 exercise to two functions. Every one of these mistakes is therefore silent.
 
-**It is not thread-safe.** `FREELIST` is a `static mut` (`kalloc.rs:11`), so two
+**It is not thread-safe.** `FREELIST` is a `static mut` (`kalloc.rs`), so two
 harts in `kalloc` at once can both read the same head and both return it. The
 fix is a spinlock around both functions — xv6 keeps one in its `kmem` struct —
 which you build in exercise `37k`. rv6 runs one hart, so `kalloc.rs` in the
@@ -529,15 +529,15 @@ allocation in rv6 is one call:
 
 | Caller | What it allocates | Cite |
 |---|---|---|
-| `vm::walk` | an interior page-table page, on demand | `vm.rs:62` |
-| `vm::kvmmake` | the kernel root page table, the trampoline | `vm.rs:126`, `vm.rs:158` |
-| `vm::load_segment` | one page per page of the user image | `vm.rs:216` |
-| `vm::map_user_stack` | the user stack page | `vm.rs:240` |
-| `proc::allocproc` | page table, trapframe, kernel stack | `proc.rs:96`, `:117`, `:118` |
-| `kheap` | one page per heap allocation | `kheap.rs:29` |
+| `vm::walk` | an interior page-table page, on demand | `vm.rs` |
+| `vm::kvmmake` | the kernel root page table, the trampoline | `vm.rs` |
+| `vm::load_segment` | one page per page of the user image | `vm.rs` |
+| `vm::map_user_stack` | the user stack page | `vm.rs` |
+| `proc::allocproc` | page table, trapframe, kernel stack | `proc.rs` |
+| `kheap` | one page per heap allocation | `kheap.rs` |
 
 Every one checks for null and unwinds on failure, and every one gives its pages
-back with `kfree` on teardown (`vm.rs:364`, `proc.rs:143`). Two functions,
+back with `kfree` on teardown (`vm.rs`, `freeproc()` (`proc.rs`)). Two functions,
 forty-six lines, and the whole kernel rests on them.
 
 **Exercise `32k_physical_memory`** is where you write `kfree` and `kalloc`. `Run`,
@@ -550,16 +550,16 @@ operations are not. Its `README.md` has the mechanics and the Rust.
 
 | Concept | Definition | Example |
 |---|---|---|
-| Page | The fixed-size unit of allocation and of hardware translation | `PGSIZE = 4096` (`memlayout.rs:7`) |
+| Page | The fixed-size unit of allocation and of hardware translation | `PGSIZE = 4096` (`memlayout.rs`) |
 | Page-aligned | An address whose low 12 bits are zero | `0x8003_1000` is; `0x8003_0748` is not |
-| `pgroundup` | Round an address up to the next page boundary | `(a + 4095) & !4095` (`kalloc.rs:18`) |
-| Intrusive list | A list whose nodes are the objects themselves | `Run` overlaid on a free page (`kalloc.rs:6-9`) |
-| `FREELIST` | The head of the list; the allocator's entire out-of-line state | `static mut FREELIST: *mut Run` (`kalloc.rs:11`) |
+| `pgroundup` | Round an address up to the next page boundary | `(a + 4095) & !4095` (`kalloc.rs`) |
+| Intrusive list | A list whose nodes are the objects themselves | `Run` overlaid on a free page (`kalloc.rs`) |
+| `FREELIST` | The head of the list; the allocator's entire out-of-line state | `static mut FREELIST: *mut Run` (`kalloc.rs`) |
 | `kfree` | Push a page onto the front of the free list; cannot fail | `(*r).next = FREELIST; FREELIST = r;` |
-| `kalloc` | Pop the front page off the list, or return null | `FREELIST = (*r).next;` (`kalloc.rs:43`) |
+| `kalloc` | Pop the front page off the list, or return null | `FREELIST = (*r).next;` (`kalloc.rs`) |
 | LIFO | Last freed is first allocated, because both ends are the front | `kfree(b); kalloc() == b` |
-| `end` | Linker symbol: the first address past the kernel image | `PROVIDE(end = .)` (`kernel.ld:43`) |
-| Internal fragmentation | Allocated-but-unused bytes inside a block | A 16-byte `Arc` in 4096 bytes (`kheap.rs:11`) |
+| `end` | Linker symbol: the first address past the kernel image | `PROVIDE(end = .)` (`kernel.ld`) |
+| Internal fragmentation | Allocated-but-unused bytes inside a block | A 16-byte `Arc` in 4096 bytes (`kheap.rs`) |
 | External fragmentation | Free memory unusable because it is not contiguous | Impossible with fixed-size pages |
 | Buddy allocator | Power-of-two blocks that split and coalesce | Linux `free_area`, 4 KiB–4 MiB |
 
@@ -635,8 +635,8 @@ entirely correct here; the fault is one function away from the symptom.
 (a) Compute `pgroundup(0x8003_1000)`, `pgroundup(0x8003_1001)`, and
 `pgroundup(0x8000_0000)` by hand.
 
-(b) A leaf PTE is `Pte(((pa >> 12) << 10) | flags)` (`vm.rs:30`) with
-`PTE_V = 1`, `PTE_R = 2`, `PTE_W = 4` (`vm.rs:17-19`). Give the PTE for
+(b) A leaf PTE is `Pte(((pa >> 12) << 10) | flags)` (`Pte::new()` in `vm.rs`) with
+`PTE_V = 1`, `PTE_R = 2`, `PTE_W = 4` (`vm.rs`). Give the PTE for
 `pa = 0x87FF_F000` with those three flags, then for `pa = 0x87FF_F008`, and say
 what the hardware does with the second.
 
@@ -759,7 +759,7 @@ would make the same write catastrophic.
 
 It is safe because of the invariant `kalloc` establishes before returning:
 **the returned page is no longer on the list.** `FREELIST = (*r).next` runs
-first (`kalloc.rs:43`), so by the time the caller holds the pointer, no reachable
+first (`kalloc.rs`), so by the time the caller holds the pointer, no reachable
 node's `next` refers to it. The bytes it overwrites are stale.
 
 The catastrophic variant returns the head *without* advancing it:
@@ -799,18 +799,18 @@ indivisible step. Every intrusive container in every kernel obeys this rule.
 
 ## Summary
 
-1. **The physical allocator is the kernel's first service and depends on nothing.** Page tables, trapframes, kernel stacks, and the heap are all built from its pages, so it runs first: `kalloc::init()` at `main.rs:89`.
+1. **The physical allocator is the kernel's first service and depends on nothing.** Page tables, trapframes, kernel stacks, and the heap are all built from its pages, so it runs first: `kalloc::init()` at `main.rs`.
 
-2. **Allocation is page-granular because the hardware is.** A Sv39 PTE stores a page number, not an address: `Pte::new` (`vm.rs:30`) computes `(pa >> 12) << 10`, silently discarding the low twelve bits. An unaligned frame is not something the MMU can represent.
+2. **Allocation is page-granular because the hardware is.** A Sv39 PTE stores a page number, not an address: `Pte::new` (`vm.rs`) computes `(pa >> 12) << 10`, silently discarding the low twelve bits. An unaligned frame is not something the MMU can represent.
 
 3. **Fixed-size blocks make allocation O(1) and kill external fragmentation.** No search, no split, no coalesce, no size header. The price is internal fragmentation — `kheap.rs` spends a whole page on a 16-byte `Arc` — which a kernel accepts, since wasted memory beats unpredictable failure.
 
-4. **The intrusive free list stores its links inside the free pages themselves.** `Run` (`kalloc.rs:6-9`) is a fiction overlaid on a page's first eight bytes. Out-of-line metadata: eight bytes, whatever the RAM size.
+4. **The intrusive free list stores its links inside the free pages themselves.** `Run` (`kalloc.rs`) is a fiction overlaid on a page's first eight bytes. Out-of-line metadata: eight bytes, whatever the RAM size.
 
-5. **`kfree` is a push, `kalloc` is a pop, and `kfree` can never fail.** The storage for a free record *is* the page being freed, so nothing is allocated on the free path — exactly what teardown paths like `freeproc` (`proc.rs:143`) require.
+5. **`kfree` is a push, `kalloc` is a pop, and `kfree` can never fail.** The storage for a free record *is* the page being freed, so nothing is allocated on the free path — exactly what teardown paths like `freeproc` (`proc.rs`) require.
 
 6. **LIFO falls out of using one end of the list, and is also the right policy.** The most recently freed page is the most recently *used* page, so it is likely still cache-warm. Building the list upward from `end` means the first `kalloc` returns the top page of RAM, `0x87FF_F000`.
 
 7. **Order the two stores in `kfree` correctly or you leak all of RAM at boot.** `(*r).next = FREELIST` before `FREELIST = r`. Reversed, every node points at itself, 32,718 pages become unreachable during `init`, and two allocations return the same page.
 
-8. **This allocator refuses four things on purpose.** No contiguous multi-page allocation, no zeroing (callers do it — `vm.rs:66`), no validation, no locking. Each refusal buys simplicity now and is paid for later: by a buddy allocator in Linux, by callers in rv6, by the spinlock you write in exercise `37k`.
+8. **This allocator refuses four things on purpose.** No contiguous multi-page allocation, no zeroing (callers do it — `vm.rs`), no validation, no locking. Each refusal buys simplicity now and is paid for later: by a buddy allocator in Linux, by callers in rv6, by the spinlock you write in exercise `37k`.

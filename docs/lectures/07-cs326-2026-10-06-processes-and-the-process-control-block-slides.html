@@ -236,14 +236,14 @@ There is no "process object" elsewhere. A process <strong>is</strong> its PCB: <
 
 | The kernel must answer | Field | rv6 |
 |---|---|---|
-| Which process is this? | `pid` | `proc.rs:29` |
-| Is it eligible to run? | `state` | `proc.rs:28` |
-| What memory may it touch? | `pagetable` | `proc.rs:30` |
-| Where do I resume it *in the kernel*? | `context` | `proc.rs:33` |
-| Where do I resume it *in user mode*? | `trapframe` | `proc.rs:35` |
-| Where does its kernel code push frames? | `kstack` | `proc.rs:37` |
-| What has it open? | `ofile` | `proc.rs:39` |
-| Who learns that it died, and with what? | `parent`, `xstate` | `proc.rs:42,44` |
+| Which process is this? | `pid` | `proc.rs` |
+| Is it eligible to run? | `state` | `proc.rs` |
+| What memory may it touch? | `pagetable` | `proc.rs` |
+| Where do I resume it *in the kernel*? | `context` | `proc.rs` |
+| Where do I resume it *in user mode*? | `trapframe` | `proc.rs` |
+| Where does its kernel code push frames? | `kstack` | `proc.rs` |
+| What has it open? | `ofile` | `proc.rs` |
+| Who learns that it died, and with what? | `parent`, `xstate` | `proc.rs,44` |
 
 Ten fields total. Everything else in the kernel is derived from them.
 
@@ -266,13 +266,13 @@ pub struct Proc {
 }
 ```
 
-`proc.rs:27-46`. `Proc::new()` is a `const fn` (`proc.rs:49-62`) — the whole table is built at compile time.
+`proc.rs`. `Proc::new()` is a `const fn` (`proc.rs`) — the whole table is built at compile time.
 
 ---
 
 ## Identity: pid vs Slot Index
 
-- `pid` comes from `NEXTPID`, a counter that only increases (`proc.rs:66`, `alloc_pid` at `proc.rs:89-93`)
+- `pid` comes from `NEXTPID`, a counter that only increases (`proc.rs`, `alloc_pid` at `proc.rs`)
 - Slot indices are **recycled** the instant a process is freed
 
 <div class="highlight-box">
@@ -315,7 +315,7 @@ This is the confusing part of any PCB. Say it out loud:
 | Holds | `ra`, `sp`, `s0`–`s11` | all 31 user regs + `epc` + 3 kernel pointers |
 | Written by | `swtch` (a function call) | trampoline assembly (a trap) |
 | Direction | kernel ↔ kernel | user ↔ kernel |
-| Source | `swtch.rs:5-22` | `usermode.rs:33-71` |
+| Source | `swtch.rs` | `usermode.rs` |
 
 Why only 14? `swtch` is an ordinary call — the compiler already spilled caller-saved registers.
 
@@ -331,7 +331,7 @@ When a process traps in, kernel code runs **on that process's behalf** and must 
 So: one page per process.
 
 ```rust
-// usermode.rs:245-249
+// usermode.rs
 (*p).context.ra = forkret as usize;
 (*p).context.sp = (*p).kstack + PGSIZE;   // RISC-V stacks grow down
 ```
@@ -362,13 +362,13 @@ Three owned pages. Everything else is inline — which is why a PCB can live in 
 ## Relationships and Results
 
 ```rust
-pub parent: *mut Proc,   // proc.rs:42
-pub xstate: isize,       // proc.rs:44
+pub parent: *mut Proc,   // proc.rs
+pub xstate: isize,       // proc.rs
 ```
 
-- `sys_wait` scans the table for a slot where `(*q).parent == p` **and** `state == Zombie` (`syscall.rs:147`)
-- `exit_current` stores `xstate` (`usermode.rs:373`); `sys_wait` copies it into the parent's memory (`syscall.rs:149-152`)
-- `has_children` (`proc.rs:173-181`) lets `wait` tell "no children" from "no child has exited yet"
+- `sys_wait` scans the table for a slot where `(*q).parent == p` **and** `state == Zombie` (`syscall.rs`)
+- `exit_current` stores `xstate` (`usermode.rs`); `sys_wait` copies it into the parent's memory (`syscall.rs`)
+- `has_children` (`proc.rs`) lets `wait` tell "no children" from "no child has exited yet"
 
 These two fields are the entire reason the `Zombie` state must exist.
 
@@ -389,7 +389,7 @@ stateDiagram-v2
     Runnable --> Unused: allocproc rollback or cleanup
 </div>
 
-"Exactly one of a fixed set of named alternatives" is precisely a Rust `enum` (`proc.rs:18-25`).
+"Exactly one of a fixed set of named alternatives" is precisely a Rust `enum` (`proc.rs`).
 
 ---
 
@@ -397,13 +397,13 @@ stateDiagram-v2
 
 | From | To | Event | Code |
 |---|---|---|---|
-| — | `Unused` | boot-time table reset | `proc.rs:74-87` |
-| `Unused` | `Runnable` | a free slot is claimed | `proc.rs:112` |
-| `Runnable` | `Running` | the policy chose this slot | `usermode.rs:293` |
-| `Running` | `Runnable` | voluntary yield | `usermode.rs:364` |
-| `Running` | `Zombie` | the process called `exit` | `usermode.rs:374` |
-| `Zombie` | `Unused` | a parent's `wait` reaped it | `syscall.rs:153` |
-| any live | `Unused` | teardown of a finished run | `usermode.rs:344-351` |
+| — | `Unused` | boot-time table reset | `proc.rs` |
+| `Unused` | `Runnable` | a free slot is claimed | `proc.rs` |
+| `Runnable` | `Running` | the policy chose this slot | `usermode.rs` |
+| `Running` | `Runnable` | voluntary yield | `usermode.rs` |
+| `Running` | `Zombie` | the process called `exit` | `usermode.rs` |
+| `Zombie` | `Unused` | a parent's `wait` reaped it | `syscall.rs` |
+| any live | `Unused` | teardown of a finished run | `usermode.rs` |
 
 Nothing in rv6 ever writes `Sleeping` — it is declared for the shape a real kernel takes.
 
@@ -415,7 +415,7 @@ Nothing in rv6 ever writes `Sleeping` — it is declared for the shape a real ke
 - `Running` = "I hold the CPU — do not pick me again"
 
 ```rust
-// sched.rs:20-29 — the policy filters on exactly one of them
+// sched.rs — the policy filters on exactly one of them
 (0..n).map(|off| (self.next + off) % n)
       .find(|&i| states[i] == ProcState::Runnable)
 ```
@@ -434,7 +434,7 @@ Why can't `exit` just free the slot?
 Because the exit status has an <strong>addressee</strong>. The parent may not have called <code>wait</code> yet, and it is entitled to that value. Freeing the PCB destroys the status before delivery.
 </div>
 
-- `exit_current` writes `xstate`, sets `Zombie` (`usermode.rs:373-374`)
+- `exit_current` writes `xstate`, sets `Zombie` (`usermode.rs`)
 - The scheduler never picks a `Zombie` — it is not `Runnable`
 - The slot lingers as a corpse holding one number until `wait` reaps it
 
@@ -471,11 +471,11 @@ static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];
 static mut NEXTPID: usize = 1;
 ```
 
-`proc.rs:65-66`, with `NPROC = 64` from `param.rs:7`.
+`proc.rs`, with `NPROC = 64` from `param.rs`.
 
 - Built at compile time by repeating a `const fn`
 - No allocator, no init-order problem, nothing to fail at boot
-- Reached only through `ptr::addr_of_mut!(PROCS[i])` (`proc.rs:71`), never `&mut`
+- Reached only through `ptr::addr_of_mut!(PROCS[i])` (`proc_at()` in `proc.rs`), never `&mut`
 
 ---
 
@@ -491,8 +491,8 @@ static mut NEXTPID: usize = 1;
    ...
   63    Unused       0   null        0            null
 
-  allocproc scans 0..64 for the first Unused slot   -> proc.rs:108-110
-  a full scan that finds none returns null          -> proc.rs:134
+  allocproc scans 0..64 for the first Unused slot   -> proc.rs
+  a full scan that finds none returns null          -> proc.rs
 ```
 
 ---
@@ -514,10 +514,10 @@ The cost is a hard ceiling. That is exactly what check 3 in `34k_processes` veri
 Nothing dramatic — that is the design goal.
 
 ```rust
-// proc.rs:134  — scanned all NPROC slots, none Unused
+// proc.rs  — scanned all NPROC slots, none Unused
 ptr::null_mut()
 
-// syscall.rs:96-98
+// syscall.rs
 let child = proc::allocproc();
 if child.is_null() { return -1; }      // fork() fails in userspace
 ```
@@ -533,17 +533,17 @@ if child.is_null() { return -1; }      // fork() fails in userspace
 `Proc` deliberately is **not** `Copy` — copying a PCB would make two owners of one page table.
 
 ```text
-  allocproc — acquire in order, roll back on any failure   (proc.rs:107-135)
+  allocproc — acquire in order, roll back on any failure   (proc.rs)
 
-  find Unused slot ........ proc.rs:108-110
-  pid, state, parent ...... proc.rs:111-114     cheap, cannot fail
-  pagetable = create_pagetable()  proc.rs:116   \
-  trapframe = kalloc()            proc.rs:117    |  3 pages, any may fail
-  kstack    = kalloc()            proc.rs:118   /
+  find Unused slot ........ proc.rs
+  pid, state, parent ...... proc.rs     cheap, cannot fail
+  pagetable = create_pagetable()  proc.rs   \
+  trapframe = kalloc()            proc.rs    |  3 pages, any may fail
+  kstack    = kalloc()            proc.rs   /
        |
-  any null? -- yes --> freeproc(p); return null   proc.rs:119-122
+  any null? -- yes --> freeproc(p); return null   proc.rs
        no
-  zero trapframe, open fds 0/1/2, return p        proc.rs:123-131
+  zero trapframe, open fds 0/1/2, return p        proc.rs
 ```
 
 A constructor that fails partway must undo everything it did.
@@ -558,7 +558,7 @@ if !(*p).trapframe.is_null() {
     (*p).trapframe = ptr::null_mut();   // <- not optional
 }
 // ... pagetable, kstack ...
-(*p).state = ProcState::Unused;         // proc.rs:157 — LAST
+(*p).state = ProcState::Unused;         // proc.rs — LAST
 ```
 
 - **Null after free**, or a second `freeproc` puts one page on the free list twice
@@ -670,7 +670,7 @@ Today: the skeleton, plus **claim a slot** and **give it back**.
 
 1. **A process is two guarantees** — the unit of isolation and the unit of scheduling. Every PCB field serves one of those, or accounting.
 
-2. **The PCB is the process.** `Proc` is ten fields (`proc.rs:27-46`); every module names a process by `*mut Proc`.
+2. **The PCB is the process.** `Proc` is ten fields (`proc.rs`); every module names a process by `*mut Proc`.
 
 3. **Two register saves, two reasons.** `Context` (14, kernel↔kernel) vs `Trapframe` (35, user↔kernel).
 

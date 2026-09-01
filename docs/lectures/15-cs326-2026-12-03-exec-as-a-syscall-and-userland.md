@@ -70,7 +70,7 @@ by and the **exit status** it left. That husk is a **zombie** — not slang, but
 the state name in every Unix kernel, printed by `ps` as `Z` beside
 `<defunct>`.
 
-In rv6 this is `exit_current` (`usermode.rs:371`), and it is three lines of
+In rv6 this is `exit_current` (`usermode.rs`), and it is three lines of
 real work:
 
 ```rust
@@ -83,9 +83,9 @@ pub unsafe fn exit_current(status: isize) -> ! {
 }
 ```
 
-`xstate` is the PCB field added for exactly this purpose (`proc.rs:44`), and
+`xstate` is the PCB field added for exactly this purpose (`Proc` in `proc.rs`), and
 the `unreachable!()` is load-bearing: the policy only picks `Runnable` slots
-(`sched.rs:23`), so a `Zombie` is unreachable by construction.
+(`sched.rs`), so a `Zombie` is unreachable by construction.
 
 ### What a zombie still owns
 
@@ -98,7 +98,7 @@ stateDiagram-v2
     Zombie --> [*]: freeproc, the parent's wait reaps it
 ```
 
-rv6 keeps everything until `freeproc` (`proc.rs:139`): the trapframe page, the
+rv6 keeps everything until `freeproc` (`proc.rs`): the trapframe page, the
 kernel stack page, the whole user page table. Linux is stingier — it tears the
 address space down at exit and keeps only a few hundred bytes of `task_struct`
 holding the pid, the status, and accounting totals. The principle is the same
@@ -107,7 +107,7 @@ either way: *the identity and the result survive; the memory need not.*
 ### The status word is smaller than you think
 
 rv6 stores a full `isize` in `xstate` and copies four bytes out to the user as
-an `i32` (`syscall.rs:150`). POSIX is far more cramped: `wait` returns a single
+an `i32` (`syscall.rs`). POSIX is far more cramped: `wait` returns a single
 `int` that packs *several* answers at once.
 
 | Bits of the Linux status word | Meaning | Accessor |
@@ -126,15 +126,15 @@ bits wide, not thirty-two.
 
 ## 2. wait: Reaping, Blocking, and the Two Ways to Fail
 
-`wait(&status)` is the collector. `sys_wait` (`syscall.rs:141`) is a scan
+`wait(&status)` is the collector. `sys_wait` (`syscall.rs`) is a scan
 wrapped in a retry loop, and its shape encodes three distinct outcomes:
 
 1. **A zombie child exists.** Copy its status out with `vm::copyout`, call
    `proc::freeproc` on it — that is the *reap* — and return its pid.
-2. **No children at all.** `proc::has_children` (`proc.rs:173`) says no, so
+2. **No children at all.** `proc::has_children` (`proc.rs`) says no, so
    return −1. POSIX spells this `ECHILD`.
 3. **Children exist, but none has finished.** Give up the CPU with
-   `usermode::proc_yield` (`syscall.rs:165`) and scan again when the scheduler
+   `usermode::proc_yield` (`syscall.rs`) and scan again when the scheduler
    picks us back up.
 
 Case 3 is where `wait` earns the word "blocks" — but note what rv6 does *not*
@@ -152,7 +152,7 @@ parent burns a scheduler round per failed attempt.
 
 ### Reaping is what frees the slot
 
-`freeproc` (`proc.rs:139`) returns the trapframe, the kernel stack, and the
+`freeproc` (`proc.rs`) returns the trapframe, the kernel stack, and the
 user page table, then clears `pid`, `parent`, and `xstate` and sets the state
 back to `Unused`. Until that call the slot is spent — which is why a parent
 that forks in a loop and never waits exhausts `NPROC` while doing no work at
@@ -169,7 +169,7 @@ find a zombie of mine, take its result, delete it.
 ## 3. The Process Tree, init, and Reparenting
 
 `fork` stamps one field into the child: `(*child).parent = parent`
-(`syscall.rs:108`). That single pointer is the entire process tree. Each
+(`sys_fork()` in `syscall.rs`). That single pointer is the entire process tree. Each
 process has exactly one parent and any number of children, so the "graph" of
 processes is a tree rooted at whatever the kernel started first.
 
@@ -206,7 +206,7 @@ to init, and now nobody's problem.
 
 rv6 has no `init` and does no reparenting. Instead, `usermode::run` drives the
 scheduler only until the *root* process becomes a zombie, and then
-`cleanup_except` (`usermode.rs:344`) frees every other live process outright:
+`cleanup_except` (`usermode.rs`) frees every other live process outright:
 
 ```rust
 unsafe fn cleanup_except(root: *mut Proc) {
@@ -221,10 +221,10 @@ unsafe fn cleanup_except(root: *mut Proc) {
 
 That is a legitimate policy for a bounded run — the whole tree dies with the
 command you typed — and it sidesteps a real hazard. `wait` compares parents by
-**pointer** (`syscall.rs:147`), and slots are recycled: if a parent's slot were
+**pointer** (`sys_wait()` in `syscall.rs`), and slots are recycled: if a parent's slot were
 freed while an orphan still pointed at it, the next `allocproc` to claim that
 slot would silently adopt a child it never forked. rv6 avoids this by nulling
-`parent` in `freeproc` (`proc.rs:155`) and by never letting a tree outlive its
+`parent` in `freeproc` (`proc.rs`) and by never letting a tree outlive its
 root. Real kernels solve it with reference-counted task structures and pids
 that are looked up rather than pointed at.
 
@@ -242,8 +242,8 @@ decision to make — so the policy written in exercise `36k` sat unused for six
 weeks. `fork` changes that in one instruction: after `sys_fork` returns there
 are two `Runnable` processes and a genuine choice.
 
-The loop that makes it is `scheduler` (`usermode.rs:278`). Each pass snapshots
-every slot's state, hands the array to `RoundRobin::pick_next` (`sched.rs:20`),
+The loop that makes it is `scheduler` (`usermode.rs`). Each pass snapshots
+every slot's state, hands the array to `RoundRobin::pick_next` (`sched.rs`),
 marks the winner `Running`, sets `CURPROC`, and `swtch`-es into it; control
 returns to the next line when that process yields or exits.
 
@@ -266,16 +266,16 @@ load-bearing rather than theoretical.
 
 ### Where a forked child actually starts
 
-A child never "returns from `fork`" in the kernel. `ready` (`usermode.rs:245`)
+A child never "returns from `fork`" in the kernel. `ready` (`usermode.rs`)
 gives it a context whose return address is `forkret` and whose stack pointer is
 the top of its own kernel stack page, so the first `swtch` into the child
-*returns into* `forkret` (`usermode.rs:356`), which calls `usertrapret`, which
+*returns into* `forkret` (`usermode.rs`), which calls `usertrapret`, which
 restores the trapframe `fork` copied from the parent — with `a0` overwritten to
-0 (`syscall.rs:106`). The child resumes at the instruction after the parent's
+0 (`sys_fork()` in `syscall.rs`). The child resumes at the instruction after the parent's
 `ecall`, on the parent's saved stack pointer, with one register different. That
 is the whole of "fork returns twice."
 
-Here is `run forktest` (`exec.rs:263`), scheduled:
+Here is `run forktest` (`exec.rs`), scheduled:
 
 ```mermaid
 sequenceDiagram
@@ -297,8 +297,8 @@ sequenceDiagram
 Two details are worth staring at. First, "parent" prints before "child" even
 though the child was created first: the parent keeps the CPU until it blocks,
 because rv6 is **cooperative**. The timer from exercise `44k` still ticks and is
-still forwarded to user mode (`usermode.rs:265`), but its handler only clears
-the pending bit (`usermode.rs:411`) — turning that tick into a `proc_yield` is
+still forwarded to user mode (`run()` in `usermode.rs`), but its handler only clears
+the pending bit (`usertrap()` in `usermode.rs`) — turning that tick into a `proc_yield` is
 all preemption would take, and rv6 deliberately stops one line short. Second,
 the parent exits 17, not 7, because `forktest` adds 10 to what `wait` gave it:
 a status of 17 proves the fork, the schedule, the child's exit, and the
@@ -334,15 +334,15 @@ calls made by the child before it stops being the shell:
         +-- parent: wait(&status)             # the shell's own fd 1 untouched
 ```
 
-The trick is that `fdalloc` (`syscall.rs:295`) returns the **lowest free**
+The trick is that `fdalloc` (`syscall.rs`) returns the **lowest free**
 descriptor. Close 1, and the next `open` is handed 1. `ls` is written to print
 on fd 1 and never learns anything changed. Everything needed for this already
 exists in your kernel: the fd table from exercise `50k`, and the two lines that
 make it survive the transition —
 
 - `fork` copies the table wholesale: `(*child).ofile = (*parent).ofile;`
-  (`syscall.rs:107`), so the child inherits every open file;
-- `exec_into` (`exec.rs:753`) replaces the page table, the stack, and the
+  (`sys_open()` in `syscall.rs`), so the child inherits every open file;
+- `exec_into` (`exec.rs`) replaces the page table, the stack, and the
   program counter — and **never touches `ofile`**.
 
 Read that second point again: `exec` preserves descriptors *by doing nothing*.
@@ -444,7 +444,7 @@ reserve `fork` for the window they actually need.
 | trapframe **page** (same physical page) | trapframe **contents**: `epc`, `sp`, `a0`, `a1` |
 | process-table slot and scheduler state | argv, argc |
 
-In rv6 this is six lines (`exec.rs:753`):
+In rv6 this is six lines (`exec.rs`):
 
 ```rust
 pub unsafe fn exec_into(p: *mut Proc, name: &str, args: &[&str]) -> Result<usize, ExecError> {
@@ -481,9 +481,9 @@ pub unsafe fn exec_into(p: *mut Proc, name: &str, args: &[&str]) -> Result<usize
 `exec` is **atomic with respect to failure**: if the program does not exist,
 the caller must still be running its own code afterward, memory intact, ready
 to print an error. That dictates the ordering above. `build_addrspace`
-(`exec.rs:648`) constructs the *entire* new address space first — page table,
+(`Built` in `exec.rs`) constructs the *entire* new address space first — page table,
 image, stack, argv — and frees its own half-built work on any error
-(`exec.rs:662`), so the `?` on line one bails out before a byte of the old
+(`exec.rs`), so the `?` on line one bails out before a byte of the old
 process has been disturbed. Build, then swap, then free.
 
 Invert any two of those steps and you get a specific bug. Free the old page
@@ -495,14 +495,14 @@ resumes at the *old* program's `epc` inside the *new* program's memory.
 
 How can you free the memory of a running process? Because it is not running.
 The CPU is executing kernel code, and `uservec` switched `satp` to the kernel
-page table on the way in (`usermode.rs:134`); the user page table is, at this
+page table on the way in (`usermode.rs`); the user page table is, at this
 instant, just a data structure the kernel owns. The trampoline is shared by
 every address space and the trapframe page belongs to the `Proc` rather than to
 the page table, so `free_user_pagetable` takes only the user's own pages.
 
-That is also why `build_addrspace` is handed `(*p).trapframe` (`exec.rs:753`)
+That is also why `build_addrspace` is handed `(*p).trapframe` (`exec_into()` in `exec.rs`)
 instead of allocating a fresh page: the new address space must map the *same*
-physical trapframe at the *same* virtual address (`exec.rs:682`), because the
+physical trapframe at the *same* virtual address (`exec.rs`), because the
 trampoline will look for the saved kernel `satp` and `sp` there on the way out.
 
 ### exec does not return — and the return value proves it
@@ -511,7 +511,7 @@ On success there is no instruction to return to; the memory holding it was just
 freed. What actually happens is subtler, and is a favorite exam question.
 
 `usertrap` advances `epc` past the `ecall`, calls `dispatch`, and stores the
-handler's return value into the trapframe's `a0` (`usermode.rs:408`). But
+handler's return value into the trapframe's `a0` (`usermode.rs`). But
 `exec_into` has already set `epc`, `sp`, `a0`, and `a1` for the *new* program,
 so that final store lands on a trapframe describing `hello`, not the caller.
 This is why `sys_exec` returns **argc** rather than 0: the value written over
@@ -520,12 +520,12 @@ is never touched by `usertrap` and survives.
 
 On failure nothing was swapped, `epc` still points just past the caller's
 `ecall`, and `-1` lands in `a0` like any other failed system call. That is
-exactly what `execfail` (`exec.rs:542`) proves: it execs `"nosuchprog"` and
+exactly what `execfail` (`exec.rs`) proves: it execs `"nosuchprog"` and
 carries on to `exit(7)`.
 
 ### What argv really is
 
-`push_argv` (`exec.rs:781`) builds the argument vector inside the *new* address
+`push_argv` (`exec.rs`) builds the argument vector inside the *new* address
 space, before that address space belongs to anybody, using `vm::copyout`:
 
 ```text
@@ -544,7 +544,7 @@ space, before that address space belongs to anybody, using `vm::copyout`:
 Every pointer in that array is a *user* virtual address, meaningful only inside
 the page table being built. `argv` is not a magic kernel object; it is bytes on
 a stack arranged by convention, and `a0`/`a1` announce the convention. The
-16-byte alignment (`exec.rs:822`) is the RISC-V ABI's rule, not decoration.
+16-byte alignment (`push_argv()` in `exec.rs`) is the RISC-V ABI's rule, not decoration.
 
 > **Compare with Linux:** `execve` does all of this and then some — it parses
 > ELF program headers instead of copying a flat image, builds an auxiliary
@@ -558,7 +558,7 @@ a stack arranged by convention, and `a0`/`a1` announce the convention. The
 ## 7. The Shell Is Just a Program
 
 With `exec` reachable through `ecall`, the shell can leave the kernel. `sh`
-(`exec.rs:354`) is a program in the same table as `hello` and `echo`, loaded
+(`exec.rs`) is a program in the same table as `hello` and `echo`, loaded
 the same way, and its main loop is what every shell has done since 1971:
 
 ```text
@@ -574,18 +574,18 @@ the same way, and its main loop is what every shell has done since 1971:
 ```
 
 Now audit its privileges. It returns to user mode with `SPP = 0`
-(`usermode.rs:455`); its page table maps its image and stack with `PTE_U` and
+(`usertrapret()` in `usermode.rs`); its page table maps its image and stack with `PTE_U` and
 the trampoline and trapframe *without* it, so a load from either faults. It
 cannot call `FS.lock()` or `kalloc`, cannot read another process's memory,
 cannot see the process table. Everything it does goes through `ecall` and the
-nine numbers in `syscall.rs:21`. The thing you have typed into all semester
+nine numbers in `SYS_FORK` (`syscall.rs`). The thing you have typed into all semester
 turns out to be nothing special: an unprivileged program in a loop.
 
 That also explains why `cd` is a **builtin** in every shell you have used. `cd`
 changes the shell's own working directory; run as a child, it would `chdir`,
 exec, exit, and leave the parent exactly where it was. Builtins are not an
 optimization — they are the commands whose entire effect is on the shell
-process itself, which is why `exit` is one too (`exec.rs:433`).
+process itself, which is why `exit` is one too (`exec.rs`).
 
 ### One wrinkle: a blocking read needs interrupts back
 
@@ -593,7 +593,7 @@ The user shell's `read` blocks on a keypress that arrives as a UART interrupt �
 but entering the kernel through a trap leaves supervisor interrupts disabled,
 so a naive blocking read waits forever for an event that can never be
 delivered. `sys_read` turns interrupts back on for that one call
-(`syscall.rs:488`), not for every system call, so deeper chains like `exec`
+(`syscall.rs`), not for every system call, so deeper chains like `exec`
 keep running on a quiet 4 KiB kernel stack. Enabling interrupts is a decision
 about which stack you are willing to nest a handler on.
 
@@ -617,7 +617,7 @@ flowchart TD
 ```
 
 Underneath sits the boot path from exercises `31k`, `32k`, `33k`, and `42k`
-(`main.rs:89-95`): `entry.s` and `start.rs` dropping from machine to supervisor
+(`main.rs`): `entry.s` and `start.rs` dropping from machine to supervisor
 mode, `kalloc::init` building the free list, `kvmmake` and `kvminithart`
 installing the kernel page table in `satp`, `proc::init` zeroing the process
 table, and `fs::FS.lock().init()` creating the root directory. No layer knows
@@ -655,18 +655,18 @@ Each is an afternoon's work on top of what you now have.
 
 | Concept | Definition | Example |
 |---|---|---|
-| Zombie | A process that has exited but whose slot still holds its pid and exit status, awaiting collection | `exit_current` sets `state = Zombie`, `xstate = 7` (`usermode.rs:373`) |
-| Reaping | Reading a zombie's status and freeing its slot for reuse | `sys_wait` calls `proc::freeproc(q)` and returns the pid (`syscall.rs:153`) |
+| Zombie | A process that has exited but whose slot still holds its pid and exit status, awaiting collection | `exit_current` sets `state = Zombie`, `xstate = 7` (`usermode.rs`) |
+| Reaping | Reading a zombie's status and freeing its slot for reuse | `sys_wait` calls `proc::freeproc(q)` and returns the pid (`syscall.rs`) |
 | Orphan | A live process whose parent has already exited | A grandchild after the deliberate double fork |
-| Reparenting | Re-pointing an orphan's parent field at `init` so someone will reap it | Linux pid 1; rv6 uses `cleanup_except` instead (`usermode.rs:344`) |
-| Process tree | The parent-pointer forest rooted at the first process | `(*child).parent = parent` (`syscall.rs:108`) |
-| Cooperative scheduling | Switching only when a process yields or exits, never by force | `proc_yield` in blocked `wait`; the timer tick is ignored (`usermode.rs:411`) |
+| Reparenting | Re-pointing an orphan's parent field at `init` so someone will reap it | Linux pid 1; rv6 uses `cleanup_except` instead (`usermode.rs`) |
+| Process tree | The parent-pointer forest rooted at the first process | `(*child).parent = parent` (`syscall.rs`) |
+| Cooperative scheduling | Switching only when a process yields or exits, never by force | `proc_yield` in blocked `wait`; the timer tick is ignored (`usermode.rs`) |
 | The fork/exec window | The interval where the child runs its own code before becoming a new program | `close(1); open("out.txt", ...); exec(...)` |
-| Descriptor inheritance | Open files survive both `fork` and `exec` unless closed | `(*child).ofile = (*parent).ofile` (`syscall.rs:107`); `exec_into` never touches `ofile` |
-| Address-space swap | Replacing a process's page table while keeping the process | `exec_into` installs `built.pagetable`, frees `old` (`exec.rs:756`) |
-| Failure atomicity | A failed operation leaves the caller exactly as it was | `build_addrspace(...)?` runs before any destruction (`exec.rs:754`) |
-| argv | An array of user virtual addresses on the new user stack, plus `a0`/`a1` | Built by `push_argv` with `copyout` (`exec.rs:830`) |
-| Builtin | A command whose effect is on the shell process itself, so it cannot be a child | `cd`, `exit` (`exec.rs:433`) |
+| Descriptor inheritance | Open files survive both `fork` and `exec` unless closed | `(*child).ofile = (*parent).ofile` (`syscall.rs`); `exec_into` never touches `ofile` |
+| Address-space swap | Replacing a process's page table while keeping the process | `exec_into` installs `built.pagetable`, frees `old` (`exec.rs`) |
+| Failure atomicity | A failed operation leaves the caller exactly as it was | `build_addrspace(...)?` runs before any destruction (`exec.rs`) |
+| argv | An array of user virtual addresses on the new user stack, plus `a0`/`a1` | Built by `push_argv` with `copyout` (`exec.rs`) |
+| Builtin | A command whose effect is on the shell process itself, so it cannot be a child | `cd`, `exit` (`exec.rs`) |
 
 ---
 
@@ -674,7 +674,7 @@ Each is an afternoon's work on top of what you now have.
 
 ### Problem 1: Order the steps
 
-`forks2` (`exec.rs:306`) forks child A which exits 3, then forks child B which
+`forks2` (`exec.rs`) forks child A which exits 3, then forks child B which
 exits 4, then calls `wait` twice and exits with the sum. Assume the rv6
 cooperative scheduler and round robin from slot 0. Give the order in which the
 three processes run, and the parent's final exit status. Then state what would
@@ -719,18 +719,18 @@ undo any of it.
 After `fork`, the child's table is a copy of the shell's:
 `ofile[0] = Console, ofile[1] = Console, ofile[2] = Console`.
 
-`close(1)` sets `ofile[1] = File::none()` (`syscall.rs:573`), so `kind` becomes
+`close(1)` sets `ofile[1] = File::none()` (`syscall.rs`), so `kind` becomes
 `FileKind::None`. Table: `[Console, None, Console]`.
 
 `open` builds a `File { kind: Inode, inum, off: 0, ... }` and hands it to
-`fdalloc` (`syscall.rs:295`), which scans from index 0 for the first slot whose
+`fdalloc` (`syscall.rs`), which scans from index 0 for the first slot whose
 `kind` is `None`. Slot 0 is `Console`, slot 1 is free — so `open` **returns 1**.
 Table: `[Console, Inode(out.txt), Console]`.
 
-`exec_into` (`exec.rs:753`) replaces `pagetable`, `epc`, `sp`, `a0`, and `a1`
+`exec_into` (`exec.rs`) replaces `pagetable`, `epc`, `sp`, `a0`, and `a1`
 and never mentions `ofile`, so the table survives verbatim. `echo` writes to fd
 1 as always; `sys_write` finds `FileKind::Inode` and appends through
-`FS.write_at` (`syscall.rs:551`). `hi` lands in **out.txt**, and the shell's own
+`FS.write_at` (`syscall.rs`). `hi` lands in **out.txt**, and the shell's own
 fd 1 — different process, different table — is untouched.
 
 That is redirection, built entirely from the "lowest free descriptor" rule and
@@ -761,7 +761,7 @@ table is installed, and the process resumes in the new program. Nothing ever
 reads the freed old address space, so the bug is invisible.
 
 `execfail` execs `"nosuchprog"`. `lookup` returns `None`, `build_addrspace`
-returns `Err(NotFound)` (`exec.rs:649`), and `?` propagates out of `exec_into`
+returns `Err(NotFound)` (`Built` in `exec.rs`), and `?` propagates out of `exec_into`
 — but the old page table has *already been freed*. `sys_exec` returns −1, and
 `usertrapret` builds a `satp` from `(*p).pagetable`, which now names a page on
 the free list that may already have been handed out again. The `sret` lands in
@@ -770,7 +770,7 @@ fault, or execution of whatever bytes now occupy that page.
 
 The broken property is **failure atomicity**: `exec` must destroy nothing until
 it is certain to succeed. Build, swap, free — which is also why
-`build_addrspace` cleans up after itself (`exec.rs:662`).
+`build_addrspace` cleans up after itself (`exec.rs`).
 </details>
 
 ### Problem 4: Where does the status go?
@@ -792,7 +792,7 @@ with `7 + 10`; what would `wait` report if the child had called `exit(300)`?
 
 (a) `status_addr` is a **user** virtual address and the kernel is running on
 the kernel page table, so dereferencing it would fault or scribble on a kernel
-structure. `copyout` (`vm.rs:268`) walks the *process's* page table to
+structure. `copyout` (`vm.rs`) walks the *process's* page table to
 translate the address, and fails cleanly if the page is unmapped — the kernel's
 defense against a wild user pointer.
 
@@ -822,23 +822,23 @@ active page table changes, and state what value ends up in the user's `a0` and
 
 Page-table changes:
 
-1. `uservec` (`usermode.rs:131-135`) loads `kernel_satp` from the trapframe and
+1. `uservec` (`usermode.rs`) loads `kernel_satp` from the trapframe and
    writes it to `satp`, bracketed by `sfence.vma`. **User → kernel table.**
 2. Everything in between — `usertrap`, `dispatch`, `sys_exec`, `copyinstr`,
    `fetch_argv`, `exec_into`, `build_addrspace`, `push_argv` — runs on the
    kernel table. `copyinstr` and `copyout` reach user memory by *walking* the
-   user page table in software (`vm.rs:317`, `vm.rs:268`), never by switching
+   user page table in software (`vm.rs`), never by switching
    to it. That is why those functions exist.
 3. `usertrapret` computes `vm::make_satp((*p).pagetable)` — now the **new**
-   table — and `userret` writes it to `satp` (`usermode.rs:141`).
+   table — and `userret` writes it to `satp` (`usermode.rs`).
    **Kernel → new user table.**
 
 At `sret`:
 
 - `epc`: set to `sepc + 4` by `usertrap`, then overwritten by `exec_into` with
-  `USER_CODE` = `0x0` (`memlayout.rs:61`).
+  `USER_CODE` = `0x0` (`memlayout.rs`).
 - `a0`: `exec_into` set argc; `usertrap` then stored `dispatch`'s return value
-  (`usermode.rs:408`), which `sys_exec` also makes argc (`syscall.rs:268`).
+  (`usermode.rs`), which `sys_exec` also makes argc (`syscall.rs`).
   With one argument plus argv[0], `a0 = 2`.
 - `a1` is untouched by `usertrap` and holds the argv address `push_argv` chose.
 - `sp` is `built.sp`, at the argv array near `USER_STACK_TOP`.
@@ -859,7 +859,7 @@ and one it would lose.
 <summary>Click to reveal solution</summary>
 
 **Their case.** `fork` builds an address space that `exec` immediately
-destroys — and rv6's `uvmcopy` (`vm.rs:383`) copies every user page byte for
+destroys — and rv6's `uvmcopy` (`vm.rs`) copies every user page byte for
 byte, with no copy-on-write, so `fork`+`exec` costs literally twice the page
 allocations of a `spawn`. It also needs an MMU and is nonsense in a threaded
 program. Two descriptor parameters cover the overwhelmingly common case, which
@@ -876,7 +876,7 @@ which is what has kept a 1970s interface viable through namespaces and cgroups.
 
 **For rv6 specifically.** It would gain real speed: no `uvmcopy`, no second
 address space, no swap dance, and no copy-on-write to miss. It would lose the
-shell — the user-mode `sh` (`exec.rs:354`) is `fork` + `exec` + `wait` in
+shell — the user-mode `sh` (`exec.rs`) is `fork` + `exec` + `wait` in
 exactly the classic shape, and the moment you want `cmd > file` or `a | b`
 without new kernel parameters, you need the window back.
 
@@ -921,17 +921,17 @@ that need the window, offer `posix_spawn` for the ones that do not.
 
 1. **A zombie exists because an exit status must outlive its process.** `exit`
    produces a value for another process to read, so the kernel keeps the pid
-   and the status alive after the computation stops (`usermode.rs:371`).
+   and the status alive after the computation stops (`exit_current()` in `usermode.rs`).
 2. **`wait` has exactly three outcomes: reap, block, or `ECHILD`.** rv6's
    version scans the table, and when nothing has finished it yields and rescans
    — correct, and a good argument for the sleep/wakeup mechanism it lacks
-   (`syscall.rs:141`).
+   (`sys_wait()` in `syscall.rs`).
 3. **One parent pointer makes the process tree.** It gives every process a
    unique collector; real Unix hands orphans to `init`, while rv6 tears each
-   run's tree down with `cleanup_except` (`usermode.rs:344`).
+   run's tree down with `cleanup_except` (`usermode.rs`).
 4. **The round-robin policy from exercise 36k finally has a real workload.**
    `fork` creates genuinely independent runnable processes, and the rotation
-   cursor is what keeps neither from starving (`sched.rs:20`).
+   cursor is what keeps neither from starving (`RoundRobin::pick_next()` in `sched.rs`).
 5. **The `fork`/`exec` split exists to create a window.** In it the child runs
    its own code as a complete process, so redirection, pipes, `chdir`, and
    privilege dropping need no new API — only calls the kernel already has.
@@ -940,8 +940,8 @@ that need the window, offer `posix_spawn` for the ones that do not.
    adjustments their designers enumerated, and no others, ever.
 7. **`exec` swaps an address space and keeps the process.** pid, parent,
    kernel stack, trapframe page, and — crucially — the fd table all survive,
-   which is why `exec` preserves redirection by doing nothing (`exec.rs:753`).
+   which is why `exec` preserves redirection by doing nothing (`exec_into()` in `exec.rs`).
 8. **The shell is an ordinary unprivileged program.** `sh` runs with `SPP = 0`
    and reaches the kernel only through nine system-call numbers; the thing you
    have typed into all semester turns out to be a loop around `fork`, `exec`,
-   and `wait` (`exec.rs:354`).
+   and `wait` (`exec.rs`).

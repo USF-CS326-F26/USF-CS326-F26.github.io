@@ -295,10 +295,10 @@ would not boot on a different RISC-V board.
 
 ```text
  0x0000_1000  |  boot ROM (mrom) — 6 instructions          |  reset vector
- 0x0010_0000  |  SiFive test finisher                      |  testdev.rs:11
- 0x0200_0000  |  CLINT: mtime @ +0xBFF8, mtimecmp @ +0x4000|  start.rs:17-18
- 0x0c00_0000  |  PLIC — device interrupt router, 6 MiB     |  memlayout.rs:26
- 0x1000_0000  |  NS16550A UART, 8 bytes                    |  memlayout.rs:17
+ 0x0010_0000  |  SiFive test finisher                      |  testdev.rs
+ 0x0200_0000  |  CLINT: mtime @ +0xBFF8, mtimecmp @ +0x4000|  start.rs
+ 0x0c00_0000  |  PLIC — device interrupt router, 6 MiB     |  memlayout.rs
+ 0x1000_0000  |  NS16550A UART, 8 bytes                    |  memlayout.rs
  0x1000_1000  |  virtio-mmio, pflash, PCIe ECAM  (unused)  |
  0x8000_0000  +===========================================+  KERNBASE
               |  R A M   (-m 128M): kernel image, then     |
@@ -339,22 +339,22 @@ target, so that is where the kernel's first instruction must be.
 
 ```text
 OUTPUT_ARCH( "riscv" )
-ENTRY( _entry )              /* kernel.ld:12 */
+ENTRY( _entry )              /* kernel.ld */
 
 SECTIONS {
-  . = 0x80000000;            /* kernel.ld:16 */
+  . = 0x80000000;            /* kernel.ld */
 
   .text : {
-    *(.entry)                /* kernel.ld:19  <- the trick */
+    *(.entry)                /* kernel.ld  <- the trick */
     *(.text .text.*)
     . = ALIGN(0x1000);
-    PROVIDE(etext = .);      /* kernel.ld:22 */
+    PROVIDE(etext = .);      /* kernel.ld */
   }
   .rodata : { . = ALIGN(16); *(.srodata .srodata.*) *(.rodata .rodata.*) }
   .data   : { . = ALIGN(16); *(.sdata   .sdata.*)   *(.data   .data.*)   }
   .bss    : { . = ALIGN(16); *(.sbss    .sbss.*)    *(.bss    .bss.*)    }
 
-  PROVIDE(end = .);          /* kernel.ld:43 */
+  PROVIDE(end = .);          /* kernel.ld */
 }
 ```
 
@@ -379,7 +379,7 @@ with it.
 ## `*(.entry)` First — The Whole Trick
 
 - `.entry` is a section name nothing in Rust's output claims
-- `entry.rs:11` puts exactly one function in it with `#[link_section = ".entry"]`
+- `entry.rs` puts exactly one function in it with `#[link_section = ".entry"]`
 - The script lists `*(.entry)` **before** `*(.text .text.*)`
 - So `_entry` lands at offset 0 of `.text` = `0x8000_0000`
 
@@ -399,12 +399,12 @@ byte of the image — the linker's runtime answer to *"where does my kernel stop
 
 ```rust
 extern "C" {
-    static end: u8;                          // kalloc.rs:14
+    static end: u8;                          // kalloc.rs
 }
 
 pub unsafe fn init() {
-    let start = &end as *const u8 as usize;  // kalloc.rs:22
-    free_range(start, PHYSTOP);              // kalloc.rs:23
+    let start = &end as *const u8 as usize;  // kalloc.rs
+    free_range(start, PHYSTOP);              // kalloc.rs
 }
 ```
 
@@ -455,13 +455,13 @@ because the fix would itself have a prologue.
 ## `entry.rs` — Twenty Bytes of Assembly
 
 ```rust
-const STACK_SIZE: usize = 4096 * 4;                      // entry.rs:5
+const STACK_SIZE: usize = 4096 * 4;                      // entry.rs
 
 #[no_mangle]
-static mut STACK0: [u8; STACK_SIZE] = [0; STACK_SIZE];   // entry.rs:8
+static mut STACK0: [u8; STACK_SIZE] = [0; STACK_SIZE];   // entry.rs
 
 #[no_mangle]
-#[link_section = ".entry"]                               // entry.rs:11
+#[link_section = ".entry"]                               // entry.rs
 pub unsafe extern "C" fn _entry() -> ! {
     asm!(
         "la sp, {stack}",     // sp = bottom of our stack
@@ -541,10 +541,10 @@ broken stack pointer.
 No operating system, no C library, no file descriptor, no system call:
 
 ```rust
-const UART0: *mut u8 = 0x1000_0000 as *mut u8;   // uart.rs:15
+const UART0: *mut u8 = 0x1000_0000 as *mut u8;   // uart.rs
 
 pub fn putc(c: u8) {
-    unsafe { write_volatile(UART0, c); }         // uart.rs:24
+    unsafe { write_volatile(UART0, c); }         // uart.rs
 }
 ```
 
@@ -558,12 +558,12 @@ number became the universal serial interface — still, forty years later.
 
 | Offset | On write | On read | rv6 |
 |---|---|---|---|
-| +0 | THR &mdash; transmit holding | RBR &mdash; receive buffer | `uart.rs:6-7` |
-| +1 | IER &mdash; interrupt enable | IER | `uart.rs:8` |
-| +2 | FCR &mdash; FIFO control | IIR &mdash; interrupt ident | `uart.rs:9` |
-| +3 | LCR &mdash; line control | LCR | `uart.rs:10` |
-| +4 | MCR &mdash; modem control | MCR | `uart.rs:11` |
-| +5 | &mdash; | LSR &mdash; line status | `uart.rs:12` |
+| +0 | THR &mdash; transmit holding | RBR &mdash; receive buffer | `uart.rs` |
+| +1 | IER &mdash; interrupt enable | IER | `uart.rs` |
+| +2 | FCR &mdash; FIFO control | IIR &mdash; interrupt ident | `uart.rs` |
+| +3 | LCR &mdash; line control | LCR | `uart.rs` |
+| +4 | MCR &mdash; modem control | MCR | `uart.rs` |
+| +5 | &mdash; | LSR &mdash; line status | `uart.rs` |
 
 `LSR_DR` (bit 0) = a byte waits in RBR. `LSR_THRE` (bit 5) = safe to transmit.
 **Same offset, two registers, depending on direction.**
@@ -574,7 +574,7 @@ number became the universal serial interface — still, forty years later.
 
 <div class="mermaid">
 flowchart TD
-    A["uart::putc(0x48) — uart.rs:24\nwrite_volatile: emit exactly once"] --> C["sb a1, 0(a0)\na0 = 0x1000_0000, a1 = 0x48"]
+    A["uart::putc(0x48) — uart.rs\nwrite_volatile: emit exactly once"] --> C["sb a1, 0(a0)\na0 = 0x1000_0000, a1 = 0x48"]
     C --> D["satp = 0: no translation\n0x1000_0000 goes on the bus"]
     D --> E["decode: 'serial' MemoryRegion, not RAM"]
     E --> F["QEMU serial write, offset 0 = THR"]
@@ -615,13 +615,13 @@ observes. Cross-hart ordering needs fences — exercise 37k.
 ## Stopping the Machine
 
 ```rust
-const TEST_FINISHER: *mut u32 = 0x10_0000 as *mut u32;   // testdev.rs:11
-const FINISHER_PASS: u32 = 0x5555;                       // testdev.rs:13
-const FINISHER_FAIL: u32 = 0x3333;                       // testdev.rs:14
+const TEST_FINISHER: *mut u32 = 0x10_0000 as *mut u32;   // testdev.rs
+const FINISHER_PASS: u32 = 0x5555;                       // testdev.rs
+const FINISHER_FAIL: u32 = 0x3333;                       // testdev.rs
 
 pub fn exit_failure(code: u16) -> ! {
     unsafe { write_volatile(TEST_FINISHER, FINISHER_FAIL | ((code as u32) << 16)); }
-    loop { core::hint::spin_loop(); }                    // testdev.rs:30-33
+    loop { core::hint::spin_loop(); }                    // testdev.rs
 }
 ```
 

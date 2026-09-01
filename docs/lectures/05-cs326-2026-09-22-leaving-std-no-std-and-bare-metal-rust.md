@@ -69,7 +69,7 @@ the whole and *you* write it.
 ### Why a reference cannot name the UART
 
 On QEMU's `virt` machine the serial port's registers live at physical address
-`0x1000_0000` (`memlayout.rs:17`). Storing one byte there sends that byte down
+`0x1000_0000` (`UART0` in `memlayout.rs`). Storing one byte there sends that byte down
 the wire. Nothing allocated that address; the board's address decoder routes
 accesses in that range to the UART chip instead of to RAM.
 
@@ -127,17 +127,17 @@ The last two rows are the ones to memorize. Building a raw pointer is
 arithmetic on a number, and numbers are harmless:
 
 ```rust
-const UART0: usize = 0x1000_0000;             // memlayout.rs:17
+const UART0: usize = 0x1000_0000;             // memlayout.rs
 let p = UART0 as *mut u8;                     // safe: nothing happened
-let n: *mut Run = ptr::null_mut();            // kalloc.rs:11 — safe
-let q = &end as *const u8 as usize;           // kalloc.rs:22 — safe
+let n: *mut Run = ptr::null_mut();            // kalloc.rs — safe
+let q = &end as *const u8 as usize;           // kalloc.rs — safe
 ```
 
 `ptr::null_mut()` spells "no pointer at all". It is a `const fn`, so it works
 in a `const` initializer — which is why the free list can be a
-compile-time-initialized `static mut` (`kalloc.rs:11`) and why `walk` returns
-it as a failure value (`vm.rs:60`) instead of an `Option`. Test with
-`.is_null()` (`kalloc.rs:42`, `vm.rs:63`).
+compile-time-initialized `static mut` (`kalloc.rs`) and why `walk` returns
+it as a failure value (`vm.rs`) instead of an `Option`. Test with
+`.is_null()` (`kalloc.rs`, `vm.rs`).
 
 ### Arithmetic scales by the pointee
 
@@ -147,14 +147,14 @@ the UART driver's `base.add(offset)` reads naturally. On anything else they do
 not, and this is the most common pointer bug in the paging exercises:
 
 ```rust
-const fn px(level: usize, va: usize) -> usize {   // vm.rs:44
+const fn px(level: usize, va: usize) -> usize {   // vm.rs
     (va >> (12 + level * 9)) & 0x1ff              // an index, 0..=511
 }
-let pte = table.add(px(level, va));               // vm.rs:55
+let pte = table.add(px(level, va));               // vm.rs
 ```
 
 `table` is a `*mut Pte`, and `Pte` is a `#[repr(transparent)]` wrapper around a
-`usize` (`vm.rs:25-27`), so one element is 8 bytes. `table.add(511)` lands at
+`usize` (`vm.rs`), so one element is 8 bytes. `table.add(511)` lands at
 byte offset 4088 — the last entry of a 4096-byte page table, exactly right.
 Write `(table as *mut u8).add(511)` and you land 4081 bytes too early, in the
 middle of another entry, and the kernel dies somewhere unrelated ten thousand
@@ -170,8 +170,8 @@ the allocation it came from. For the kernel, "the same object" usually means
 ### Dereferencing
 
 ```rust
-if (*pte).is_valid() { ... }             // vm.rs:56
-*pte = Pte::new(page as usize, PTE_V);   // vm.rs:67
+if (*pte).is_valid() { ... }             // vm.rs
+*pte = Pte::new(page as usize, PTE_V);   // vm.rs
 ```
 
 Rust has no `->`; `(*p).field` is the spelling, and the parentheses are
@@ -194,9 +194,9 @@ Here is the thing everyone gets wrong, stated as plainly as possible.
 5. Read a field of a `union`.
 
 That list is the entire feature. In rv6 you meet #1 and #2 constantly
-(`vm.rs:56`; `kalloc::kalloc()` at `vm.rs:62`, `swtch` at `swtch.rs:35`), #3 in
-the allocator and console (`kalloc.rs:37`, `console.rs:20-24`), #4 twice
-(`spinlock.rs:12`, `kheap.rs:22`), and #5 never.
+(`vm.rs`; `kalloc::kalloc()` at `vm.rs`, `swtch` at `swtch.rs`), #3 in
+the allocator and console (`kfree()` (`kalloc.rs`), `push()` (`console.rs`)), #4 twice
+(`impl Sync for SpinLock` (`spinlock.rs`), `impl GlobalAlloc for KernelHeap` (`kheap.rs`)), and #5 never.
 
 **`unsafe` does not:**
 
@@ -220,8 +220,8 @@ than once at a time``. `unsafe` was never a switch that turns rules off.
 unconditionally. The keyword comes in two halves:
 
 - `unsafe fn f(...)` — *"calling me has a precondition; you must satisfy it."*
-  `kalloc::kfree` (`kalloc.rs:34`) threads any address you hand it onto the
-  free list; `vm::walk` (`vm.rs:52`) dereferences whatever you pass as `table`.
+  `kalloc::kfree` (`kalloc.rs`) threads any address you hand it onto the
+  free list; `vm::walk` (`vm.rs`) dereferences whatever you pass as `table`.
 - `unsafe { ... }` — *"I have satisfied it."*
 
 Two rules follow. If you cannot state the promise in one sentence, you do not
@@ -250,15 +250,15 @@ C the answer is "yes".
 
 ```mermaid
 flowchart TD
-  A["Safe caller code\nconsole.rs, shell.rs, fs.rs\nno unsafe anywhere"] --> B["Safe wrapper\nuart::putc (uart.rs:48)\nSpinLock::lock (spinlock.rs)"]
-  B --> C["Unsafe core\nreg_write (uart.rs:22)\nan unsafe fn: caller must supply a real address"]
+  A["Safe caller code\nconsole.rs, shell.rs, fs.rs\nno unsafe anywhere"] --> B["Safe wrapper\nuart::putc (uart.rs)\nSpinLock::lock (spinlock.rs)"]
+  B --> C["Unsafe core\nreg_write (uart.rs)\nan unsafe fn: caller must supply a real address"]
   C --> D["write_volatile to 0x1000_0000\nthe promise is discharged here"]
   D --> E["NS16550A UART\nthe byte leaves the machine"]
   style B fill:#e8f5e9,stroke:#00543c
   style C fill:#fff3cd,stroke:#FDBB30
 ```
 
-`putc` (`uart.rs:48-51`) is safe: any code may call it with any byte and
+`putc` (`uart.rs`) is safe: any code may call it with any byte and
 nothing bad can happen, because the unsafe part — a store to a fixed address
 this module owns — is discharged inside. A wrapper that keeps its promise for
 *every possible* caller input is **sound**; one that a legal call can break is
@@ -275,7 +275,7 @@ both fatal.
 Four functions compiled for `riscv64gc-unknown-none-elf` at `-O`.
 `0x1000_0000` is the UART's transmit register; `0x1000_0005` is its line status
 register, whose bit 5 the chip sets when it can accept another byte
-(`uart.rs:15`).
+(`LSR_THRE` in `uart.rs`).
 
 ```rust
 pub unsafe fn plain_hi() { *THR = b'h'; *THR = b'i'; }
@@ -323,26 +323,26 @@ costs students an afternoon every year.
 `core::ptr::read_volatile` and `core::ptr::write_volatile` declare an access
 **observable**: perform it exactly once, exactly where written; do not delete,
 duplicate, merge, or reorder it past another volatile access. Every MMIO touch
-in rv6 goes through them — the UART (`uart.rs:19`, `uart.rs:23`), the PLIC
-(`plic.rs:24-28`), the CLINT timer (`start.rs:61-62`), and the test finisher
-that powers the machine off (`testdev.rs:19`).
+in rv6 goes through them — the UART (`reg_read()` and `reg_write()` (`uart.rs`)), the PLIC
+(`init()` in `plic.rs`), the CLINT timer (`timerinit()` in `start.rs`), and the test finisher
+that powers the machine off (`exit_success()` in `testdev.rs`).
 
 ### Reads with side effects
 
 Deletion is not the only hazard: some device reads *do something*. The PLIC's
 claim register returns the pending interrupt number **and atomically marks it
-claimed** (`plic.rs:33`); a compiler that dropped that load as unused would
+claimed** (`plic.rs`); a compiler that dropped that load as unused would
 leave the interrupt pending forever. Volatile is not a hint about caching or
 speed — the access itself is part of the program's observable behavior.
 
 Volatile is not synchronization: it gives you no atomicity, no ordering against
 *non-volatile* memory, and nothing at all between harts — that is what
-`core::sync::atomic` (`spinlock.rs:5`) and the locks of exercise 37k are for.
+`core::sync::atomic` (`spinlock.rs`) and the locks of exercise 37k are for.
 Nor does it license a null or misaligned pointer; the address must still be
 valid for `T`.
 
 The rule is mechanical: **device register → volatile; ordinary memory → plain
-dereference.** Copying a page of program image (`vm.rs:222`) uses plain
+dereference.** Copying a page of program image (`load_segment()` in `vm.rs`) uses plain
 accesses and *should* be optimized hard. Marking `putc`'s store volatile is the
 difference between a driver and a no-op.
 
@@ -351,7 +351,7 @@ difference between a driver and a no-op.
 ## 5. The Cliff: `#![no_std]`
 
 Everything above still works in a hosted Rust program. This next part does not.
-`#![no_std]` (`main.rs:1`) removes the standard library and, with it, every
+`#![no_std]` (`main.rs`) removes the standard library and, with it, every
 assumption that an operating system exists underneath you.
 
 ### The three layers
@@ -380,19 +380,19 @@ people, `HashMap`, whose default hasher seeds itself from OS entropy
 (`alloc`'s `BTreeMap` does not).
 
 You will have a heap eventually, because you write it: `kheap.rs` registers a
-`#[global_allocator]` (`kheap.rs:40-41`) built on the page allocator from
-exercise 32k, and `extern crate alloc;` (`main.rs:26`) lights up `Box`, `Vec`,
+`#[global_allocator]` (`ALLOCATOR` in `kheap.rs`) built on the page allocator from
+exercise 32k, and `extern crate alloc;` (`main.rs`) lights up `Box`, `Vec`,
 and `Arc`. `no_std` does not forbid a heap; it refuses to invent one for you.
 
 ### The skeleton, line by line
 
-`#![no_main]` (`main.rs:2`) removes the *entry shim*. In a hosted program the
+`#![no_main]` (`main.rs`) removes the *entry shim*. In a hosted program the
 compiler emits a hidden `main` symbol that the C runtime (`crt0`) calls after
 setting up the process — argv, environment, stdio, TLS. There is no C runtime
 here and no process, so the shim goes. Our entry point is whatever the linker
-script names: `ENTRY(_entry)` (`kernel.ld:12`) resolves to `_entry`
-(`entry.rs:18`), which the script places at the front of `.text`
-(`kernel.ld:19`) so it lands exactly at `0x8000_0000` (`kernel.ld:16`).
+script names: `ENTRY(_entry)` (`kernel.ld`) resolves to `_entry`
+(`entry.rs`), which the script places at the front of `.text`
+(`kernel.ld`) so it lands exactly at `0x8000_0000` (`kernel.ld`).
 
 `#[panic_handler]` is the price of admission. Every `unwrap`, every array
 index, every debug-build overflow check needs somewhere to land, and `std`
@@ -400,7 +400,7 @@ normally supplies it. Without `std` the compiler demands exactly one function
 of type `fn(&PanicInfo) -> !`:
 
 ```rust
-#[panic_handler]                       // main.rs:281
+#[panic_handler]                       // main.rs
 fn panic(_info: &PanicInfo) -> ! {
     uart::puts("OSLINGS:FAIL (panic)\n");
     testdev::exit_failure(1);
@@ -412,7 +412,7 @@ back — the honest signature for a kernel panic. Exercise 30k's version spins;
 the finished kernel prints and powers the machine off.
 
 `#[no_mangle]` and `extern "C"` come as a pair on every symbol the outside
-world touches (`entry.rs:13-18`, `start.rs:24-25`, `main.rs:96-97`).
+world touches (`entry.rs`, `start.rs`, `kinit()` (`main.rs`)).
 `#[no_mangle]` keeps the symbol name verbatim so the linker script and the
 assembler can find it; `extern "C"` pins the calling convention to the RISC-V C
 ABI — arguments in `a0`–`a7`, return in `a0`, `s0`–`s11` callee-saved — the
@@ -434,7 +434,7 @@ purpose and you never memorize the list again:
 
 That last row needs a footnote: our target already defaults to
 `panic-strategy: abort`, so you will not normally see it, and rv6 states
-`panic = "abort"` in both profiles anyway (`rv6/Cargo.toml:12-16`). The
+`panic = "abort"` in both profiles anyway (`rv6/Cargo.toml`). The
 unwinder walks the stack, runs destructors, and reads DWARF tables — a
 *library*, not present, and a kernel has no business unwinding out of a
 fault.
@@ -446,7 +446,7 @@ fault.
 Every Rust build has a **target triple** (historically three fields, in
 practice four): the one string that tells `rustc` which instructions to emit,
 which ABI to follow, and which libraries can exist. Ours is set once in
-`rv6/.cargo/config.toml:4`, so `cargo build` inside `rv6/` never needs
+`rv6/.cargo/config.toml`, so `cargo build` inside `rv6/` never needs
 `--target`.
 
 ```text
@@ -506,7 +506,7 @@ on.
 > on it. `qemu-riscv64` (user-mode emulation) emulates a **process**, translating
 > Linux system calls to the host. A `-none-` binary makes no system calls, so
 > user-mode QEMU cannot run it even in principle; it also does not exist on
-> macOS. We use `qemu-system-riscv64` exclusively (`rv6/.cargo/config.toml:13-22`),
+> macOS. We use `qemu-system-riscv64` exclusively (`rv6/.cargo/config.toml`),
 > where `-bios none` means *we* are the firmware.
 
 The chain is complete, and every link is chosen rather than accidental: a
@@ -550,16 +550,16 @@ panic handler, and the reward is a binary that compiles for
 |---|---|---|
 | Raw pointer | An address and a pointee type, nothing else; may be null, dangling, aliased, unaligned | `0x1000_0000 as *mut u8` |
 | Reference | An address plus enforced non-null, aligned, live, and aliasing claims | `&mut [u8]` passed to a checked wrapper |
-| `unsafe` block | A promise that the operations inside satisfy their preconditions | `unsafe { write_volatile(THR, c) }` (`uart.rs:23`) |
-| `unsafe fn` | A function whose *caller* must establish a precondition it cannot check | `kalloc::kfree` (`kalloc.rs:34`) |
+| `unsafe` block | A promise that the operations inside satisfy their preconditions | `unsafe { write_volatile(THR, c) }` (`uart.rs`) |
+| `unsafe fn` | A function whose *caller* must establish a precondition it cannot check | `kalloc::kfree` (`kalloc.rs`) |
 | Undefined behavior | A state the language gives no meaning to; the compiler assumes it never happens | dereferencing past the end of a page |
-| Soundness | A safe API that no legal call can make cause UB | `uart::putc` (`uart.rs:48`), `SpinLock` (`spinlock.rs:12`) |
-| MMIO | Device registers wired into the address space, reached by ordinary loads/stores | UART at `0x1000_0000` (`memlayout.rs:17`) |
-| Volatile access | An access performed exactly once, in place, unmergeable | `read_volatile(LSR)` in the poll loop (`uart.rs:19`) |
-| `core` / `alloc` / `std` | Dependency-free / needs an allocator / needs an OS | `core::ptr` always; `Vec` after `kheap.rs:40` |
-| `#![no_std]` / `#![no_main]` | Drop `std` and the `main` entry shim; the linker script names the entry | `main.rs:1-2` + `kernel.ld:12` |
-| `#[panic_handler]` | The one `fn(&PanicInfo) -> !` a `no_std` binary must provide | `main.rs:281` |
-| Target triple | `arch-vendor-os-env`; fixes instructions, ABI, and available libraries | `riscv64gc-unknown-none-elf` (`rv6/.cargo/config.toml:4`) |
+| Soundness | A safe API that no legal call can make cause UB | `uart::putc` (`uart.rs`), `SpinLock` (`spinlock.rs`) |
+| MMIO | Device registers wired into the address space, reached by ordinary loads/stores | UART at `0x1000_0000` (`memlayout.rs`) |
+| Volatile access | An access performed exactly once, in place, unmergeable | `read_volatile(LSR)` in the poll loop (`uart.rs`) |
+| `core` / `alloc` / `std` | Dependency-free / needs an allocator / needs an OS | `core::ptr` always; `Vec` after `kheap.rs` |
+| `#![no_std]` / `#![no_main]` | Drop `std` and the `main` entry shim; the linker script names the entry | `main.rs` + `kernel.ld` |
+| `#[panic_handler]` | The one `fn(&PanicInfo) -> !` a `no_std` binary must provide | `main.rs` |
+| Target triple | `arch-vendor-os-env`; fixes instructions, ABI, and available libraries | `riscv64gc-unknown-none-elf` (`rv6/.cargo/config.toml`) |
 
 ---
 
@@ -602,7 +602,7 @@ pub fn poke(regs: &mut [u8]) -> u8 {
   is the fix.)
 - **6 — compiles**: operation #3, and a place assignment rather than a
   reference; `&mut TICKS` would trip the `static_mut_refs` lint, for which
-  `addr_of_mut!` is the tool (`console.rs:24`).
+  `addr_of_mut!` is the tool (`console.rs`).
 - **7 — compiles**: operation #2, calling an `unsafe fn`.
 
 Two errors. Neither is fixed by adding more `unsafe`.
@@ -611,8 +611,8 @@ Two errors. Neither is fixed by adding more `unsafe`.
 ### Problem 2: Pointer arithmetic in a page-table walk
 
 The root page table sits at physical address `0x8020_3000`. `Pte` is a
-`#[repr(transparent)]` newtype over `usize` (`vm.rs:25-27`), and
-`px(level, va) = (va >> (12 + level*9)) & 0x1ff` (`vm.rs:44`). Take
+`#[repr(transparent)]` newtype over `usize` (`vm.rs`), and
+`px(level, va) = (va >> (12 + level*9)) & 0x1ff` (`vm.rs`). Take
 `va = 0x3F5A_2000`.
 
 1. Compute `px(2, va)`, `px(1, va)`, `px(0, va)`.
@@ -669,8 +669,8 @@ plain_wait:
 <summary>Click to reveal solution</summary>
 
 1. `lui a0, 65536` puts `65536 << 12 = 0x1000_0000` in `a0` — the UART base.
-   `lbu a1, 5(a0)` reads the Line Status Register at offset 5 (`uart.rs:12`);
-   `andi a1, a1, 32` tests bit 5, `LSR_THRE` (`uart.rs:15`). The source was
+   `lbu a1, 5(a0)` reads the Line Status Register at offset 5 (`uart.rs`);
+   `andi a1, a1, 32` tests bit 5, `LSR_THRE` (`uart.rs`). The source was
    `while *LSR & 0x20 == 0 {}` then `*THR = b'x'` (120 = `'x'`), written with
    plain dereferences instead of `read_volatile`/`write_volatile`.
 
@@ -774,7 +774,7 @@ Answer from the triple and the compiler's output, not from memory.
    `main`, an entry point fixed at `0x8000_0000` by a linker script, privileged
    instructions in machine mode. Practically, `qemu-riscv64` also does not exist
    on macOS. The right tool is `qemu-system-riscv64 -machine virt -bios none
-   -kernel …` (`rv6/.cargo/config.toml:13-22`).
+   -kernel …` (`rv6/.cargo/config.toml`).
 </details>
 
 ---
@@ -836,7 +836,7 @@ Answer from the triple and the compiler's output, not from memory.
    dereference.
 7. **`#![no_std]` removes everything that assumed an OS.** You keep `core`,
    lose `println!`, files, threads, and `HashMap`, and get `alloc` back only
-   after registering a `#[global_allocator]` (`kheap.rs:40`). `#![no_main]`
+   after registering a `#[global_allocator]` (`ALLOCATOR` in `kheap.rs`). `#![no_main]`
    drops the C-runtime entry shim, the linker script names `_entry`, and
    `#[panic_handler]` is mandatory because panics must land somewhere.
 8. **`riscv64gc-unknown-none-elf` says it out loud.** 64-bit RISC-V with

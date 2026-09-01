@@ -264,15 +264,15 @@ It cannot account for a chip. So Rust offers a second, humbler pointer that prom
 ## Raw Pointers
 
 ```rust
-const UART0: usize = 0x1000_0000;       // memlayout.rs:17
+const UART0: usize = 0x1000_0000;       // memlayout.rs
 let p = UART0 as *mut u8;               // safe: nothing happened
-let n: *mut Run = ptr::null_mut();      // kalloc.rs:11 — safe
+let n: *mut Run = ptr::null_mut();      // kalloc.rs — safe
 ```
 
 - `*mut u8` is **one type name**: "raw pointer to a `u8` I may write through"
 - The `*` is spelling, not an operation
 - `ptr::null_mut()` is a `const fn` → works in `static` initializers
-- Test with `.is_null()` (`kalloc.rs:42`, `vm.rs:63`)
+- Test with `.is_null()` (`kalloc.rs`, `walk()` (`vm.rs`))
 
 ---
 
@@ -296,10 +296,10 @@ Memorize the last two rows.
 ## `.add(n)` Scales by the Pointee
 
 ```rust
-const fn px(level: usize, va: usize) -> usize {  // vm.rs:44
+const fn px(level: usize, va: usize) -> usize {  // vm.rs
     (va >> (12 + level * 9)) & 0x1ff             // an index, 0..=511
 }
-let pte = table.add(px(level, va));              // vm.rs:55
+let pte = table.add(px(level, va));              // vm.rs
 ```
 
 - `Pte` is `#[repr(transparent)]` over `usize` → one element = **8 bytes**
@@ -328,7 +328,7 @@ The result must stay inside the <strong>same allocated object</strong> as the in
 4. Implement an `unsafe` trait
 5. Read a `union` field
 
-In rv6: #1 and #2 constantly (`vm.rs:56`, `swtch.rs:35`), #3 in the allocator and console (`kalloc.rs:37`, `console.rs:20-24`), #4 twice (`spinlock.rs:12`, `kheap.rs:22`), #5 never.
+In rv6: #1 and #2 constantly (`walk()` (`vm.rs`), `swtch.rs`), #3 in the allocator and console (`kfree()` (`kalloc.rs`), `push()` (`console.rs`)), #4 twice (`impl Sync for SpinLock` (`spinlock.rs`), `impl GlobalAlloc for KernelHeap` (`kheap.rs`)), #5 never.
 
 ---
 
@@ -365,7 +365,7 @@ unsafe {
 ## `unsafe` Is a Promise, Not a Switch
 
 - `unsafe fn f(..)` — *"calling me has a precondition; you must satisfy it"*
-  - `kalloc::kfree` (`kalloc.rs:34`), `vm::walk` (`vm.rs:52`)
+  - `kalloc::kfree` (`kalloc.rs`), `vm::walk` (`vm.rs`)
 - `unsafe { ... }` — *"I have satisfied it"*
 
 <div class="info-box">
@@ -396,8 +396,8 @@ Rust does not make kernel programming safe. It makes the unsafe parts <strong>gr
 
 <div class="mermaid">
 flowchart TD
-  A["Safe caller code\nconsole.rs, shell.rs, fs.rs"] --> B["Safe wrapper\nuart::putc (uart.rs:48)"]
-  B --> C["Unsafe core\nreg_write (uart.rs:22)"]
+  A["Safe caller code\nconsole.rs, shell.rs, fs.rs"] --> B["Safe wrapper\nuart::putc (uart.rs)"]
+  B --> C["Unsafe core\nreg_write (uart.rs)"]
   C --> D["write_volatile to 0x1000_0000"]
   D --> E["NS16550A UART"]
 </div>
@@ -458,9 +458,9 @@ plain_wait:                  volatile_wait:
 - perform it exactly once, exactly where written
 - do not delete, duplicate, merge, or reorder past another volatile access
 
-Some reads *do something*: the PLIC claim register returns the pending IRQ **and marks it claimed** (`plic.rs:33`).
+Some reads *do something*: the PLIC claim register returns the pending IRQ **and marks it claimed** (`plic.rs`).
 
-The rule is mechanical: **device register → volatile; ordinary memory → plain `*p`.** Every MMIO touch in rv6 obeys it — `uart.rs:19`, `plic.rs:24-28`, `start.rs:61-62`, `testdev.rs:19`.
+The rule is mechanical: **device register → volatile; ordinary memory → plain `*p`.** Every MMIO touch in rv6 obeys it — `putc()` (`uart.rs`), `init()` (`plic.rs`), `timerinit()` (`start.rs`), `exit_success()` (`testdev.rs`).
 
 <div class="info-box">
 Not atomicity. Not ordering against normal memory. Not synchronization between harts — that is <code>core::sync::atomic</code> and exercise 37k's locks.
@@ -471,7 +471,7 @@ Not atomicity. Not ordering against normal memory. Not synchronization between h
 ## The Cliff: `#![no_std]`
 
 - Removes the standard library and every assumption of an OS underneath
-- `main.rs:1` in rv6 — the first line of the kernel
+- `main.rs` in rv6 — the first line of the kernel
 - You keep `core`; you lose files, threads, time, `println!`, `HashMap`
 - The kernel **is** the operating system; there is nothing below it to ask
 
@@ -495,10 +495,10 @@ flowchart TD
 ## Getting `alloc` Back
 
 ```rust
-unsafe impl GlobalAlloc for KernelHeap { ... }  // kheap.rs:22
+unsafe impl GlobalAlloc for KernelHeap { ... }  // kheap.rs
 #[global_allocator]
-static ALLOCATOR: KernelHeap = KernelHeap;      // kheap.rs:40
-extern crate alloc;                             // main.rs:26
+static ALLOCATOR: KernelHeap = KernelHeap;      // kheap.rs
+extern crate alloc;                             // main.rs
 ```
 
 - `no_std` does not forbid a heap — it refuses to invent one for you
@@ -510,20 +510,20 @@ extern crate alloc;                             // main.rs:26
 ## The Skeleton
 
 ```rust
-#![no_std]                       // main.rs:1  — drop std, keep core
-#![no_main]                      // main.rs:2  — drop the C-runtime entry shim
+#![no_std]                       // main.rs  — drop std, keep core
+#![no_main]                      // main.rs  — drop the C-runtime entry shim
 
-#[panic_handler]                 // main.rs:281 — exactly one, returns !
+#[panic_handler]                 // main.rs — exactly one, returns !
 fn panic(_info: &PanicInfo) -> ! {
     uart::puts("OSLINGS:FAIL (panic)\n");
     testdev::exit_failure(1);
 }
 
 #[no_mangle]                     // keep the symbol name verbatim
-pub extern "C" fn kmain() -> ! { ... }   // main.rs:96 — RISC-V C ABI
+pub extern "C" fn kmain() -> ! { ... }   // main.rs — RISC-V C ABI
 ```
 
-Entry point comes from the linker script: `ENTRY(_entry)` (`kernel.ld:12`).
+Entry point comes from the linker script: `ENTRY(_entry)` (`kernel.ld`).
 
 ---
 
@@ -552,7 +552,7 @@ Entry point comes from the linker script: `ENTRY(_entry)` (`kernel.ld:12`).
         +-------------------------------------- base ISA: 64-bit RISC-V
 ```
 
-Set once in `rv6/.cargo/config.toml:4`.
+Set once in `rv6/.cargo/config.toml`.
 
 ---
 

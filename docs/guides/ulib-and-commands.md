@@ -26,7 +26,7 @@ backends behind that seam.
 
 Your command file contains **no `#[cfg]` attributes at all**. The entire
 two-target ceremony is two lines, taken verbatim from
-`commands/src/bin/echo.rs:18` and `:22`:
+`commands/src/bin/echo.rs`:
 
 ```rust
 #![cfg_attr(target_os = "none", no_std, no_main)]
@@ -36,7 +36,7 @@ ulib::main!(run);
 
 ## Backend selection: the target, not a feature
 
-Selection happens in `ulib/src/sys/mod.rs:4-12` and is a single condition:
+Selection happens in `rv6` (`ulib/src/sys/mod.rs`) and is a single condition:
 
 ```rust
 #[cfg(target_os = "none")]
@@ -50,7 +50,7 @@ disagree with what you are actually building. A cargo feature can: nothing
 stops you from `cargo build --features rv6` on macOS, and the failure mode is
 not a clear error but a wall of link errors about missing `std` symbols and a
 duplicate `#[panic_handler]`. The same reasoning drives
-`ulib/src/lib.rs:19` — `#![cfg_attr(target_os = "none", no_std)]` — and
+`ulib/src/lib.rs` — `#![cfg_attr(target_os = "none", no_std)]` — and
 `commands/.cargo/config.toml`, which deliberately sets **no** default
 `[build] target`, so plain `cargo test` builds for your laptop and needs no
 cross-toolchain. The RISC-V target is opt-in and is passed explicitly by
@@ -62,19 +62,19 @@ That is the whole of it. If it is not in these tables, `ulib` does not have it.
 
 | Item | Signature (`ulib/src/lib.rs`) | Notes |
 |---|---|---|
-| `Fd` | `type Fd = i32;` | `lib.rs:38` |
-| `STDIN` / `STDOUT` / `STDERR` | `0` / `1` / `2` | `lib.rs:40-42` |
-| `Error` | `struct Error(pub i32)` | `lib.rs:55`; rv6 answers every failure with `-1`, so there is nothing richer to report |
-| `read` | `fn read(fd, &mut [u8]) -> Result<usize, Error>` | `lib.rs:104`; `Ok(0)` is EOF, a short read is normal |
-| `write` | `fn write(fd, &[u8]) -> Result<usize, Error>` | `lib.rs:114`; may write fewer bytes than asked |
-| `write_all` | `fn write_all(fd, &[u8]) -> Result<(), Error>` | `lib.rs:154`; loops over short writes — use this one |
-| `open` | `fn open(&[u8], u32) -> Result<Fd, Error>` | `lib.rs:125`; adds the NUL terminator for you |
-| `close` | `fn close(fd) -> Result<(), Error>` | `lib.rs:134` |
-| `exit` | `fn exit(i32) -> !` | `lib.rs:144` |
-| `print` / `eprint` | `fn print(&str)` | `lib.rs:167`, `:172`; ignore errors |
-| `write_usize` | `fn write_usize(fd, n, width) -> Result<(), Error>` | `lib.rs:181`; decimal, right-aligned — this is your `printf("%8d")` |
+| `Fd` | `type Fd = i32;` | `lib.rs` |
+| `STDIN` / `STDOUT` / `STDERR` | `0` / `1` / `2` | `lib.rs` |
+| `Error` | `struct Error(pub i32)` | `lib.rs`; rv6 answers every failure with `-1`, so there is nothing richer to report |
+| `read` | `fn read(fd, &mut [u8]) -> Result<usize, Error>` | `lib.rs`; `Ok(0)` is EOF, a short read is normal |
+| `write` | `fn write(fd, &[u8]) -> Result<usize, Error>` | `lib.rs`; may write fewer bytes than asked |
+| `write_all` | `fn write_all(fd, &[u8]) -> Result<(), Error>` | `lib.rs`; loops over short writes — use this one |
+| `open` | `fn open(&[u8], u32) -> Result<Fd, Error>` | `lib.rs`; adds the NUL terminator for you |
+| `close` | `fn close(fd) -> Result<(), Error>` | `lib.rs` |
+| `exit` | `fn exit(i32) -> !` | `lib.rs` |
+| `print` / `eprint` | `fn print(&str)` | `lib.rs`; ignore errors |
+| `write_usize` | `fn write_usize(fd, n, width) -> Result<(), Error>` | `lib.rs`; decimal, right-aligned — this is your `printf("%8d")` |
 
-Open flags are the same bits xv6 and rv6's `file.rs` use (`lib.rs:45-49`):
+Open flags are the same bits xv6 and rv6's `file.rs` use (`lib.rs`):
 
 | Flag | Value |
 |---|---|
@@ -84,7 +84,7 @@ Open flags are the same bits xv6 and rv6's `file.rs` use (`lib.rs:45-49`):
 | `O_CREATE` | `0x200` |
 | `O_TRUNC` | `0x400` |
 
-**`Args`** (`lib.rs:63`) is the command line, built for you by `main!`.
+**`Args`** (`lib.rs`) is the command line, built for you by `main!`.
 Arguments are `&[u8]`, not `&str`, because that is literally what `exec`
 pushes onto the new program's stack — forcing `&str` would put a UTF-8
 validation table in every image. `len()` is `argc` (including `argv[0]`),
@@ -100,16 +100,16 @@ into an exercise about ring buffers instead of an exercise about matching.
 
 Note what is **absent**: no `fork`, `exec`, `wait`, `getpid`, `dup`, `mkdir`,
 `unlink`, no seeking, no directory reading. Your kernel grows some of those
-(`syscall.rs:21-29`), but a Module 1 command never calls them.
+(`SYS_FORK` in `syscall.rs`), but a Module 1 command never calls them.
 
 ## `ulib::main!` — what it expands to
 
-`ulib/src/entry.rs:13` is a two-armed macro:
+`ulib/src/entry.rs` is a two-armed macro:
 
 | Target | Expansion | Detail |
 |---|---|---|
-| host | `fn main()` | collects the real `args_os()` as bytes, calls `run`, `process::exit`s the returned code (`entry.rs:15-21`) |
-| rv6 | `#[no_mangle] extern "C" fn _start(argc, argv) -> !` | rebuilds `Args` from the raw stack, then `ulib::exit(run(args))` (`entry.rs:29-39`) |
+| host | `fn main()` | collects the real `args_os()` as bytes, calls `run`, `process::exit`s the returned code (`entry.rs`) |
+| rv6 | `#[no_mangle] extern "C" fn _start(argc, argv) -> !` | rebuilds `Args` from the raw stack, then `ulib::exit(run(args))` (`entry.rs`) |
 
 The rv6 arm also carries `#[link_section = ".text.start"]`. That is not
 decoration. rv6's current loader is a **flat** loader: it copies the image to
@@ -118,16 +118,16 @@ decoration. rv6's current loader is a **flat** loader: it copies the image to
 same reason. Remove either one and the linker is free to order some other
 function first, and your program jumps into the middle of itself.
 
-`argv_slices` (`ulib/src/sys/rv6.rs:80`) walks `argc` pointers to
+`argv_slices` (`ulib/src/sys/rv6.rs`) walks `argc` pointers to
 NUL-terminated strings and measures each with a byte loop, capped at
-`MAX_ARGS = 8` (`rv6.rs:98`) to match the kernel's own `MAXARG`
-(`exec.rs:612`).
+`MAX_ARGS = 8` (`rt` in `rv6.rs`) to match the kernel's own `MAXARG`
+(`exec.rs`).
 
 ## The rv6 backend: one `ecall` per call
 
 Every `ulib` function on rv6 is a single `ecall`. The convention is not
 invented here; it is what `dispatch` in your kernel reads out of the trapframe
-(`usermode.rs:399-408`):
+(`usertrap()` in `usermode.rs`):
 
 | Register | Meaning |
 |---|---|
@@ -139,7 +139,7 @@ invented here; it is what `dispatch` in your kernel reads out of the trapframe
 asm!("ecall", in("a7") n, inlateout("a0") a0 => ret, in("a1") a1, in("a2") a2);
 ```
 
-That is `ecall3` at `ulib/src/sys/rv6.rs:21`. It deliberately uses the
+That is `ecall3` at `ulib/src/sys/rv6.rs`. It deliberately uses the
 conservative default `asm!` options — no `nomem`, no `nostack` — because the
 kernel's trap path can touch memory on your behalf.
 
@@ -151,20 +151,20 @@ kernel's trap path can touch memory on your behalf.
 | `write(fd, buf, len)` | 16 | fd | buf ptr | len |
 | `close(fd)` | 21 | fd | — | — |
 
-The numbers match the reference kernel's `syscall.rs:21-29`, which
-match xv6's. Two details worth knowing: `sys_open` (`rv6.rs:41`) copies your
+The numbers match the reference kernel's `SYS_FORK` (`syscall.rs`), which
+match xv6's. Two details worth knowing: `sys_open` (`rv6.rs`) copies your
 path into a fixed `[u8; MAX_PATH + 1]` scratch buffer to NUL-terminate it,
-which is why `MAX_PATH` is a hard 63 (`lib.rs:150`) — and why the kernel's own
-`exec` caps a program name at 32 (`syscall.rs:179`). And `rv6.rs:66` holds the
+which is why `MAX_PATH` is a hard 63 (`lib.rs`) — and why the kernel's own
+`exec` caps a program name at 32 (`MAXPATH` in `syscall.rs`). And `rv6.rs` holds the
 one `#[panic_handler]` in the entire linked image: it writes `panic\n` to fd 2
 and exits `-1`. No file you write ever has to contain one.
 
 ## The host backend and the test harness
 
-On the host, fds really are Unix fds — `host.rs:33-79` wraps them in a
+On the host, fds really are Unix fds — `sys_write()` (`host.rs`) wraps them in a
 `ManuallyDrop<File>` so a write does not close the descriptor. But when a
 capture is active, writes are diverted into a buffer instead
-(`host.rs:16-31`, a `thread_local!` so tests still run in parallel).
+(`host.rs`, a `thread_local!` so tests still run in parallel).
 
 That is the whole trick behind `ulib::testing`: the harness calls your `run`
 function **directly**, in-process. No subprocess, no `dyn Write` parameter
@@ -173,15 +173,15 @@ is byte-identical to the source that runs on rv6.
 
 | Function (`ulib/src/testing.rs`) | Use |
 |---|---|
-| `run(&["echo", "a"], run)` | argv only (`testing.rs:28`) |
-| `run_with_stdin(argv, b"...", run)` | feeds fd 0 (`testing.rs:33`) |
-| `run_with_files(argv, &[("f.txt", b"...")], run)` | in-memory files your program may `open` (`testing.rs:38`) |
+| `run(&["echo", "a"], run)` | argv only (`testing.rs`) |
+| `run_with_stdin(argv, b"...", run)` | feeds fd 0 (`testing.rs`) |
+| `run_with_files(argv, &[("f.txt", b"...")], run)` | in-memory files your program may `open` (`testing.rs`) |
 
 You get back `Output { code, stdout, stderr }`, with `.out()` and `.err()`
 returning `&str` for readable assertions. Fds 0/1/2 are reserved in the
 capture table so your first `open` returns 3, exactly as on rv6
-(`testing.rs:60`). Be aware of one honest limitation: under capture, `write`
-to anything other than fd 1 or 2 returns `-1` (`host.rs:38`). The harness can
+(`run_full()` in `testing.rs`). Be aware of one honest limitation: under capture, `write`
+to anything other than fd 1 or 2 returns `-1` (`sys_write()` in `host.rs`). The harness can
 give a command files to *read*, not files to write.
 
 ## Portability rules a command must follow
@@ -199,8 +199,8 @@ image plus one 4 KiB stack page.
 | `println!`, `write!`, `core::fmt` | `core::fmt` drags in 12–18 KiB of machinery | `write_all`, `print`, `write_usize` |
 | growable buffers | nothing to grow into | fixed buffers you declare and own |
 
-Look at what the real commands do: `cat.rs:23` and `wc.rs:34` declare
-`let mut buf = [0u8; 512];`, `head.rs:40` and `grep.rs:45` use
+Look at what the real commands do: `cat_fd()` (`cat.rs`) and `count_fd()` (`wc.rs`) declare
+`let mut buf = [0u8; 512];`, `head_fd()` (`head.rs`) and `grep_fd()` (`grep.rs`) use
 `[0u8; 1024]`. The whole program's memory footprint is visible in one line —
 which is the same discipline the kernel itself follows.
 
@@ -227,15 +227,15 @@ flowchart LR
   F --> G["your kernel image"]
 ```
 
-The kernel cannot read ELF, so `ship.rs:42 flatten_elf` does the loading work
+The kernel cannot read ELF, so `ship.rs flatten_elf` does the loading work
 ahead of time: it walks the program headers, copies every `PT_LOAD` segment to
 the address the linker chose, and leaves the `memsz`-beyond-`filesz` tail as
 zeros — that tail is `.bss`. It is about eighty lines of hand-rolled ELF
 parsing precisely so that no student needs binutils installed. Then it writes
 `rv6/src/userbin/<name>.bin` and regenerates `rv6/src/userbin.rs`, a table of
-`(name, &'static [u8])` built with `include_bytes!` (`ship.rs:169`). That
+`(name, &'static [u8])` built with `include_bytes!` (`ship.rs`). That
 generated module is how your own programs enter the name lookup your `exec`
-does (`exec.rs:594`). Do not hand-edit it; the next ship overwrites it.
+does (`exec.rs`). Do not hand-edit it; the next ship overwrites it.
 
 Three checks will stop you, all in `flatten_elf`:
 
@@ -255,8 +255,8 @@ Three checks will stop you, all in `flatten_elf`:
 ```
 
 Those constants are `USER_STACK_TOP`, `USER_STACK`, `MAX_PROG_PAGES` and
-`USER_CODE` at `memlayout.rs:61-75`; the 64 KiB cap is mirrored as
-`MAX_IMAGE` in `ship.rs:27`. The gap between image and stack is a feature: a
+`USER_CODE` at `memlayout.rs`; the 64 KiB cap is mirrored as
+`MAX_IMAGE` in `ship.rs`. The gap between image and stack is a feature: a
 runaway program takes a page fault instead of quietly corrupting its own
 stack.
 
@@ -275,7 +275,7 @@ All five together are under 9 KiB. That is what the no-allocator, no-`fmt`
 discipline buys: one `println!` would roughly quintuple the largest of them.
 The tighter constraint in practice is the **stack**, not the image — 4 KiB
 total, shared between your locals, your `Lines` buffer, and the argv strings
-`push_argv` copies in (`exec.rs:781`, capped at 8 arguments of 32 bytes). A
+`push_argv` copies in (`exec.rs`, capped at 8 arguments of 32 bytes). A
 `[0u8; 1024]` buffer is already a quarter of your stack; a `[0u8; 8192]` one
 is a fault.
 

@@ -197,7 +197,7 @@ L03 &middot; September 1, 2026 &middot; Exercises `02r_ownership`, `03r_borrowin
 
 ## Start With the Object
 
-The kernel's physical page allocator, in full (`kalloc.rs:40`):
+The kernel's physical page allocator, in full (`kalloc.rs`):
 
 ```rust
 pub unsafe fn kalloc() -> *mut u8 {
@@ -209,8 +209,8 @@ pub unsafe fn kalloc() -> *mut u8 {
 }
 ```
 
-- A **page** is 4096 bytes — `PGSIZE` (`memlayout.rs:7`)
-- The free list is a `static mut` raw pointer (`kalloc.rs:11`)
+- A **page** is 4096 bytes — `PGSIZE` (`memlayout.rs`)
+- The free list is a `static mut` raw pointer (`FREELIST` in `kalloc.rs`)
 - Its nodes live **inside the free pages themselves**
 
 ---
@@ -395,14 +395,14 @@ let first = page[0];         // still ours
 `&[u8]` = pointer + length. Two words, no copy of the data.
 
 ```rust
-pub fn read(&self, inum: usize, buf: &mut [u8]) -> Result<usize, FsError>   // fs.rs:97
-pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError>  // fs.rs:109
+pub fn read(&self, inum: usize, buf: &mut [u8]) -> Result<usize, FsError>   // fs.rs
+pub fn dirlookup(&self, dir: usize, name: &[u8]) -> Result<usize, FsError>  // fs.rs
 ```
 
 - A page from the allocator, a 512-byte disk block, the typed-so-far console
   buffer
-- `ulib::read` (`ulib/src/lib.rs:104`), called from `wc`
-  (`commands/src/bin/wc.rs:36`)
+- `ulib::read` (`ulib/src/lib.rs`), called from `wc`
+  (`count_fd()` in `commands/src/bin/wc.rs`)
 - In C both are `(char *buf, int n)` and the length is the caller's problem
   forever
 
@@ -470,7 +470,7 @@ A kernel is concurrent <strong>even on one CPU</strong>: an interrupt lands betw
 ## Where Rust Cannot Help: the Console
 
 ```rust
-static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];   // console.rs:13
+static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];   // console.rs
 static mut HEAD: usize = 0; // next index the consumer will read
 static mut TAIL: usize = 0; // next index the producer will write
 ```
@@ -545,7 +545,7 @@ Read it as: <em>for some region <code>'a</code>, give me two references valid at
 ## Structs That Hold References
 
 ```rust
-pub struct Args<'a> {          // ulib/src/lib.rs:63
+pub struct Args<'a> {          // ulib/src/lib.rs
     argv: &'a [&'a [u8]],
 }
 ```
@@ -559,15 +559,15 @@ pub struct Args<'a> {          // ulib/src/lib.rs:63
 ## The Destination: `SpinLockGuard`
 
 ```rust
-pub fn lock(&self) -> SpinLockGuard<'_, T> {   // spinlock.rs:22
+pub fn lock(&self) -> SpinLockGuard<'_, T> {   // spinlock.rs
     /* spin */ SpinLockGuard { lock: self }
 }
 
-pub struct SpinLockGuard<'a, T> {              // spinlock.rs:54
+pub struct SpinLockGuard<'a, T> {              // spinlock.rs
     lock: &'a SpinLock<T>,
 }
 
-impl<T> Drop for SpinLockGuard<'_, T> {        // spinlock.rs:71
+impl<T> Drop for SpinLockGuard<'_, T> {        // spinlock.rs
     fn drop(&mut self) { self.lock.unlock(); }
 }
 ```
@@ -607,7 +607,7 @@ Ask: *who owns this, and who is looking at it now?*
 
 ```rust
 /// Raw pointer to process slot `i`. Lets other modules reach the table without
-/// creating references into a `static mut`.            // proc.rs:70
+/// creating references into a `static mut`.            // proc.rs
 pub unsafe fn proc_at(i: usize) -> *mut Proc {
     ptr::addr_of_mut!(PROCS[i])
 }

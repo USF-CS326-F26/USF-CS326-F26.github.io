@@ -201,11 +201,11 @@ table, switch contexts, take traps, and **service one `ecall`**. Three facts
 from that path do all of today's work:
 
 - **The trapframe is a writable description of where a process resumes** —
-  change `epc`, `sp`, or `a0` (`usermode.rs:34`)
+  change `epc`, `sp`, or `a0` (`usermode.rs`)
 - **The kernel reaches user memory only via `copyin`/`copyout`**, which refuse
-  any page without `PTE_U` (`vm.rs:257`)
+  any page without `PTE_U` (`vm.rs`)
 - **A never-run process can still be scheduled** — `ready` forges a context
-  landing at `forkret` (`usermode.rs:245`)
+  landing at `forkret` (`usermode.rs`)
 
 <div class="highlight-box">
 What is missing is <strong>plurality</strong>: one program, no arguments, no files, no second process.
@@ -270,10 +270,10 @@ A spawn call must enumerate every adjustment in advance; the window needs zero p
 
 | Product | Reference kernel |
 |---|---|
-| A fresh address space (trampoline + trapframe only) | `exec.rs:648`–`exec.rs:682` |
-| The loaded image, `R+X+U`, any number of pages | `vm::load_segment` (`vm.rs:196`) |
-| A stack: one page, `R+W+U`, fixed address | `vm::map_user_stack` (`vm.rs:239`) |
-| Entry state: `epc`, `sp`, `a0`, `a1` | `exec.rs:703`–`exec.rs:706` |
+| A fresh address space (trampoline + trapframe only) | `exec.rs` |
+| The loaded image, `R+X+U`, any number of pages | `vm::load_segment` (`vm.rs`) |
+| A stack: one page, `R+W+U`, fixed address | `vm::map_user_stack` (`vm.rs`) |
+| Entry state: `epc`, `sp`, `a0`, `a1` | `fill_addrspace()` in `exec.rs` |
 
 Everything else — pid, kernel stack, parent, **open files** — is untouched.
 Descriptors survive `exec` by never being mentioned.
@@ -301,11 +301,11 @@ Descriptors survive `exec` by never being mentioned.
 ## Loading: Three Details Worth Knowing
 
 - **Loop, don't assume one page.** `load_segment` allocates, zeroes, copies,
-  maps — once per page (`vm.rs:196`)
+  maps — once per page (`vm.rs`)
 - **Zero the tail.** ELF's `p_memsz > p_filesz` gap is `.bss`; a loader that
-  skips it ships globals full of the previous owner's bytes (`vm.rs:220`)
+  skips it ships globals full of the previous owner's bytes (`vm.rs`)
 - **`fence.i`.** You just wrote *instructions* through the data path; RISC-V
-  does not promise the fetch stream sees your stores (`vm.rs:232`)
+  does not promise the fetch stream sees your stores (`vm.rs`)
 
 <div class="highlight-box">
 x86 makes that last one automatic. RISC-V does not. Every loader and JIT needs the fence.
@@ -317,7 +317,7 @@ x86 makes that last one automatic. RISC-V does not. Every loader and JIT needs t
 
 `a0 = argc`, `a1 = argv` — exactly `int main(int argc, char **argv)`. It must
 live in memory the *program* can read, so `exec` writes it out with `copyout`
-before the program runs (`exec.rs:781`).
+before the program runs (`exec_into()` in `exec.rs`).
 
 ```text
  0x11000  ---- top of the stack page ----
@@ -370,7 +370,7 @@ A failed `exec` must leave the caller running.
 
 1. build the **whole** new address space
 2. swap the page-table pointer
-3. only now free the old one (`exec.rs:754`–`exec.rs:762`)
+3. only now free the old one (`exec_into()` in `exec.rs`)
 
 - Safe to free user memory mid-syscall **because the kernel runs on the kernel
   page table** — you never free the ground you stand on
@@ -385,7 +385,7 @@ A failed `exec` must leave the caller running.
 - Cheap in a register, cheap to inherit, and **meaningless outside the process
   holding it**
 - fd `n` is `(*p).ofile[n]` — an index into a table the kernel owns
-  (`proc.rs:39`)
+  (`Proc` in `proc.rs`)
 - `open` grants one, `close` returns one, `read`/`write` use one
 
 <div class="highlight-box">
@@ -400,10 +400,10 @@ Every use is revalidated:
 
 | Check | Where |
 |---|---|
-| `fd < NOFILE` | `getfile` (`syscall.rs:312`) |
-| slot is actually open (`kind != None`) | `getfile` (`syscall.rs:312`) |
-| `f.readable` / `f.writable` | `sys_read` / `sys_write` (`syscall.rs:472`, `:521`) |
-| the user's buffer pointer has `PTE_U` | `walkaddr` (`vm.rs:257`) |
+| `fd < NOFILE` | `getfile` (`syscall.rs`) |
+| slot is actually open (`kind != None`) | `getfile` (`syscall.rs`) |
+| `f.readable` / `f.writable` | `sys_read` / `sys_write` (`syscall.rs`) |
+| the user's buffer pointer has `PTE_U` | `walkaddr` (`vm.rs`) |
 
 Authority is **granted** (by `open`) or **inherited** (by `fork`/`exec`) —
 never manufactured. Contrast **ambient authority**: pass a path and let the
@@ -463,11 +463,11 @@ Put the offset in the per-process table and every one of those breaks — quietl
 
 | | rv6 | xv6 / Linux |
 |---|---|---|
-| fd table entry | a `File` **by value** (`proc.rs:39`) | pointer to a shared description |
-| where `off` lives | per process (`file.rs:45`) | in the shared description |
+| fd table entry | a `File` **by value** (`proc.rs`) | pointer to a shared description |
+| where `off` lives | per process (`file.rs`) | in the shared description |
 | `fork` | copies the `File`s — offsets diverge | copies pointers — offsets shared |
 | `dup` | not implemented | shares the offset |
-| `close` | zeroes the slot (`syscall.rs:573`) | drops a reference |
+| `close` | zeroes the slot (`syscall.rs`) | drops a reference |
 
 You should be able to state the resulting bug: a forked child *overwrites*
 where Unix would *append*.
@@ -493,7 +493,7 @@ land in the same commit.
 
 ## fds 0, 1, 2: Convention, Not Rule
 
-- `allocproc` opens all three on the console (`proc.rs:128`–`proc.rs:130`)
+- `allocproc` opens all three on the console (`proc.rs`)
 - There is no `if fd == 1` anywhere in the kernel
 
 ```text
@@ -503,7 +503,7 @@ exec("cat", argv);        /* cat writes to fd 1 = the file    */
 ```
 
 "Lowest available descriptor" is a POSIX **guarantee**, not an optimization —
-`fdalloc` scans from 0 (`syscall.rs:295`).
+`fdalloc` scans from 0 (`syscall.rs`).
 
 ---
 
@@ -512,7 +512,7 @@ exec("cat", argv);        /* cat writes to fd 1 = the file    */
 - `sys_read`/`sys_write` branch on `file.kind`; console bytes to the UART,
   inode bytes through `read_at`/`write_at` at the offset
 - **The branch is in the kernel. The caller never branches.**
-- `cat` (`exec.rs:188`) works over a file, a console, a pipe, a socket
+- `cat` (`exec.rs`) works over a file, a console, a pipe, a socket
 
 The seams: `ioctl` (the escape hatch), seeking on a pipe, `select`/`poll`/
 `epoll`. Plan 9 pushed harder; Linux drifted back with `signalfd`, `timerfd`,
@@ -542,7 +542,7 @@ flowchart TD
 
 - Copying the trapframe copies the entire **resumption point**: pc, sp, all 31
   registers — the child starts mid-syscall and returns from it
-- `usertrap` did `epc += 4` **before** dispatch (`usermode.rs:401`)
+- `usertrap` did `epc += 4` **before** dispatch (`usermode.rs`)
 
 <div class="highlight-box">
 Increment after dispatch instead and the child resumes <em>on</em> the <code>ecall</code> and forks again, and again. A fork bomb from four bytes of arithmetic in the wrong order.
@@ -554,8 +554,8 @@ Increment after dispatch instead and the child resumes <em>on</em> the <code>eca
 
 | Aspect | rv6 | Unix |
 |---|---|---|
-| Address space contents | copied eagerly (`vm.rs:403`) | copy-on-write |
-| fd table | copied **by value** (`syscall.rs:107`) | table copied, **descriptions shared** |
+| Address space contents | copied eagerly (`vm.rs`) | copy-on-write |
+| fd table | copied **by value** (`syscall.rs`) | table copied, **descriptions shared** |
 | Working directory | n/a (all paths in `ROOT`) | copied |
 | Kernel stack, trapframe page | new | new |
 | pid, parent | new | new |
@@ -633,8 +633,8 @@ sequenceDiagram
 
 ## rv6's Shell, and Today's Work
 
-- `exec.rs:354` is that loop in assembly: prompt, read fd 0 to newline, split
-  into `argv`, `fork` (`:439`), `exec` in the child (`:444`), `wait` (`:454`) —
+- `exec.rs` is that loop in assembly: prompt, read fd 0 to newline, split
+  into `argv`, `fork`, `exec` in the child, `wait` —
   unprivileged, user mode, nothing but system calls. That is `52k_userland`.
 - **`49k_exec`** — `load_segment`, then `build_process`
 - **`50k_file_descriptors`** — `fdalloc`, `sys_open`, `sys_read`

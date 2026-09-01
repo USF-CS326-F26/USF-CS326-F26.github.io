@@ -20,11 +20,11 @@ because exam questions usually target exactly one.
 
 | Problem | Without translation | How Sv39 fixes it | In rv6 |
 |---|---|---|---|
-| **Isolation** | Any program can read or write any byte of RAM, including another program's and the kernel's. | Each process gets its own page table; an address that is not mapped in *your* table simply does not exist for you. | `p.pagetable` per process (`proc.rs:30`); `satp` is reloaded on every switch into user mode (`usermode.rs:141`) |
-| **Relocation** | Programs must be compiled or patched for whatever physical address happens to be free. | Virtual addresses are independent of physical ones, so every program can be linked at the same address. | Every rv6 user program is loaded at virtual address 0 (`USER_CODE`, `memlayout.rs:61`), wherever `kalloc` happened to find pages |
-| **Protection** | Nothing stops a program from writing its own code, or executing its stack, or touching a device register. | Each mapping carries R/W/X/U permission bits, checked in hardware on every access. | Code pages are `R+X+U`, the stack is `R+W+U` (`vm.rs:228`, `vm.rs:245`), and the UART is mapped without `U` (`vm.rs:132`) |
+| **Isolation** | Any program can read or write any byte of RAM, including another program's and the kernel's. | Each process gets its own page table; an address that is not mapped in *your* table simply does not exist for you. | `p.pagetable` per process (`proc.rs`); `satp` is reloaded on every switch into user mode (`usermode.rs`) |
+| **Relocation** | Programs must be compiled or patched for whatever physical address happens to be free. | Virtual addresses are independent of physical ones, so every program can be linked at the same address. | Every rv6 user program is loaded at virtual address 0 (`USER_CODE`, `memlayout.rs`), wherever `kalloc` happened to find pages |
+| **Protection** | Nothing stops a program from writing its own code, or executing its stack, or touching a device register. | Each mapping carries R/W/X/U permission bits, checked in hardware on every access. | Code pages are `R+X+U`, the stack is `R+W+U` (`vm.rs`), and the UART is mapped without `U` (`vm.rs`) |
 
-The unit of all of this is the **page**: 4096 bytes (`PGSIZE`, `memlayout.rs:7`).
+The unit of all of this is the **page**: 4096 bytes (`PGSIZE`, `memlayout.rs`).
 Translation never touches the low 12 bits of an address; it only answers the
 question "which physical page does this virtual page live on?"
 
@@ -66,7 +66,7 @@ number, split into three 9-bit indices, plus a 12-bit offset.
 | VPN[0] | 20:12 | `(va >> 12) & 0x1ff` | an entry in a level-0 table; each covers 4 KiB |
 | offset | 11:0 | `va & 0xfff` | a byte within the page; **never translated** |
 
-rv6 does all three with one function (`vm.rs:44-46`):
+rv6 does all three with one function (`px()` in `vm.rs`):
 
 ```rust
 const fn px(level: usize, va: usize) -> usize {
@@ -77,7 +77,7 @@ const fn px(level: usize, va: usize) -> usize {
 Bits 63:39 are not free real estate: the hardware requires every one of them to
 be a copy of bit 38, exactly like sign extension on a 39-bit signed number. rv6
 sidesteps the issue by capping addresses at `MAXVA = 1 << 38`
-(`memlayout.rs:45-49`), so bit 38 is always 0 and so are the top 25. That is why
+(`memlayout.rs`), so bit 38 is always 0 and so are the top 25. That is why
 `TRAMPOLINE` is `0x3F_FFFF_F000` and not `0xFFFF_FFFF_FFFF_F000`.
 
 ## The physical address
@@ -100,7 +100,7 @@ zero in practice.
 
 ## The page-table entry
 
-A PTE is one 64-bit word. rv6 wraps it in a newtype (`vm.rs:25-42`) but it is
+A PTE is one 64-bit word. rv6 wraps it in a newtype (`Pte` in `vm.rs`) but it is
 just an integer.
 
 | Bits | Field | Meaning |
@@ -123,7 +123,7 @@ just an integer.
 
 The PPN starts at **bit 10**, not bit 12, which is the single most common source
 of arithmetic errors. Building an entry means dropping the offset bits and
-shifting into place; reading it back means the reverse (`vm.rs:29-42`):
+shifting into place; reading it back means the reverse (`impl Pte` in `vm.rs`):
 
 ```rust
 pub const fn new(pa: usize, flags: usize) -> Pte { Pte(((pa >> 12) << 10) | flags) }
@@ -141,12 +141,12 @@ Notes that matter in practice:
 - **R=0, W=1 is illegal.** Write-without-read is a reserved encoding; the
   hardware treats such a PTE as invalid.
 - **rv6 defines only five flags** — `PTE_V`, `PTE_R`, `PTE_W`, `PTE_X`, `PTE_U`
-  (`vm.rs:17-23`). It never sets A, D, or G.
+  (`vm.rs`). It never sets A, D, or G.
 - **A and D still work anyway**, because QEMU updates them itself during the
   walk. Hardware without that update feature faults the first time a page with
   A=0 is touched and expects the kernel to set the bit in its trap handler; rv6
   has no such code. That is a real portability hole, not a simplification.
-- **`fence.i` is not a TLB operation.** It appears in `vm.rs:168` and `vm.rs:232`
+- **`fence.i` is not a TLB operation.** It appears in `kvmmake()` (`vm.rs`) and `load_segment()` (`vm.rs`)
   because the kernel just *wrote instructions* into memory and the instruction
   fetch path needs flushing. Different cache, different problem.
 
@@ -162,13 +162,13 @@ not at the level it is on.
 | 1 | any set | **leaf**: PPN is the physical page being mapped, and the walk ends |
 
 rv6 relies on this in both directions: `walk` builds interior nodes with
-`Pte::new(page, PTE_V)` and nothing else (`vm.rs:67`), and the teardown and fork
+`Pte::new(page, PTE_V)` and nothing else (`vm.rs`), and the teardown and fork
 paths recover the structure with `flags() & (PTE_R | PTE_W | PTE_X) != 0`
-(`vm.rs:358`, `vm.rs:398`).
+(`free_pt()` and `copy_level()` (`vm.rs`)).
 
 A leaf at level 1 or level 2 is legal in the architecture: it maps a **2 MiB
 megapage** or a **1 GiB gigapage**, with the corresponding low PPN fields
-required to be zero. rv6 never creates one — and `walk` (`vm.rs:52-73`) would
+required to be zero. rv6 never creates one — and `walk` (`vm.rs`) would
 mishandle one if it met it, because it checks only `V` and would follow a
 level-2 leaf's PPN as though it were a table address. That is safe only because
 rv6 is the sole builder of these tables, and it is exactly the kind of
@@ -200,7 +200,7 @@ Three memory reads per translation, before the access you actually wanted: that
 is the cost the TLB exists to hide.
 
 rv6's software version does the same descent and stops one entry short, handing
-back a pointer to the level-0 entry so the caller can fill it in (`vm.rs:52-73`):
+back a pointer to the level-0 entry so the caller can fill it in (`walk()` in `vm.rs`):
 
 ```rust
 pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
@@ -225,7 +225,7 @@ pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
 Two things to notice: the loop runs for levels 2 and 1 only, returning the
 level-0 entry rather than following it, and in `alloc` mode a missing interior
 table is created on the spot — which is why mapping one page at a fresh virtual
-address can cost three physical pages. `mappages` (`vm.rs:75-98`) is a loop
+address can cost three physical pages. `mappages` (`vm.rs`) is a loop
 around `walk` that page-aligns the range, ends at `pgrounddown(va + size - 1)`,
 and stores `Pte::new(pa, perm | PTE_V)` for each page: the `V` bit is added for
 you, R/W/X/U are not.
@@ -251,7 +251,7 @@ table *the* page table.
 | 10 | Sv57 — five levels |
 
 The PPN field holds the root table's physical address **shifted right by 12**,
-not the address itself. rv6 builds the value in one line (`vm.rs:104-108`):
+not the address itself. rv6 builds the value in one line (`vm.rs`):
 
 ```rust
 pub const SATP_SV39: usize = 8 << 60;
@@ -262,7 +262,7 @@ rv6 always leaves ASID at 0. A nonzero ASID lets the hardware tag TLB entries by
 address space and keep several alive at once, so a process switch need not throw
 everything away — an optimization we skip.
 
-Installing a table is two instructions (`vm.rs:177-181`):
+Installing a table is two instructions (`kvminithart()` in `vm.rs`):
 
 ```rust
 asm!("csrw satp, {}", in(reg) satp);
@@ -288,8 +288,8 @@ you change a PTE, the TLB does not notice. `sfence.vma` is how you tell it.
 
 It is also an ordering barrier: it guarantees that page-table stores you issued
 *before* it are visible to walks that happen *after* it. That is why rv6 brackets
-every `satp` write with one on each side (`usermode.rs:133-135` and
-`usermode.rs:140-142`):
+every `satp` write with one on each side (`usermode.rs` and
+`usermode.rs`):
 
 ```asm
 sfence.vma zero, zero
@@ -312,10 +312,10 @@ TLB entry is a bug that reproduces once an hour and looks like cosmic rays.
 You can predict every physical address here, because the allocator is
 deterministic. `kalloc::init` frees pages from the end of the kernel image
 upward to `PHYSTOP`, pushing each onto the head of a free list
-(`kalloc.rs:26-32`), and `kalloc` pops the head (`kalloc.rs:40-46`). So the
+(`kalloc.rs`), and `kalloc` pops the head (`kalloc.rs`). So the
 **first** allocation is the **highest** page in RAM, `0x87FF_F000`, and each
 subsequent one is 4096 lower. `kinit` calls `kalloc::init` and then `kvmmake`
-with nothing in between (`main.rs:87-94`), so the tables land like this:
+with nothing in between (`BANNER` in `main.rs`), so the tables land like this:
 
 | Alloc | Physical page | Role |
 |---|---|---|
@@ -352,7 +352,7 @@ Now walk, reading one 8-byte entry per level:
 | L0 | `0x87FF_7000` | 1 → byte offset 8 | `0x0000_0000_2008_040F` | PPN → `0x8020_1000`, flags `0xF` = V+R+W+X → **leaf** |
 
 Result: `0x8020_1000 | offset 0x000` = **`0x8020_1000`**. Identity, as promised
-by `mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, ...)` at `vm.rs:141`.
+by `mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, ...)` at `kvmmake()` (`vm.rs`).
 Check the leaf by hand: `(0x8020_1000 >> 12) << 10 = 0x8020_1 << 10 =
 0x2008_0400`, plus flags `0xF` = `0x2008_040F`. No `U` bit, so a user program
 that reaches this address gets a fault instead of the kernel's code.
@@ -377,7 +377,7 @@ flags =  0x04000007 & 0x3ff      = 0x007 = V | R | W
 
 Readable, writable, **not executable**, **not user**. Exactly right for a device
 register: nobody should fetch instructions from a UART, and no user program
-should be able to print by writing to it directly (`vm.rs:132`).
+should be able to print by writing to it directly (`kvmmake()` in `vm.rs`).
 
 ### 3. A user code address, `0x0000_1234`
 
@@ -397,15 +397,15 @@ VPN[2] = 0        VPN[1] = 0        VPN[0] = 1        offset = 0x234
 
 Result: `0x87FA_C000 + 0x234` = **`0x87FA_C234`**. Two things are worth saying
 out loud. Virtual address 0 is a perfectly ordinary address in a user address
-space here (`memlayout.rs:61`) — there is no NULL page, so a null-pointer
+space here (`USER_CODE` in `memlayout.rs`) — there is no NULL page, so a null-pointer
 dereference in an rv6 user program reads your own code. And the flags are
-`R+X+U` with no `W` (`vm.rs:228`): a program cannot rewrite its own
+`R+X+U` with no `W` (`vm.rs`): a program cannot rewrite its own
 instructions.
 
 ### 4. The user stack, `0x0001_0FF0`
 
 Same process, same table. The stack page was allocated separately at
-`0x87FA_B000` and mapped at `USER_STACK = 0x1_0000` (`vm.rs:239-246`).
+`0x87FA_B000` and mapped at `USER_STACK = 0x1_0000` (`map_user_stack()` in `vm.rs`).
 
 ```text
 VPN[2] = (0x10FF0 >> 30) & 0x1ff = 0
@@ -426,7 +426,7 @@ the top of a freshly started program's stack. No `X` bit, so an attacker who
 gets data onto the stack still cannot execute it.
 
 Between index 1 (code) and index 16 (stack) the entries are zero. That gap is
-deliberate (`memlayout.rs:67-72`): running off the end of the image faults
+deliberate (`USER_STACK` in `memlayout.rs`): running off the end of the image faults
 instead of quietly landing in the stack.
 
 ### 5. The trampoline, `0x3F_FFFF_F000`
@@ -448,7 +448,7 @@ In this process's table, root entry 255 is `0x21FE_A801` → `0x87FA_A000`; entr
 **`0x87FB_8000`**.
 
 That is the *same physical page* the kernel's own table maps at this same
-virtual address (allocation 72 above; `proc.rs:164` maps
+virtual address (allocation 72 above; `proc_pagetable()` (`proc.rs`) maps
 `vm::trampoline_page()` into every new process). It has to be: the trampoline
 executes the `csrw satp` that swaps address spaces, and the instruction *after*
 that write is fetched through the new table, so if the code sat at different
@@ -476,7 +476,7 @@ whichever kind the access was. That last case is the entire wall between user
 and kernel, enforced by one bit.
 
 The kernel's software walks perform the same checks by hand. `walkaddr`
-(`vm.rs:252-261`) rejects addresses at or above `MAXVA`, a null result from
+(`vm.rs`) rejects addresses at or above `MAXVA`, a null result from
 `walk`, an invalid PTE, and — critically — any PTE without `PTE_U`, so a user
 program cannot hand the kernel a kernel address and have `copyin`/`copyout`
 dereference it on its behalf.
@@ -504,19 +504,19 @@ digits differ from the input's you lost the offset.
 
 | Function | Location | What it does |
 |---|---|---|
-| `Pte::new` / `pa` / `flags` | `vm.rs:29-42` | pack and unpack an entry |
-| `px` | `vm.rs:44-46` | extract VPN[level] |
-| `walk` | `vm.rs:52-73` | descend to the level-0 entry, allocating tables if asked |
-| `mappages` | `vm.rs:75-98` | install `size` bytes of mappings, one page at a time |
-| `make_satp` | `vm.rs:106-108` | build the `satp` value for a root table |
-| `kvmmake` | `vm.rs:125-175` | build the kernel's identity map plus the trampoline |
-| `kvminithart` | `vm.rs:177-181` | write `satp`, then `sfence.vma` |
-| `load_segment` | `vm.rs:196-234` | map a program image at `USER_CODE` with R+X+U |
-| `map_user_stack` | `vm.rs:239-246` | one page at `USER_STACK` with R+W+U |
-| `walkaddr` | `vm.rs:252-261` | translate a *user* VA safely, returning 0 on any problem |
-| `copyin` / `copyout` / `copyinstr` | `vm.rs:268-342` | move bytes across the user/kernel boundary, one page at a time |
-| `free_pt` | `vm.rs:354-374` | recursive teardown; the model of leaf-vs-branch logic |
-| `copy_level` | `vm.rs:389-419` | `fork`'s deep copy, rebuilding each VA as it descends |
+| `Pte::new` / `pa` / `flags` | `vm.rs` | pack and unpack an entry |
+| `px` | `vm.rs` | extract VPN[level] |
+| `walk` | `vm.rs` | descend to the level-0 entry, allocating tables if asked |
+| `mappages` | `vm.rs` | install `size` bytes of mappings, one page at a time |
+| `make_satp` | `vm.rs` | build the `satp` value for a root table |
+| `kvmmake` | `vm.rs` | build the kernel's identity map plus the trampoline |
+| `kvminithart` | `vm.rs` | write `satp`, then `sfence.vma` |
+| `load_segment` | `vm.rs` | map a program image at `USER_CODE` with R+X+U |
+| `map_user_stack` | `vm.rs` | one page at `USER_STACK` with R+W+U |
+| `walkaddr` | `vm.rs` | translate a *user* VA safely, returning 0 on any problem |
+| `copyin` / `copyout` / `copyinstr` | `vm.rs` | move bytes across the user/kernel boundary, one page at a time |
+| `free_pt` | `vm.rs` | recursive teardown; the model of leaf-vs-branch logic |
+| `copy_level` | `vm.rs` | `fork`'s deep copy, rebuilding each VA as it descends |
 
 ## Mistakes that cost points
 

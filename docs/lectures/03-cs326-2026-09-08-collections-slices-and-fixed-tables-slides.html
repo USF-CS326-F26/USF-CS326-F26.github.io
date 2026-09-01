@@ -313,8 +313,8 @@ Given `let buf = [0u8; 512];` — `&buf[..]`, `&buf[..n]`, `&buf[n..]`,
 rv6's `wc` writes the important one:
 
 ```rust
-let n = ulib::read(fd, &mut buf)?;   // wc.rs:36
-for &b in &buf[..n] { ... }          // wc.rs:40
+let n = ulib::read(fd, &mut buf)?;   // wc.rs
+for &b in &buf[..n] { ... }          // wc.rs
 ```
 
 - `read` fills part of a 512-byte buffer and returns how much
@@ -331,11 +331,11 @@ pub trait Scheduler {
 }
 ```
 
-`sched.rs:6`
+`sched.rs`
 
 - The policy never learns how big the process table is — it reads `states.len()`
 - Change `NPROC` from 64 to 8: the scheduler cannot be wrong about it
-- Caller builds `[ProcState; NPROC]` and passes `&states` (`usermode.rs:285`, `:290`)
+- Caller builds `[ProcState; NPROC]` and passes `&states` (`usermode.rs`)
 
 **Rule:** `&[T]` to read, `&mut [T]` to write; concrete types only when you must own or must know N.
 
@@ -375,7 +375,7 @@ index freely downstream.
 
 ```rust
 unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {
-    if fd >= NOFILE {          // syscall.rs:313
+    if fd >= NOFILE {          // syscall.rs
         return None;
     }
     let f = (*p).ofile[fd];
@@ -461,7 +461,7 @@ fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
 }
 ```
 
-`sched.rs:20` — consider `n` offsets, wrap from where we left off, take the
+`sched.rs` — consider `n` offsets, wrap from where we left off, take the
 first runnable, remember to resume after it.
 
 **Lazy:** `map` computes one index per `find` request; `find` stops on success.
@@ -472,8 +472,8 @@ No intermediate list, no allocation — the compiled code is a hand-written loop
 ## The Line This Session Aims At
 
 ```rust
-static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs:65
-pub const NPROC: usize = 64;                                        // param.rs:7
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];   // proc.rs
+pub const NPROC: usize = 64;                                        // param.rs
 ```
 
 Sixty-four slots, decided when the kernel is compiled. Never sixty-five.
@@ -503,9 +503,9 @@ flowchart TD
 
 ## Reason 1: No Allocator Yet
 
-- `PROCS` is used at `proc::init()` — the fourth line of `kinit` (`main.rs:87`)
-- `Vec` calls the **global allocator**; rv6 has none until exercise 38k (`kheap.rs:40`)
-- `34k_processes` has no `kheap.rs`; `38k_semaphores/main.rs:18` is the first `extern crate alloc`
+- `PROCS` is used at `proc::init()` — the fourth line of `kinit` (`main.rs`)
+- `Vec` calls the **global allocator**; rv6 has none until exercise 38k (`ALLOCATOR` in `kheap.rs`)
+- `34k_processes` has no `kheap.rs`; `38k_semaphores/main.rs` is the first `extern crate alloc`
 
 <div class="info-box">
 This is the shape of every boot. <code>kalloc::init()</code> walks physical memory to
@@ -532,7 +532,7 @@ interrupt context. A fixed array simply **cannot break the rule**.
 ## Reason 3: A Hard Limit Fails Honestly
 
 **Array:** `allocproc` scans for `Unused`, returns null if full
-(`proc.rs:107`, `:134`) &rarr; `fork` returns `-1` &rarr; the machine keeps
+(`proc.rs`) &rarr; `fork` returns `-1` &rarr; the machine keeps
 running. Testable: fill the table, check that the 65th `fork` fails.
 
 **Vec:** the limit is "until memory runs out" — failure arrives late, at an
@@ -563,7 +563,7 @@ The difference is where the boundary sits, not whether one exists.
 |---|---|
 | `state` | 1 |
 | `pid`, `kstack`, `xstate`, 3 pointers | 8 each |
-| `context` (14 saved registers, `swtch.rs:7`) | 112 |
+| `context` (14 saved registers, `swtch.rs`) | 112 |
 | `ofile` — `[File; 16]`, `File` is 24 bytes | 384 |
 | `name` — `[u8; 16]` | 16 |
 | **`size_of::<Proc>()`** | **568** |
@@ -577,13 +577,13 @@ runs or sixty-four.
 
 | Constant | Value | Where | Bounds |
 |---|---|---|---|
-| `NPROC` | 64 | `param.rs:7` | processes in the system |
-| `NOFILE` | 16 | `file.rs:19` | open files per process |
-| `NINODE` | 64 | `fs.rs:5` | files in the filesystem |
-| `NDIRENT` | 16 | `fs.rs:6` | entries per directory |
-| `NAMELEN` | 14 | `fs.rs:7` | bytes in a filename |
-| `FILESIZE` | 128 | `fs.rs:8` | bytes in one file |
-| `BUF_LEN` | 256 | `console.rs:8` | buffered keystrokes |
+| `NPROC` | 64 | `param.rs` | processes in the system |
+| `NOFILE` | 16 | `file.rs` | open files per process |
+| `NINODE` | 64 | `fs.rs` | files in the filesystem |
+| `NDIRENT` | 16 | `fs.rs` | entries per directory |
+| `NAMELEN` | 14 | `fs.rs` | bytes in a filename |
+| `FILESIZE` | 128 | `fs.rs` | bytes in one file |
+| `BUF_LEN` | 256 | `console.rs` | buffered keystrokes |
 
 Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
 
@@ -600,7 +600,7 @@ Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
                           open() returns 3: the lowest free index
 ```
 
-- `allocproc` (`proc.rs:108`) and `fdalloc` (`syscall.rs:298`) are the same scan
+- `allocproc` (`proc.rs`) and `fdalloc` (`syscall.rs`) are the same scan
 - For fds it is the **Unix contract**: `open` returns the lowest unused descriptor
 - That is why `cmd > file` = "close fd 1, then open" — you write this in **exercise 50k**
 
@@ -613,7 +613,7 @@ Each has a defined failure: `-1`, `FsError::DirFull`, or a dropped keystroke.
 - **Module 1, host commands, `cargo test`**: use it freely — the OS allocator is already running
 - **Kernel, exercise 38k onward**: legal, under two standing rules
     - allocate at initialization, never on the trap path
-    - know your allocator: `KernelHeap::alloc` (`kheap.rs:23`) serves one 4096-byte page per allocation and refuses anything larger
+    - know your allocator: `KernelHeap::alloc` (`kheap.rs`) serves one 4096-byte page per allocation and refuses anything larger
 
 ---
 

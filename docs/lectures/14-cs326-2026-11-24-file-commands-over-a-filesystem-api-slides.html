@@ -249,7 +249,7 @@ match fsg.dircreate(dir, name.as_bytes(), InodeKind::File) {
 }
 ```
 
-- `shell.rs:131`&ndash;`shell.rs:137`
+- `Shell::cmd_touch()` (`shell.rs`)&ndash;`Shell::cmd_touch()` (`shell.rs`)
 - Swallowing `AlreadyExists` is **policy**; `dircreate` only reports the fact
 - Real `touch(1)` also bumps a timestamp — rv6 inodes have none
 
@@ -275,7 +275,7 @@ When client code is this thin, the API underneath is carrying the design. An API
   the NAME lives here               EVERYTHING ELSE lives here
 ```
 
-`fs.rs:30` (`DirEnt`) &middot; `fs.rs:49` (`Inode`) &middot; `fs.rs:113` (`dirlookup`)
+`fs.rs` (`DirEnt`) &middot; `fs.rs` (`Inode`) &middot; `fs.rs` (`dirlookup`)
 
 ---
 
@@ -293,12 +293,12 @@ This is why <code>mv</code> within a filesystem is instantaneous and <code>mv</c
 
 ## The 14-Byte Name Is a Fossil
 
-- `NAMELEN = 14` (`fs.rs:7`) — not arbitrary
+- `NAMELEN = 14` (`fs.rs`) — not arbitrary
 - **V7 Unix**: a directory entry was exactly 16 bytes — 2-byte inum + 14-char name
 - A directory was literally an array you could `read()` like any file
 - xv6 keeps `DIRSIZ = 14`; rv6 inherits it
 - BSD FFS (1984) introduced variable-length entries; ext4/XFS use hashed B-trees
-- rv6's `dirlookup` is O(entries), capped at 16 (`fs.rs:6`)
+- rv6's `dirlookup` is O(entries), capped at 16 (`NDIRENT` in `fs.rs`)
 
 ---
 
@@ -339,7 +339,7 @@ if e.used && e.len == name.len() && &e.name[..e.len] == name {
 }
 ```
 
-`fs.rs:190`&ndash;`fs.rs:203`
+`FileSystem::unlink()` (`fs.rs`)&ndash;`FileSystem::unlink()` (`fs.rs`)
 
 <div class="highlight-box">
 rv6's <code>unlink</code> does what <code>unlink</code> <em>plus</em> <code>iput</code> do together. It assumes one name, zero open references — enforced only by the absence of the features that would break it.
@@ -383,17 +383,17 @@ sequenceDiagram
 
 ## Three Details in `cat`
 
-- **The buffer is the largest possible file** — `[0u8; fs::FILESIZE]` on the kernel stack (`shell.rs:151`). Only works because `FILESIZE` is a compile-time cap.
-- **The count is the truth** — `n = min(size, buf.len())` (`fs.rs:104`). The buffer's *length* tells you nothing.
-- **Bytes are not text** — `from_utf8` returns a `Result` (`shell.rs:154`). Unix stores byte strings and imposes no encoding.
+- **The buffer is the largest possible file** — `[0u8; fs::FILESIZE]` on the kernel stack (`Shell::cmd_cat()` in `shell.rs`). Only works because `FILESIZE` is a compile-time cap.
+- **The count is the truth** — `n = min(size, buf.len())` (`fs.rs`). The buffer's *length* tells you nothing.
+- **Bytes are not text** — `from_utf8` returns a `Result` (`shell.rs`). Unix stores byte strings and imposes no encoding.
 
-A real `cat` loops until `read` returns 0 — which is why `read_at` exists (`fs.rs:231`).
+A real `cat` loops until `read` returns 0 — which is why `read_at` exists (`fs.rs`).
 
 ---
 
 ## `>` Truncates, and Truncates *Early*
 
-- In rv6, truncation is built into `write`: it sets `size = data.len()`, so the old tail is unreachable (`fs.rs:163`&ndash;`fs.rs:164`)
+- In rv6, truncation is built into `write`: it sets `size = data.len()`, so the old tail is unreachable (`FileSystem::write` in `fs.rs`)
 - On a real system `echo hi > f` is `open("f", O_WRONLY|O_CREAT|O_TRUNC)` — and the shell does that `open` **before it forks the command**
 
 ```bash
@@ -435,7 +435,7 @@ The data was gone before <code>sort</code> ever opened it. No cleverness inside 
 ## `dir_is_empty` Means Two Different Things
 
 <div class="info-box">
-<strong>rv6:</strong> no used entries at all (<code>fs.rs:207</code>).<br>
+<strong>rv6:</strong> no used entries at all (<code>fs.rs</code>).<br>
 <strong>xv6 / Linux:</strong> no entries <em>besides</em> <code>.</code> and <code>..</code> — xv6's <code>isdirempty</code> starts its scan at offset <code>2 * sizeof(struct dirent)</code>.
 </div>
 
@@ -466,7 +466,7 @@ In Linux the name goes immediately; the **data lives until the last descriptor c
   program: read(3, buf) -> returns bytes of "other", silently
 ```
 
-- `unlink` frees the inode (`fs.rs:197`); `alloc` is first-fit from `ROOT` (`fs.rs:87`)
+- `unlink` frees the inode (`fs.rs`); `alloc` is first-fit from `ROOT` (`fs.rs`)
 - The first read errors. The read **after reallocation succeeds and is wrong.**
 - With permissions, that is a privilege-escalation vector
 
@@ -479,10 +479,10 @@ In Linux the name goes immediately; the **data lives until the last descriptor c
 ## `.` and `..` in rv6: Syntax
 
 ```rust
-".." => { self.stack.pop(); }        // shell.rs:94
+".." => { self.stack.pop(); }        // shell.rs
 ```
 
-- The cwd is a `Vec<(String, usize)>` (`shell.rs:24`)
+- The cwd is a `Vec<(String, usize)>` (`Shell` in `shell.rs`)
 - There is **no `..` anywhere in `fs.rs`** — the parent link exists only in the shell's memory
 - Works only because the shell is rv6's sole path walker
 
@@ -517,7 +517,7 @@ Because `..` is a real link, `cd ..` is ambiguous under symlinks: if `/a/b` &rar
    the disk                 the disk                a static array in RAM
 ```
 
-`FS` is a `SpinLock<FileSystem>` in `.bss` (`fs.rs:277`): 64 inodes, 128 bytes each, 16 entries each.
+`FS` is a `SpinLock<FileSystem>` in `.bss` (`fs.rs`): 64 inodes, 128 bytes each, 16 entries each.
 
 ---
 
@@ -539,7 +539,7 @@ Note what changes about the <em>interface</em> when you add all of this: <strong
 
 ## No Journal: The Two-Store Problem
 
-`unlink` mutates two things — free the inode, clear the entry (`fs.rs:197`&ndash;`fs.rs:198`). On one hart under a spinlock, nothing can interrupt. On a **disk** they are two block writes.
+`unlink` mutates two things — free the inode, clear the entry (`FileSystem::unlink` in `fs.rs`). On one hart under a spinlock, nothing can interrupt. On a **disk** they are two block writes.
 
 - Crash between them, order A: entry gone, inode still allocated &rarr; **leaked inode**
 - Crash between them, order B: inode freed, entry still points at it &rarr; **dangling entry, corruption**
@@ -551,10 +551,10 @@ Note what changes about the <em>interface</em> when you add all of this: <strong
 
 ## One Global Lock
 
-- `cmd_cat` takes `FS.lock()` at `shell.rs:143` and holds it across `out.puts` (`shell.rs:155`)
+- `cmd_cat` takes `FS.lock()` at `shell.rs` and holds it across `out.puts` (`shell.rs`)
 - Printing a file blocks **all** filesystem activity for the length of a UART transfer
 - Any path from `puts` back into `FS` deadlocks — a spinlock is not reentrant
-- `cmd_cd` drops the guard before `stack.push` (`shell.rs:102`): `push` may take the **heap** lock
+- `cmd_cd` drops the guard before `stack.push` (`shell.rs`): `push` may take the **heap** lock
 
 <div class="highlight-box">
 Never call out of your subsystem while holding its lock.

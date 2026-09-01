@@ -59,7 +59,7 @@ them is a *quantitative* question.
 
 ### 1.1 What a polling loop actually costs
 
-Your `uart::getc` (`uart.rs:53`) reads `LSR`, tests `DR`, and returns `None` if no
+Your `uart::getc` (`uart.rs`) reads `LSR`, tests `DR`, and returns `None` if no
 byte is waiting. Reading input by polling means calling it in a loop:
 
 ```rust
@@ -82,19 +82,19 @@ comes back. Call it 100 ns.
 
 A million MMIO reads to learn one byte, and nothing else runs while the loop
 spins. The interrupt path costs the `kernelvec` prologue (sixteen stores,
-`trap.rs:91`–`trap.rs:107`), the handler, three MMIO accesses, and sixteen loads —
+`trap.rs`), the handler, three MMIO accesses, and sixteen loads —
 round up hard to 1 µs per byte, or 9 µs per second: five orders of magnitude
 cheaper. And the real win is not cycles but that during those 110 ms the CPU can
-run another process or halt in `wfi` (`console.rs:52`). **Polling a keyboard is
+run another process or halt in `wfi` (`console.rs`). **Polling a keyboard is
 unacceptable, and the reason is arithmetic, not aesthetics.**
 
 ### 1.2 So why does rv6 still poll to print?
 
-`uart::putc` (`uart.rs:48`–`uart.rs:51`) spins on `tx_ready()` until `LSR.THRE`
+`uart::putc` (`uart.rs`) spins on `tx_ready()` until `LSR.THRE`
 is set — a polling loop, in the finished kernel, on purpose. Run the arithmetic
 the other way: here the *kernel* is the producer and the device is the consumer.
 At 115200 baud a character takes 87 µs to shift out, but the 16550's transmit FIFO
-(enabled at `uart.rs:30`) absorbs sixteen bytes without waiting, and under QEMU the
+(enabled at `init()` (`uart.rs`)) absorbs sixteen bytes without waiting, and under QEMU the
 backend swallows them instantly — so `THRE` is essentially always set and the first
 test of the loop succeeds.
 
@@ -147,7 +147,7 @@ The PLIC answers two questions: *which* pending interrupt is most urgent, and
 *who* handles it.
 
 - A **source** is a numbered device line, 1 through 1023 (0 means "none"). On
-  QEMU's `virt` machine the UART is source 10 — `plic.rs:14`.
+  QEMU's `virt` machine the UART is source 10 — `UART0_IRQ` (`plic.rs`).
 - A **context** is a (hart, privilege mode) pair. On `virt`, hart *i* owns context
   `2i` for machine mode and `2i+1` for supervisor mode. rv6 is single-hart and
   runs in S-mode, so every register it touches belongs to **context 1**.
@@ -159,17 +159,18 @@ the network card to core 3 and the disk to core 7.
 ```text
   PLIC base = 0x0c00_0000              offset                what rv6 writes
   ---------------------------------------------------------------------------
-  priority[src]         base + 4*src              +0x000028   1     (plic.rs:24)
+  priority[src]         base + 4*src              +0x000028   1     (plic.rs)
   pending[src/32]       base + 0x1000 + ...       (read-only, rv6 never reads it)
-  enable[ctx][src/32]   base + 0x2000 + 0x80*ctx  +0x002080   1<<10 (plic.rs:26)
-  threshold[ctx]        base + 0x200000 + 0x1000*ctx  +0x201000   0 (plic.rs:28)
-  claim/complete[ctx]   base + 0x200004 + 0x1000*ctx  +0x201004     (plic.rs:19)
+  enable[ctx][src/32]   base + 0x2000 + 0x80*ctx  +0x002080   1<<10 (plic.rs)
+  threshold[ctx]        base + 0x200000 + 0x1000*ctx  +0x201000   0 (plic.rs)
+  claim/complete[ctx]   base + 0x200004 + 0x1000*ctx  +0x201004     (plic.rs)
 ```
 
-`plic.rs:17`–`plic.rs:19` hardcode the context-1 offsets — honest for a
+`PLIC_SENABLE`, `PLIC_STHRESHOLD`, and `PLIC_SCLAIM` (`plic.rs`) hardcode the
+context-1 offsets — honest for a
 single-hart kernel, and the first thing a multi-hart port generalizes. `PLIC_SIZE`
-is 4 MiB (`memlayout.rs:27`), the highest address above is `0x0c20_1004`, and
-`vm.rs:138` maps the region `R|W` so the kernel can reach it with paging on.
+is 4 MiB (`memlayout.rs`), the highest address above is `0x0c20_1004`, and
+`kvmmake()` (`vm.rs`) maps the region `R|W` so the kernel can reach it with paging on.
 
 ### 2.2 Four registers, four different jobs
 
@@ -177,10 +178,10 @@ Three of them look like on/off switches. They are not.
 
 | Register | Whose | Question it answers | rv6's value |
 |---|---|---|---|
-| `priority[src]` | the source's, globally | How urgent is this device? `0` = never interrupt. | `1` (`plic.rs:24`) |
-| `enable[ctx]` | this context's | May this context *see* this source at all? | bit 10 set (`plic.rs:26`) |
-| `threshold[ctx]` | this context's | How urgent must an interrupt be to reach me right now? | `0` (`plic.rs:28`) |
-| `claim/complete[ctx]` | this context's | Read: which source fired? Write: I am done. | (`plic.rs:32`, `plic.rs:37`) |
+| `priority[src]` | the source's, globally | How urgent is this device? `0` = never interrupt. | `1` (`plic.rs`) |
+| `enable[ctx]` | this context's | May this context *see* this source at all? | bit 10 set (`plic.rs`) |
+| `threshold[ctx]` | this context's | How urgent must an interrupt be to reach me right now? | `0` (`plic.rs`) |
+| `claim/complete[ctx]` | this context's | Read: which source fired? Write: I am done. | (`plic.rs`) |
 
 Delivery requires *all* of `priority[src] > 0`, `enable[ctx][src] == 1`, and
 `priority[src] > threshold[ctx]`. Threshold is the runtime masking knob — raise it
@@ -203,19 +204,19 @@ stateDiagram-v2
     Claimed --> Claimed: line still asserted —<br/>no new delivery until complete
 ```
 
-The handler is `console::intr` (`console.rs:68`–`console.rs:81`), nine lines long
+The handler is `console::intr` (`console.rs`), nine lines long
 because a device interrupt handler should be:
 
 ```rust
 pub fn intr() {
-    let irq = plic::claim();                 // console.rs:70 — which device?
-    if irq == plic::UART0_IRQ {              // console.rs:71
-        while let Some(b) = uart::getc() {   // console.rs:73 — drain the FIFO
-            push(b);                         // console.rs:74 — into the ring
+    let irq = plic::claim();                 // console.rs — which device?
+    if irq == plic::UART0_IRQ {              // console.rs
+        while let Some(b) = uart::getc() {   // console.rs — drain the FIFO
+            push(b);                         // console.rs — into the ring
         }
     }
-    if irq != 0 {                            // console.rs:78
-        plic::complete(irq);                 // console.rs:79 — release the gateway
+    if irq != 0 {                            // console.rs
+        plic::complete(irq);                 // console.rs — release the gateway
     }
 }
 ```
@@ -234,11 +235,11 @@ The first two rows are the lesson: both produce a dead console, one burns all th
 CPU and one burns none.
 
 > Key distinction: the forwarded timer tick is dismissed by clearing `sip.SSIP`
-> (`trap.rs:62`–`trap.rs:63`). A device interrupt has no such escape. `sip.SEIP`
+> (`kerneltrap()` in `trap.rs`). A device interrupt has no such escape. `sip.SEIP`
 > is read-only to supervisor software — it is a wire from the PLIC, and the only
 > way to make it go low is to satisfy the PLIC.
 
-Note the `irq != 0` guard (`console.rs:78`): `claim` returns 0 when nothing is
+Note the `irq != 0` guard (`console.rs`): `claim` returns 0 when nothing is
 pending, which really happens, so a handler must survive being called for no
 reason.
 
@@ -252,28 +253,28 @@ type and nothing happens.
 
 ```mermaid
 flowchart LR
-    K["keypress"] --> G1["1 · UART IER bit 0\nuart.rs:37"]
-    G1 --> G2["2 · priority[10] > 0\nplic.rs:24"]
-    G2 --> G3["3 · enable[ctx1] bit 10\nplic.rs:26"]
-    G3 --> G4["4 · priority > threshold\nplic.rs:28"]
-    G4 --> G5["5 · mideleg bit 9\nstart.rs:40"]
-    G5 --> G6["6 · sie.SEIE\nconsole.rs:63"]
-    G6 --> G7["7 · sstatus.SIE\ntrap.rs:41"]
-    G7 --> G8["8 · stvec = kernelvec\ntrap.rs:35"]
-    G8 --> G9["9 · PLIC mapped R|W\nvm.rs:138"]
-    G9 --> H["console::intr\nconsole.rs:68"]
+    K["keypress"] --> G1["1 · UART IER bit 0\nuart.rs"]
+    G1 --> G2["2 · priority[10] > 0\nplic.rs"]
+    G2 --> G3["3 · enable[ctx1] bit 10\nplic.rs"]
+    G3 --> G4["4 · priority > threshold\nplic.rs"]
+    G4 --> G5["5 · mideleg bit 9\nstart.rs"]
+    G5 --> G6["6 · sie.SEIE\nconsole.rs"]
+    G6 --> G7["7 · sstatus.SIE\ntrap.rs"]
+    G7 --> G8["8 · stvec = kernelvec\ntrap.rs"]
+    G8 --> G9["9 · PLIC mapped R|W\nvm.rs"]
+    G9 --> H["console::intr\nconsole.rs"]
 ```
 
 Gates 1–4 are the device and the controller: the UART must be told to raise a line
-at all (`uart::init` clears `IER` at `uart.rs:28` for the polled era;
-`enable_rx_interrupt` sets it at `uart.rs:37`), and the PLIC must forward it.
+at all (`uart::init` clears `IER` at `uart.rs` for the polled era;
+`enable_rx_interrupt` sets it at `uart.rs`), and the PLIC must forward it.
 Gates 5–8 are the CPU: delegate external interrupts, enable the supervisor
 external source, turn the global switch on, point `stvec` somewhere useful. Gate 9
 is paging — easy to forget, and the one gate with a *different* symptom, since an
 unmapped PLIC makes `plic::claim`'s `read_volatile` take a load page fault rather
-than return zero. `console::init` (`console.rs:58`–`console.rs:64`) closes gates
-1, 2, 3, 4, and 6 in five lines; `trap::intr_on` (`trap.rs:39`) closes 7;
-`main.rs:119`–`main.rs:120` calls them in that order.
+than return zero. `console::init` (`console.rs`) closes gates
+1, 2, 3, 4, and 6 in five lines; `trap::intr_on` (`trap.rs`) closes 7;
+`kmain()` in `main.rs` calls them in that order.
 
 ---
 
@@ -294,7 +295,7 @@ a command line would add milliseconds to everything else's worst case.
 
 ### 4.2 The ring buffer
 
-Between the halves sit 256 bytes and two counters (`console.rs:13`–`console.rs:15`):
+Between the halves sit 256 bytes and two counters (`console.rs`):
 
 ```rust
 static mut BUF: [u8; BUF_LEN] = [0; BUF_LEN];
@@ -303,17 +304,17 @@ static mut TAIL: usize = 0; // next index the producer will write
 ```
 
 `HEAD` and `TAIL` are *monotonically increasing counters*, not array offsets;
-`% BUF_LEN` turns them into offsets at the point of use (`console.rs:23`,
-`console.rs:38`). Hence the fullness test `tail.wrapping_sub(head) < BUF_LEN`
-(`console.rs:22`): counting rather than positioning removes the classic ambiguity
+`% BUF_LEN` turns them into offsets at the point of use (`push()` (`console.rs`),
+`try_getc()` (`console.rs`)). Hence the fullness test `tail.wrapping_sub(head) < BUF_LEN`
+(`push()` in `console.rs`): counting rather than positioning removes the classic ambiguity
 where a full ring and an empty ring both satisfy `head == tail`. The invariants:
 
 - `TAIL - HEAD` is the number of bytes waiting, always in `0..=BUF_LEN`.
-- `HEAD == TAIL` means empty, and is the only empty condition (`console.rs:35`).
+- `HEAD == TAIL` means empty, and is the only empty condition (`console.rs`).
 - Only `push` writes `TAIL` and `BUF`; only `try_getc` writes `HEAD`.
 
 ```text
-BUF_LEN shown as 4 for the trace (the real one is 256, console.rs:8)
+BUF_LEN shown as 4 for the trace (the real one is 256, console.rs)
 
   action        BUF                HEAD  TAIL   note
   ------------------------------------------------------------------
@@ -322,7 +323,7 @@ BUF_LEN shown as 4 for the trace (the real one is 256, console.rs:8)
   push 'b'      [ a  b  .  . ]      0     2
   push 'c'      [ a  b  c  . ]      0     3
   push 'd'      [ a  b  c  d ]      0     4     full: 4-0 == BUF_LEN
-  push 'e'      [ a  b  c  d ]      0     4     DROPPED (console.rs:22)
+  push 'e'      [ a  b  c  d ]      0     4     DROPPED (console.rs)
   getc -> 'a'   [ a  b  c  d ]      1     4
   getc -> 'b'   [ a  b  c  d ]      2     4
   push 'f'      [ f  b  c  d ]      2     5     4 % 4 == 0, wraps
@@ -331,7 +332,7 @@ BUF_LEN shown as 4 for the trace (the real one is 256, console.rs:8)
   getc -> 'f'   ...                 5     5     empty again
 ```
 
-On overflow `push` drops the newest byte (`console.rs:22`): blocking inside a
+On overflow `push` drops the newest byte (`console.rs`): blocking inside a
 handler is not available, and overwriting the oldest would corrupt a line the
 reader is halfway through. A real tty does the same.
 
@@ -349,7 +350,7 @@ which assumptions kernel code stands on is most of what reading it *is*.
 
 ### 4.3 Blocking, and why `wfi` is not a busy-wait
 
-`getc` (`console.rs:47`–`console.rs:54`) looks like the loop section 1 condemned:
+`getc` (`console.rs`) looks like the loop section 1 condemned:
 
 ```rust
 pub fn getc() -> u8 {
@@ -365,7 +366,7 @@ interrupt is pending; the core stops fetching and a real chip drops into a
 low-power state. The loop makes one pass per interrupt, not a million per second,
 so an idle prompt costs nothing. Once processes exist this is where `getc` would
 call `sleep` instead, as xv6's `consoleread` does. And note the trap that
-`syscall.rs:480`–`syscall.rs:488` documents: with interrupts disabled, `wfi` halts
+`sys_read()` in `syscall.rs` documents: with interrupts disabled, `wfi` halts
 a hart nothing will wake, which looks like a deadlock rather than a missing bit.
 
 ---
@@ -393,35 +394,35 @@ kernel service, not a terminal feature.**
 
 ### 5.2 The four jobs
 
-A line discipline does four things, and rv6's REPL (`shell.rs:341`–`shell.rs:372`)
+A line discipline does four things, and rv6's REPL (`run()` in `shell.rs`)
 does all four in twenty lines:
 
 ```text
   you type:   l   s   DEL   a   Enter(0x0d)
 
-  echo      → "l"  "s"  "\x08 \x08"  "a"  "\n"      (shell.rs:352, 360, 367)
-  erase     → line.pop() removes the 's'            (shell.rs:359)
-  translate → 0x0d and 0x0a both mean "end of line" (shell.rs:351)
-  delimit   → the line is released to exec()        (shell.rs:353)
+  echo      → "l"  "s"  "\x08 \x08"  "a"  "\n"      (shell.rs, 360, 367)
+  erase     → line.pop() removes the 's'            (shell.rs)
+  translate → 0x0d and 0x0a both mean "end of line" (shell.rs)
+  delimit   → the line is released to exec()        (shell.rs)
 
   what the reader gets:  "la"
 ```
 
-**Echo** (`shell.rs:367`): `console::getc` prints nothing, so every character on
+**Echo** (`shell.rs`): `console::getc` prints nothing, so every character on
 your screen while typing was put there by an explicit `out.puts` — which is why a
 password prompt is impossible in rv6 today.
 
-**Erase** costs three bytes: `"\x08 \x08"` (`shell.rs:360`) — backspace, space,
+**Erase** costs three bytes: `"\x08 \x08"` (`run()` in `shell.rs`) — backspace, space,
 backspace. A terminal's backspace only moves the cursor left, so you move left,
 overwrite with a space (moving right again), and move left once more.
-`shell.rs:357` accepts both `0x7f` (DEL) and `0x08` (BS), because ASCII says one
+`run()` (`shell.rs`) accepts both `0x7f` (DEL) and `0x08` (BS), because ASCII says one
 thing and terminal manufacturers never agreed.
 
 **Translate.** Your Enter key sends `\r`, carriage return — `0x0d`, not `0x0a`.
 That split is a fossil of the mechanical teletype, where returning the carriage and
 advancing the paper were two physical motions, each taking real milliseconds.
 Serial terminals inherited the convention, so the kernel translates
-(`shell.rs:351`). Unix hid this so well that most programmers meet it only when a
+(`run()` in `shell.rs`). Unix hid this so well that most programmers meet it only when a
 file crosses to Windows.
 
 **Delimit.** `read` on a cooked terminal returns when a *line* arrives, not when a
@@ -446,7 +447,7 @@ through `termios` and takes on all four jobs itself.
 | `\r` → `\n` | kernel (`ICRNL`) | untouched |
 
 rv6 sits in a third place: its console driver is raw and its *shell* implements a
-small canonical mode on top. So `^C` does nothing — `shell.rs:370`'s catch-all
+small canonical mode on top. So `^C` does nothing — `run()` (`shell.rs`)'s catch-all
 drops every byte that is not printable, backspace, or newline — and Up sends
 `ESC [ A`, which nothing reassembles.
 
@@ -454,7 +455,7 @@ drops every byte that is not printable, backspace, or newline — and Up sends
 
 | System | Location | Notes |
 |---|---|---|
-| rv6 | `shell.rs:349`–`shell.rs:371` | in the reader; no kernel tty layer at all |
+| rv6 | `run()` in `shell.rs` | in the reader; no kernel tty layer at all |
 | xv6 | `console.c`, `consoleintr` | in the *interrupt handler*: echo, `^H`/DEL, `^U`, and a third index `cons.e` marking the un-committed edit region |
 | Linux | `drivers/tty/n_tty.c` | a pluggable line discipline — N_TTY is only the default; others exist for PPP, SLIP, Bluetooth |
 
@@ -462,7 +463,7 @@ xv6's is the classical Unix choice: because the discipline lives in the handler,
 its ring holds *edited* text and `read` returns a whole line, so every program gets
 cooked input free. rv6's ring holds raw bytes, so cooked input exists only for
 whoever implements it — and when `48k_user_mode` gives you `read(0, ...)` as a system call
-(`syscall.rs:489`), it returns one byte and the user-mode shell redoes echo and
+(`sys_read()` in `syscall.rs`), it returns one byte and the user-mode shell redoes echo and
 erase itself.
 
 ---
@@ -480,22 +481,22 @@ sequenceDiagram
     participant R as ring buffer
     participant S as shell (getc)
 
-    S->>C: wfi — halted, buffer empty (console.rs:52)
+    S->>C: wfi — halted, buffer empty (console.rs)
     You->>U: byte 0x6c ('l') arrives on RX
     U->>U: LSR.DR = 1, byte sits in RBR
-    U->>P: assert IRQ 10 (IER bit 0 set, uart.rs:37)
+    U->>P: assert IRQ 10 (IER bit 0 set, uart.rs)
     P->>P: priority 1 > threshold 0, enabled for ctx 1
     P->>C: sip.SEIP = 1 → supervisor external interrupt
     C->>C: trap: SIE cleared, scause = 0x8..9, jump to stvec
-    C->>I: kerneltrap sees cause 9 (trap.rs:66-69)
-    I->>P: claim() → 10 (console.rs:70)
-    I->>U: read RBR → 0x6c; DR clears (console.rs:73)
-    I->>R: push: BUF[TAIL%256], TAIL+=1 (console.rs:74)
-    I->>P: complete(10) — gateway re-armed (console.rs:79)
+    C->>I: kerneltrap sees cause 9 (trap.rs)
+    I->>P: claim() → 10 (console.rs)
+    I->>U: read RBR → 0x6c; DR clears (console.rs)
+    I->>R: push: BUF[TAIL%256], TAIL+=1 (console.rs)
+    I->>P: complete(10) — gateway re-armed (console.rs)
     C->>C: kernelvec restores registers, sret
     C->>S: wfi returns, loop re-tests
-    S->>R: try_getc() → Some(0x6c), HEAD+=1 (console.rs:38)
-    S->>U: echo: putc('l') (shell.rs:367)
+    S->>R: try_getc() → Some(0x6c), HEAD+=1 (console.rs)
+    S->>U: echo: putc('l') (shell.rs)
     U->>You: 'l' appears on screen
 ```
 
@@ -533,17 +534,17 @@ type something.
 
 | Concept | Definition | Example |
 |---|---|---|
-| Polling | Repeatedly reading a status register to learn whether a device is ready | `while !tx_ready() {}` (`uart.rs:49`) |
+| Polling | Repeatedly reading a status register to learn whether a device is ready | `while !tx_ready() {}` (`uart.rs`) |
 | Interrupt | An asynchronous hardware signal that diverts the CPU into a handler | UART RX raising IRQ 10 on a keypress |
-| PLIC | Routes device interrupts to hart contexts | Base `0x0c00_0000` (`memlayout.rs:26`) |
-| Source | A numbered device interrupt line, 1–1023; 0 means "none" | `UART0_IRQ = 10` (`plic.rs:14`) |
-| Context | A (hart, privilege mode) pair with its own enable, threshold, and claim | Context 1 = hart 0 supervisor (`plic.rs:17`) |
-| Threshold | Per-context minimum priority; anything at or below it is not delivered | `0` (`plic.rs:28`) |
-| Claim | Reading the claim register: asks "which source?" and clears its pending bit | `plic::claim()` (`plic.rs:32`) |
-| Complete | Writing the source number back; re-arms the gateway for that source | `plic::complete(irq)` (`plic.rs:37`) |
+| PLIC | Routes device interrupts to hart contexts | Base `0x0c00_0000` (`memlayout.rs`) |
+| Source | A numbered device interrupt line, 1–1023; 0 means "none" | `UART0_IRQ = 10` (`plic.rs`) |
+| Context | A (hart, privilege mode) pair with its own enable, threshold, and claim | Context 1 = hart 0 supervisor (`plic.rs`) |
+| Threshold | Per-context minimum priority; anything at or below it is not delivered | `0` (`plic.rs`) |
+| Claim | Reading the claim register: asks "which source?" and clears its pending bit | `plic::claim()` (`plic.rs`) |
+| Complete | Writing the source number back; re-arms the gateway for that source | `plic::complete(irq)` (`plic.rs`) |
 | Interrupt storm | An interrupt re-firing endlessly because its cause was never cleared | Completing without reading `RBR` |
-| Ring buffer | Fixed array plus monotone head/tail counters, reused modulo its length | `console.rs:13`–`console.rs:15` |
-| Line discipline | Turns raw bytes into edited lines: echo, erase, translate, delimit | `shell.rs:349`; Linux's `n_tty.c` |
+| Ring buffer | Fixed array plus monotone head/tail counters, reused modulo its length | `console.rs` |
+| Line discipline | Turns raw bytes into edited lines: echo, erase, translate, delimit | `shell.rs`; Linux's `n_tty.c` |
 
 ---
 
@@ -574,7 +575,7 @@ Enable bits are packed 32 sources per word:
 rv6 maps `0x0c00_0000`–`0x0c3f_ffff`, so `0x0c20_3004` is inside it. Even hart 7's
 supervisor context (context 15, threshold `0x0c20_f000`) fits, so the mapping
 already supports the eight harts `virt` allows. What is *not* general is
-`plic.rs:17`–`plic.rs:19`, which hardcode context 1; a multi-hart port must
+`plic.rs`, which hardcode context 1; a multi-hart port must
 compute these from the hart id.
 </details>
 
@@ -642,26 +643,26 @@ Ruled out:
   requires both.
 - **Gate 9** (PLIC mapping): unmapped, `plic::claim` would take a load page fault,
   not return zero — you would see a fault, not silence.
-- **Gate 5** (`mideleg`): `start.rs:40` sets bits 0–15 in one write, so if bit 9
+- **Gate 5** (`mideleg`): `start.rs` sets bits 0–15 in one write, so if bit 9
   were missing bit 1 would be too and the timer would be dead as well.
 
 Still suspect — all silent failures, which is why they are the usual culprits:
 
-- **Gate 1**: `enable_rx_interrupt` (`uart.rs:37`) never called, so `IER` is still
-  `0x00` from `uart::init` (`uart.rs:28`).
-- **Gates 2–4**: `plic::init` (`plic.rs:22`) never called, so priority is 0 and
+- **Gate 1**: `enable_rx_interrupt` (`uart.rs`) never called, so `IER` is still
+  `0x00` from `uart::init` (`uart.rs`).
+- **Gates 2–4**: `plic::init` (`plic.rs`) never called, so priority is 0 and
   the enable bit is clear.
-- **Gate 6**: `sie.SEIE` not set (`console.rs:63`), so the hart ignores external
+- **Gate 6**: `sie.SEIE` not set (`console.rs`), so the hart ignores external
   interrupts specifically while still taking timer interrupts.
 
 Gates 1, 2–4, and 6 are *all* set by `console::init`, so the likeliest single
-cause is that `console::init` (`main.rs:119`) was never reached. Check that first:
+cause is that `console::init` (`main.rs`) was never reached. Check that first:
 a good bug hunt orders its hypotheses by how much they explain.
 </details>
 
 ### Problem 4: Predict the screen and the buffer
 
-Using rv6's REPL (`shell.rs:341`–`shell.rs:372`), a user types:
+Using rv6's REPL (`run()` in `shell.rs`), a user types:
 
 ```text
 'e'  'c'  'h'  'x'  0x7f  'o'  ' '  'h'  'i'  0x1b '[' 'A'  0x0d
@@ -682,11 +683,11 @@ Transmitted:
 
 `line` = `"echo hi[A"`.
 
-Printable bytes are echoed at `shell.rs:367` and appended at `shell.rs:364`. DEL
-matches `shell.rs:357`; `line.pop()` returns `Some('x')`, so the three-byte erase
-goes out (`shell.rs:360`). Then the arrow: `0x1b` is not `is_ascii_graphic()`, so
-`shell.rs:370` drops it silently — but `'['` and `'A'` *are* graphic, so they are
-echoed and appended like any other character. `0x0d` matches `shell.rs:351`.
+Printable bytes are echoed at `run()` (`shell.rs`) and appended at `run()` (`shell.rs`). DEL
+matches `shell.rs`; `line.pop()` returns `Some('x')`, so the three-byte erase
+goes out (`run()` in `shell.rs`). Then the arrow: `0x1b` is not `is_ascii_graphic()`, so
+`run()` (`shell.rs`) drops it silently — but `'['` and `'A'` *are* graphic, so they are
+echoed and appended like any other character. `0x0d` matches `run()` (`shell.rs`).
 
 That is why arrow keys look broken in a naive REPL: the escape byte vanishes and
 its parameters land in the command line as text. Handling them means recognizing
@@ -732,7 +733,7 @@ mechanism, decides.
 - [Memory Map guide](../guides/memory-map.md) — the `virt` address table and the
   PLIC block.
 - [Sv39 Paging guide](../guides/sv39-paging.md) — why the PLIC needs an explicit
-  `R|W` mapping (`vm.rs:138`) once the MMU is on.
+  `R|W` mapping (`kvmmake()` in `vm.rs`) once the MMU is on.
 - [rv6 Architecture guide](../guides/rv6-architecture.md) — where `plic.rs`,
   `console.rs`, and `uart.rs` sit.
 - [QEMU and GDB guide](../guides/qemu-gdb.md) — breaking on `console::intr` and
@@ -756,7 +757,7 @@ mechanism, decides.
 1. **The polling-versus-interrupt choice is arithmetic.** At nine bytes per second
    a polling loop burns a million MMIO reads per byte and all of a core; an
    interrupt costs a microsecond. At 14.88 Mpps the comparison inverts.
-2. **rv6 polls on transmit deliberately.** `uart::putc` (`uart.rs:49`) spins on
+2. **rv6 polls on transmit deliberately.** `uart::putc` (`uart.rs`) spins on
    `THRE` because the wait is short and bounded, and because an interrupt-driven
    printer cannot print from a panic handler.
 3. **The PLIC is four register families, not one switch.** Priority is global per
@@ -767,13 +768,13 @@ mechanism, decides.
    with no error at all; completing early merely wastes interrupts.
 5. **An external interrupt cannot be dismissed with a CSR write.** `sip.SEIP` is a
    wire from the PLIC, read-only to S-mode, unlike the timer's `SSIP` that
-   `trap.rs:63` clears.
+   `kerneltrap()` (`trap.rs`) clears.
 6. **Nine independent gates stand between a keypress and `console::intr`**, and
    eight of them fail silently — which is why `console::init` never being called
    explains more symptoms than any other single cause.
 7. **The ring buffer needs no lock because of three specific facts** — one
    producer, one consumer, one hart — and monotone counters make `TAIL - HEAD` an
-   unambiguous length (`console.rs:22`). Add a hart and the argument, not just the
+   unambiguous length (`push()` in `console.rs`). Add a hart and the argument, not just the
    code, has to change.
 8. **Cooked input is a kernel service.** Echo, erase, `\r`→`\n` translation, and
    line delimiting are software decisions; the terminal is a dumb byte pipe. rv6

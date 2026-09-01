@@ -207,7 +207,7 @@ Two instructions do the work. They are the most dangerous two instructions in th
 ## The Scariest Twenty Lines
 
 ```rust
-// vm.rs:177-181
+// vm.rs
 pub unsafe fn kvminithart(root: *mut Pte) {
     let satp = make_satp(root);
     asm!("csrw satp, {}", in(reg) satp);
@@ -272,7 +272,7 @@ Every pointer in every register survives, because each translates to itself.
 ## The Same Number, Twice
 
 ```rust
-// vm.rs:132
+// vm.rs
 mappages(root, UART0, PGSIZE, UART0, PTE_R | PTE_W)
 //             ^^^^^         ^^^^^
 //             va             pa      — the same number
@@ -287,7 +287,7 @@ mappages(root, UART0, PGSIZE, UART0, PTE_R | PTE_W)
 ## What Identity Mapping Is *Not*
 
 - **Not "translation off."** The MMU still walks three levels and still enforces `V R W X U`. An identity-mapped kernel can absolutely fault.
-- **Not for user processes.** Every user table maps virtual `0` to an arbitrary physical page (`USER_CODE = 0x0`, `memlayout.rs:61`) — that is the whole point of VM.
+- **Not for user processes.** Every user table maps virtual `0` to an arbitrary physical page (`USER_CODE = 0x0`, `memlayout.rs`) — that is the whole point of VM.
 - **Not free.** Kernel virtual space can never exceed physical memory. On 32-bit machines that became Linux's "highmem" decade.
 
 ---
@@ -309,9 +309,9 @@ So: if the kernel will touch it after the switch, map it now.
 ## The Device Pages
 
 ```rust
-mappages(root, UART0,         PGSIZE,    UART0,         PTE_R | PTE_W)?; // vm.rs:132
-mappages(root, TEST_FINISHER, PGSIZE,    TEST_FINISHER, PTE_R | PTE_W)?; // vm.rs:135
-mappages(root, PLIC,          PLIC_SIZE, PLIC,          PTE_R | PTE_W)?; // vm.rs:138
+mappages(root, UART0,         PGSIZE,    UART0,         PTE_R | PTE_W)?; // vm.rs
+mappages(root, TEST_FINISHER, PGSIZE,    TEST_FINISHER, PTE_R | PTE_W)?; // vm.rs
+mappages(root, PLIC,          PLIC_SIZE, PLIC,          PTE_R | PTE_W)?; // vm.rs
 ```
 
 - **`R` and `W`** because MMIO registers are read *and* written (`putc` stores; the console driver loads the line-status register)
@@ -323,16 +323,16 @@ mappages(root, PLIC,          PLIC_SIZE, PLIC,          PTE_R | PTE_W)?; // vm.r
 ## RAM, in One Call
 
 ```rust
-// vm.rs:141-151
+// vm.rs
 mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, PTE_R | PTE_W | PTE_X)?;
 ```
 
 | What | Where | Why it is covered |
 |---|---|---|
-| kernel text | `0x8000_0000` up, `kernel.ld:16-23` | the fetch after `csrw satp` |
-| rodata / data / bss | `kernel.ld:25-41` | statics, the free-list head |
-| the boot stack | `STACK0`, `entry.rs:14` | `sp` must keep working |
-| everything `kalloc` gives out | `end`..`PHYSTOP`, `kalloc.rs:23` | **the page tables themselves** |
+| kernel text | `0x8000_0000` up, `kernel.ld` | the fetch after `csrw satp` |
+| rodata / data / bss | `kernel.ld` | statics, the free-list head |
+| the boot stack | `STACK0`, `entry.rs` | `sp` must keep working |
+| everything `kalloc` gives out | `end`..`PHYSTOP`, `kalloc.rs` | **the page tables themselves** |
 
 The third argument is a **size**, not an end address.
 
@@ -356,14 +356,14 @@ That is **W^X** — *write xor execute*. No page is both.
 
 rv6 maps **all** of RAM `R | W | X` in one call.
 
-- The split needs the `etext` boundary — provided at `kernel.ld:22`, referenced by nobody
+- The split needs the `etext` boundary — provided at `kernel.ld`, referenced by nobody
 - Two calls instead of one; stop a page short and the kernel dies on a fetch it cannot report
 
 <div class="highlight-box">
 This is a <strong>pedagogical</strong> choice, not a design claim — a table you can get right on the first try, at the cost of the most valuable protection a kernel map provides.
 </div>
 
-W^X *is* enforced where an attacker lives: user code `R X U` (`vm.rs:228`), user stack `R W U` (`vm.rs:245`).
+W^X *is* enforced where an attacker lives: user code `R X U` (`load_segment()` in `vm.rs`), user stack `R W U` (`map_user_stack()` in `vm.rs`).
 
 ---
 
@@ -414,7 +414,7 @@ W^X *is* enforced where an attacker lives: user code `R X U` (`vm.rs:228`), user
 ## `make_satp`, Worked
 
 ```rust
-// vm.rs:104-108
+// vm.rs
 pub const SATP_SV39: usize = 8 << 60;
 pub fn make_satp(root: *mut Pte) -> usize {
     SATP_SV39 | ((root as usize) >> 12)
@@ -448,8 +448,8 @@ Writing MODE `0` turns translation back off. Nobody does: by then every pointer 
 
 Translation applies to **supervisor and user** accesses. **Machine-mode accesses are never translated**, whatever `satp` says.
 
-- Exercise 39k: `entry.rs:17` is `call kmain` — no `start.rs`. The hart is in **machine mode**. The `csrw` lands, and translation does not take effect.
-- Exercise 43k: `entry.rs:23` is `call start`; `start.rs` clears `satp`, sets `MPP = S`, and `mret`s into `kmain`. Now the switch is real.
+- Exercise 39k: `entry.rs` is `call kmain` — no `start.rs`. The hart is in **machine mode**. The `csrw` lands, and translation does not take effect.
+- Exercise 43k: `entry.rs` is `call start`; `start.rs` clears `satp`, sets `MPP = S`, and `mret`s into `kmain`. Now the switch is real.
 
 <div class="highlight-box">
 Ex 09 asks for a <em>correct</em> table. Ex 13 is where a wrong one kills the machine. Same table — the privilege mode is what makes it load-bearing.
@@ -492,12 +492,12 @@ sfence.vma zero, rs2     # one ASID
 
 ## When You Must Flush
 
-- After writing `satp` — `vm.rs:180`
+- After writing `satp` — `vm.rs`
 - After changing any PTE in a **live** table
 - After making an **invalid** PTE **valid** — RISC-V permits caching the *absence* of a mapping. Stricter than x86.
 
 ```asm
-sfence.vma zero, zero    # usermode.rs:133-135 / :140-142
+sfence.vma zero, zero    # usermode.rs / :140-142
 csrw satp, t1            # the bracket: make new table visible,
 sfence.vma zero, zero    # then drop the old address space
 ```
@@ -577,11 +577,11 @@ A <strong>page</strong> fault means your table refused. An <strong>access</stron
 
 ## Verify Before You Switch
 
-The exercise harness (`main.rs:76-124`) proves the table correct **with the MMU still off**:
+The exercise harness (`run_checks()` in `main.rs`) proves the table correct **with the MMU still off**:
 
-- `walk` each region; check the leaf exists, is identity (`pa == va & !0xFFF`), and has the needed bits — `:85` UART, `:89` finisher, `:94` RAM, `:99-104` the current stack page
-- Check `satp`: MODE is 8 (`:108`), PPN is `root >> 12` (`:112`)
-- Only then, `:118`, call `kvminithart`
+- `walk` each region; check the leaf exists, is identity (`pa == va & !0xFFF`), and has the needed bits — UART, finisher, RAM, and the current stack page
+- Check `satp`: MODE is 8, PPN is `root >> 12`
+- Only then, call `kvminithart`
 
 <div class="highlight-box">
 When the failure mode is silence, add a check that runs <em>before</em> the dangerous step and <em>speaks</em>.

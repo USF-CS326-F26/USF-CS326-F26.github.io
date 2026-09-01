@@ -64,7 +64,7 @@ pick a free hole — an answer that changes every time the machine's software mi
 changes.
 
 With virtual memory the linker stops caring. In rv6 every user program is linked
-to start at virtual address `0`: `USER_CODE` in `memlayout.rs:61` is literally
+to start at virtual address `0`: `USER_CODE` in `memlayout.rs` is literally
 `0x0`. Ten programs can all be linked at `0` and run simultaneously, because each
 gets a page table that sends virtual `0` somewhere different. Relocation moved
 out of link time and into a data structure the kernel fills in at load time.
@@ -78,14 +78,14 @@ in another.
 
 This is where whole exploit classes die. A non-executable stack will not run
 injected shellcode; a non-writable text segment cannot be rewritten by a stray
-pointer. The reference kernel shows the split one line apart: `vm.rs:228` maps a
-user's code pages `PTE_R | PTE_X | PTE_U`, `vm.rs:245` maps the user stack
+pointer. The reference kernel shows the split one line apart: `vm.rs` maps a
+user's code pages `PTE_R | PTE_X | PTE_U`, `map_user_stack()` (`vm.rs`) maps the user stack
 `PTE_R | PTE_W | PTE_U`. Code is not writable; the stack is not executable. That
 is W^X.
 
 `PTE_U` is a fourth bit that is a wall rather than a permission: a page without
 it cannot be touched from user mode at all, whatever `R`/`W`/`X` say. The comment
-at `vm.rs:21-23` calls it "the wall between user programs and the kernel," which
+at `vm.rs` calls it "the wall between user programs and the kernel," which
 is literal — forget it on a user page and the program faults instantly; set it by
 accident on a kernel page and user code reads kernel memory.
 
@@ -116,7 +116,7 @@ structure.
 ## 2. Pages, Page Numbers, and the Offset
 
 Translation happens at page granularity. A RISC-V page is 4096 bytes — `PGSIZE`
-in `memlayout.rs:7`. 4096 is 2^12, so the low 12 bits of an address select a byte
+in `memlayout.rs`. 4096 is 2^12, so the low 12 bits of an address select a byte
 *within* a page and the rest select *which* page.
 
 The critical simplification: **the offset is never translated.** It is copied
@@ -175,7 +175,7 @@ splits the usable space into a low half and a high half with an enormous hole
 between them — the "canonical hole" you may know from x86-64. Kernels typically
 put user space low and the kernel high.
 
-rv6 sidesteps this entirely. `memlayout.rs:49` sets `MAXVA = 1 << 38`, stopping
+rv6 sidesteps this entirely. `memlayout.rs` sets `MAXVA = 1 << 38`, stopping
 one bit short so we never build an address with bit 38 set. Every rv6 virtual
 address lives in the low half and sign extension never bites us.
 
@@ -184,7 +184,7 @@ machine may hold far more RAM than any one process can address. The PPN
 sub-fields matter only for superpages (§4.5); for 4 KiB pages treat the PPN as
 one 44-bit number.
 
-Index extraction is one line, `vm.rs:44-46`:
+Index extraction is one line, `vm.rs`:
 
 ```rust
 const fn px(level: usize, va: usize) -> usize {
@@ -241,7 +241,7 @@ address spaces are cheap; that is the whole point.
 | 62:61 | `PBMT` | Page-based memory type (Svpbmt). Zero on our machine. |
 | 63 | `N` | NAPOT contiguity hint (Svnapot). Zero on our machine. |
 
-rv6 uses the low five bits and the PPN — `vm.rs:17-23`:
+rv6 uses the low five bits and the PPN — `PTE_V` (`vm.rs`):
 
 ```rust
 pub const PTE_V: usize = 1 << 0;
@@ -251,7 +251,7 @@ pub const PTE_X: usize = 1 << 3;
 pub const PTE_U: usize = 1 << 4;
 ```
 
-`Pte::flags` at `vm.rs:36-38` masks with `0x3ff` — the low **ten** bits, `V`
+`Pte::flags` at `vm.rs` masks with `0x3ff` — the low **ten** bits, `V`
 through `RSW`, the whole software-visible flag group.
 
 ### 4.2 Leaf versus branch: the most important rule here
@@ -276,18 +276,18 @@ using nothing but `R`, `W`, and `X`:
 | `1 1 1` | Leaf, read-write-execute |
 
 That is why `walk` links new intermediate tables with `PTE_V` and nothing else —
-`vm.rs:67`:
+`vm.rs`:
 
 ```rust
 *pte = Pte::new(page as usize, PTE_V);
 ```
 
 Write `PTE_V | PTE_R` there and the software walk in exercise 33k still works (it
-only checks `is_valid()`, `vm.rs:56`), your tests pass, and then the hardware in
+only checks `is_valid()`, `vm.rs`), your tests pass, and then the hardware in
 exercise 39k reads the same entry, sees `R`, concludes "leaf," and translates a
 1 GiB region to garbage. Hold that thought for §6.
 
-The inverse test is used for real in `free_pt`, `vm.rs:358`:
+The inverse test is used for real in `free_pt`, `vm.rs`:
 
 ```rust
 let is_leaf = (*pte).flags() & (PTE_R | PTE_W | PTE_X) != 0;
@@ -312,7 +312,7 @@ optimization rv6 does not use; we meet the TLB in Virtual Memory II.
 
 ### 4.4 Encoding and decoding, with the arithmetic
 
-Two functions, four lines, `vm.rs:30-35`:
+Two functions, four lines, `vm.rs`:
 
 ```rust
 pub const fn new(pa: usize, flags: usize) -> Pte {
@@ -350,7 +350,7 @@ Now the exam direction. Decode `0x0000_0000_2008_040F`:
 ```
 
 A read-write-execute leaf mapping physical `0x8020_1000`, a page of the rv6
-kernel image, identity-mapped by `kvmmake` at `vm.rs:141-151`. Decode
+kernel image, identity-mapped by `kvmmake` at `vm.rs`. Decode
 `0x0000_0000_2008_0001` instead and you get `flags = 0x001` = `V` only, so `R`,
 `W`, `X` are all zero: a **branch** whose next-level table lives at
 `0x8020_0000`. Same shape, same shifts, opposite meaning.
@@ -392,7 +392,7 @@ Three memory reads to resolve one address. That is the indirection cost from
 
 ### 5.2 `walk` in rv6
 
-The whole descent is 22 lines, `vm.rs:52-73`:
+The whole descent is 22 lines, `vm.rs`:
 
 ```rust
 pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
@@ -422,25 +422,25 @@ pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
 Four things to notice:
 
 1. **The loop runs for levels 2 and 1 only** (`while level > 0`). Level 0 is not
-   an iteration; it is the return at `vm.rs:72`. The loop's job is to find the
+   an iteration; it is the return at `vm.rs`. The loop's job is to find the
    level-0 *table*; the caller decides what to do with the leaf slot.
 2. **`walk` returns a pointer to a PTE, not a physical address.** It hands you
    the slot, so the caller can write it (`mappages`) or read it (`walkaddr`).
    That single signature serves both directions.
 3. **`alloc` is the difference between building and inspecting.** `true` creates
    missing tables on the way down; `false` returns null the moment a level is
-   missing. `mappages` passes `true` (`vm.rs:86`), `walkaddr` passes `false`
-   (`vm.rs:256`). New tables are zeroed before being linked in (`vm.rs:66`) — a
+   missing. `mappages` passes `true` (`vm.rs`), `walkaddr` passes `false`
+   (`vm.rs`). New tables are zeroed before being linked in (`vm.rs`) — a
    page from `kalloc` still holds the free list's own `next` pointer, and an
    unzeroed table is 512 entries of garbage, some with bit 0 set.
 4. **`walk` never checks permissions.** It ignores `R`, `W`, `X`, and `U`
-   entirely; the *hardware* enforces permissions. `walkaddr` at `vm.rs:252-261`
+   entirely; the *hardware* enforces permissions. `walkaddr` at `vm.rs`
    is the version that adds the checks, because it runs on addresses a user
    program supplied.
 
 ### 5.3 `mappages`
 
-`vm.rs:75-98` turns "map this range" into repeated leaf writes:
+`vm.rs` turns "map this range" into repeated leaf writes:
 
 ```rust
 let mut a = pgrounddown(va);
@@ -458,20 +458,20 @@ loop {
 
 `last` is `pgrounddown(va + size - 1)`, not `va + size`; the `- 1` is what makes
 a request of exactly `PGSIZE` bytes map exactly one page. The
-`Pte::new(pa, perm | PTE_V)` at `vm.rs:90` is the only place `PTE_V` is added to
+`Pte::new(pa, perm | PTE_V)` at `vm.rs` is the only place `PTE_V` is added to
 a leaf — callers pass permissions, `mappages` supplies validity. And the middle
 break exists instead of `while a <= last` because `last` can be the top page of
 the address space, where `a += PGSIZE` would wrap.
 
 Notice the layering: `mappages` loops over `walk`, `walk` loops over `px`, `px`
 is one shift and one mask. Everything above this line — `load_segment`
-(`vm.rs:196`), `map_user_stack` (`vm.rs:239`), `uvmcopy` (`vm.rs:383`), `kvmmake`
-(`vm.rs:125`) — is written in terms of `mappages`.
+(`vm.rs`), `map_user_stack` and `uvmcopy` (`vm.rs`), `kvmmake`
+(`vm.rs`) — is written in terms of `mappages`.
 
 ### 5.4 Worked translation 1: the UART page
 
 The kernel identity-maps the UART so printing survives the MMU coming on
-(`vm.rs:132`). Translate `0x1000_0010`, ten bytes into that page.
+(`vm.rs`). Translate `0x1000_0010`, ten bytes into that page.
 
 ```text
   va = 0x1000_0010
@@ -545,7 +545,7 @@ level-0 table serves them all. Here is the tree those two mappings produce:
 ### 5.6 Worked translation 3: a kernel text address
 
 Translate `0x8020_1234` under the identity map `kvmmake` builds for
-`KERNBASE..PHYSTOP` (`vm.rs:141-151`).
+`KERNBASE..PHYSTOP` (`vm.rs`).
 
 ```text
   va = 0x8020_1234
@@ -594,7 +594,7 @@ harness's `translate` helper is *software pretending to be an MMU*: it calls
 silicon.
 
 In `39k_virtual_memory` you write the root PPN into `satp` (`make_satp`,
-`vm.rs:106-108`; `kvminithart`, `vm.rs:177-181`) and from the next instruction on
+`vm.rs`; `kvminithart`, `vm.rs`) and from the next instruction on
 the hardware walks that tree for every access — including the fetch of the
 instruction right after the `csrw`.
 
@@ -604,7 +604,7 @@ instruction right after the `csrw`.
 |---|---|---|
 | Who reads the PTEs | your `walk`, in Rust | the MMU, in hardware |
 | When | when you call it | every load, store, fetch |
-| Checks `V` | yes (`vm.rs:56`) | yes |
+| Checks `V` | yes (`vm.rs`) | yes |
 | Checks `R`/`W`/`X`/`U` | **no** | **yes**, and faults if denied |
 | Leaf vs branch | **no** — follows any valid PTE | **yes** — stops at the first `R`/`W`/`X` |
 | Cost of a mistake | a printed `[fail]` | a hang, or a trap with no handler |
@@ -641,7 +641,7 @@ the tree has already been proven correct in software.
 
 ## 7. Costs, and How Others Do It
 
-rv6 identity-maps `KERNBASE..PHYSTOP`, 128 MiB (`memlayout.rs:13`). What does
+rv6 identity-maps `KERNBASE..PHYSTOP`, 128 MiB (`memlayout.rs`). What does
 that cost in tables?
 
 ```text
@@ -661,13 +661,13 @@ superpages for the direct map.
 nearly line-for-line: `walk`, `mappages`, the `PTE_*` flags, `PX(level, va)`,
 `kvmmake`, `kvminithart`. The differences are Rust's: xv6 passes a `pagetable_t`
 (really `uint64 *`) where we pass `*mut Pte`, and where xv6 returns `0` for
-failure we return `Result<(), ()>` (`vm.rs:81`) or a null pointer.
+failure we return `Result<(), ()>` (`vm.rs`) or a null pointer.
 
 **Linux on RISC-V** uses the same Sv39 hardware and adds everything we leave out:
 demand paging (an invalid leaf whose `RSW` bits describe a swap slot),
 copy-on-write, superpages, per-page reference counting, ASIDs so a context switch
 need not flush the whole TLB, and Sv48/Sv57 chosen at boot from what the hardware
-reports. rv6's `uvmcopy` (`vm.rs:383-419`) is where copy-on-write would go; today
+reports. rv6's `uvmcopy` (`vm.rs`) is where copy-on-write would go; today
 it eagerly copies every user page, which is correct, simple, and exactly what
 `fork` does in xv6.
 
@@ -679,15 +679,15 @@ it eagerly copies every user page, which is correct, simple, and exactly what
 |---|---|---|
 | Virtual address | The address a program computes; meaningless to RAM until translated. | `0x0040_0123` in a user program |
 | Physical address | An actual byte position in RAM or MMIO space. | `0x8020_1234` in rv6's kernel image |
-| Page | The fixed 4096-byte unit of translation and allocation. | `PGSIZE`, `memlayout.rs:7` |
+| Page | The fixed 4096-byte unit of translation and allocation. | `PGSIZE`, `memlayout.rs` |
 | Page offset | The low 12 bits; copied unchanged through translation. | `0x123` of `0x0040_0123` |
 | VPN[i] | A 9-bit slice of the virtual page number indexing level `i`'s table. | `px(1, 0x0040_0123) == 2` |
 | PPN | The 44-bit physical page number, stored in bits 53..10 of a PTE. | `0x8020_1000 >> 12 == 0x80201` |
 | PTE | An 8-byte entry: PPN plus 10 flag bits; 512 fill one page. | `0x2008_040F` = RWX leaf at `0x8020_1000` |
-| Branch PTE | Valid with `R`/`W`/`X` all zero; PPN is the next-level table. | `Pte::new(page, PTE_V)`, `vm.rs:67` |
-| Leaf PTE | Valid with any of `R`/`W`/`X` set; PPN is the mapped data page. | the leaf write in `mappages`, `vm.rs:90` |
-| Identity mapping | `va == pa`, so turning the MMU on changes nothing. | `mappages(root, UART0, PGSIZE, UART0, ..)`, `vm.rs:132` |
-| Page-table walk | Following VPN[2], VPN[1], VPN[0] through three tables to a leaf. | `walk`, `vm.rs:52-73` |
+| Branch PTE | Valid with `R`/`W`/`X` all zero; PPN is the next-level table. | `Pte::new(page, PTE_V)`, `vm.rs` |
+| Leaf PTE | Valid with any of `R`/`W`/`X` set; PPN is the mapped data page. | the leaf write in `mappages`, `vm.rs` |
+| Identity mapping | `va == pa`, so turning the MMU on changes nothing. | `mappages(root, UART0, PGSIZE, UART0, ..)`, `vm.rs` |
+| Page-table walk | Following VPN[2], VPN[1], VPN[0] through three tables to a leaf. | `walk`, `vm.rs` |
 | Superpage | A leaf PTE at level 1 or 2, covering 2 MiB or 1 GiB. | Unused by rv6; Linux's direct map |
 
 ---
@@ -727,7 +727,7 @@ The walk starts at **root entry 0**. Reassemble to check:
 ### Problem 2: Encode and decode a PTE
 
 (a) Build the PTE mapping physical `0x8765_4000` with `PTE_V | PTE_R | PTE_W`
-using `Pte::new` (`vm.rs:30-32`). Show the shifts.
+using `Pte::new` (`vm.rs`). Show the shifts.
 (b) Decode `0x0000_0000_0C00_1007`. Leaf or branch? What address, and what may be
 done with it?
 
@@ -822,7 +822,7 @@ The bug is `PTE_R` on an **intermediate** entry, which makes every branch a leaf
 as far as hardware is concerned (§4.2).
 
 Why the software passed: rv6's `walk` decides whether to descend with
-`is_valid()` (`vm.rs:56`), which tests bit 0 only and never looks at `R`/`W`/`X`.
+`is_valid()` (`vm.rs`), which tests bit 0 only and never looks at `R`/`W`/`X`.
 So the software walk follows the entry to the next table, finds the correct leaf,
 and returns the right answer for every translation the harness checks. Nothing is
 wrong from Rust's point of view.
@@ -955,11 +955,11 @@ inconsistency; only the bit table in §4.1 proves you match the hardware.
 
 3. **Sv39's numbers follow from three choices.** One table per 4 KiB page, 8 bytes per entry, three levels: 4096/8 = 512 entries = 9 index bits, and 3 × 9 + 12 = 39. Virtual addresses carry 39 significant bits (sign-extended to 64); physical addresses carry 56.
 
-4. **A PTE packs a 44-bit PPN at bit 10 above ten flag bits.** `V R W X U G A D` are bits 0-7, `RSW` is 9-8, `PPN` is 53-10. Encoding is `((pa >> 12) << 10) | flags` (`vm.rs:31`); decoding is `(pte >> 10) << 12` (`vm.rs:34`). The shift is **10**, not 12.
+4. **A PTE packs a 44-bit PPN at bit 10 above ten flag bits.** `V R W X U G A D` are bits 0-7, `RSW` is 9-8, `PPN` is 53-10. Encoding is `((pa >> 12) << 10) | flags` (`Pte::new()` in `vm.rs`); decoding is `(pte >> 10) << 12` (`vm.rs`). The shift is **10**, not 12.
 
-5. **`R`/`W`/`X` all zero means branch; any of them set means leaf.** There is no separate table bit. That single rule is why `walk` links intermediate tables with `PTE_V` alone (`vm.rs:67`) and why `free_pt` tests `flags() & (PTE_R|PTE_W|PTE_X)` before recursing (`vm.rs:358`).
+5. **`R`/`W`/`X` all zero means branch; any of them set means leaf.** There is no separate table bit. That single rule is why `walk` links intermediate tables with `PTE_V` alone (`vm.rs`) and why `free_pt` tests `flags() & (PTE_R|PTE_W|PTE_X)` before recursing (`vm.rs`).
 
-6. **The walk is three indexed lookups.** `px` (`vm.rs:44-46`) extracts an index, `walk` (`vm.rs:52-73`) descends levels 2 and 1 and returns a pointer to the level-0 slot, and `mappages` (`vm.rs:75-98`) loops over `walk` to install one leaf per page. Every higher-level routine is written in terms of `mappages`.
+6. **The walk is three indexed lookups.** `px` (`vm.rs`) extracts an index, `walk` (`vm.rs`) descends levels 2 and 1 and returns a pointer to the level-0 slot, and `mappages` (`vm.rs`) loops over `walk` to install one leaf per page. Every higher-level routine is written in terms of `mappages`.
 
 7. **Building a page table and having the hardware use one are different activities.** Your `walk` checks only `V` and follows anything valid; the MMU also enforces `R`/`W`/`X`/`U` and stops at the first leaf. A table that passes every software test can still hang the machine — which is why rv6 builds and verifies tables in `33k_paging` before turning the MMU on in `39k_virtual_memory`.
 

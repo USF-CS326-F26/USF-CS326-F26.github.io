@@ -31,7 +31,7 @@ flowchart LR
 
 The menu has five items, and `1`–`5` jump straight to them: **Continue** (into
 the exercise you are on), **Exercise list**, **Cheatsheet**, **How OSlings
-works**, **Quit** (`tui.rs:920`).
+works**, **Quit** (`impl App` in `tui.rs`).
 
 **Lesson** renders that exercise's `README.md` — the concept, the code you are
 being handed, and the task. **Watch** is where you live: it runs the test once
@@ -40,7 +40,7 @@ inline. A progress bar sits at the bottom of every page.
 
 ### Keys
 
-These work everywhere (`tui.rs:547`):
+These work everywhere (`App::trigger_run()` in `tui.rs`):
 
 | Key | Action |
 |---|---|
@@ -67,7 +67,7 @@ Page-specific keys:
 | List | `↑`/`↓`, `Enter` | Move, open the selected exercise |
 
 The footer of each page always spells out its own keys, so you never have to
-remember this table (`tui.rs:729`).
+remember this table (`App::render()` in `tui.rs`).
 
 ## Subcommands
 
@@ -98,7 +98,7 @@ list of candidates, so use at least the two digits and the track letter.
 
 `update` merges `course/main` into your branch. It refuses to run if you have
 edited course-owned files (`exercises/`, `info.toml`, `oslings-cli/`,
-`setup.sh`, `SETUP.md`, `README.md` — `git.rs:15`) and tells you exactly which
+`setup.sh`, `SETUP.md`, `README.md` — `COURSE_PATHS` (`git.rs`)) and tells you exactly which
 ones and how to restore them. Your own work is never touched. If the merge
 brought a new CLI version, `update` reinstalls `oslings` for you
 (`sync.rs`, `cmd_update`). An exercise that has not been released yet exists in **no
@@ -139,8 +139,8 @@ even means.
 crate and the `10c`–`14c` command exercises in the `commands` crate. Plain `std` Rust, no nightly,
 no QEMU, no cross-toolchain — which is why week 1 works while your bare-metal
 setup is still being fixed. Tests run with `--test-threads=1` so failure
-ordering is stable (`runner.rs:65`). A 60-second overrun is reported as an
-infinite loop, not a slow machine (`runner.rs:18`).
+ordering is stable (`run_host_test()` in `runner.rs`). A 60-second overrun is reported as an
+infinite loop, not a slow machine (`TEST_TIMEOUT` in `runner.rs`).
 
 `build` covers exactly one exercise, `30k_kernel_basics`: getting `no_std`,
 the panic handler, and `no_main` right is the whole task, so compiling *is* the
@@ -154,7 +154,7 @@ qemu-system-riscv64 -machine virt -bios none -m 128M -smp 1 \
   -nographic -serial mon:stdio -kernel <elf>
 ```
 
-exactly as in `runner.rs:242`, then greps the captured serial text. Three
+exactly as in `run_with_timeout()` (`runner.rs`), then greps the captured serial text. Three
 distinct failures, and the message tells you which:
 
 | Symptom | Meaning |
@@ -168,7 +168,7 @@ emulator. `qemu-riscv64` (Linux user-mode emulation) is a different program, is
 not what we run, and does not exist on macOS. Bare-metal RISC-V also needs no C
 cross-compiler; `rust-lld` ships with rustup. See [QEMU and GDB](qemu-gdb.md).
 
-Kernel exercises build with `--features harness` (`runner.rs:179`), which swaps
+Kernel exercises build with `--features harness` (`run_qemu()` in `runner.rs`), which swaps
 the interactive OS for a boot self-check. That is why `cd rv6 && cargo run`
 drops you into the real shell while `oslings run` prints a pass marker: same
 kernel, different feature.
@@ -185,7 +185,7 @@ you edit:
 | `20a_asm_bridge` | `asmlab` | `asmlab/src` |
 | `30k_kernel_basics` – `54k_elf_loader` | `rv6` | `rv6/src` |
 
-`oslings watch` and the TUI watch all four roots at once (`model.rs:597`), so
+`oslings watch` and the TUI watch all four roots at once (`model.rs`), so
 crossing from Module 1 into the kernel mid-session keeps working without a
 restart. The kernel is **cumulative**: each exercise's skeleton is the reference
 kernel through the previous exercise, plus fresh `IMPLEMENT` markers, so every
@@ -204,9 +204,9 @@ Two archives, easy to confuse, and they answer different questions.
 | Holds | your latest attempt, pass or fail | your passing solution |
 | Used for | resuming an exercise you left | re-grading |
 
-`archive_work` (`model.rs:712`) copies everything in the staging directory —
+`archive_work` (`model.rs`) copies everything in the staging directory —
 not only the files `info.toml` lists — because losing a scratch module you wrote
-is exactly the bug it exists to prevent. `record_pass` (`model.rs:893`) then
+is exactly the bug it exists to prevent. `record_pass` (`model.rs`) then
 snapshots the passing files separately, with metadata: when you passed, at what
 difficulty, how many hints, how many runs. Grading re-runs the real harness
 against `submissions/`, rebuilding and rebooting the snapshot from scratch, so
@@ -215,7 +215,7 @@ editing `state.toml` changes nothing.
 ## `goto` is lossless in both directions
 
 Every overwrite of a staging directory goes through one function,
-`stage_exercise` (`model.rs:740`), which archives the exercise you are leaving
+`stage_exercise` (`model.rs`), which archives the exercise you are leaving
 before staging the one you are entering. Then, when you arrive, if
 `my-work/<target>/` already exists, it restores **that** rather than the
 skeleton.
@@ -229,7 +229,7 @@ back exactly as you left it. Jump around freely.
 `oslings reset` (and `r` on the Watch page) is the one exception. It stages
 `StageSource::Fresh` — always the pristine skeleton, never the archive —
 because restoring the archive would hand you back the very code you are trying
-to escape (`model.rs:704`, `main.rs:874`).
+to escape (`model.rs`, `main.rs`).
 
 It still archives first. Nothing is destroyed at the moment you reset: your
 pre-reset tree lands in `my-work/<ex>/`. But be precise about what that
@@ -243,7 +243,7 @@ matters, `oslings submit` before you reset — git history is the durable record
 
 Difficulty controls how much guidance a skeleton carries and how many hints you
 may reveal. It never changes whether a test passes: only *comment* lines are
-trimmed, never code (`model.rs:134`).
+trimmed, never code (`part_label()` in `model.rs`).
 
 | Level | Skeleton | Hints available |
 |---|---|---|
@@ -255,7 +255,7 @@ trimmed, never code (`model.rs:134`).
 step-by-step comments and hints 1 and 2; the third hint, which is close to a
 walkthrough, is never released into the course repo at all. The level is locked
 by the course — `oslings difficulty` reports "(locked by the course)", and local
-overrides and `OSLINGS_DIFFICULTY` are ignored (`model.rs:161`).
+overrides and `OSLINGS_DIFFICULTY` are ignored (`model.rs`).
 
 ## `oslings ship`
 
@@ -273,7 +273,7 @@ Each command is built with `cargo build --release --target
 riscv64gc-unknown-none-elf --bin <name>` against `commands/user.ld`, then
 flattened from ELF into the raw image rv6's `exec` copies into a fresh address
 space: loadable segments laid at their linked addresses, `.bss` zero-filled
-(`ship.rs:42`). The images go to `rv6/src/userbin/<name>.bin` and a generated
+(`flatten_elf()` in `ship.rs`). The images go to `rv6/src/userbin/<name>.bin` and a generated
 `rv6/src/userbin.rs` lists them — do not hand-edit that file. Then:
 
 ```bash
@@ -284,13 +284,13 @@ rv6$ run echo hello world
 Three constraints, each with its own error message. The image must load at
 virtual address 0, `_start` must be the first byte (rv6's flat loader jumps
 there, so `#[link_section = ".text.start"]` has to stay on it), and the whole
-image must fit in 16 pages — 65 536 bytes (`ship.rs:27`). See
+image must fit in 16 pages — 65 536 bytes (`MAX_IMAGE` in `ship.rs`). See
 [ulib and Commands](ulib-and-commands.md).
 
 ## `oslings doctor`
 
 Six checks, each with the exact fix command printed beside it: rustup, a
 nightly toolchain, the `riscv64gc-unknown-none-elf` target, the `rust-src` and
-`llvm-tools` components, and `qemu-system-riscv64` (`main.rs:536`). It exits
+`llvm-tools` components, and `qemu-system-riscv64` (`cmd_class_grade()` in `main.rs`). It exits
 non-zero if anything is missing, so it works in a script. Run it before you ask
 for help with a build failure — it answers most of them.

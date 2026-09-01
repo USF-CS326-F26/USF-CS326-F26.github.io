@@ -157,7 +157,7 @@ nothing, need not bother. `add3` is a leaf: three instructions, no stack.
 **downward**. Claiming 32 bytes is `addi sp, sp, -32`; releasing them is
 `addi sp, sp, 32`. The ABI requires `sp` to be a multiple of 16 at every call
 boundary. Two consequences that will bite: to point `sp` at a fresh buffer you
-must point it at the **top**, as the harness does at `main.rs:179`
+must point it at the **top**, as the harness does at `run_prog()` in `main.rs`
 (`addr_of!(CO_STACK) as usize + CO_STACK_WORDS * 8`); and RISC-V has **no red
 zone**, so unlike x86-64 it promises nothing about memory below `sp`. A trap
 handler may overwrite it at any instant, and in a kernel that is not
@@ -226,7 +226,7 @@ switch saves.
 That leaves exactly fourteen: the twelve `s` registers the caller is relying on,
 `sp` (the handle to everything else), and `ra` — caller-saved, but saved anyway
 because the switch is about to overwrite it on purpose (§8). Fourteen `usize`
-fields, 112 bytes: `Context` in `swtch.rs:7`. Not a design choice, a
+fields, 112 bytes: `Context` in `swtch.rs`. Not a design choice, a
 derivation. You could not save fewer, and more would be redundant.
 
 ### 3.2 Three save areas, three sizes
@@ -236,9 +236,9 @@ can explain the sizes, you understand the calling convention.
 
 | Structure | Saves | Size | Why that set |
 |---|---|---|---|
-| `Context` (`swtch.rs:7`) | `ra`, `sp`, `s0`–`s11` | 14 regs, 112 B | Entered by a **call**; the caller already spilled the caller-saved set |
-| `kernelvec` frame (`trap.rs:91`) | `ra`, `t0`–`t6`, `a0`–`a7` | 16 regs, 128 B | Entered by an **interrupt** — nothing was spilled. But it calls ordinary Rust, which preserves the `s` registers for free |
-| `Trapframe` (`usermode.rs:34`) | all 31, plus `epc` | 35+ slots | A user process resumes much later from a different context. Nothing may be lost, and nothing was spilled |
+| `Context` (`swtch.rs`) | `ra`, `sp`, `s0`–`s11` | 14 regs, 112 B | Entered by a **call**; the caller already spilled the caller-saved set |
+| `kernelvec` frame (`trap.rs`) | `ra`, `t0`–`t6`, `a0`–`a7` | 16 regs, 128 B | Entered by an **interrupt** — nothing was spilled. But it calls ordinary Rust, which preserves the `s` registers for free |
+| `Trapframe` (`usermode.rs`) | all 31, plus `epc` | 35+ slots | A user process resumes much later from a different context. Nothing may be lost, and nothing was spilled |
 
 > **Key distinction:** a **call** is cooperative — the compiler on both sides
 > knows it is coming and prepares. A **trap** is not: it lands between any two
@@ -403,7 +403,7 @@ time. A second gotcha: like `format!`, both `asm!` and `global_asm!` treat `{`
 and `}` as template placeholders, so literal braces must be doubled.
 
 Its sibling `asm!` inlines assembly *inside* a function with operands, which is
-right for one or two instructions wired to Rust values — `entry.rs:13-21` uses
+right for one or two instructions wired to Rust values — `STACK0` (`entry.rs`) uses
 it to set `sp` and call `kmain`. Use `global_asm!` for whole functions, `asm!`
 for instructions.
 
@@ -440,11 +440,11 @@ The same holds in the other direction. Rust **mangles** symbol names by
 default — `foo` in crate `bar` becomes something like `_ZN3bar3foo17h9c4f8e…E`,
 because Rust permits two `foo`s in different modules and the linker does not.
 Assembly that says `call kmain` needs `kmain` spelled `kmain` in the object
-file, which is what `#[no_mangle]` does (`main.rs:207-208`). `#[no_mangle]`
+file, which is what `#[no_mangle]` does (`main.rs`). `#[no_mangle]`
 fixes the *name*; `extern "C"` fixes the *convention*; you normally need both.
-The same pair is on `_entry` (`entry.rs:10-12`) and on every `static mut` the
+The same pair is on `_entry` (`entry.rs`) and on every `static mut` the
 assembly reaches with `la` — `CO_STACK`, `MAIN_CTX`, `CO_CTX`, `SEEN_S0`,
-`SEEN_S1` at `main.rs:138-147`.
+`SEEN_S1` at `main.rs`.
 
 ### 6.3 `#[repr(C)]`, now load-bearing
 
@@ -480,8 +480,8 @@ stable, documented, and computable by hand — so the two sides agree.
 ```
 
 Every struct assembly touches in this course carries the attribute for this
-reason: `Ctx` in `20a`, `Context` (`swtch.rs:5-7`), and `Trapframe`
-(`usermode.rs:34`), whose byte offsets are written into its comments because
+reason: `Ctx` in `20a`, `Context` (`swtch.rs`), and `Trapframe`
+(`usermode.rs`), whose byte offsets are written into its comments because
 two assembly routines index them by hand.
 
 !!! warning "Adding a field in the middle"
@@ -498,10 +498,10 @@ two assembly routines index them by hand.
 `rust-lld` links the resulting object, following `asmlab.ld`, which names
 `_entry` as the ELF entry point and places the `.entry` section first inside
 `.text` at `0x8000_0000` — where RAM begins on QEMU's `virt` board
-(`asmlab.ld:12,16,19`). `-bios none` removes the firmware, so QEMU loads your
+(`asmlab.ld`). `-bios none` removes the firmware, so QEMU loads your
 ELF and jumps into it directly. Your program *is* the whole software stack: no
 OS beneath it, no libc, no loader, and no `println!` — printing is a `volatile`
-byte store to `0x1000_0000` (`uart.rs:15,24`). No C cross-toolchain is needed
+byte store to `0x1000_0000` (`uart.rs,24`). No C cross-toolchain is needed
 either; `rust-lld` ships with rustup.
 
 !!! warning "`qemu-system-riscv64`, not `qemu-riscv64`"
@@ -557,7 +557,7 @@ install a different one. 9 is the punchline.
 
 ### 8.2 The trace
 
-The harness (`main.rs:171-183`) builds the second context by hand. A context
+The harness (`run_prog()` in `main.rs`) builds the second context by hand. A context
 that has never run has no saved registers, so its registers are *forged*: `ra`
 set to the entry point it should begin at, `sp` to the top of a fresh 4 KiB
 stack, and two recognizable values in `s0` and `s1`.
@@ -626,19 +626,19 @@ perfectly, in the wrong place, forever. Problem 4 works out exactly what that
 looks like on the terminal.
 
 Two details from the harness. `co_entry` is written in assembly on purpose
-(`main.rs:149-151`): a Rust prologue is entitled to claim `s0` as a frame
+(`put_num()` in `main.rs`): a Rust prologue is entitled to claim `s0` as a frame
 pointer, which would overwrite the register the test is trying to prove
-survived. And switching a context to *itself* must still work (`main.rs:199`) —
+survived. And switching a context to *itself* must still work (`exec_self_check()` in `main.rs`) —
 store four registers, load the same four back, change nothing.
 
 ### 8.5 Scaling up
 
-The real thing (`swtch.rs:46-82`) is this function with ten more registers:
+The real thing (`swtch.rs`) is this function with ten more registers:
 fourteen `sd`s at offsets 0 through 104, fourteen `ld`s at the same offsets,
 `ret`. Same shape, same argument, same punchline. Exercise `35k_context_switch`
 writes it; `36k_scheduling` calls it in a loop, and one CPU starts pretending to
 be many. Forging a first context generalizes too: `init_context`
-(`swtch.rs:38-44`) sets `ra` to the function a new process should begin
+(`swtch.rs`) sets `ra` to the function a new process should begin
 executing and `sp` to the top of its kernel stack, so `swtch` can "resume" a
 thread that never previously existed.
 
@@ -659,7 +659,7 @@ thread that never previously existed.
 | Local numeric label | Reusable label resolved by direction | `1b` = nearest `1:` back; `2f` = nearest `2:` forward |
 | `global_asm!` | Emits assembly at module level; `.globl` makes a linker symbol | `global_asm!(r#".globl add3 …"#)` |
 | `extern "C"` | Asserts a symbol follows the C ABI; unverifiable, hence `unsafe`. `#[no_mangle]` is its name-side partner | `fn baby_swtch(old: *mut Ctx, new: *const Ctx)` |
-| `#[repr(C)]` | Freezes field order and padding to C's rules | `Ctx` at 0, 8, 16, 24 (`swtch.rs:5-7`) |
+| `#[repr(C)]` | Freezes field order and padding to C's rules | `Ctx` at 0, 8, 16, 24 (`swtch.rs`) |
 
 ---
 
@@ -854,7 +854,7 @@ Two lessons. **Save all before you load any**, because the old `ra` is the only
 record of where the caller lives. And a hang with no output is the signature of
 a `ret` to a wrong-but-valid address, while a crash is the signature of a `ret`
 to a wrong-and-invalid one. The hang is the harder of the two to debug, which
-is why the self-switch check at `main.rs:199` exists.
+is why the self-switch check at `exec_self_check()` (`main.rs`) exists.
 </details>
 
 ### Problem 5: The signature is a promise
@@ -992,7 +992,7 @@ two sides must agree on the *meaning* of `a0`, not just its width.
 1. **The floor is real and narrow.** No language whose compiler allocates registers can express "save every register and switch stacks", so every kernel has assembly — boot trampoline, context switch, trap vectors, user-mode return. A few hundred instructions, and nothing else.
 2. **Thirty-two registers, two classes, always called by ABI name.** `zero` is hardwired 0 and underwrites half the pseudo-instruction set; `ra` holds the return address as an ordinary writable register; `sp` grows down and is 16-byte aligned at every call.
 3. **Caller-saved means the callee may destroy it; callee-saved means the callee must give it back.** `ra`, `t0`–`t6`, `a0`–`a7` versus `sp`, `s0`–`s11`. Nothing enforces either rule.
-4. **A context switch saves fourteen registers because the rest are already on the stack.** It is entered by a normal `call`, so the compiler already spilled everything caller-saved that mattered — and `sp`, the handle to that spill, is one of the fourteen. `Context` (`swtch.rs:7`) is a derivation, not a design.
+4. **A context switch saves fourteen registers because the rest are already on the stack.** It is entered by a normal `call`, so the compiler already spilled everything caller-saved that mattered — and `sp`, the handle to that spill, is one of the fourteen. `Context` (`swtch.rs`) is a derivation, not a design.
 5. **A call is cooperative; a trap is not.** That alone is why `Context` holds 14 registers, `kernelvec`'s frame 16, and `Trapframe` 35.
 6. **Offsets are welded into instructions.** `off(rs1)` takes a signed 12-bit literal, so every save/restore is a column of constants that must match a Rust struct exactly — which is what `#[repr(C)]` guarantees and what `repr(Rust)`, free to reorder fields, explicitly does not.
 7. **`extern "C"` is a promise, not a check.** Rust cannot compare a declaration against machine code, so a wrong signature yields no diagnostic and no crash — just a wrong answer from a leftover register. That is precisely what `unsafe` marks: the place where you are the type checker.
