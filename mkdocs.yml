@@ -94,6 +94,9 @@ extra:
     - name: OSlings
       url: https://github.com/USF-CS326-F26/oslings-course
       icon: fontawesome/solid/code
+    - name: Inclass
+      url: https://github.com/USF-CS326-F26/inclass
+      icon: fontawesome/solid/chalkboard-user
     - name: Sec01 Zoom
       url: https://usfca.zoom.us/j/88220957589
       icon: fontawesome/solid/video
