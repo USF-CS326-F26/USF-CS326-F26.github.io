@@ -70,6 +70,8 @@ weeks:
           url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes/"
         - text: "Slides"
           url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html"
+        - text: "In-class slides"
+          url: "inclass/week02-slides.html"
 
     thursday:
       date: "Sep 3"

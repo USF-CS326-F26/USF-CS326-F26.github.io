@@ -98,7 +98,8 @@ def sessions():
         exercises=['01r_control_flow'],
         links=L(("Rust for Systems", "/guides/rust-for-systems/")))
 
-    add(2, 'tuesday', 'Sep 1', 'lecture', 'L03 Ownership, Borrowing, and Lifetimes')
+    add(2, 'tuesday', 'Sep 1', 'lecture', 'L03 Ownership, Borrowing, and Lifetimes',
+        links=L(("In-class slides", "/inclass/week02-slides.html")))
     add(2, 'thursday', 'Sep 3', 'exercise', '02r ownership', exercises=['02r_ownership'])
     add(2, 'friday', 'Sep 4', 'exercise', '03r borrowing', exercises=['03r_borrowing'])
 

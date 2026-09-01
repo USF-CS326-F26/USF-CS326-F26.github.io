@@ -229,4 +229,7 @@ nav:
       - "Dec 3 · Slides": lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html
       - "Dec 8 · Pipes, the Payoff, and Revision": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review.md
       - "Dec 8 · Slides": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html
+  - In Class:
+      - "In Class": inclass/index.md
+      - "Week 02 · Rust: Types, Ownership, and Borrowing": inclass/week02-slides.html
   - Solutions: solutions/index.md

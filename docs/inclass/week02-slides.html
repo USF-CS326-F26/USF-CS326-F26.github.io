@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust: Types, Ownership, and Borrowing — CS 326 Week 02</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="./">&larr; In Class</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Rust: Types, Ownership, and Borrowing
+
+## CS 326 Operating Systems &middot; Week 02, in class
+
+September 1, 2026 &middot; Run along: `cd examples && cargo run --bin 01_scalars`
+
+---
+
+## Today, in Four Moves
+
+1. **Types** — every value has a size the compiler knows
+2. **Where it lives** — the stack handle vs. the heap buffer
+3. **Ownership** — exactly one name is responsible for freeing it
+4. **Borrowing** — lending a value without giving it away
+
+<div class="info-box">
+Everything on these slides is a program in <code>examples/</code>. When you see
+<strong>RUN</strong>, run it — the addresses printed are the point.
+</div>
+
+---
+
+## Why an OS Class Starts Here
+
+```c
+char *p = kalloc();
+kfree(p);
+kfree(p);        /* compiles. links. ships. */
+```
+
+<div class="highlight-box">
+Microsoft and the Chromium team each report that about <strong>70%</strong> of
+the security bugs they fix are memory-safety bugs: double free, use after free,
+buffer overrun, data race.
+</div>
+
+We are writing the kernel. There is no runtime below us to catch these.
+
+---
+
+# Part I
+
+## Types: a value is its bits
+
+---
+
+## Every Value Has a Known Size
+
+| Type | Size | What a kernel uses it for |
+|------|------|---------------------------|
+| `u8` / `i8` | 1 byte | a byte of a buffer, a UART register |
+| `u32` / `i32` | 4 bytes | a block number, a counter |
+| `u64` / `i64` | 8 bytes | a page-table entry, a 64-bit CSR |
+| `usize` / `isize` | 8 bytes | **an address, a length, an index** |
+| `bool` | 1 byte | a flag |
+| `char` | 4 bytes | one Unicode scalar value |
+| `f64` | 8 bytes | rarely — kernels avoid FP |
+
+`usize` is as wide as a pointer on the target: 8 bytes on x86-64 and riscv64.
+
+---
+
+## The Bits Are the Value
+
+```text
+   let a: u8   = 200;      stack:  [ 11001000 ]                        1 byte
+   let b: u32  = 200;      stack:  [ 11001000 00000000 00000000 00000000 ]
+   let c: bool = true;     stack:  [ 00000001 ]                        1 byte
+```
+
+- No object header, no type tag at run time, no allocation
+- `size_of::<T>()` is a compile-time constant
+- This is why Rust can write a page-table entry directly into memory
+
+---
+
+## Nothing Converts Itself
+
+```rust
+let small: u8 = 200;
+let wide: u32 = small;          // error[E0308]: mismatched types
+let wide: u32 = small as u32;   // fine — you asked for it
+```
+
+- C promotes silently; Rust makes every widening and narrowing visible
+- `300u32 as u8` == `44`. It truncates, but only where you wrote `as`
+- In kernel code the casts you write are `usize` &harr; `*mut u8` &harr; `u64`
+
+**RUN** `cargo run --bin 01_scalars`
+
+---
+
+## Overflow Is a Decision, Not a Surprise
+
+```rust
+let x: u8 = 255;
+x + 1                  // debug: panics.  release: wraps. Never UB.
+x.checked_add(1)       // None
+x.wrapping_add(1)      // 0
+x.saturating_add(1)    // 255
+x.overflowing_add(1)   // (0, true)
+```
+
+<div class="info-box">
+In C, signed overflow is undefined behavior and the optimizer may delete your
+bounds check. In Rust the four behaviors have four names — pick one.
+</div>
+
+---
+
+## Compound Types Are Just Layouts
+
+```text
+   tuple   (usize, usize)          [ 8 bytes ][ 8 bytes ]           = 16
+   array   [Frame; 4]              [F][F][F][F]                     = 4 x 16
+   struct  Frame { addr, free }    [ addr: 8 ][ free: 1 ][ pad: 7 ] = 16
+   enum    Request                 [ tag: 4 ][ largest payload: 8 ] = 12
+```
+
+- A struct is its fields end to end, plus padding for alignment
+- `[T; N]` — the length is part of the type, checked at compile time
+- Indexing is bounds-checked: `ptable[9]` panics, it does not read a neighbor
+
+---
+
+## Enums Carry Data, `match` Must Be Total
+
+```rust
+enum Request {
+    Read  { block: u32 },
+    Write { block: u32, len: u32 },
+    Flush,
+}
+
+match r {
+    Request::Read { block }       => ...,
+    Request::Write { block, len } => ...,
+    Request::Flush                => ...,
+}   // forget one arm and it does not compile
+```
+
+---
+
+## `Option<T>`: Null, Made Visible
+
+```rust
+let head: Option<usize> = Some(0x8000_5000);
+let head: Option<usize> = None;      // there is no null in safe Rust
+```
+
+```text
+   size_of::<&u8>()          = 8 bytes
+   size_of::<Option<&u8>>()  = 8 bytes    <- None is the all-zero pattern
+```
+
+<div class="highlight-box">
+"Maybe absent" moves from a convention you remember into a type you must open.
+Free at run time; unforgettable at compile time.
+</div>
+
+**RUN** `cargo run --bin 02_compound`
+
+---
+
+# Part II
+
+## Where the value lives
+
+---
+
+## Two Places, One Arrow
+
+```text
+   let n: u64 = 4096;
+
+     stack
+     n: [ 4096 ]                       the whole value is right here
+
+
+   let s = String::from("kernel");
+
+     stack                                heap
+     s: [ ptr | len=6 | cap=6 ] ───────▶  [ k e r n e l ]
+        └─ 24 bytes ─┘                    └── 6 bytes, from the allocator ──┘
+```
+
+Ownership is a rule about **that arrow**. Three words are cheap to copy; the
+buffer must be freed exactly once, by exactly one owner.
+
+---
+
+## Growth Moves the Buffer
+
+```text
+   v.push(4) when len == cap:
+
+   before   v: [ ptr ─┐ len=4 cap=4 ]      heap: [1][2][3][4]
+                      └───────────────────────────▲
+
+   after    v: [ ptr ─┐ len=5 cap=8 ]      heap: [1][2][3][4][4][ ][ ][ ]
+                      └───────────────────────────▲   (new block; old one freed)
+```
+
+<div class="highlight-box">
+Any pointer into the old buffer is now dangling. Hold that thought — it is
+exactly the bug the borrow checker will refuse in Part IV.
+</div>
+
+**RUN** `cargo run --bin 03_stack_and_heap`
+
+---
+
+## `String` vs `&str`
+
+```text
+   owned: String     [ ptr | len | cap ]  24 bytes   owns the buffer, frees it
+   view:  &str       [ ptr | len ]        16 bytes   borrows, frees nothing
+   literal "abc"     [ ptr | len ]        points into .rodata in the binary
+```
+
+Same relationship, one level down:
+
+```text
+   Vec<u8>           [ ptr | len | cap ]  owns
+   &[u8]             [ ptr | len ]        borrows — the systems shape
+```
+
+---
+
+# Part III
+
+## Ownership
+
+---
+
+## The Rule, Complete
+
+1. Every value has exactly one **owner** — a binding responsible for it
+2. There is only **one owner at a time**
+3. When the owner goes out of scope the value is **dropped** and its resources
+   are released right there
+
+```rust
+{
+    let label = String::from("kernel");   // `label` owns this buffer
+}                                          // released here. no free(). no GC.
+```
+
+The release point is a place in the source you can point at.
+
+---
+
+## What a Move Actually Is
+
+```text
+   let a = String::from("kernel");
+   let b = a;
+
+   BEFORE   a: [ ptr | 6 | 6 ] ───────▶ [ k e r n e l ]
+            b: (does not exist)
+
+   AFTER    a: struck off by rustc — the name is unusable
+            b: [ ptr | 6 | 6 ] ───────▶ [ k e r n e l ]   same buffer
+```
+
+- **Run time:** 3 words of stack copied, usually optimized away
+- **Compile time:** `a` is removed from the set of usable names
+- Nothing is scanned, nothing is reference-counted, the heap is untouched
+
+---
+
+## The Error Is the Mechanism
+
+```text
+error[E0382]: borrow of moved value: `a`
+   |     let b = a;
+   |             - value moved here
+   |     println!("{}", a);
+   |                    ^ value borrowed here after move
+```
+
+<div class="highlight-box">
+Read "moved" as <strong>"given away."</strong> This message is a use-after-free,
+reported before the program ever ran.
+</div>
+
+**RUN** `../examples/show-errors.sh e0382`
+
+---
+
+## Moves at Function Boundaries
+
+```text
+   let page = String::from("...");
+   consume(page);                        ownership transfers into the call
+   // page is gone here
+
+   fn consume(text: String) { }          text dies at this closing brace
+                          └──────────────▶ buffer freed
+```
+
+If the caller still needs it, the callee must hand it back:
+
+```rust
+fn annotate(mut text: String, note: &str) -> String { ...; text }
+let log = annotate(log, "mmu on");   // move in, move out
+```
+
+**RUN** `cargo run --bin 04_move`
+
+---
+
+## `Copy`: Values That Do Not Move
+
+```text
+   let x = 5;   let y = x;       x: [ 5 ]      y: [ 5 ]     both usable
+   let a = s;   let b = a;       a: dead       b: [ptr|len|cap]
+```
+
+A type is `Copy` when duplicating its bits duplicates the whole value:
+
+- all the scalars, `char`, `bool`, tuples and arrays of `Copy` types
+- `#[derive(Clone, Copy)] struct Pte { ppn: usize, flags: u8 }`
+- **`&T` is `Copy`** — that is why you can pass a reference around freely
+
+---
+
+## `Copy` XOR `Drop`
+
+```text
+   Suppose String were Copy:
+
+   a: [ptr|6|6] ──┐
+                  ├──▶ [ k e r n e l ]      one buffer, two owners
+   b: [ptr|6|6] ──┘
+
+   end of scope:  a drops it.  b drops it.   ← DOUBLE FREE
+```
+
+<div class="info-box">
+A type with a destructor cannot be <code>Copy</code>: <code>error[E0184]</code>.
+The double free is not a bug you avoid by discipline — it is a combination the
+type system refuses.
+</div>
+
+**RUN** `cargo run --bin 05_copy_types`
+
+---
+
+## Drop: Where `free()` Went
+
+```rust
+impl Drop for Page {
+    fn drop(&mut self) { println!("kfree {:#x}", self.addr); }
+}
+```
+
+```text
+   {
+       let first  = Page::alloc(0x8000_1000);
+       let second = Page::alloc(0x8000_2000);
+       let third  = Page::alloc(0x8000_3000);
+   }   ──▶ kfree 0x8000_3000
+       ──▶ kfree 0x8000_2000        reverse declaration order:
+       ──▶ kfree 0x8000_1000        later values may refer to earlier ones
+```
+
+Early `return`, `?`, and even a panic unwind all run these. No path forgets.
+
+**RUN** `cargo run --bin 06_drop`
+
+---
+
+## Ownership, as a Flow
+
+<div class="mermaid">
+flowchart LR
+    A["let s = String::from(...)\nmain owns it"] --> B{what happens next?}
+    B -->|"let t = s"| C["t owns it\ns unusable"]
+    B -->|"f(s)"| D["parameter owns it\ndropped at f's brace"]
+    B -->|"pass a reference"| E["main still owns it\nf only reads"]
+    B -->|"scope ends"| F["drop(): buffer freed"]
+    D --> G["unless f returns it"]
+    G --> A
+</div>
+
+---
+
+# Part IV
+
+## Borrowing
+
+---
+
+## Lend, Don't Give
+
+```text
+   owner   s: [ ptr | len | cap ] ─────▶ [ k e r n e l ]
+                  ▲    ▲    ▲
+   r1: [ ptr ]────┘    │    │
+   r2: [ ptr ]─────────┘    │      many &T at once — all read-only
+   r3: [ ptr ]──────────────┘
+```
+
+```rust
+fn count(l: &FreeList) -> usize { l.pages.len() }
+count(&list);            // list is still owned by the caller afterwards
+```
+
+A reference is one word. It owns nothing; when it dies, nothing is freed.
+
+---
+
+## The Two Kinds
+
+```text
+   &T        shared      many at a time      read only
+   &mut T    EXCLUSIVE   exactly one         read and write
+```
+
+<div class="highlight-box">
+Read <code>&amp;mut</code> as <strong>exclusive</strong>, not as "mutable." The
+guarantee is not that you may write — it is that <em>nobody else is looking.</em>
+</div>
+
+```rust
+fn take_page(a: &mut Allocator) -> Option<usize> { a.free.pop() }
+```
+
+While that runs, no other reference to the allocator exists anywhere.
+
+---
+
+## Aliasing XOR Mutation
+
+```text
+        &T    &T    &T                    &mut T
+          \    |    /                        |
+           ▼   ▼   ▼                         ▼
+         [ the value ]                  [ the value ]
+
+        many readers        ...or...    one writer, alone
+                            NEVER BOTH
+```
+
+| You have | You may add `&T` | You may add `&mut T` |
+|----------|------------------|----------------------|
+| nothing | yes | yes |
+| one or more `&T` | yes | **no** — E0502 |
+| one `&mut T` | **no** — E0502 | **no** — E0499 |
+
+---
+
+## Why: the Bug It Refuses
+
+```rust
+let mut v = vec![1, 2, 3];
+let first = &v[0];      // borrow points into the buffer
+v.push(4);              // may reallocate and free that buffer
+println!("{first}");    // C++: dangling read. Rust: error[E0502]
+```
+
+```text
+   first ──▶ [1][2][3]          old buffer, freed by push
+                  ✗
+             [1][2][3][4][ ][ ][ ][ ]   new buffer somewhere else
+```
+
+The same rule kills iterator invalidation, and — once threads exist — the data
+race, because a data race *is* aliasing plus mutation.
+
+**RUN** `../examples/show-errors.sh e0502`
+
+---
+
+## Borrows End at Their Last Use
+
+```text
+   let mut v = vec![1, 2, 3];
+   let sum: i32 = v.iter().sum();   ┐ borrow starts
+   println!("{sum}");               ┘ last use — borrow is over HERE
+   v.push(4);                         legal: nothing is watching v
+```
+
+- Not "until the closing brace" — that was Rust before 2018 (NLL)
+- The compiler rejects **overlap**, not sequence
+- When you hit E0502, the fix is usually to finish reading before you write
+
+---
+
+## Slices: the Systems Shape
+
+```text
+   buf: [ 10 11 12 13 14 15 16 17 ]     owned, stack or heap
+          ▲      ▲
+   &buf[2..5] = [ ptr ][ len=3 ] ───────┘     borrowed window, 2 words
+```
+
+```c
+void write(char *buf, int n);   /* two arguments that can disagree */
+```
+```rust
+fn write(buf: &[u8]);           // one value; the length cannot lie
+```
+
+One function body serves an array, a `Vec`, or a window into either.
+
+**RUN** `cargo run --bin 09_slices`
+
+---
+
+## Two Writers, Legally
+
+```text
+   table: [ _ _ _ | _ _ _ ]
+   let (lo, hi) = table.split_at_mut(3);
+
+   lo: [ ptr | 3 ] ──▶ ┘   │        two &mut, provably disjoint
+   hi: [ ptr | 3 ] ────────┘        std proves it; the checker accepts it
+```
+
+- The rule is about *overlap*, not about the number of `&mut` in the file
+- When you genuinely need aliasing plus mutation — a free list whose nodes live
+  inside the free pages — that is what `unsafe` is for, and you write the proof
+  in a comment
+
+**RUN** `cargo run --bin 08_borrow_mut`
+
+---
+
+## How to Pass a Value
+
+<div class="mermaid">
+flowchart TD
+    Q1{"Does the callee need\nto KEEP the value?"} -->|yes| T["take T — a move"]
+    Q1 -->|no| Q2{"Does it need to\nCHANGE the caller's value?"}
+    Q2 -->|yes| M["take &amp;mut T — exclusive"]
+    Q2 -->|no| S["take &amp;T / &amp;[T] / &amp;str — shared"]
+    T --> Q3{"Does the caller\nneed it back?"}
+    Q3 -->|yes| R["take T, return T"]
+    Q3 -->|no| D["callee drops it"]
+</div>
+
+Default to `&T`. Reach for `T` when you mean *"this is mine now"* — which, for
+a page allocator, is exactly what handing out a page means.
+
+---
+
+## The Errors You Will Actually Hit
+
+| Code | Says | Usually means |
+|------|------|---------------|
+| `E0382` | use of moved value | you gave it away, then used it — borrow instead |
+| `E0499` | two mutable borrows | two writers overlap — sequence them |
+| `E0502` | shared + mutable | reading and writing overlap — finish the read |
+| `E0505` | move while borrowed | a reference is still alive — use it first |
+| `E0507` | cannot move out of index | borrow, `clone()`, or `remove()` |
+| `E0596` | not declared as mutable | add `mut` |
+| `E0106` | missing lifetime | borrowed from *what?* — return the value instead |
+
+**RUN** `../examples/show-errors.sh` — all seven, with the fixes
+
+---
+
+## Where the Rules Run Out
+
+```rust
+pub unsafe fn kalloc() -> *mut u8 { ... }
+```
+
+- The free list's nodes live **inside the free pages** — aliasing and mutation
+  at once, by construction
+- `unsafe` does not turn the checker off; it unlocks five extra operations and
+  moves the proof from the compiler to you
+- The goal is a small `unsafe` core with a safe interface — which is exactly
+  what `SpinLock<T>` and `Page` will be later this term
+
+---
+
+## Do This Next
+
+1. Run all ten examples; read the printed **addresses**, not just the text
+2. `./show-errors.sh` and try to predict each error before it scrolls by
+3. Fix each broken file two different ways
+4. Then: `oslings` exercises `02r_ownership` and `03r_borrowing`
+
+<div class="info-box">
+If an error message does not make sense yet, run
+<code>rustc --explain E0502</code>. Bring the ones that still do not to lab.
+</div>
+
+---
+
+## Summary
+
+1. **Every value has a size** — no headers, no tags, no hidden allocation
+2. **`usize` is an address**; nothing converts itself, overflow has four names
+3. **A handle is not the buffer** — ownership is a rule about the arrow
+4. **One owner** — a move is 3 words plus a compile-time death sentence
+5. **`Copy` XOR `Drop`** — the double free, refused by the type system
+6. **Drop is where `free()` went** — deterministic, reverse order, every path
+7. **`&` shared, `&mut` exclusive** — aliasing XOR mutation
+8. **Borrows end at their last use** — the checker rejects overlap, not order
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

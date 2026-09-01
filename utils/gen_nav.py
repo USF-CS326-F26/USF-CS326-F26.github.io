@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerate the Assignments, Exercise Prep, and Lectures sections of mkdocs.yml.
+"""Regenerate the Assignments, Exercise Prep, Lectures, and In Class sections
+of mkdocs.yml.
 
 The lecture nav in CS 315 is ~80 hand-maintained lines that must stay in sync
 with the filenames, and it drifts. Generate it instead.
@@ -79,6 +80,30 @@ def prep_entries():
     return out
 
 
+def inclass_entries():
+    """The In Class index, then one entry per docs/inclass/week*-slides.html.
+
+    These decks come from the separate `inclass` repo and have no companion
+    `.md`, so unlike the lecture decks they are not discovered by date — the
+    label comes from the deck's own <title>, minus the " — CS 326 …" suffix
+    that only makes sense in a browser tab.
+    """
+    out = []
+    inclass = DOCS / "inclass"
+    if not (inclass / "index.md").exists():
+        return out
+    out.append((title_of(inclass / "index.md"), "inclass/index.md"))
+    for deck in sorted(inclass.glob("week*-slides.html")):
+        m = re.match(r"week(\d+)-slides", deck.stem)
+        if not m:
+            print(f"  ! skipping oddly-named {deck.name}", file=sys.stderr)
+            continue
+        t = re.search(r"<title>(.*?)</title>", deck.read_text(), re.S)
+        topic = re.split(r"\s+[—-]\s+CS 326", t.group(1).strip())[0] if t else deck.stem
+        out.append((f"Week {m.group(1)} · {topic}", f"inclass/{deck.name}"))
+    return out
+
+
 def assignment_entries():
     out = []
     seen = set()
@@ -137,6 +162,7 @@ def main():
     lectures = lecture_entries()
     assignments = assignment_entries()
     preps = prep_entries()
+    inclass = inclass_entries()
 
     text = MKDOCS.read_text()
     text = replace_section(text, "Assignments", render(assignments))
@@ -150,12 +176,20 @@ def main():
     else:
         text = remove_section(text, "Exercise Prep")
     text = replace_section(text, "Lectures", render(lectures))
+    # Same reasoning as Exercise Prep: the section exists only while there is
+    # something in it. It sits between Lectures and Solutions.
+    if inclass:
+        text = ensure_section(text, "In Class", before="Solutions")
+        text = replace_section(text, "In Class", render(inclass))
+    else:
+        text = remove_section(text, "In Class")
     MKDOCS.write_text(text)
 
     pages = sum(1 for l, _ in lectures if "Slides" not in l)
     decks = len(lectures) - pages
     print(f"nav updated: {pages} lecture pages, {decks} slide decks, "
-          f"{len(assignments)} assignment pages, {len(preps)} prep pages")
+          f"{len(assignments)} assignment pages, {len(preps)} prep pages, "
+          f"{len(inclass)} in-class pages")
     if not preps:
         print("  (no docs/prep/*.md yet — the Exercise Prep section is omitted "
               "until the first prep page exists)")

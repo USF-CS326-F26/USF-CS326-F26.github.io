@@ -11,6 +11,9 @@ the reference kernel.
 
 That only holds while the names are real, which is what this checks:
 
+`docs/inclass/` is skipped: it documents the separate `inclass` repo, whose
+Rust files are not rv6 files.
+
   1. no citation carries a line number — those rot on the next edit, and the
      student's cumulative tree is numbered differently from the finished one
   2. every `file.rs` named in the docs exists somewhere in the OSlings tree
@@ -112,6 +115,9 @@ CITED = re.compile(r"`(?P<item>[A-Za-z_][A-Za-z0-9_:]*)(?P<call>\(\))?`"
 NAMED = re.compile(r"`(?:[A-Za-z0-9_./-]*/)?(?P<file>[a-z_][a-z_0-9]*\.rs)`")
 # rustc diagnostics quote real paths and lines; they are transcripts, not citations
 SKIP_LINE = re.compile(r"^\s*(-->|\d+\s*\|)")
+# docs/inclass/ documents the separate `inclass` repo — its Rust files are not
+# rv6 files and are not expected in the OSlings tree
+SKIP_DIRS = {"inclass"}
 
 # a citation that grew a line number back
 NUMBERED = re.compile(r"`?(?:[A-Za-z0-9_./-]*/)?[a-z_][a-z_0-9]*\.(?:rs|ld|toml):\d+")
@@ -121,6 +127,8 @@ for path in sorted(DOCS.rglob("*")):
     if path.suffix not in (".md", ".html") or not path.is_file():
         continue
     rel = path.relative_to(DOCS)
+    if rel.parts and rel.parts[0] in SKIP_DIRS:
+        continue
     for n, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
         if SKIP_LINE.match(line):
             continue
