@@ -7,7 +7,8 @@ Jinja loop — so a renamed lecture silently 404s from the site's home page,
 which is the most-used navigation surface in the course.
 
 Three checks:
-  1. every link in docs/schedule.yml resolves to a built page under site/
+  1. every link in docs/schedule.yml resolves to a built page under site/ —
+     the Links column and the Sec01/Sec02 summaries alike
   2. every `exercise` row has a Prep link — enforced once docs/prep/ holds at
      least one page (before that, a notice only, so the site builds while the
      prep pages are still being written)
@@ -31,6 +32,13 @@ MONTHS = {m: i for i, m in enumerate(
 if not SITE.is_dir():
     sys.exit("no site/ directory — run `mkdocs build` first")
 
+
+def resolves(url):
+    """Does an internal schedule URL have a built page under site/?"""
+    p = SITE / url.lstrip("/")
+    return (p if p.suffix else p / "index.html").exists()
+
+
 sched = yaml.safe_load((ROOT / "docs/schedule.yml").read_text())
 bad, ok = [], 0
 no_prep = []
@@ -46,13 +54,16 @@ for wk in sched["weeks"]:
         links = d.get("links") or []
         if d["type"] == "exercise" and not any(l["text"] == "Prep" for l in links):
             no_prep.append(f"week {wk['week']} {day} ({d['date']}): {d['topic']}")
-        for link in links:
+        # The per-section resources render as links in the same cell; only the
+        # summary is internal, the recording is a Zoom URL.
+        section_links = [{"text": f"{sec} {kind}", "url": url}
+                         for sec in ("section_01", "section_02")
+                         for kind, url in (d.get(sec) or {}).items()]
+        for link in links + section_links:
             url = link["url"]
             if url.startswith("http"):
                 continue
-            p = SITE / url.lstrip("/")
-            target = p if p.suffix else p / "index.html"
-            if target.exists():
+            if resolves(url):
                 ok += 1
             else:
                 bad.append(f"week {wk['week']} {day}: {link['text']} -> {url}")

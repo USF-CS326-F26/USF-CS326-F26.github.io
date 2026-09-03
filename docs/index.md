@@ -57,6 +57,23 @@ hide:
           <span class="label label-due">SUBMIT</span> {{ day_data.due }}
         </div>
         {% endif %}
+        {% if day_data.section_01 or day_data.section_02 %}
+        <div class="session-resources">
+          {% for label, section in [('Sec01', day_data.section_01), ('Sec02', day_data.section_02)] %}
+          {% if section %}
+          <div class="section-resources">
+            <strong>{{ label }}:</strong>
+            {% if section.recording %}
+            <a href="{{ section.recording }}" class="resource-link" target="_blank" rel="noopener noreferrer">Recording</a>
+            {% endif %}
+            {% if section.summary %}
+            <a href="{{ section.summary }}" class="resource-link">Summary</a>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
     </td>
     <td class="links-cell">

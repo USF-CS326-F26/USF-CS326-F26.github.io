@@ -353,7 +353,7 @@
 }
 
 .section-resources strong {
-  color: black;
+  color: var(--md-default-fg-color);
   margin-right: 0.3rem;
 }
 
