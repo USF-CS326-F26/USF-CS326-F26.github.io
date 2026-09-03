@@ -5,8 +5,9 @@ exercises each session releases. Links to the Prep page, the lecture page, and
 the slide deck for each session are attached automatically by matching the
 date against the filenames in docs/prep/ and docs/lectures/, so they cannot
 drift as pages are added or renamed. Meeting summaries in docs/summaries/ are
-attached the same way; the Zoom recordings they go with are listed in
-RECORDINGS below, since no local file names those.
+attached the same way, as are the handwritten notes in docs/notes/; the Zoom
+recordings they go with are listed in RECORDINGS below, since no local file
+names those.
 
 Other generators import this module (`from gen_schedule import sessions`), so
 keep the table inside `sessions()` and the file writing inside `main()`.
@@ -20,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LECTURES = ROOT / "docs/lectures"
 PREP = ROOT / "docs/prep"
 SUMMARIES = ROOT / "docs/summaries"
+NOTES = ROOT / "docs/notes"
 SECTIONS = ("01", "02")
 MONTHS = {m: i for i, m in enumerate(
     ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -63,16 +65,21 @@ def lecture_links(date_str, label="Lecture"):
 
 
 def section_resources(date_str):
-    """{"01": {"recording": url, "summary": url}, ...} for `date_str`.
+    """{"01": {"recording": url, "notes": url, "summary": url}, ...} for `date_str`.
 
     Sections with nothing published yet are left out, so a session carries a
-    Sec01/Sec02 line only once it has a recording or a summary.
+    Sec01/Sec02 line only once it has one of the three.
     """
     out = {}
     for sec in SECTIONS:
         res = {}
         if url := RECORDINGS.get((date_str, sec)):
             res["recording"] = url
+        # Handwritten notes, exported from class: "CS326-02 2026-09-01 Topic.pdf".
+        # The topic is free text, so match on the section and date only.
+        pdfs = sorted(NOTES.glob(f"CS326-{sec} {stamp(date_str)} *.pdf"))
+        if pdfs:
+            res["notes"] = f"notes/{pdfs[0].name}"
         md = SUMMARIES / f"cs326-{sec}-{stamp(date_str)}-summary.md"
         if md.exists():
             res["summary"] = f"summaries/{md.stem}/"
@@ -285,7 +292,7 @@ def main():
                 out.append(f'      due: {q(s["due"])}')
             for sec, res in section_resources(s["date"]).items():
                 out.append(f'      section_{sec}:')
-                for key in ("recording", "summary"):
+                for key in ("recording", "notes", "summary"):
                     if key in res:
                         out.append(f'        {key}: {q(res[key])}')
             if links:
@@ -303,9 +310,9 @@ def main():
     print("by type:", dict(Counter(s['type'] for s in teaching)))
     print("weeks:", len(weeks))
     resources = [section_resources(s['date']) for s in S]
-    n_rec = sum(1 for r in resources for res in r.values() if 'recording' in res)
-    n_sum = sum(1 for r in resources for res in r.values() if 'summary' in res)
-    print(f"section resources: {n_rec} recordings, {n_sum} summaries")
+    have = lambda key: sum(1 for r in resources for res in r.values() if key in res)
+    print(f"section resources: {have('recording')} recordings, "
+          f"{have('notes')} note sets, {have('summary')} summaries")
     n_ex = sum(len(s['exercises']) for s in S)
     n_ec = sum(len(s['extra']) for s in S)
     print(f"exercises scheduled: {n_ex} core + {n_ec} extra credit")

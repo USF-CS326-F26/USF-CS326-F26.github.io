@@ -30,6 +30,7 @@ docs/
   assignments/              setup, exercises (generated), extra credit, practice sets, exams
   guides/                   the reference layer
   lectures/                 WW-cs326-YYYY-MM-DD-topic.md + matching -slides.html
+  notes/                    CS326-SS YYYY-MM-DD Topic.pdf, the handwritten class notes
   prep/                     WW-cs326-YYYY-MM-DD-prep-slug.md, one per exercise session
   solutions/                exam + practice-set solutions ONLY (never exercise code)
   summaries/                cs326-SS-YYYY-MM-DD-summary.md, one per section per meeting
@@ -89,10 +90,10 @@ filesystem by date; Slides likewise.
 `schedule.js` highlights the current week automatically by parsing the `date`
 strings, so keep the `"Mon DD"` format exactly.
 
-### Meeting summaries and recordings
+### Notes, summaries, and recordings
 
 Each session row can carry a per-section line under the topic — `Sec01:` and
-`Sec02:`, each with a Recording and a Summary link:
+`Sec02:`, each with a Recording, a Notes, and a Summary link:
 
 ```yaml
     tuesday:
@@ -100,24 +101,34 @@ Each session row can carry a per-section line under the topic — `Sec01:` and
       type: "lecture"
       topic: "L03 Ownership, Borrowing, and Lifetimes"
       section_02:
-        recording: "https://usfca.zoom.us/rec/share/..."   # RECORDINGS
-        summary: "summaries/cs326-02-2026-09-01-summary/"  # auto: the file
+        recording: "https://usfca.zoom.us/rec/share/..."       # RECORDINGS
+        notes: "notes/CS326-02 2026-09-01 Rust Data.pdf"       # auto: the file
+        summary: "summaries/cs326-02-2026-09-01-summary/"      # auto: the file
 ```
 
-Drop the Zoom meeting summary into `docs/summaries/` as
-`cs326-{SS}-{YYYY-MM-DD}-summary.md`, where `SS` is the section (`01`, `02`)
-and the date is the session's — `gen_schedule.py` finds it by name, the way it
-finds Prep and lecture pages. Nothing on the filesystem names a cloud
-recording, so add its URL to the `RECORDINGS` table at the top of
-`gen_schedule.py`, keyed by `(date, section)`. Re-run the generator; a section
-appears only once it has a recording or a summary, so a row with neither is
-unchanged.
+Two of the three are found on the filesystem by name, the way Prep and lecture
+pages are:
+
+| What | Where it goes | Named |
+| --- | --- | --- |
+| Meeting summary | `docs/summaries/` | `cs326-{SS}-{YYYY-MM-DD}-summary.md` |
+| Class notes | `docs/notes/` | `CS326-{SS} {YYYY-MM-DD} {Topic}.pdf` |
+
+`SS` is the section (`01`, `02`) and the date is the session's; the notes
+topic is free text, matched on section and date alone. The PDF keeps the
+spaces it is exported with — `docs/index.md` percent-encodes them in the
+href — so do not rename it.
+
+Nothing on the filesystem names a cloud recording, so add its URL to the
+`RECORDINGS` table at the top of `gen_schedule.py`, keyed by
+`(date, section)`. Re-run the generator; a section appears only once it has
+one of the three, so a row with none is unchanged.
 
 Summary pages are deliberately not in the nav: they are reached from the
 schedule row for the day they belong to, and 40+ of them would swamp every
 other section. `mkdocs build --strict` is fine with that (it reports omitted
-files at INFO), and `check_links.py` resolves the summary links so a mistyped
-date does not 404 silently.
+files at INFO), and `check_links.py` resolves the summary and notes links so a
+mistyped date does not 404 silently.
 
 ## Lecture pages
 

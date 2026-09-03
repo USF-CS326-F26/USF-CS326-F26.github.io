@@ -67,6 +67,7 @@ weeks:
       topic: "L03 Ownership, Borrowing, and Lifetimes"
       section_02:
         recording: "https://usfca.zoom.us/rec/share/1hTUJ5B9GP5HyW-5fH52i0WyYJqYUuyfUgCh1ni-YercJgl0x5rdIJ3gq26h5oug.L_6UlW_im3llbIip?startTime=1788300688000"
+        notes: "notes/CS326-02 2026-09-01 Rust Data.pdf"
         summary: "summaries/cs326-02-2026-09-01-summary/"
       links:
         - text: "Lecture"

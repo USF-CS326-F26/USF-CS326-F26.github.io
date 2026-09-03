@@ -66,6 +66,10 @@ hide:
             {% if section.recording %}
             <a href="{{ section.recording }}" class="resource-link" target="_blank" rel="noopener noreferrer">Recording</a>
             {% endif %}
+            {% if section.notes %}
+            <!-- Notes filenames carry spaces; encode them rather than emitting a bare space in the href. -->
+            <a href="{{ section.notes | urlencode }}" class="resource-link">Notes</a>
+            {% endif %}
             {% if section.summary %}
             <a href="{{ section.summary }}" class="resource-link">Summary</a>
             {% endif %}
