@@ -113,9 +113,10 @@ hide:
     before you leave, passed or not. **SUBMIT** lists what each session
     releases.
 
-    A session's **Reading** is released that day but is the reading for the
-    week — or the day — named beside it, not for that day's exercise. What
-    today's exercise is built on is linked from its **Prep** page.
+    A **Reading** is for the week — or the day — named beside it, not for the
+    row it sits on. The following week's goes up on Friday, after that week's
+    last exercise, so you can start it over the weekend. What today's exercise
+    is built on is linked from its **Prep** page.
 
     Did not finish? Complete it at a **make-up session** — office hours, on the
     **cs326** network — before the next session.

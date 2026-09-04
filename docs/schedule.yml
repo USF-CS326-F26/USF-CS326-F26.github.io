@@ -86,10 +86,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/02-cs326-2026-09-03-prep-ownership/"
-        - text: "Reading · Week 3"
-          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn/"
-        - text: "Slides · Week 3"
-          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html"
 
     friday:
       date: "Sep 4"
@@ -100,6 +96,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/02-cs326-2026-09-04-prep-borrowing/"
+        - text: "Reading · Week 3"
+          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn/"
+        - text: "Slides · Week 3"
+          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html"
 
 
 # === WEEK 3 ===
@@ -123,10 +123,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/03-cs326-2026-09-10-prep-structs-and-impl/"
-        - text: "Reading · Week 4"
-          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade/"
-        - text: "Slides · Week 4"
-          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html"
 
     friday:
       date: "Sep 11"
@@ -137,6 +133,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/03-cs326-2026-09-11-prep-enums-and-match/"
+        - text: "Reading · Week 4"
+          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade/"
+        - text: "Slides · Week 4"
+          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html"
 
 
 # === WEEK 4 ===
@@ -160,10 +160,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/04-cs326-2026-09-17-prep-collections-and-traits/"
-        - text: "Reading · Week 6"
-          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly/"
-        - text: "Slides · Week 6"
-          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html"
 
     friday:
       date: "Sep 18"
@@ -174,6 +170,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/04-cs326-2026-09-18-prep-errors-and-echo/"
+        - text: "Reading · Week 6"
+          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly/"
+        - text: "Slides · Week 6"
+          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html"
         - text: "ulib and Commands"
           url: "guides/ulib-and-commands/"
 
@@ -201,10 +201,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/05-cs326-2026-09-24-prep-cat/"
-        - text: "Reading · Week 7"
-          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain/"
-        - text: "Slides · Week 7"
-          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html"
 
     friday:
       date: "Sep 25"
@@ -216,6 +212,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/05-cs326-2026-09-25-prep-wc-and-grep/"
+        - text: "Reading · Week 7"
+          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain/"
+        - text: "Slides · Week 7"
+          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
 
@@ -241,10 +241,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/06-cs326-2026-10-01-prep-asm-bridge/"
-        - text: "Reading · Week 7"
-          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
-        - text: "Slides · Week 7"
-          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html"
         - text: "RISC-V"
           url: "guides/riscv/"
         - text: "QEMU and GDB"
@@ -259,6 +255,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics/"
+        - text: "Reading · Week 7"
+          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
+        - text: "Slides · Week 7"
+          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html"
         - text: "Memory Map"
           url: "guides/memory-map/"
 
@@ -348,10 +348,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/09-cs326-2026-10-22-prep-processes/"
-        - text: "Reading · Week 10"
-          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
-        - text: "Slides · Week 10"
-          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
 
     friday:
       date: "Oct 23"
@@ -362,6 +358,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling/"
+        - text: "Reading · Week 10"
+          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
+        - text: "Slides · Week 10"
+          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
 
 
 # === WEEK 10 ===
@@ -385,10 +385,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores/"
-        - text: "Reading · Week 11"
-          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life/"
-        - text: "Slides · Week 11"
-          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html"
 
     friday:
       date: "Oct 30"
@@ -399,6 +395,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/10-cs326-2026-10-30-prep-virtual-memory/"
+        - text: "Reading · Week 11"
+          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life/"
+        - text: "Slides · Week 11"
+          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html"
         - text: "QEMU and GDB"
           url: "guides/qemu-gdb/"
 
@@ -425,10 +425,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/11-cs326-2026-11-05-prep-filesystem/"
-        - text: "Reading · Week 12"
-          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console/"
-        - text: "Slides · Week 12"
-          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
 
@@ -441,6 +437,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/"
+        - text: "Reading · Week 12"
+          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console/"
+        - text: "Slides · Week 12"
+          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html"
         - text: "Withdraw deadline"
           url: "syllabus/"
 

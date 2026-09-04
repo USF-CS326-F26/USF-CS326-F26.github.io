@@ -80,16 +80,25 @@ add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
           url: "..."
 ```
 
-On an exercise row the lecture page dated that day is the **Reading** — but a
-reading is released alongside the exercise and studied for a *later* session,
-usually the next week and twice a fortnight out. The label says which, and is
-derived, not typed: each prep page's header names the lecture its session was
-built on, so `reading_targets()` inverts those citations to find the first
-session that reads each page. A different week is named by number
-(`Reading · Week 3`), a later day of the same week by date
-(`Reading · Fri Dec 4`), and a page read the day it appears keeps the plain
-`Reading`. The deck beside it takes the same tag. Tuesday rows are untouched:
-that lecture is delivered in the room that day.
+The lecture page dated a Thursday is that session's **Reading** — but a reading
+is released alongside the exercise and studied for a *later* session, usually
+the next week and twice a fortnight out. Two derived things say so, both from
+the prep pages: each one's header names the lecture its session was built on,
+so `reading_targets()` inverts those citations to find the first session that
+reads each page.
+
+`reading_placement()` then decides which row shows it. A reading for a later
+week moves to that week's **Friday** row, after Friday's Prep: it is the
+weekend's reading, and Friday is the last session before the week it belongs
+to. One read the same week it goes up stays on its release row — Aug 27 and
+Nov 12 are read that very day, and Dec 3's is Friday's, so a student needs to
+meet it on Thursday.
+
+`lecture_links()` labels it: a different week by number (`Reading · Week 3`), a
+later day of the same week by date (`Reading · Fri Dec 4`), and a page read the
+day it appears keeps the plain `Reading`. The deck beside it takes the same
+tag. Tuesday rows are untouched: that lecture is delivered in the room that
+day.
 
 So if a reading's label looks wrong, fix the prep page's `**Lecture:**` header
 rather than the schedule — that header is what students follow from the other
