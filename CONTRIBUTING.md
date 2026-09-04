@@ -80,6 +80,21 @@ add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
           url: "..."
 ```
 
+On an exercise row the lecture page dated that day is the **Reading** — but a
+reading is released alongside the exercise and studied for a *later* session,
+usually the next week and twice a fortnight out. The label says which, and is
+derived, not typed: each prep page's header names the lecture its session was
+built on, so `reading_targets()` inverts those citations to find the first
+session that reads each page. A different week is named by number
+(`Reading · Week 3`), a later day of the same week by date
+(`Reading · Fri Dec 4`), and a page read the day it appears keeps the plain
+`Reading`. The deck beside it takes the same tag. Tuesday rows are untouched:
+that lecture is delivered in the room that day.
+
+So if a reading's label looks wrong, fix the prep page's `**Lecture:**` header
+rather than the schedule — that header is what students follow from the other
+direction.
+
 Day keys are `tuesday`, `thursday`, `friday`. Types are `lecture` (Tuesday, or
 a Thursday reading page), `exercise` (Thursday and Friday sessions), `exam`, and
 `holiday` (including the Friday of an exam week). The `due` string is derived
