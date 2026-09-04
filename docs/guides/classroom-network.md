@@ -42,17 +42,13 @@ different laptop, or if you tell macOS to forget the network.
 |---|---|
 | **GitHub** | `github.com` and `api.github.com`, so `oslings update` and `oslings submit` work, and so you can use the web UI |
 | **Rust packages** | crates.io and `static.rust-lang.org`, so `cargo` and `rustup` work |
-| **Rust documentation** | `doc.rust-lang.org` — the Book, Rust by Example, the standard library and the Reference — plus [rustlings](https://rustlings.rust-lang.org/), [rust-exercises.com](https://rust-exercises.com/) and the [playground](https://play.rust-lang.org/) |
+| **Rust documentation** | the official docs, docs.rs, Comprehensive Rust, Rustlings and the playground — the full list, with links, is on [Rust References](rust-references.md) |
 | **This site** | every page, including the lecture slides |
 | **Signing in** | Google's sign-in pages and USF's own login |
 
-The playground is reachable because the **Run** buttons throughout the Book and
-Rust by Example use it. Your exercise code belongs in your own repository and
-your own compiler, where the test harness can see it — but nobody is going to
-object to you trying a five-line example in a browser tab.
-
-`rustup doc` still opens the standard library offline, and is faster than the
-network. It is no longer the only way to read it.
+Both of those points — why the playground is reachable, and why `rustup doc` is
+still faster — are covered where the sites themselves are listed, on
+[Rust References](rust-references.md).
 
 ## What it does not reach
 
