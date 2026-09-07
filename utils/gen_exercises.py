@@ -57,7 +57,7 @@ WHAT = {
  '01r_control_flow': 'Functions, `if`/`loop`/`while`, and integer overflow',
  '02r_ownership': 'Ownership and moves — why a kernel needs no garbage collector',
  '03r_borrowing': '`&` and `&mut`, the aliasing rule, and lifetimes by example',
- '04r_structs_impl': 'Structs, methods, `const fn`, and the newtype pattern',
+ '04r_structs_impl': 'Structs, methods, `const fn`, newtypes, and a guard that frees its page in `Drop`',
  '05r_enums_match': 'Enums, `Option`, and exhaustive `match`',
  '06r_collections': 'Arrays, slices, `Vec`, and fixed kernel tables',
  '07r_traits': 'Traits, generics, and the abstractions the scheduler needs',

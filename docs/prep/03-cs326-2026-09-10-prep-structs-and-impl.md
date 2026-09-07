@@ -4,7 +4,7 @@
 
 ## What you will build
 
-Two of the lecture's types, under plain `cargo test`: a half-open region of physical memory that knows its extent and is made from a page count, and the Sv39 page table entry of Lecture §4, a newtype around a 64-bit word whose `const fn` methods pack a physical page number above ten flag bits and pull both back out. One given test already proves the newtype is eight bytes and a `#[repr(C)]` struct keeps source order. The tests check that your packing matches the hardware layout, round-trips an address, and evaluates at compile time.
+Three of the lecture's types, under plain `cargo test`. A half-open region of physical memory that knows its extent, is made from a page count, and can list every whole page inside itself — `kinit` in miniature, on top of a `const fn` that rounds an address up to a page boundary the way xv6's `PGROUNDUP` does. The Sv39 page table entry of Lecture §4, a newtype around a 64-bit word whose `const fn` methods pack a physical page number above ten flag bits and pull both back out. And a `PageGuard`: one page taken off that free list, exclusively borrowing the list while it is held, and put back by its `Drop` at the closing brace — 02r's `give_back` with the remembering removed, and the `SpinLockGuard` of exercise 37k with the lock swapped for a page. The three chain together, so the last two markers are one call each into code you wrote earlier in the file. One given test already proves the newtype is eight bytes and a `#[repr(C)]` struct keeps source order; the rest check that your packing matches the hardware layout, round-trips an address, evaluates at compile time, and that a page comes back exactly once.
 
 ## Concepts you need
 
@@ -13,6 +13,7 @@ Two of the lecture's types, under plain `cargo test`: a half-open region of phys
 - **The three receivers and `#[derive(Copy)]`** — [Lecture §3, "The three selves"](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#the-three-selves) · [Rust for Systems §1](../guides/rust-for-systems.md#copy-types-do-not-move)
 - **Newtypes, `#[repr(transparent)]`, and bit packing** — [Lecture §4](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#4-the-newtype-pattern) · [Rust for Systems §3](../guides/rust-for-systems.md#the-newtype-pattern)
 - **`const fn` and const contexts** — [Lecture §5](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#5-const-fn-arithmetic-the-compiler-does-for-you) · [Rust for Systems §3](../guides/rust-for-systems.md#const-fn)
+- **`Drop`, RAII, and the guard pattern** — [L03 §3](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#3-drop-where-free-went) and [L03 §6.1](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#61-the-destination-spinlockguarda-t) · [Rust for Systems, Drop](../guides/rust-for-systems.md#drop) · [The guard pattern](../guides/rust-for-systems.md#the-guard-pattern)
 - **`#[repr(C)]`: layout as a contract** — [Lecture §6](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#6-reprc-when-something-other-than-rust-reads-your-struct) · [Rust for Systems §3](../guides/rust-for-systems.md#reprc-and-why-layout-matters)
 
 ## Read before class
@@ -21,6 +22,7 @@ Two of the lecture's types, under plain `cargo test`: a half-open region of phys
 |---|---|
 | Lecture §2–§4 | 15 min |
 | Lecture §5–§6 | 10 min |
+| L03 §3 (`Drop`) again, and §6.1 | 5 min |
 | Rust for Systems §3 | 10 min |
 
 ## Mental model
@@ -48,6 +50,7 @@ Pack by shifting each field into its slot and ORing; unpack by shifting back and
 1. In `let s = Slot::empty(); s.is_free();`, which call is a method and which an associated function? <details><summary>Answer</summary>`Slot::empty()` is associated: called through the type with `::`; no value exists yet. `s.is_free()` is a method: called with a dot on a value, so its first parameter is a form of `self`.</details>
 2. A by-value `self` method on an eight-byte struct without `Copy` is called twice on one variable. What happens? <details><summary>Answer</summary>The first call moves the value; the second is `E0382`, use after move. Deriving `Copy` makes the call copy eight bytes instead: `Copy` makes assignment stop moving.</details>
 3. What does each need: (a) a static array of 64 process records, correct before the first instruction; (b) a saved-register struct that assembly reads at "base plus 8"? <details><summary>Answer</summary>(a) A `const fn` to build one record: the linker lays out a `static`, and nothing has run to fill it. (b) `#[repr(C)]`, or Rust may reorder fields and offset 8 stops being the stack pointer. It fails silently: the symptom is a garbage jump on a context switch.</details>
+4. A type holds a page taken from a free list and puts it back in `Drop`. Why can it never `#[derive(Copy)]`, and what breaks if it could? <details><summary>Answer</summary>`error[E0184]`: a type with a destructor cannot be `Copy`. `Copy` says duplicating the bits duplicates the value; `Drop` says the release runs exactly once. Together they would run the release once per copy — the page goes back on the free list twice, is handed to two callers, and both write to it. That is the double free from 02r, which is where the rule comes from.</details>
 
 ## What "done" looks like
 

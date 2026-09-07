@@ -500,7 +500,9 @@ shape kernel code is full of.
 `Pte` drives a real three-level Sv39 walk in exercise 33k; `Proc` and `ProcState`
 are exercise 34k; `Context` and the assembly indexing it are exercise 35k;
 `#[repr(C)]` on `Trapframe` makes user mode possible in exercise 48k.
-`04r_structs_impl` builds `MemRegion` and a working `Pte`; `05r_enums_match`
+`04r_structs_impl` builds `MemRegion`, a working `Pte`, and a `PageGuard` whose
+`Drop` puts its page back on the free list — the guard of L03 §6.1 with the
+lock swapped for a page; `05r_enums_match`
 builds a process state machine from an enum, a `match`, and an `Option`. Both run
 under `cargo test` — no QEMU, no kernel. Read the tests at the bottom of each
 `warmup/src/lib.rs` first: they are the contract.

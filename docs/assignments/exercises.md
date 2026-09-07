@@ -21,7 +21,7 @@ Exercises `00r`–`21r`. Everything here runs on your own laptop with `cargo tes
 | `01r` | **01r_control_flow** | Functions, `if`/`loop`/`while`, and integer overflow | Fri Aug 28 | `cargo test` |
 | `02r` | **02r_ownership** | Ownership and moves — why a kernel needs no garbage collector | Thu Sep 3 | `cargo test` |
 | `03r` | **03r_borrowing** | `&` and `&mut`, the aliasing rule, and lifetimes by example | Fri Sep 4 | `cargo test` |
-| `04r` | **04r_structs_impl** | Structs, methods, `const fn`, and the newtype pattern | Thu Sep 10 | `cargo test` |
+| `04r` | **04r_structs_impl** | Structs, methods, `const fn`, newtypes, and a guard that frees its page in `Drop` | Thu Sep 10 | `cargo test` |
 | `05r` | **05r_enums_match** | Enums, `Option`, and exhaustive `match` | Fri Sep 11 | `cargo test` |
 | `06r` | **06r_collections** | Arrays, slices, `Vec`, and fixed kernel tables | Thu Sep 17 | `cargo test` |
 | `07r` | **07r_traits** | Traits, generics, and the abstractions the scheduler needs | Thu Sep 17 | `cargo test` |

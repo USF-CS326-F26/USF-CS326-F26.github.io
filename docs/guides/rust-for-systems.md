@@ -20,7 +20,7 @@ warmup to reread.
 |---|---|---|
 | `02r_ownership` | ownership, moves, `Copy`, drop | `32k` — the physical page allocator |
 | `03r_borrowing` | `&`, `&mut`, the aliasing rule, lifetimes | `37k` — spinlock guards |
-| `04r_structs_impl` | `struct`, `impl`, `const fn`, newtypes, `repr` | `33k` `Pte`, `35k` `Context` |
+| `04r_structs_impl` | `struct`, `impl`, `const fn`, newtypes, `repr`, `Drop` | `33k` `Pte`, `35k` `Context`, `37k` guards |
 | `05r_enums_match` | `enum`, `Option`, exhaustive `match` | `34k` `ProcState`, `40k` `InodeKind` |
 | `06r_collections` | arrays, slices, `Vec`, iteration | the `PROCS` table, the fd table |
 | `07r_traits` | traits, generics, `impl Trait`, dispatch | `36k` `Scheduler`, `46k` `Out` |
