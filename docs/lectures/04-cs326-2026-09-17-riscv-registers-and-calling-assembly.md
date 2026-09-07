@@ -673,7 +673,7 @@ the call, these registers hold values the routine still needs *afterwards*:
 and what code must exist. Then: `scale` is a leaf using only `a0` and `t0`. How
 many save/restore instructions does `scale` itself contain?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Register | Class | Responsible | What must exist |
@@ -703,7 +703,7 @@ and `s2` as accumulators, and hold a 24-byte local array. Write the prologue
 and epilogue, state the frame size, and give `sp` inside the body if `sp` was
 `0x8000_5A00` on entry.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -761,7 +761,7 @@ Give every field's offset, the size, and the alignment. Write the two
 instructions that save `ra` and `sp` into a `Frame` whose address is in `a0`.
 Then: what changes if `#[repr(C)]` is deleted?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 C's rules: declaration order, each field at the next offset satisfying its own
@@ -828,7 +828,7 @@ running checks...
 Then nothing, until the harness kills QEMU. Explain step by step why it hangs
 rather than printing a `[fail]` line.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The loads run first, so by the time the stores execute all four registers hold
@@ -882,7 +882,7 @@ let z = unsafe { asm::add3(1, 2) };
 Does this compile? What are `x` and `z`? Is the behavior deterministic? What
 tool would catch it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **It compiles, with no warning.** An `extern` block is a declaration, and a
@@ -940,7 +940,7 @@ Say which line each of the three label references targets. Then: `src` holds
 call is `mystery(dst, src, 4)`. What does `dst` contain afterwards, and what is
 in `a0` at `ret`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **Labels.** Both `2f` references target the `2:` before `li t1, 0` — nearest

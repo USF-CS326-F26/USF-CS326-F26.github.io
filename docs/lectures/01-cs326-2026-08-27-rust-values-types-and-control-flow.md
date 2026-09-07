@@ -629,7 +629,7 @@ Given `PGSIZE = 4096` and the address `0x8000_1234`:
 4. What is `pgroundup(0x8000_1234)`?
 5. How many whole pages lie in `0x8000_1234 .. 0x8000_4000`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1.** Each hex digit is four bits, so `1234` expands digit by digit:
@@ -682,7 +682,7 @@ fn count() -> usize {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Stray semicolon: no tail expression, so the block's value is `()`
@@ -723,7 +723,7 @@ loop {
 Then: why is this a `loop` and not `while v != 0`? And what breaks if someone
 "tidies" it to start `i` at 0 and count up?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Digits are produced least-significant first and written from the right end
@@ -770,7 +770,7 @@ let m: usize = usize::MAX;
 // (4) a.checked_add(b)      (8) (a as u16) + (b as u16)
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | | Debug | Release | Note |
@@ -806,7 +806,7 @@ fn last_page_at_or_below(addr: usize) -> usize {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **The bug is not in the arithmetic — it is in what the function does with an

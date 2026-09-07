@@ -518,7 +518,7 @@ must be advanced before `sret`.
 (c) 0x8000000000000009      (f) 0x8000000000000005
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | | Kind | Cause | rv6 does | Advance `sepc`? |
@@ -550,7 +550,7 @@ Symptoms                                    Missing line
 5. Jump to address 0 immediately            E. mstatus.MPP = 01
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1 → B**, **2 → C**, **3 → D**, **4 → E**, **5 → A**.
@@ -585,7 +585,7 @@ A hart has `pmpaddr0 = 0x0000_0000_2000_0000` and `pmpcfg0 = 0x0000_0000_0000_09
 S-mode read? (c) An S-mode store to `0x8000_1000` — allowed? (d) The same store
 from M-mode?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `pmpcfg0` packs eight one-byte configurations, entry 0 in the low byte,
@@ -614,7 +614,7 @@ An `ebreak` at `0x8000_1234` executes in supervisor mode with `sstatus.SIE = 1`,
 trap. (b) Give `sp` when `kerneltrap` begins. (c) Give `pc` after `sret`.
 (d) Repeat (c) assuming the handler forgot `sepc += 4`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -655,7 +655,7 @@ this tick is serviced; `timervec` does `mtimecmp += INTERVAL`
 `mtimecmp = mtime + INTERVAL` — what now, and what goes wrong over an hour?
 (d) The *supervisor* handler forgets `csrw sip, sip & !2`. What happens?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `mtimecmp = 5_200_000`; it goes pending 0.1 s later, so **10 ticks per
@@ -708,7 +708,7 @@ pub extern "C" fn kerneltrap() {
 
 Find three distinct defects and give the symptom of each.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1. No top-bit test** (`trap.rs` is the missing line). `scause & 0xff`

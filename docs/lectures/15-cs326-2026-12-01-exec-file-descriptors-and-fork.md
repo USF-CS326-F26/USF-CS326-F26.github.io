@@ -623,7 +623,7 @@ compute (a) `argc`, (b) the user address of each argument string, (c) `a1` on
 entry, (d) the eight bytes at `0x10FD8`, and (e) how many bytes of the page are
 wasted to alignment.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `argc = 2`. `argv[0]` is the program name `cat`, added by `exec` itself
@@ -656,7 +656,7 @@ what does the child's `close` affect? (b) Under the classic Unix design, what
 offset does the parent's last read start at? (c) Which answer does
 `(echo a; echo b) > f` depend on, and why?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) **100.** rv6 stores the `File` by value in `ofile` (`proc.rs`) and
@@ -687,7 +687,7 @@ classmate's `sys_read` copies the right bytes out to the user but never executes
 `(*p).ofile[fd].off += n`. Describe exactly what `run cat notes.txt` does, and
 why the exercise harness reports a timeout rather than wrong output.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `0x601 = 0x400 | 0x200 | 0x001` = `O_TRUNC | O_CREATE | O_WRONLY`: create it
@@ -723,7 +723,7 @@ This program runs on rv6's cooperative scheduler, which never preempts:
 execute? (c) On Linux, with preemption and buffered stdio, what other outputs
 become possible, and what does that say about the C library?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) **`ACBD`**. `A` prints once, before the fork. The parent returns from `fork`
@@ -762,7 +762,7 @@ Here are seven things `exec` does, shuffled:
 breaks. (c) Why is it safe for step 1 to run inside the system call at all, given
 that the process is in the middle of executing?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) 3, 4, 7, 2 — the stack must be mapped before step 2 can `copyout` into it —
@@ -798,7 +798,7 @@ A hostile user program makes three calls in a row:
 For each, name the check that stops it — or explain why it succeeds — and cite
 the line.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **`read(9, ...)`** — stopped by `getfile` (`syscall.rs`). `9 < NOFILE`, so

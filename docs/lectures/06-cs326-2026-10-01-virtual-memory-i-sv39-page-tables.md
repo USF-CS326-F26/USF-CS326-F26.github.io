@@ -699,7 +699,7 @@ it eagerly copies every user page, which is correct, simple, and exactly what
 Split `0x0000_0000_1F40_2ABC` into `VPN[2]`, `VPN[1]`, `VPN[0]`, and the offset,
 in hex and decimal. Which entry of the root table does the walk start at?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -731,7 +731,7 @@ using `Pte::new` (`vm.rs`). Show the shifts.
 (b) Decode `0x0000_0000_0C00_1007`. Leaf or branch? What address, and what may be
 done with it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -777,7 +777,7 @@ mappages(root, 0x4000_0000, PGSIZE, pa3, PTE_R);
 How many pages does `walk` allocate in total, not counting the root or the four
 data pages?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | VA | VPN[2] | VPN[1] | VPN[0] |
@@ -815,7 +815,7 @@ table = page as *mut Pte;
 
 Explain precisely why the software tests passed and the hardware hung.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The bug is `PTE_R` on an **intermediate** entry, which makes every branch a leaf
@@ -854,7 +854,7 @@ these non-zero entries (everything else is `0x0`):
 
 Translate virtual address `0x4060_7ABC`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Decode the address first:
@@ -898,7 +898,7 @@ leaving `Pte::new` correct. Exercise 33k's harness starts by building
 `Pte::new(0x8765_4000, PTE_R | PTE_W | PTE_V)` and asserting
 `e.pa() == 0x8765_4000`. What does QEMU print, and what value is returned?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 From Problem 2(a), the correctly built PTE is `0x21D9_5007`. The buggy decoder

@@ -49,6 +49,14 @@ jobs:
       - name: Check code citations
         run: python3 utils/check_refs.py
 
+      # Markdown inside a block-level <details> is not parsed without
+      # markdown="1", and nothing fails when it is missing: the page builds,
+      # --strict passes, and the solution to a practice problem renders as raw
+      # source the first time a student expands it. Reads docs/ only, so it
+      # needs neither the built site nor the OSlings tree.
+      - name: Check collapsible blocks
+        run: python3 utils/check_details.py
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

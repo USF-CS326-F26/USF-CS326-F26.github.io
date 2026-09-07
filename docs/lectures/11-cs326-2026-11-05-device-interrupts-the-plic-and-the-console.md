@@ -558,7 +558,7 @@ hart 1's supervisor enable word, threshold, and claim/complete registers; say
 which enable bit is IRQ 10 and which is IRQ 35; and say whether rv6's 4 MiB PLIC
 mapping still covers them.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Hart 1 supervisor mode is context `2*1 + 1 = 3`.
@@ -610,7 +610,7 @@ works, all later input dead, kernel otherwise healthy; (iii) works, but takes
 twice as many interrupts as necessary; (iv) works here, but would lose bytes on an
 edge-triggered device.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 - **(a) → (ii).** The byte *is* read, so the line drops and there is no storm —
@@ -634,7 +634,7 @@ You type — nothing appears and nothing lands in the ring buffer. No panic, no
 hang. Using the nine gates of section 3, name every gate this rules out and list
 the ones still suspect.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Ruled out:
@@ -672,7 +672,7 @@ Using rv6's REPL (`run()` in `shell.rs`), a user types:
 byte sequence rv6 transmits to the terminal, and the contents of `line` when
 `sh.exec` is called.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Transmitted:
@@ -702,7 +702,7 @@ Using the 1 µs per interrupt from section 1, compute the budget per frame and t
 CPU load an interrupt-per-frame design demands, then name the two standard fixes
 and say which Linux uses.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Time per frame: `1 / 14.88e6` ≈ **67 ns**; cost per frame if each interrupts,

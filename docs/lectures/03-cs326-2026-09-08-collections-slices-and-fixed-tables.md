@@ -516,7 +516,7 @@ core::mem::size_of::<&[Option<u32>]>()
 core::mem::size_of::<Vec<Option<u32>>>()
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Expression | Value | Why |
@@ -547,7 +547,7 @@ returns, and say where step 7's bytes land.
 7.  write(1, "hello", 5)
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `fdalloc` (`syscall.rs`) scans from index 0 and takes the first slot whose
@@ -589,7 +589,7 @@ pub fn reap(table: &mut [Option<u32>], dead: u32) -> usize {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **The error** is E0502: *cannot borrow `*table` as mutable because it is also
@@ -644,7 +644,7 @@ A user program calls `read(99, buf, 10)`. (a) What happens in Rust? (b) What
 would happen in C, where `ofile` is a plain array? (c) Of `ofile[fd]`,
 `ofile.get(fd)`, and an explicit `if fd >= NOFILE`, which is right, and why?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `ofile` is `[File; 16]` (`Proc` in `proc.rs`), so `ofile[99]` fails the
@@ -689,7 +689,7 @@ Give the return value and the new `self.next` for three successive calls,
 assuming the states do not change. Then say how many times the closure inside
 `map` runs during the first call, and why that matters.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The chain: `(0..n)` produces offsets, `map` turns `off` into index
@@ -727,7 +727,7 @@ A student proposes replacing the process table with
 boot-time option. Give four independent reasons this fails in rv6, ordered
 from "does not compile" to "compiles, runs, and is still wrong".
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 1. **It does not compile in Module 2.** `Vec` lives in `alloc`, which needs a

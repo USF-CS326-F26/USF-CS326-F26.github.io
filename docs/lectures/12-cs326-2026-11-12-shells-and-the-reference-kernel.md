@@ -709,7 +709,7 @@ m  k  d  i  r  SP  d  o  x  7F  c  09  s  0D
 Using `run` (`shell.rs`), give (a) the exact byte stream the
 shell echoes, and (b) the exact string passed to `Shell::exec`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) Echoed bytes.** Graphic characters and spaces echo as themselves
@@ -751,7 +751,7 @@ pwd
 ls
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -791,7 +791,7 @@ cat out.txt
 what are they? (b) What exactly does `cat out.txt` print? (c) Explain why (a)
 and (b) are unrelated.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) Five items:** `echo`, `"hello`, `world"`, `>`, `out.txt`.
@@ -828,7 +828,7 @@ cat notes.txt
 where `/docs/notes.txt` exists and `/notes.txt` does not. What happens, and what
 is the minimal change that makes `cd` work?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `cat notes.txt` fails: no such file.
@@ -873,7 +873,7 @@ impl Out for FileOut {
 They then run `ls > listing.txt`. What happens, and why? Name the invariant that
 was broken and give two fixes.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **It hangs the machine.** `cmd_ls` (`shell.rs`) takes the filesystem lock and
@@ -922,7 +922,7 @@ G. the shell calls fork()
 H. "hi" appears on the terminal
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Order: **B, F, G, D, E, A, H, C** — with one honest caveat about C, below.

@@ -522,7 +522,7 @@ working child by copying the parent's trapframe and zeroing one field.
 and L0 indices for both. Then encode the leaf PTE that maps `TRAMPOLINE` to
 physical page `0x8020_1000` with the permissions rv6 actually uses.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `px(level, va) = (va >> (12 + level * 9)) & 0x1ff` (`vm.rs`).
@@ -558,7 +558,7 @@ The user page table maps only pages at VAs 0, 0x1_0000, 0x3F_FFFF_E000, and
 0x3F_FFFF_F000. This routine is reached from user mode via `stvec`. Predict, in
 order, exactly what the hardware does starting at `0x8000_9040`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 It never reaches `0x8000_9040`. The trap itself sets `pc = stvec = 0x8000_9040`
@@ -585,7 +585,7 @@ before each of these points in `usermode.rs`: (a) line 94, (b) line 96, (c) line
 127, (d) line 137. Then: what breaks if line 94 is replaced with
 `csrr a0, sscratch`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Point | `a0` | `sscratch` | `satp` |
@@ -614,7 +614,7 @@ Two independent one-bit mistakes. For each, state the exact symptom and the
 **(a)** `proc_pagetable` maps the trampoline with `PTE_R | PTE_X | PTE_U`.
 **(b)** The program's code page is mapped with `PTE_R | PTE_X` and no `PTE_U`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Everything works — and that is the problem: no test fails. But the
@@ -647,7 +647,7 @@ sd   ra, 0(sp)
 Construct a user program that turns this into arbitrary kernel memory
 corruption, and explain what the second mechanism (`satp`) contributes.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Set `sp = TRAPFRAME + 256` and `ecall`. The kernel, in S-mode with the user's
@@ -677,7 +677,7 @@ E. `(*tf).kernel_satp = ...` in `usertrapret`
 F. `ptr::copy_nonoverlapping(src, tramp, len)` in `kvmmake`
 G. `csrw stvec, tramp_uservec` in `usertrapret`
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **F → B → G → E → A → C → D.**

@@ -588,7 +588,7 @@ d. ELF LOAD segments copied to RAM  i. 0x5555 -> 0x0010_0000
 e. jalr -> kmain                    j. a0 = mhartid
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **d (H) → c (H) → j (H) → f (H) → h (H) → a (S) → e (S) → g (S) → i (S) → b (H)**
@@ -616,7 +616,7 @@ The ROM is six instructions at `0x1000`, and memory there contains:
 Given `auipc t0, 0` at `0x1000`, compute the final `t0`, `a0`, `a1`, and `a2`.
 Then: if QEMU were launched *with* OpenSBI, which of the four would change?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `auipc t0, 0` sets `t0 = pc = 0x1000`.
@@ -652,7 +652,7 @@ Compute (a) `sp` after `_entry`'s third instruction, (b) the `end` symbol,
 (c) the first page-aligned address `kalloc::init` hands out, and (d) the gap
 between the top of the stack and `end`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -688,7 +688,7 @@ pub unsafe extern "C" fn _entry() -> ! {
 What happens when it runs? Does it print? Does it crash? When would it appear
 to *work*?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `sp` is set to the **bottom** of `STACK0` — the array's lowest address — and
@@ -724,7 +724,7 @@ Both call `puts("HI\n")` then `exit_success()`. Predict each one's terminal
 output in debug and in release, and explain what the compiler is permitted to
 do.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | | debug | release |
@@ -761,7 +761,7 @@ a 4-byte store would do.
 (f) 0x0200_4000
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) `0x0000_1004`** — boot ROM (`0x1000`–`0xffff`). Read-only; the store is

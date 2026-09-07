@@ -669,7 +669,7 @@ mappings. rv6 has one hart, one ASID, and 4 KiB pages everywhere.
 `root = 0x87FF_F000`. What does the hardware do on the next instruction fetch, and
 which `scause` results?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -723,7 +723,7 @@ are not merely conventional but mandatory, and say what breaks if each is revers
   H. mappages(root, UART0, PGSIZE, UART0, R|W)
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Order: **G, B, D, H, A, C, E, F** — matching `kinit` at `main.rs`, where
@@ -759,7 +759,7 @@ mappages(root, KERNBASE, PHYSTOP, KERNBASE, PTE_R | PTE_W | PTE_X)?;
 The exercise harness prints `OSLINGS:PASS`. The kernel boots. Everything works.
 What is wrong, and what did it cost?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The third argument is a **size**, not an end address. The correct size is
@@ -797,7 +797,7 @@ the exercise-13 kernel, where `kmain` runs in supervisor mode and `kinit` is
 `uart::init(); kalloc::init(); kvminithart(kvmmake()); proc::init(); trap::init();`
 followed by `uart::puts(BANNER)`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) Exercise 39k.** The harness never reaches the dangerous step:
@@ -847,7 +847,7 @@ Nothing was previously mapped at `0x8500_0000`. Argue whether the fence is neede
 and explain why this bug is unlikely to be caught by any test you can run in this
 course.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **The fence is needed.** The intuition that says otherwise — "the TLB caches
@@ -885,7 +885,7 @@ sepc    0x800061a4
 Say exactly what happened, in order, and name the most likely single line of
 `kvmmake` at fault.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Read it right to left.

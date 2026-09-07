@@ -680,7 +680,7 @@ cooperative scheduler and round robin from slot 0. Give the order in which the
 three processes run, and the parent's final exit status. Then state what would
 change if rv6 preempted on every timer tick.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The parent keeps the CPU until it blocks, because nothing preempts it:
@@ -713,7 +713,7 @@ Give the contents of `ofile[0..3]` after each call, state which fd `open`
 returns and why, and say where `hi` ends up. Then explain why `exec` does not
 undo any of it.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 After `fork`, the child's table is a copy of the shell's:
@@ -753,7 +753,7 @@ let built = build_addrspace((*p).trapframe as usize, name, args)?;
 `run exectest` still passes. `run execfail` hangs or faults. Explain both
 observations precisely, and name the property that was broken.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `exectest` execs `echo`, which exists. `build_addrspace` succeeds, the new page
@@ -787,7 +787,7 @@ status 7; give the four bytes written, in address order. (c) Why is the result
 of `copyout` discarded, and is that defensible? (d) On Linux, `forktest` exits
 with `7 + 10`; what would `wait` report if the child had called `exit(300)`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `status_addr` is a **user** virtual address and the kernel is running on
@@ -817,7 +817,7 @@ active page table changes, and state what value ends up in the user's `a0` and
 `epc` registers when `sret` finally executes. Assume the exec succeeds and
 `hello` takes one argument.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Page-table changes:
@@ -855,7 +855,7 @@ faster, and covers redirection. Give the strongest version of their case, then
 the strongest rebuttal, and finally state one thing rv6 specifically would gain
 and one it would lose.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **Their case.** `fork` builds an address space that `exec` immediately

@@ -34,7 +34,7 @@ only correct order, and say what breaks if you violate (i) `c` before `a`,
   f. (*p).pagetable = built.pagetable
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Order: **c, e, f, b, a, d.**
@@ -77,7 +77,7 @@ array with `sp &= !15`. Give `argc` and `sp` after each push, then fill the four
             +--------------------------+  <- sp, and a1
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `argc = 1 + args.len() = 2` — `argv[0]` is the program name, which `exec` adds.
@@ -120,7 +120,7 @@ Decode each entry — physical address, flags, leaf or interior, which page — 
   satp = 0x8000_0000_0008_0202
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `pa = (pte >> 10) << 12`, `flags = pte & 0x3ff`; leaf iff any of R/W/X is set.
@@ -171,7 +171,7 @@ at each mark, then say what the two writes produce.
    // parent then writes 5 bytes, child writes 3 bytes, both through F
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `O_CREATE | O_WRONLY = 0x200 | 0x001 = 0x201`, so `F` is write-only, `off = 0`.
@@ -210,7 +210,7 @@ Give the one-line consequence for `cmd >> log`. (b) rv6 diverges: `File` is
 `(*child).ofile = (*parent).ofile;`. What does Problem 4's experiment produce on
 rv6, and why?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Because the offset must be shared between descriptors *derived* from
@@ -258,7 +258,7 @@ if n > 0 && vm::copyout((*p).pagetable, buf, &kbuf[..n]).is_err() {
 n as isize
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **Bug 1 — the offset is never advanced.** The missing line is
@@ -293,7 +293,7 @@ get set to the child's pid?
 Fields: `pid`, `pagetable`, the pages behind VA `0x0`, the `trapframe` page,
 `trapframe.epc`, `trapframe.a0`, `kstack`, `ofile`, `context.ra`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Field | Child's value | which |
@@ -338,7 +338,7 @@ process's `ProcState` at each mark, and the parent's exit status.
   D: both waits have returned
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -376,7 +376,7 @@ Both import preemptive-kernel habits; rv6 has a timer but does not preempt.
 what happens to a child whose parent exits first, and who cleans it up? (c) What
 does rv6 do instead, and what latent bug lurks in rv6's `parent` field?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The exit status must outlive the process that produced it, so the slot
@@ -414,7 +414,7 @@ Unix could have offered one call, `spawn(path, argv)`. It offers `fork` and
 specific window, two things a shell does inside it, and the
 [Cheatsheet](../guides/cheatsheet.md) line that makes it work.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The window is **between `fork` returning 0 and the child's `ecall` to
@@ -474,7 +474,7 @@ flowchart LR
     P -->|"reads fd 0"| C2
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The counters are monotonic totals, never reset; the ring position is
@@ -540,7 +540,7 @@ handler, and whether `sepc` must advance by 4.
 the trapframe's `VPN[2]`, and say why the trampoline must sit at the *same* VA
 in the kernel's table and in every user table.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** rv6 tests `scause >> 63` for interrupt-vs-exception, `scause & 0xff` for
@@ -610,7 +610,7 @@ from the first keypress to the reappearance of the `$ ` prompt, naming at each
 stage which component acts and which CSR or data structure is involved. Give
 yourself twenty minutes on paper before revealing.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1 — the keypress.** `sh` is blocked in `read(0, cursor, 1)`; `sys_read`, for

@@ -608,7 +608,7 @@ exists in `ProcState` (`proc.rs`) but nothing puts a process there yet.
 block? (c) What address does `ret` jump to? (d) What is in `s0` then? (e) Which
 stack is the CPU standing on?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `0x8020_0FF0` — `sd sp, 8(a0)` (`swtch.rs`) stores `sp` at offset 8 of the
@@ -644,7 +644,7 @@ swtch:
 
 What is wrong, and why does the one-way test still pass?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Load and store are **interleaved in the wrong order**: each register is loaded from
@@ -668,7 +668,7 @@ starting at `next = 4`. Slot 4's process exits on its second turn (`Zombie` befo
 next pick); everything else keeps yielding. List the first eight indices `pick_next`
 returns and the cursor after each.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Scans go `(next + off) % 6` for `off` in `0..6`, taking the first `Runnable`.
@@ -704,7 +704,7 @@ the rotation collapses to alternating 0 and 3, and never stalls on the dead inde
 this process? (c) Exactly when does it go wrong, and what does QEMU show? (d) What
 is the correct line?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) Offset 0 (`ra`) = `0x8000_51C4`; offset 8 (`sp`) = `0x8025_0000`.
@@ -729,7 +729,7 @@ Four jobs arrive at t=0 with service times J1=8, J2=4, J3=9, J4=5 ms. Compute av
 turnaround and average response time for (a) FCFS in order J1..J4; (b) SJF; (c) round
 robin with a 2 ms quantum, scanning J1→J4. Which policy wins which metric, and why?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) FCFS.** Completions 8, 12, 21, 26; all arrive at 0, so turnaround = completion,
@@ -756,7 +756,7 @@ Suppose you delete the scheduler context and have `proc_yield` call
 there. (a) Name one thing that still works. (b) Name the specific case that breaks in
 `exit_current`. (c) What changes if rv6 ran on four harts?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) The ordinary yield path — `swtch` does not care whose contexts it gets, and you

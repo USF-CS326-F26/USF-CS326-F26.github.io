@@ -42,6 +42,8 @@ utils/
   gen_exercises.py          cs326-oslings/info.toml + the calendar → docs/assignments/exercises.md
   gen_nav.py                the filesystem → the Lectures / Exercise Prep / Assignments nav
   check_links.py            every schedule link resolves; every exercise row has a Prep link
+  check_refs.py             every cited OSlings file and item exists; no line-numbered citations
+  check_details.py          every block-level <details> carries markdown="1", so it renders
   rename_exercises.py       one-shot exercise rename (old → new names); --dry-run reports leftovers
   americanize.py            British → American spelling pass; --dry-run reports
 ```
@@ -52,6 +54,7 @@ Run the generators in this order after any change to the calendar, to
 ```bash
 python3 utils/gen_schedule.py && python3 utils/gen_exercises.py && python3 utils/gen_nav.py
 mkdocs build --strict && python3 utils/check_links.py
+python3 utils/check_refs.py && python3 utils/check_details.py
 ```
 
 ## The schedule

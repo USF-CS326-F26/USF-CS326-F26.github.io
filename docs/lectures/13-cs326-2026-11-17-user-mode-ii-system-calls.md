@@ -662,7 +662,7 @@ and say which branch of `usertrap` handles it in rv6.
 (d) scause = 0x0000000000000002   sepc = 0x0000000000001004
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `scause = 8`: environment call from U-mode, a system call. **Advance**
@@ -701,7 +701,7 @@ program:
 (a) Exactly what appears on the console? (b) Does the machine hang, spin, or
 panic? (c) A second student instead writes `+= 8`. What happens?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `hello from user mode` printed endlessly, with no newline problems and
@@ -737,7 +737,7 @@ which function rejects it.
 (iii) write(1, 0x4000000000, 32)
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 All three return **-1**, and all three are stopped inside `walkaddr`
@@ -782,7 +782,7 @@ The kernel calls `vm::copyin(pt, &mut dst[..100], 0x0FC0)` where `dst` is a
 How many loop iterations run, and what are the source physical address and byte
 count of each `copy_nonoverlapping`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **Two** iterations.
@@ -821,7 +821,7 @@ f(user_satp)
 
 What happens, and at exactly which instruction?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The kernel dies at the instruction *immediately after* `csrw satp`.
@@ -864,7 +864,7 @@ the user's `a0` register at each.
 (5) after the following li a7, 11
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(1)** The `2` is in the CPU register `a2`; `a0` holds `1` (the fd). Neither is

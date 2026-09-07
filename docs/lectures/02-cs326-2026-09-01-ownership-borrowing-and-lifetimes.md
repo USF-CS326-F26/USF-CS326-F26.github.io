@@ -534,7 +534,7 @@ vector after each line, and find the first line that fails and its error code.
 5  let back = give_back(free, p);
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Line | Owner afterwards | Note |
@@ -563,7 +563,7 @@ For each type say whether it is `Copy`, in one sentence: (1) `usize`,
 (2) `[u8; 4096]`, (3) `Vec<usize>`, (4) `&[u8]`, (5) `&mut u64`,
 (6) `SpinLockGuard<'a, T>`. Then state the rule connecting `Copy` and `Drop`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 1. **Yes.** Plain bits; duplicating them duplicates the value.
@@ -602,7 +602,7 @@ drop(d);
 println!("main end");
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -646,7 +646,7 @@ let g = Guard::new(&mut count);
 println!("{}", count);
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) `error[E0502]: cannot borrow 'pages' as mutable because it is also
@@ -693,7 +693,7 @@ fn head_of(a: &[u8], b: &[u8]) -> &[u8] { &a[..b.len()] }
 Annotate `head_of` as *precisely* as possible, and give a call site the precise
 version accepts but a `pick`-style signature rejects.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(i)** `error[E0106]: missing lifetime specifier`. Rule 1 gives `a` and `b` two
@@ -751,7 +751,7 @@ match FS.lock().read(inum, &mut buf) {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(i)** In `root_size` the guard is a local. `Deref` yields a `&FileSystem`

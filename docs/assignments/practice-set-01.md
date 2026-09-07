@@ -46,7 +46,7 @@ let k = consume(taken);           // 6
 let j = consume(taken);           // 7
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Line | Compiles? | Why |
@@ -85,7 +85,7 @@ fn install(entries: &mut [usize], src: usize, dst: usize) {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The aliasing rule: **at any moment you may have either any number of `&T`, or
@@ -138,7 +138,7 @@ What does the `_` arm cost them, concretely, when a sixth state is added?
 (c) The process table is `[Proc; NPROC]`, a fixed array of 64. Give two
 reasons a kernel prefers this to a `Vec<Proc>`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** RAM starts at `KERNBASE = 0x8000_0000`, so no page the allocator hands
@@ -180,7 +180,7 @@ what happens in a release build?
 
 (d) `0x8004_2000` is how far above `KERNBASE`, in bytes and in pages?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `0xB` = `1011`, `0x7` = `0111`, so `0xB7` = `0b1011_0111` = 183. Low
@@ -221,7 +221,7 @@ physical addresses passed to `kfree`, and the number of pages the loop builds.
 
 (d) Why does this `pgroundup` idiom require `PGSIZE` to be a power of two?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -289,7 +289,7 @@ the three iterations, and at C.
 (c) The routine never touches `ra` or `sp`, and has no prologue. Why is that
 legal?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The trap is `lb`: it **sign-extends**. `0xF0` has its top bit set, so
@@ -331,7 +331,7 @@ else entirely.
 (c) Give the two instructions to add at the top and the two at the bottom that
 make it correct, and say what happens to `sp`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `s0`–`s11` and `sp` are **callee-saved**: a function that uses one must
@@ -383,7 +383,7 @@ plain `*p = c` and say precisely what the optimizer is allowed to do.
 (d) Creating a raw pointer is safe; dereferencing one is `unsafe`. Why is that
 split the right place to draw the line?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `core` keeps `Option`, `Result`, slices, iterators, and `PanicInfo` —
@@ -440,7 +440,7 @@ that matter, and what breaks without it?
 (e) The stack occupies `0x8002_5000`–`0x8002_9000`, which is *below* `end`.
 Why is that essential, given Problem 5?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -511,7 +511,7 @@ let d = kalloc();   // (iv)
 (c) After the last line, what is stored in the first 8 bytes of the page `d`
 points at, and why does that not matter?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `kfree` pushes onto the front and `kalloc` pops from the front — a **LIFO
@@ -566,7 +566,7 @@ Would rv6 ever build it?
 
 (d) Why do the `>> 12` and the `<< 10` not cancel?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Flags = `2 | 4 | 1` = `7`.
@@ -632,7 +632,7 @@ address perfectly. Explain.
 
 (e) How many physical pages does this page table occupy?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Mode is bits 63:60 = `0x8` = **8 = Sv39**. The root PPN is the low 44
@@ -719,7 +719,7 @@ Why, and what would rv6 need in order to use it?
 (c) For each, legal or not, and why: `Zombie → Running` ·
 `Unused → Running` · `Running → Unused`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -792,7 +792,7 @@ eventually do?
 return ptr::null_mut();`. Say why that is the fix that generalizes, rather
 than just setting `state = Unused`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The slot is left **`Runnable` with a null page table**, holding a

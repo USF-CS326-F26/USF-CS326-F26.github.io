@@ -573,7 +573,7 @@ f = allocproc();
 Give the slot index and pid for each of `a` through `f`. Then state whether
 `d == b` and whether `(*d).pid == (*b).pid` at the moment `d` is returned.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `allocproc` always takes the **first** `Unused` slot (`proc.rs`), and
@@ -609,7 +609,7 @@ pub unsafe fn freeproc(p: *mut Proc) {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **Bug 1 — the pointer is never nulled.** `(*p).pagetable` still holds the address
@@ -651,7 +651,7 @@ Physical memory runs out and `create_pagetable` returns null. Describe the state
 of the table afterwards, and predict what the exercise-06 scheduler does when it
 next runs. Then explain what `allocproc()` (`proc.rs`) does differently.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The slot is left **`Runnable` with a null `pagetable`**, and a pid is consumed.
@@ -689,7 +689,7 @@ the function that does. If not, explain what would have to change.
 4. `Running → Unused`
 5. `Runnable → Sleeping`
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 1. **Yes.** `proc_yield` (`usermode.rs`) sets `Runnable` and `swtch`-es
@@ -726,7 +726,7 @@ and that `File` is `{FileKind, usize, usize, bool, bool}` with `NOFILE = 16`.
 Compute (a) `size_of::<File>()`, (b) `size_of::<Proc>()`, (c) the size of
 `PROCS`, and (d) how many 4 KiB pages that occupies.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) `File`** (`file.rs`):
@@ -790,7 +790,7 @@ goes wrong:
 
 Then name the mechanism real Unix kernels use to prevent this.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 At step 2, `C`'s `parent` still holds `&PROCS[3]`. Freeing `P` cannot find that

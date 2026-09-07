@@ -621,7 +621,7 @@ The semaphore holds **one** permit and two flows both call it. Produce an
 interleaving in which both return `true`, give the final `count`, and name the
 invariant from §6 that broke.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The `if` and the decrement are two independent read-modify-write sequences:
@@ -666,7 +666,7 @@ atomic (`fetch_sub`) does not help — the window is between them.
 there no `lr.d`/`sc.d` loop? (d) If the flag was already `true`, what does the
 AMO write and what does the function return?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `0x8000_A00E & ~3 = 0x8000_A00C`. RV64A has no byte-width AMO, so the atomic
@@ -708,7 +708,7 @@ fn bump_b() {
 
 Which is broken, why, what does the compiler say, and what one character fixes it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `bump_b`. `let _ = expr;` does **not** create a binding — `_` is a wildcard
@@ -733,7 +733,7 @@ offers four items back to back. Give `empty` and `full` after each of the first
 three productions and say precisely where the fourth blocks. Then: a student
 swaps the producer's first two lines to `P(mutex); P(empty);`. Show the deadlock.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Each production runs `P(empty)`, `P(mutex)`, write, `V(mutex)`, `V(full)`:
@@ -773,7 +773,7 @@ let big: Vec<u32> = Vec::with_capacity(2048);
 pages held at once? (b) How many bytes of the final page are used? (c) What
 happens at `with_capacity`, and what does QEMU show?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `Vec::new()` allocates nothing. The 1st push allocates capacity 4, the 5th

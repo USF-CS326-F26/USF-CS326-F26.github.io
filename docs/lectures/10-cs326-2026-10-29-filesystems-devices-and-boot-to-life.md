@@ -567,7 +567,7 @@ fs.dircreate(ROOT, b"d", InodeKind::File)?;   // -> inum ?
 Give the four inode numbers and the slot each name lands in. Then say what
 `for_each_entry(ROOT, ..)` visits, in order, and what that implies about `ls`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `alloc` scans `ROOT..NINODE` for the first `Free` (`fs.rs`) and inode 1 is the
@@ -595,7 +595,7 @@ unlink(ROOT, "notes")
 What does `unlink` do, what does reading through `notes2` return, and what happens
 on the *next* `dircreate`? Name the field a real inode has that prevents this.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `unlink` sets `inodes[5] = Inode::new()` — kind `Free` — and clears the slot
@@ -621,7 +621,7 @@ and the result for each:
 (a) `/sub/inner/notes` &nbsp; (b) `/sub/notes` &nbsp; (c) `/log/notes`
 &nbsp; (d) `cat /sub/inner`
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `dirlookup(1,"sub")` → `Ok(3)`; `dirlookup(3,"inner")` → `Ok(7)`;
@@ -650,7 +650,7 @@ You break in GDB during boot and `x/1xb 0x10000005` reports `0x61`.
 (c) What do `tx_ready()` and `rx_ready()` return?
 (d) What does `getc()` return, and what does a second `getc()` return right after?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `UART0` is `0x1000_0000` (`memlayout.rs`) and `LSR` is offset 5
@@ -685,7 +685,7 @@ pub fn putc(c: u8) {
 Name both bugs, and predict what `puts("hi\n")` does in a debug build and in a
 release build.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **Bug 1: the poll is on the wrong side of the write.** The check must happen
@@ -721,7 +721,7 @@ unsafe fn kinit() {
 (c) What happens on exercise 43k, and why is it different?
 (d) What does this say about the boot self-check?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 (a) `kvmmake` runs first, and its first act is `kalloc::kalloc()` for the root

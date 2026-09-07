@@ -42,7 +42,7 @@ Give `a0`, `a1`, `ra`, `sp` at A, B, C, and say where the `ret` at D lands. Then
 the scheduler later calls `swtch(&SCHED_CTX, &p.context)`. Where does *that*
 `ret` land, and with what `sp`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Point | `a0` | `a1` | `ra` | `sp` |
@@ -78,7 +78,7 @@ general-purpose registers.
 *caller*-saved in the ABI, yet `swtch` saves it. Why? (c) What breaks if you
 delete `#[repr(C)]`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Before `swtch`'s first instruction runs, the compiler has already
@@ -112,7 +112,7 @@ robin starve it, and is that the same thing as unfairness? (c) rv6 has timer
 interrupts but a cooperative scheduler. What one change makes it preemptive, and
 why was it left out?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -166,7 +166,7 @@ pub fn lock(&self) -> SpinLockGuard<'_, T> {
 `compare_exchange(false, true, Acquire, Relaxed)`. What does test-and-set do
 differently, and why might you still want it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The read and the write are two instructions, and another CPU fits
@@ -204,7 +204,7 @@ and why disabling interrupts while holding a spinlock enforces it. (c) One path
 takes `FS` then `PROCS`, another `PROCS` then `FS`. Show the deadlock, the
 standard fix, and how rv6 sidesteps (a) without any lock at all.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `try_getc` takes the lock; before it releases, a UART interrupt arrives.
@@ -246,7 +246,7 @@ swaps its first two lines to `P(mutex); P(empty)`. Show the deadlock, and give
 the rule. (c) Explain the **lost wakeup** problem, and why rv6's `try_wait`
 cannot suffer it.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -290,7 +290,7 @@ deferral, not a solution.
 what `make_satp` writes. (b) A debugger shows `satp == 0x8000_0000_0008_0215`.
 What mode, and where is the root table?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `make_satp(root) = SATP_SV39 | (root >> 12)`:
@@ -335,7 +335,7 @@ translate it. (b) Translate `TRAMPOLINE` = `0x3F_FFFF_F000`. (c) Give the
 permissions of both leaves and say which user mode may touch. (d) The process
 loads from `0x0000_0000_0000_5000`. What happens, and what is in `scause`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Two rules: `px(level, va) = (va >> (12 + level*9)) & 0x1ff`, and
@@ -398,7 +398,7 @@ and say how identity mapping resolves it. (b) Is `sfence.vma` required (i) after
 the MMU still off; (iii) around `uservec`'s `csrw satp`? (c) How many page-table
 pages does the `KERNBASE..PHYSTOP` identity map cost?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The instant translation is enabled, the next instruction fetch is itself
@@ -446,7 +446,7 @@ does, and whether the handler must advance `sepc` by 4.
 | 2 | `0x8000_0000_0000_0001` | | 5 | `0x0000_0000_0000_000F` |
 | 3 | `0x8000_0000_0000_0009` | | 6 | `0x0000_0000_0000_0002` |
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 rv6 computes `scause >> 63` (1 = interrupt) and `scause & 0xff` (the code).
@@ -476,7 +476,7 @@ Name them and say what breaks if each is omitted. (b) Order the PLIC steps for
 one keystroke, giving the register address rv6 touches at each, and say what
 goes wrong if `complete` is skipped.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -548,7 +548,7 @@ would get next. (c) In Unix, `unlink` removes a *name*, not a file. What does rv
 do differently, and what breaks if you add hard links without changing anything
 else?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -606,7 +606,7 @@ table and every user table? Name the exact instruction that would fail.
 (c) The trapframe holds 31 user registers plus five other fields. Name them and
 say who writes each.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**

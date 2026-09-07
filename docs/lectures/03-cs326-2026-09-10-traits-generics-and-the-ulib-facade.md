@@ -419,7 +419,7 @@ Both policies run through the same default `run_for`, calling `pick_next` six ti
 **(b)** A `Priority` over that table: give the six picks, and name the slots that starve.
 **(c)** Slot 4 goes to `Sleeping` before the `Priority` run. What are the six picks now, and which tie-break rule decided it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `pick_next` scans forward from `next`, wrapping modulo 5, for the first `Runnable` slot, then parks the cursor past it.
@@ -456,7 +456,7 @@ trace(&mut rr,   &mut log,     9);   // RoundRobin, StringOut
 **(c)** Both parameters become `dyn`. How many, and what does each `out` call now cost?
 **(d)** rv6's shell has eleven handlers taking the sink, and two sinks exist. How many handler bodies if they were generic, and why did the kernel pick `dyn Out` at `Shell::exec()` (`shell.rs`)?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** **Three.** Only combinations *actually used* are instantiated, not the cross product — `(RoundRobin, CountingOut)` never appears. Call sites are irrelevant: calls one and four share a copy and differ only in `turns`.
@@ -488,7 +488,7 @@ fn cat_file(fs: &FileSystem, name: &str) -> Result<usize, ShellError> {
 **(c)** With it added, `cat_file` gets a 20-character name not in the directory. Which variant comes back, through how many conversions?
 **(d)** Why does the same `?` need no conversion inside `read_file`, which returns `Result<&[u8], FsError>`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -536,7 +536,7 @@ The directory holds `README` (13 bytes), `init`, and the directory `dev`. The bo
 **(b)** One version is wrong. Which, and what is the defect in one sentence?
 **(c)** On a real disk-backed filesystem, version B has a second problem. What is it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -564,7 +564,7 @@ Suppose `ulib` selected its backend with `#[cfg(feature = "rv6")]` instead of `t
 **(c)** A dev-dependency declares `ulib = { path = "../ulib", features = ["rv6"] }`. What does `cargo test` do now, and which property of Cargo features causes it?
 **(d)** In one sentence, why can `#[cfg(target_os = "none")]` produce none of (a), (b), or (c)?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** The host backend is compiled for a bare-metal target. `std` does not exist there, so `use std::fs::File` fails first, followed by a missing `#[panic_handler]`, a missing `eh_personality`, and unresolved symbols at link time. Every message names a *consequence* — "can't find crate for `std`" — never "you selected the wrong backend".

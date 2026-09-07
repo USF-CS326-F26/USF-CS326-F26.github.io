@@ -541,7 +541,7 @@ rm a
 List every `FileSystem` method each line invokes, in order, and give inode 2's
 final state. Then say what changes if line 3 is `echo > a` instead.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -583,7 +583,7 @@ Which inum does `tmp` get, and why? Now suppose a program held
 `File { inum: <scratch's inum>, off: 0 }` across the last two lines. What does
 `read` return after each?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `init` marks `ROOT` (inode 1) a directory and leaves the rest `Free`
@@ -631,7 +631,7 @@ cat box
 ls
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -673,7 +673,7 @@ let n = fsg.read(2, &mut buf)?;
 What is in `buf[..n]`? Explain what the filesystem did wrong, and name the
 real-world class of bug.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `buf[..6]` is `b"secrok"`, and `n == 6`.
@@ -708,7 +708,7 @@ interactive shell reaches `uart::puts`.
 (c) Why does `cmd_cd` call `drop(fsg)` before pushing onto the stack
 (`shell.rs`)?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a) Deadlock.** Any path from `uart::puts` back into `FS` closes the cycle:
@@ -739,7 +739,7 @@ in order, for `echo more >> log` where `log` holds `"first\n"`; (b) what happens
 if `log` does not exist; and (c) in one sentence, why your implementation would
 be unsafe if rv6 ran shell commands concurrently.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Match `>>` *before* `>` — otherwise `split_once('>')` matches the first

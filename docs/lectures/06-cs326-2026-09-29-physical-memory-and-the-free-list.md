@@ -573,7 +573,7 @@ operations are not. Its `README.md` has the mechanics and the Rust.
 kernel calls `kalloc()` three times. Give the three addresses returned, in
 order, and say how many pages remain.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `free_range` starts at `pgroundup(0x8003_0748)`:
@@ -606,7 +606,7 @@ pub unsafe fn kfree(pa: *mut u8) {
 // kalloc is the reference implementation, unchanged.
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `kfree` moves the head **before** saving the old head into the new node, so by
@@ -640,7 +640,7 @@ entirely correct here; the fault is one function away from the symptom.
 `pa = 0x87FF_F000` with those three flags, then for `pa = 0x87FF_F008`, and say
 what the hardware does with the second.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -687,7 +687,7 @@ let y = kalloc();
 Draw the list after each step, and give the values of `x` and `y`. What is the
 consequence?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -722,7 +722,7 @@ the pages it manages? (b) How many for a bitmap allocator? (c) A driver needs a
 physically contiguous 64 KiB DMA buffer — which of the allocators in §6 can
 supply it?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** Eight bytes — the `FREELIST` pointer. The per-page links live inside the
@@ -754,7 +754,7 @@ allocated — including the first eight, which held a `next` pointer. Explain wh
 this does not corrupt the free list, then describe a change to `kalloc` that
 would make the same write catastrophic.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 It is safe because of the invariant `kalloc` establishes before returning:

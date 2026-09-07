@@ -586,7 +586,7 @@ pub fn poke(regs: &mut [u8]) -> u8 {
 }
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 - **1 — compiles.** Producing an address is never unsafe.
@@ -621,7 +621,7 @@ The root page table sits at physical address `0x8020_3000`. `Pte` is a
 3. A student writes `(table as *mut u8).add(px(1, va))`. What address is that,
    and what goes wrong?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 `va = 0x3F5A_2000 = 0b0011_1111_0101_1010_0010_0000_0000_0000`.
@@ -665,7 +665,7 @@ plain_wait:
 3. What happens in QEMU, and why does the same code sometimes "work" in a debug
    build?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 1. `lui a0, 65536` puts `65536 << 12 = 0x1000_0000` in `a0` — the UART base.
@@ -704,7 +704,7 @@ pub fn write_reg_at(regs: &mut [u8], offset: usize, value: u8) -> bool {
 
 Name every defect, and say why it is *unsound* rather than merely buggy.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Three defects:
@@ -749,7 +749,7 @@ Answer from the triple and the compiler's output, not from memory.
 3. A student runs `qemu-riscv64 target/riscv64gc-unknown-none-elf/debug/rv6`.
    Give two independent reasons it cannot work.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 1. `g` = the general-purpose set — **I** + **M** + **A** + **F**/**D**, plus

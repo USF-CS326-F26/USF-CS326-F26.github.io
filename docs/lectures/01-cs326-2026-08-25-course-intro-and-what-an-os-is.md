@@ -471,7 +471,7 @@ of rv6 will implement it.
  5. A program that calls no kernel function is taken off the CPU after 0.1 s.
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 1. **Multiplex the CPU** — two process entries chosen in turn by the scheduler
@@ -509,7 +509,7 @@ page[0] = 1;            // line 3
 (a) What is the bug called? (b) Which line does the Rust compiler reject, and
 why? (c) Why does the C version usually appear to work?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** A **use-after-free**: memory returned to the allocator, then written
@@ -543,7 +543,7 @@ possible, then justify the three orderings named below.
 
 Justify: (i) B before A, (ii) G before D, (iii) C before F.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The order is **G → D → B → C → A → E → F**. (C could come earlier — rv6 defers

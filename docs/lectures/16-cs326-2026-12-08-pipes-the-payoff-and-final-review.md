@@ -650,7 +650,7 @@ Input is piped in and the terminal hangs. Which line is missing, what is the
 precise state of the pipe when the system stops, and in which process does the
 symptom appear?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The missing line is `close(p[1])` in the **parent**.
@@ -686,7 +686,7 @@ byte `k`.
 6. writer closes its end
 7. reader: `read(buf, 16)`
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 | Step | Action | nread | nwrite | Returns |
@@ -724,7 +724,7 @@ precede `kvminithart`, and what happens if `intr_on` is moved to just after
     G  uart::init            H  FS.lock().init()
 ```
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 Order: **G, C, F, D, A, H, B, E** — `uart::init`, `kalloc::init`,
@@ -756,7 +756,7 @@ table with its permissions. (c) A student adds `static mut COUNT: usize = 0;`
 to `grep.rs` and increments it per matching line. The program now dies
 immediately. Why?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `ceil(2854 / 4096) = 1` page. `load_segment` zeroes each page with
@@ -805,7 +805,7 @@ with `wakeup(chan)` marking every process sleeping on `chan` as `Runnable`.
 Show an interleaving in which the reader sleeps forever, and state the change
 that fixes it.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 ```text
@@ -844,7 +844,7 @@ A shell runs `sort < in.txt | uniq -c > out.txt`. Give each of the three
 processes' fd tables at the moment `exec` is called, assuming `open` returns
 the lowest free descriptor and the pipe was created before either `fork`.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The pipe is created first, so in the shell `p[0] = 3` and `p[1] = 4`.

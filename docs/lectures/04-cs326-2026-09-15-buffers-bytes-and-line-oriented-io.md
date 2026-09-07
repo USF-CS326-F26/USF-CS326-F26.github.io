@@ -371,7 +371,7 @@ A program copies a 900-byte file to standard output with a correct read/write lo
 **(c)** The same program is run as `cat` with no arguments on rv6, and the user types `hi` then Enter. How many `read` calls occur before the program has those three bytes, and why?
 **(d)** A classmate replaces the loop with a single `read` into a `[0u8; 4096]` buffer, arguing the file fits. On which of (a), (b), (c) does that produce correct output?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** 256, 256, 256, 132 — 900 bytes — then a fifth call returning `0`. **Five** `read` calls, four writes. (The terminating zero-read is the part people forget; the loop cannot know it is done without it.)
@@ -420,7 +420,7 @@ Ok(())
 **(c)** Which defects does the `11c_cat` test suite catch, and which does it structurally miss?
 **(d)** Rank A–D by how long the bug would survive in production, worst first, and justify the top entry.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)**
@@ -451,7 +451,7 @@ read through a **6-byte** buffer.
 **(c)** The word `the\tquick` is split across a chunk boundary in the middle of `quick`. Why does that not double-count it, and what single fact makes the answer independent of the buffer size?
 **(d)** The input ends inside a word, with no trailing whitespace. Why is no end-of-file special case needed?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 The input is 21 bytes: `␣␣the⇥quick␣\n␣brown␣␣` (`⇥` is a tab).
@@ -496,7 +496,7 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
 **(c)** `contains(b"anything", b"")` — what does it return? Is that right?
 **(d)** Write the two guard clauses and the corrected loop bound, and say which of (a)–(c) each one fixes.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** **false**. `haystack.len() - needle.len()` is `4 - 1 = 3`, and `0..3` yields 0, 1, 2 — never 3, the only position where `x` sits. The last start position you must try is exactly `haystack.len() - needle.len()`, so the range has to be inclusive: `0..=3`. This is the most dangerous of the three, because the function is right for every match not ending at the final byte, so it survives casual testing and then quietly misses hits forever.
@@ -531,7 +531,7 @@ ab\ncdefghijklmnop\nqr
 **(c)** How many `read` syscalls happen in total?
 **(d)** `head -n 2` is run over this descriptor. What is printed, and how does it differ from what real `head` would print?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** `b"ab"`, `b"cdefghijklmn"`, `b"op"`, `b"qr"`, then `None`.
@@ -554,7 +554,7 @@ You are choosing the buffer size for a filter that will run both on your laptop 
 **(c)** A student picks `[0u8; 8192]` "for speed". What happens on rv6, and at which address?
 **(d)** `head` and `grep` use 1024 while `cat` and `wc` use 512. Give a reason for the difference that is about the *algorithm* rather than about performance.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **(a)** 4 MiB is 4 194 304 bytes. With 64 bytes: 65 536 reads. With 4096: 1024 reads. The second is **1.5625 %** of the first — a 64× reduction, matching the 64× buffer. Each of those calls is a full trap, so the saving is real; but note the shape of the curve, since going from 4096 to 65536 would save only another 960 calls out of 1024.

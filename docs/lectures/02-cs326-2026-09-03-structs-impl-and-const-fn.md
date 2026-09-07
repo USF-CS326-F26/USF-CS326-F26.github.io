@@ -536,7 +536,7 @@ With `PTE_V = 1`, `PTE_R = 2`, `PTE_W = 4`, `PTE_X = 8` and the Sv39 layout of �
 3. Why is `Pte::new(0x8000_1234, PTE_V).pa()` equal to `0x8000_1000`?
 4. Which parts could the compiler do for you, and what must be true of the code?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1.** `new` is `((pa >> 12) << 10) | flags`. `0x8020_3000 >> 12 = 0x8_0203`;
@@ -576,7 +576,7 @@ pub struct Context { pub epc: usize, pub ra: usize, pub sp: usize, /* s0..s11 */
 4. Had they deleted `#[repr(C)]` instead, would the kernel break? Is that good?
 5. Separately: `size_of::<Pte>()` is 8. Why does `size_of::<[Pte; 512]>() == 4096` matter?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1.** `#[repr(C)]` still holds, so fields sit in source order at 8-byte
@@ -626,7 +626,7 @@ impl Pte {
 2. Why does `split_at` not need `Region: Copy`, while `Pte::flags(self)` needs `Pte: Copy`?
 3. The `Pte` block does not compile. Name the error and give two fixes.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1.** `size(&self)` — reads, caller keeps the region. `grow(&mut self, pages)` —
@@ -674,7 +674,7 @@ fn label(s: ProcState) -> &'static str {
 3. What single change to B would have made the compiler flag it?
 4. State the general rule.
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1.** Only **A**, with `error[E0004]: non-exhaustive patterns:
@@ -719,7 +719,7 @@ fn step(s: State, e: Event) -> Option<State> {
 3. Delete `_ => None`. Does it compile?
 4. Why does arm 3 write `{ .. }` rather than `{ status }`?
 
-<details>
+<details markdown="1">
 <summary>Click to reveal solution</summary>
 
 **1.** `Some(Running)` — arm 1, guard holds. **`None`** — arm 1's *pattern*
