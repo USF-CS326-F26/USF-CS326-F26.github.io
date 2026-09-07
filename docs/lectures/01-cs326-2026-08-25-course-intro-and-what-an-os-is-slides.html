@@ -203,7 +203,7 @@ Show of hands:
 
 - Define an operating system by the **four jobs** it does, not by a product list
 - Map each job onto the part of rv6 you will build
-- Distinguish RISC-V's **machine**, **supervisor**, and **user** modes — at the level of who runs where
+- Distinguish RISC-V's **machine**, **supervisor**, and **user** modes — who runs where, and why machine mode is its own job
 - Order the semester's two modules, and say why the kernel is built in a fixed order
 - Explain why a kernel needs a way to step outside Rust's safety rules — and why Rust is still the right choice
 - Describe how a session runs, and what to do before Thursday
@@ -344,7 +344,7 @@ Not a compromise. An emulated machine can be stopped mid-instruction and inspect
 
 | Mode | Who runs here | What it can do |
 |---|---|---|
-| **Machine** | firmware, and a few lines of rv6 at boot | everything |
+| **Machine** | firmware — for us, rv6's own boot code | everything, untranslated |
 | **Supervisor** | the kernel | manage memory, handle traps, talk to devices |
 | **User** | your programs: `sh`, `grep`, `cat` | ordinary instructions, its own memory only |
 
@@ -353,6 +353,21 @@ trap. A program cannot make itself privileged — it *asks*, with a **system
 call**, and the kernel decides.
 
 Orientation only today. The mechanism comes in November, when you build it.
+
+---
+
+## Why machine mode exists
+
+**S-mode is privileged with respect to *processes*. M-mode is privileged with respect to the *board*.**
+
+- **Required** — S and U are optional; every hart leaves reset in M, untranslated. M is the floor, not a layer above the kernel
+- **Untranslated** — `satp` governs S and U, so somebody has to run before the kernel's page table exists
+- **Contains the kernel** — PMP is M-only, and every trap goes to M by default: your kernel gets page faults because `medeleg` handed them down
+- **Hides the board** — emulates instructions this chip lacks; owns the timer, inter-hart interrupts, power-off
+
+We run QEMU with `-bios none`, so rv6 *is* the firmware. It stays in machine mode
+until `43k`, where `start.rs` sets `mstatus.MPP` to supervisor, points `mepc` at
+`kmain`, and executes `mret`.
 
 ---
 

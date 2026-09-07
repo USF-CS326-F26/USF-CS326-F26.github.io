@@ -20,8 +20,9 @@ written in the room. There is no coding today. Thursday is the
 - **Define** an operating system by the four jobs it performs rather than by a
   list of products.
 - **Map** each job onto the part of rv6 you will build.
-- **Distinguish** RISC-V's three privilege modes at a high level, and state why
-  a user program cannot make itself privileged.
+- **Distinguish** RISC-V's three privilege modes at a high level, state why a
+  user program cannot make itself privileged, and say why machine mode is a
+  different job from the kernel's rather than simply more of it.
 - **Order** the semester's two modules, and say why the kernel must be built in
   a fixed sequence.
 - **Explain** why a kernel needs a mechanism like `unsafe` and why Rust is
@@ -206,7 +207,7 @@ privilege levels, and the kernel's authority rests on them.
 
 | Mode | Who runs here | Can do |
 |---|---|---|
-| **Machine (M)** | firmware, and a few lines of rv6 at boot | everything |
+| **Machine (M)** | firmware — which, for us, is rv6's own boot code | everything, untranslated |
 | **Supervisor (S)** | the kernel | the MMU, traps, devices |
 | **User (U)** | `sh`, `grep`, `cat` — your programs | ordinary instructions, only its own pages |
 
@@ -227,6 +228,55 @@ kernel's chosen address. No instruction a user program can execute makes it
 privileged. When a program wants something only the kernel can do, it *asks*,
 with a **system call**, which is a deliberate trap. The kernel is the gatekeeper
 for the hardware and the privileged instructions, and the hardware enforces it.
+
+**Why M is its own rung.** It is tempting to read the ladder as one authority
+getting weaker three times, with M as "the kernel, only more so." That is not
+what M is for. S-mode is where you write an operating system; M-mode is where
+you make one particular piece of silicon look like the abstract RISC-V machine
+that operating system was written against. Four things follow, and each is a
+reason S-mode cannot simply absorb the job:
+
+- **M is the only mode the specification requires.** S and U are optional. A
+  microcontroller with no MMU implements M alone and is a conforming RISC-V
+  core. Every hart leaves reset *in* M-mode, with translation off. So M is not
+  a layer stacked above the kernel — it is the floor, and S and U are carved
+  out beneath it. That is why `mstatus`, `mtvec` and `mepc` are the originals
+  and `sstatus`, `stvec` and `sepc` are a restricted view of the same machine,
+  for a mode that might not exist.
+- **M-mode is not translated.** `satp` governs S and U; an M-mode fetch or load
+  goes straight to a physical address. "The kernel proper" is therefore, by
+  definition, the code running under a page table it installed for itself — and
+  somebody has to run *before* that page table exists. (M-mode can still write
+  `satp`. Clearing it, to be sure paging is off, is one of the first things
+  rv6's `start.rs` does. M-mode simply is not subject to it.)
+- **M can constrain S — the kernel is not the top of the trust stack.**
+  Physical Memory Protection registers are M-mode-only, and they gate which
+  physical addresses S and U may touch at all, whatever page tables the kernel
+  writes. And *every* trap goes to M by default; `medeleg` and `mideleg` are
+  how M hands specific exceptions and interrupts down. Your kernel receives
+  page faults because the firmware chose to delegate them.
+- **M hides the differences between chips**, so one kernel binary runs on many
+  boards. It can trap an illegal instruction and emulate it — a misaligned
+  access this core does not do in hardware, a missing floating-point unit, a
+  silicon erratum — and it owns the parts that are genuinely board-specific:
+  the timer comparator, interrupts between harts, powering the machine off.
+
+> **Key distinction:** S-mode is privileged with respect to *processes*; M-mode
+> is privileged with respect to the *board*. The kernel's job is isolating
+> programs from one another. Firmware's job is isolating the kernel from the
+> particular hardware — hiding its quirks, and containing its mistakes.
+
+Usually that second job belongs to a separate program: on real hardware, and
+under QEMU's default firmware, OpenSBI boots in M-mode and `mret`s into the
+kernel in S-mode, which afterwards asks for a timer or starts another hart by
+executing `ecall` — the same instruction your user programs use to enter the
+kernel, one rung up. We run QEMU with `-bios none`, so there is no such
+program: rv6 *is* the firmware, loaded at `0x8000_0000`. That is why the kernel
+stays in machine mode for most of the semester and only steps down in `43k`,
+where `start.rs` sets `mstatus.MPP` to supervisor, puts `kmain` in `mepc`,
+clears `satp`, delegates the traps, opens a PMP window over all of physical
+memory, starts the timer, and executes `mret`.
+
 This is an orientation pass; L18 does the mechanism.
 
 ---
@@ -448,6 +498,7 @@ breaks, the people who can fix it are in the room.
 | **Page** | The fixed-size unit of memory management | 4096 bytes |
 | **Page table** | The kernel's map from virtual to physical pages; one entry is a physical page plus permission bits | built in `33k`, switched on in `39k` |
 | **Privilege mode** | The hardware's current authority level: M, S, or U | the kernel runs in S; `grep` runs in U |
+| **Machine mode (M)** | The only mode the spec requires: untranslated, holds PMP and trap delegation, and hides one board's quirks from the kernel | OpenSBI on real hardware; `start.rs` in rv6, `43k` |
 | **Trap** | Any forced transfer of control into the kernel | an interrupt, a fault, or a system call; `43k` |
 | **System call** | A user program's request for a kernel service, via a deliberate trap | `read`, `write`, `exec`; `48k` |
 | **`unsafe`** | Rust's marked escape from strict memory safety, for the places a kernel must have it | writing a device register in `45k` |
@@ -610,7 +661,10 @@ must be less privileged.
 
 2. **Three privilege modes, and the ladder is the security model.** Privilege
    drops only by an explicit instruction and rises only by a trap. A user
-   program cannot make itself privileged; it asks, with a system call.
+   program cannot make itself privileged; it asks, with a system call. Machine
+   mode is a different job rather than a stronger kernel: it is the only mode
+   the specification requires, it is not translated, and through PMP and trap
+   delegation it constrains the kernel itself.
 
 3. **The semester has a forced order.** Module 1 teaches Rust on commands you
    will later run on your own kernel; Module 2 builds the kernel bottom-up:
