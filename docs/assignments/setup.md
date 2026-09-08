@@ -22,8 +22,9 @@ and there is a troubleshooting table at the bottom of the
 - **Bring a charged laptop** running **macOS**, **Linux**, or **Windows with
   WSL2**. (Native Windows will not work; install WSL2 and use Ubuntu inside
   it.) You need a terminal you are comfortable opening.
-- **Read this page and the Prep page for Thursday**, so you know what you are
-  about to do before you sit down. <!-- TODO link prep page -->
+- **Read this page and
+  [Thursday's Prep page](../prep/01-cs326-2026-08-27-prep-setup-and-hello-rust.md)**,
+  so you know what you are about to do before you sit down.
 
 ## 1. Sign in to the classroom network
 
