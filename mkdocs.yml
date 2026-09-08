@@ -36,7 +36,9 @@ theme:
   features:
     - navigation.indexes
     - navigation.top
-    - search.suggest
+    # search.suggest is deliberately OFF: it is the affected feature in
+    # GHSA-xvg9-69gf-fjrf (DOM XSS via the `q` parameter, mkdocs-material
+    # < 9.7.7). Re-enable it only once requirements.txt moves to 9.7.7+.
     - search.highlight
     - content.code.copy
     - content.code.annotate
