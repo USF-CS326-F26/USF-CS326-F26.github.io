@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structs, Enums, and Fixed Tables — CS 326 Week 03</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="./">&larr; In Class</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Structs, Enums, and Fixed Tables
+
+## CS 326 Operating Systems &middot; Week 03, in class
+
+September 8, 2026 &middot; Run along: `cd examples &amp;&amp; cargo run --bin 01_structs`
+
+---
+
+## Today, in Five Moves
+
+1. **Structs and `impl`** — bundle values, then give them behavior
+2. **Types with promises** — newtypes, `const fn`, `#[repr(C)]`
+3. **`Drop`** — release becomes a closing brace
+4. **Enums and `match`** — exactly one of these, checked
+5. **Arrays, slices, tables** — holding N of them
+
+<div class="info-box">
+Everything on these slides is a program in <code>examples/</code>. When you see
+<strong>RUN</strong>, run it — the sizes and offsets printed are the point.
+</div>
+
+Due this week: `04r_structs_impl` (Thu), `05r_enums_match` (Fri).
+
+---
+
+## A Kernel Written in Integers
+
+A real signature from the reference kernel:
+
+```rust
+pub unsafe fn mappages(table: *mut Pte, va: usize, size: usize,
+                       pa: usize, perm: usize) -> Result<(), ()>
+```
+
+Four of the five parameters are `usize`. A virtual address, a byte count, a
+physical address, and a bag of permission bits are, to the machine, the same
+thing: sixty-four bits.
+
+<div class="highlight-box">
+Swap <code>va</code> and <code>pa</code> at a call site and the program
+compiles, links, boots, and maps the wrong page — with the symptom surfacing
+far from the argument that caused it.
+</div>
+
+Today is about giving the compiler enough types to tell them apart.
+
+---
+
+# Part I
+
+## Structs and `impl`
+
+---
+
+## A Struct Is a Bundle With a Name
+
+```rust
+pub struct Console {
+    pub base: usize,
+    pub chars_out: usize,
+    pub errors: usize,
+}
+
+let uart = Console { base: 0x1000_0000, chars_out: 0, errors: 0 };
+```
+
+`pub` on the struct exports the type; `pub` on a field exports access to it.
+Leaving it off is how a module stops the rest of the kernel from corrupting its
+data behind its back.
+
+A struct is a **product type**: a `Console` is a base *and* a count *and* a
+count. Part IV is the other half of that pair.
+
+---
+
+## And Nothing Else
+
+```text
+  struct Console { base, chars_out, errors }
+
+  +----------------+----------------+----------------+
+  |      base      |   chars_out    |     errors     |
+  +----------------+----------------+----------------+
+   0                8               16               24
+```
+
+No object header. No type pointer. No vtable. No allocation. The value *is* the
+bytes.
+
+<div class="info-box">
+That is why structs work at the hardware boundary:
+<code>size_of::&lt;Pte&gt;()</code> is 8, so <code>size_of::&lt;[Pte; 512]&gt;()</code>
+is 4096 — exactly one page, exactly what a RISC-V page table must be.
+</div>
+
+**RUN** `cargo run --bin 01_structs`
+
+---
+
+## `impl`: Giving the Type Behavior
+
+```rust
+impl Stats {
+    pub fn new() -> Self {                    // associated function
+        Stats { reads: 0, writes: 0 }
+    }
+    pub fn total(&self) -> usize {            // method
+        self.reads + self.writes
+    }
+}
+```
+
+A function whose first parameter is some form of `self` is a **method**, called
+with a dot. One with no `self` is an **associated function**, called through the
+type with `::`.
+
+An associated function is the right shape for anything whose job is to
+*produce* a value — because there is no value yet to call a method on.
+
+---
+
+## There Is No `constructor` Keyword
+
+`new` is only a convention. Name the function for what it makes:
+
+```rust
+Stats::new()          Context::zero()       File::console()
+Proc::new()           Pte::new(pa, flags)   RoundRobin::new()
+```
+
+Inside an `impl` block the type's own name may be written `Self`, so
+`-> Stats` and `-> Self` mean the same thing there.
+
+<div class="highlight-box">
+Taking <code>Self</code> and returning <code>Self</code> is also what makes
+calls chain: <code>Stats::new().plus_read().plus_write()</code>
+</div>
+
+---
+
+## The Three Selves
+
+| Receiver | Means | Caller keeps it? | Use when |
+|---|---|---|---|
+| `&self` | Shared borrow | Yes | Reading; any number may coexist |
+| `&mut self` | Unique borrow | Yes | Mutating; excludes all other access |
+| `self` | By value | Only if `Copy` | Consuming, or a small `Copy` type |
+
+Choosing the receiver **is** the ownership decision from last week, applied to
+methods.
+
+<div class="info-box">
+<code>&amp;mut self</code> carries real weight: while such a method runs, the
+borrow checker guarantees no other reference to that value exists anywhere.
+</div>
+
+---
+
+## Reading the Receiver Off the Job
+
+<div class="mermaid">
+flowchart TD
+    Q1{"Does the method need to\nKEEP or destroy the value?"} -->|yes| S["take self — consumes it"]
+    Q1 -->|no| Q2{"Does it CHANGE\nthe value?"}
+    Q2 -->|yes| M["take &amp;mut self — exclusive"]
+    Q2 -->|no| R["take &amp;self — shared"]
+    S --> Q3{"Is the type Copy?"}
+    Q3 -->|yes| C["the caller keeps a copy anyway"]
+    Q3 -->|no| D["the binding is struck off"]
+</div>
+
+**RUN** `cargo run --bin 02_impl_and_self`
+
+---
+
+## `derive`: Four Traits, Written For You
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Ticks { pub count: u64, pub hz: u64 }
+```
+
+| Derive | What you get |
+|---|---|
+| `Debug` | `{:?}` — and what `assert_eq!` prints on failure |
+| `Clone` | an explicit `.clone()` |
+| `Copy` | assignment **duplicates** instead of moving |
+| `PartialEq` / `Eq` | `==` and `!=`, field by field |
+
+Writing these by hand is next week. Today, ask the compiler.
+
+---
+
+## `Copy` Is the Load-Bearing One
+
+```rust
+pub fn seconds(self) -> u64 { self.count / self.hz }   // takes self BY VALUE
+
+ms.seconds();
+ms.seconds();      // legal only because Ticks is Copy
+```
+
+Without `Copy`, the first call **moves** `ms` and the second does not compile.
+
+<div class="highlight-box">
+<code>Copy</code> does not make copying cheap — copying sixteen bytes was
+always cheap. It makes assignment stop <em>moving</em>.
+</div>
+
+Derive it on small plain-data types. Leave it off anything that owns a resource.
+
+**RUN** `cargo run --bin 03_derive_and_copy`
+
+---
+
+## `Copy` XOR `Drop`
+
+A type cannot have both, and the reason is the bug this course opened with:
+
+```text
+  Copy  says  "duplicating the bits duplicates the value"
+  Drop  says  "the release runs exactly once"
+
+  both  =>    the release runs once per duplicate
+        =>    the double free, in a new hat
+```
+
+```
+error[E0184]: the trait `Copy` cannot be implemented for this
+              type; the type has a destructor
+```
+
+Not a rule you have to remember — a combination the type system refuses.
+
+**RUN** `../examples/show-errors.sh e0184`
+
+---
+
+# Part II
+
+## Types with promises
+
+---
+
+## `typedef` Is Not a Type
+
+```c
+typedef uint64 pte_t;        /* an ALIAS. pte_t and uint64 are the same type. */
+```
+
+```rust
+type BlockNo = u32;          // equally powerless
+let n: BlockNo = 7;
+let bytes: ByteCount = n;    // compiles. is a bug.
+```
+
+Only a `struct` makes a genuinely new type.
+
+<div class="info-box">
+An <em>alias</em> renames an existing type and changes nothing the compiler
+checks. A <em>newtype</em> is a one-field struct — a different type, the same
+bits.
+</div>
+
+---
+
+## The Newtype
+
+```rust
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct BlockNo(pub u32);
+```
+
+A struct with unnamed fields is a **tuple struct**; one with a single field is a
+**newtype**. You reach the wrapped value by position: `self.0`.
+
+At run time a `BlockNo` *is* its `u32` — same size, same alignment, same
+register, same instructions.
+
+<div class="highlight-box">
+Everything you buy is at compile time. That is the whole trade, and it is a
+good one.
+</div>
+
+---
+
+## What It Catches
+
+```rust
+fn read_block(b: BlockNo) -> u32 { b.0 }
+
+read_block(BlockNo(7));    // fine
+read_block(count);         // error[E0308]: expected `BlockNo`, found `ByteCount`
+read_block(7);             // error[E0308]: expected `BlockNo`, found integer
+```
+
+The deliberate conversion still exists — it is just spelled out, on one line
+you can grep for:
+
+```rust
+let raw: u32 = block.0;      // one explicit unwrap
+let back = BlockNo(raw);     // one explicit wrap
+```
+
+**RUN** `cargo run --bin 04_newtype` then `../examples/show-errors.sh e0308`
+
+---
+
+## `repr(transparent)` and Why It Matters
+
+The promise: the wrapper has the **exact** layout and ABI of the field inside
+it.
+
+```text
+  size_of::<BlockNo>()      == size_of::<u32>()      == 4
+  size_of::<[Pte; 512]>()   == 512 * 8              == 4096   one page
+```
+
+That is what makes an array of 512 entries a genuine hardware page table rather
+than a Rust convenience: no tag, no padding.
+
+<div class="info-box">
+The cost is that <code>pte + 1</code> becomes a type error until you write a
+method. Which is the point.
+</div>
+
+---
+
+## Packing Fields Into One Word
+
+Four bit operations do all the work anywhere in a kernel:
+
+```text
+  a >> n     shift every bit down n places
+  a << n     shift every bit up n places
+  a | b      set every bit set in either — how two fields MERGE
+  a & mask   keep only the bits set in both — how one field is SELECTED
+```
+
+A Unix permission word, three 3-bit fields side by side:
+
+```rust
+pub const fn new(owner: u16, group: u16, other: u16) -> Mode {
+    Mode((owner << 6) | (group << 3) | other)
+}
+pub const fn owner(self) -> u16 { (self.0 >> 6) & 0o7 }
+```
+
+Build with shifts and an OR; read back with a shift and a mask.
+
+---
+
+## `const fn`: Arithmetic the Compiler Does
+
+```rust
+pub const fn kib(n: usize) -> usize { n * 1024 }
+
+const KERNEL_STACK: usize = kib(8);   // 8192 is baked into the image
+let n = kib(pages);                   // ordinary call, ordinary instructions
+```
+
+<div class="highlight-box">
+<code>const</code> only <strong>adds</strong> an ability. The same function is
+still callable at run time, on a value that does not exist until then.
+</div>
+
+A **const context** is any place the value must be known before the program
+runs: a `const` or `static` item, an array length, an array repeat, an enum
+discriminant.
+
+---
+
+## Which Path a Call Takes
+
+<div class="mermaid">
+flowchart LR
+    A["kib(8)"] --> B{"in a const context?"}
+    B -- "const / static / array length" --> C["const-eval inside rustc"]
+    C --> D["the literal 8192 in the image"]
+    B -- "no" --> E["code generation"]
+    E --> F["shifts and adds at run time"]
+</div>
+
+Inside a `const fn` you may use arithmetic, comparisons, `if`, `match`, `loop`,
+and other `const fn`s. You may **not** allocate, call a non-`const` function, or
+dereference a raw pointer.
+
+---
+
+## Why a Kernel Needs It
+
+```rust
+static SLOTS: [Slot; 8] = [const { Slot::new() }; 8];
+```
+
+Eight fully initialized records, in the executable, with **no code running**.
+
+That matters because of *when* the data must be valid: when the kernel's first
+Rust function is entered there is no heap, no allocator, and nothing that could
+have run an initialization loop.
+
+<div class="info-box">
+C static initializers allow constant expressions only — <code>= 0</code> yes, a
+function call no. Hence the pile of <code>xxx_init()</code> routines in every C
+kernel whose only job is to fill in what the language could not.
+</div>
+
+**RUN** `cargo run --bin 05_const_fn` then `../examples/show-errors.sh e0015`
+
+---
+
+## `#[repr(C)]`: Layout as a Contract
+
+By default a struct has representation `repr(Rust)`, and the language promises
+**nothing**: not field order, not padding, not that two identical declarations
+agree.
+
+```rust
+struct Header { flag: u8, addr: u64, count: u16 }
+```
+
+| | `repr(Rust)` | `#[repr(C)]` |
+|---|---|---|
+| `size_of` | 16 | 24 |
+| `flag` at | offset 10 | offset 0 |
+| `addr` at | offset 0 | offset 8 |
+| `count` at | offset 8 | offset 16 |
+
+The compiler put the most-aligned field first, and it was entitled to.
+
+---
+
+## You Need It When Something Else Reads the Bytes
+
+```text
+        Context  (#[repr(C)])          swtch  (hand-written asm)
+offset  +--------------------------+
+   0    | ra   return address      | <-->  sd ra,  0(a0)  /  ld ra,  0(a1)
+   8    | sp   stack pointer       | <-->  sd sp,  8(a0)  /  ld sp,  8(a1)
+  16    | s0                       | <-->  sd s0, 16(a0)  /  ld s0, 16(a1)
+        +--------------------------+
+```
+
+Assembly, hardware, a C library, or a file somebody else wrote.
+
+<div class="highlight-box">
+Delete <code>#[repr(C)]</code> and <strong>nothing breaks in the build</strong>.
+The assembly is still valid; it may simply store the return address into
+whatever field now sits at offset 0. The first symptom is a jump to a garbage
+address on the next context switch.
+</div>
+
+**RUN** `cargo run --bin 06_repr_c`
+
+---
+
+## Worse Than Breaking
+
+`Context`'s fourteen fields are all `usize`, so today's compiler has no reason
+to reorder them — and the kernel would probably keep running.
+
+<div class="info-box">
+The bug is not that it breaks. It is that nothing <em>promises</em> it will not.
+It would break on a compiler upgrade, or the day someone changes
+<code>ra</code> to a <code>u32</code>.
+</div>
+
+| Attribute | Guarantee | Used for |
+|---|---|---|
+| `repr(Rust)` | none; optimize freely | everything internal |
+| `#[repr(C)]` | source order, C alignment | `Context`, `Trapframe`, disk images |
+| `#[repr(transparent)]` | identical to the one field | `Pte`, every newtype |
+| `#[repr(packed)]` | no padding at all | nothing — refs to unaligned fields are UB |
+
+---
+
+# Part III
+
+## `Drop`, and the guard
+
+---
+
+## `free()` Became a Closing Brace
+
+When a value goes out of scope the compiler emits a call to its type's `Drop`.
+
+```rust
+impl Drop for LockGuard<'_> {
+    fn drop(&mut self) {
+        self.lock.held = false;
+    }
+}
+```
+
+You do not write the call. You cannot forget it. Its site is a closing brace —
+including paths you did not think about: an early `return`, a `?`, the end of a
+function the value was passed into.
+
+<div class="info-box">
+C++ has had this since the mid-1980s as <strong>RAII</strong>. What Rust adds is
+that ownership is <em>checked</em>, so RAII cannot be defeated by an accidental
+copy or a second owner.
+</div>
+
+---
+
+## A Guard Is a Value Whose Existence Is the Resource
+
+```rust
+let mut lock = Lock::new("proc table");
+{
+    let guard = lock.acquire();
+    // ... critical section ...
+    // lock is unreachable here: the guard holds the only &mut
+}                                  // <- released, by the compiler
+```
+
+Two properties earn this its place in a kernel. It is **deterministic**, so a
+drop can carry real work — returning a page, releasing a lock, re-enabling
+interrupts. And it runs **wherever the owner ends**.
+
+**RUN** `cargo run --bin 07_drop_guard`
+
+---
+
+## The Order Inside `acquire` Is the Trick
+
+```rust
+pub fn acquire(&mut self) -> LockGuard<'_> {
+    self.held = true;              // read and write through the &mut FIRST
+    LockGuard { lock: self }       // ONLY THEN move it into the struct
+}
+```
+
+After that second line the guard holds the only `&mut`. Reach for the lock
+again — or inside the struct literal itself — and you get E0499 or E0502.
+
+<div class="highlight-box">
+This is the mistake to make on screen. It is exactly the trap in
+<code>04r</code>'s constructor, in different clothes.
+</div>
+
+---
+
+## Release Travels With Ownership
+
+```rust
+pub fn release(self) {}
+```
+
+An empty body that frees something. `self` is taken **by value**, so calling
+`guard.release()` moves the guard in, and it dies at that closing brace —
+running `Drop` and releasing early.
+
+<div class="info-box">
+The standard library's <code>drop</code> is this function and nothing more:
+<code>pub fn drop&lt;T&gt;(_x: T) { }</code>
+</div>
+
+Handing a value away hands away the duty to release it.
+
+---
+
+# Part IV
+
+## Enums: exactly one of these
+
+---
+
+## A Sum Type
+
+A struct is "this *and* that". An enum is "this *or* that".
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Trap { Timer, Syscall(usize), PageFault { addr: usize }, Illegal }
+```
+
+Each name is a **variant**, and the type has four values in total — not four
+valid values out of four billion.
+
+```c
+/* xv6, in C: an int wearing a costume */
+p->state = 47;      /* compiles. runs. means nothing. */
+```
+
+Two holes: nothing rejects `47`, and nothing tells you which of the twelve
+`switch` statements needs revisiting when a fifth state is added.
+
+---
+
+## Variants Carry Data
+
+```rust
+pub enum Trap {
+    Timer,                        // no fields
+    Syscall(usize),               // tuple fields  — built like a call
+    PageFault { addr: usize },    // named fields  — built like a struct
+    Illegal,
+}
+```
+
+One value answers two questions at once: what happened, and with what.
+
+<div class="info-box">
+A C API says this with an <code>int</code>, an out-parameter, and a convention
+about which is meaningful when. Here the pairing is enforced — a
+<code>Timer</code> has no address to reach.
+</div>
+
+---
+
+## What It Costs
+
+```text
+  Trap::PageFault { addr: 0x8000_1000 }
+
+  +-----+--------------------------+
+  | tag |  addr (largest payload)  |     rounded for alignment
+  +-----+--------------------------+
+```
+
+And sometimes nothing at all:
+
+```rust
+size_of::<&u8>()          // 8
+size_of::<Option<&u8>>()  // 8   <- SAME
+```
+
+**Niche optimization**: a reference can never be all-zeroes, so that unused bit
+pattern becomes `None`.
+
+**RUN** `cargo run --bin 08_enums`
+
+---
+
+## `match` Reads Which Variant You Have
+
+```rust
+let cost = match t {
+    Trap::Timer            => 1,
+    Trap::Syscall(num)     => num,
+    Trap::PageFault { .. } => 100,
+    Trap::Illegal          => 0,
+};
+```
+
+Each **arm** is a pattern, `=>`, and the value it produces. `match` is an
+*expression*, which is why it sits on the right of a `let`.
+
+Four pattern features, and you need all four this week:
+
+- `|` — one arm, two variants
+- `{ .. }` — has fields, do not care
+- `{ addr }` / `(num)` — **bind** the payload
+- `_` — the catch-all
+
+---
+
+## Exhaustiveness Is the Safety Property
+
+Delete an arm and the program does not compile:
+
+```
+error[E0004]: non-exhaustive patterns: `Trap::Illegal` not covered
+```
+
+Read forwards, that is a nuisance. Read backwards, it is why the type exists.
+
+<div class="highlight-box">
+Add a fifth trap cause in week 9. In C every <code>switch</code> keeps
+compiling and silently takes its <code>default</code> arm, and you find the
+wrong ones by debugging a kernel. In Rust the compiler lists every place needing
+a decision, by file and line, before boot.
+</div>
+
+Exhaustiveness is not a syntax rule. It is a **refactoring tool**.
+
+**RUN** `../examples/show-errors.sh e0004`
+
+---
+
+## The `_` Trap, and When `_` Is Right
+
+```rust
+fn is_illegal(t: Trap) -> bool {          // careful
+    match t {
+        Trap::Illegal => true,
+        Trap::Timer => false,
+        Trap::Syscall(_) => false,
+        Trap::PageFault { .. } => false,
+    }
+}
+
+fn is_illegal(t: Trap) -> bool {          // lazy — right today, by luck
+    match t { Trap::Illegal => true, _ => false }
+}
+```
+
+`_` covers variants that do not exist yet, so adding one produces no error and
+no warning.
+
+<div class="info-box">
+The rule: <code>_</code> for <strong>open</strong> domains — a syscall number
+chosen by a user program, an interrupt cause chosen by hardware — and never for
+a closed set you defined yourself.
+</div>
+
+---
+
+## Guards: an `if` on an Arm
+
+```rust
+match (state, event) {
+    (Sleeping { channel: c }, Wake { channel: w }) if c == w
+        => Some(Runnable),
+    _   => None,
+}
+```
+
+What matters is the **failure** case: matching *continues with the next arm*
+rather than leaving the `match`.
+
+<div class="highlight-box">
+So a wakeup on the disk's channel falls through to <code>_</code> and does not
+wake a process waiting on the console. Test the condition inside the arm body
+instead and you lose that fall-through — the <code>else</code> has to
+reproduce it by hand.
+</div>
+
+Guarded arms do not count toward exhaustiveness, so a `match` resting on one
+still needs a fallback.
+
+**RUN** `cargo run --bin 09_match`
+
+---
+
+## Three Smaller Shapes
+
+```rust
+if let Trap::PageFault { addr } = t {          // a one-arm match
+    println!("faulted at {addr:#x}");
+}
+
+let Trap::Syscall(num) = t else {              // bind, or bail out
+    return None;
+};
+
+matches!(t, Trap::PageFault { .. })            // a match that answers yes or no
+```
+
+`if let` when exactly one variant matters. `let ... else` for the "bind or
+leave" shape kernel code is full of.
+
+<div class="info-box">
+<code>matches!</code> has the same blind spot as <code>_</code>: a new variant
+is silently <code>false</code>.
+</div>
+
+---
+
+## `Option<T>`: There Is No Null
+
+```rust
+enum Option<T> { Some(T), None }
+```
+
+Tony Hoare, who put null references into ALGOL W in 1965, called it his
+"billion-dollar mistake" in 2009.
+
+<div class="highlight-box">
+The problem is not that absence exists. It is that in C and Java an absent value
+has the <strong>same type</strong> as a present one, so the compiler cannot say
+which dereferences need checking.
+</div>
+
+`Option<File>` and `File` are different types, so it can.
+
+```rust
+fn find_device(table: &[Device], major: u32) -> Option<Device>
+fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>
+```
+
+---
+
+## Opening One Up
+
+| Shape | Use when |
+|---|---|
+| `match` | both cases need real work |
+| `if let` | only `Some` matters |
+| `let ... else` | bind it, or leave the function |
+| `.map(f)` | transform what is there, leave `None` alone |
+| `.and_then(f)` | the next step may also come up empty |
+| `.unwrap_or(x)` | supply a fallback |
+| `?` | return `None` from the whole function, now |
+| `.unwrap()` | **almost never** — in a kernel a panic halts the machine |
+
+**RUN** `cargo run --bin 10_option`
+
+---
+
+# Part V
+
+## Holding N of them
+
+---
+
+## Three Ways to Hold N Things
+
+```text
+  [u32; 4]  — the values ARE the variable
+  +----+----+----+----+
+  | 10 | 20 | 30 | 40 |      stack or .bss, size fixed at compile time
+  +----+----+----+----+
+   ^
+   |  &arr[1..3]
+   |  +-------+-------+
+   +--|  ptr  | len=2 |      a slice: 16 bytes, borrowing the middle two
+      +-------+-------+
+
+  Vec<u32> — the variable POINTS AT the values
+  +-------+-------+-------+
+  |  ptr  | len=4 | cap=8 |  24 bytes on the stack, elements on the heap
+  +-------+-------+-------+
+```
+
+An array **is** the data, a `Vec` **owns** the data, a slice **points at** data.
+
+---
+
+## A Slice Is a Fat Pointer
+
+```rust
+size_of::<&u32>()      // 8    thin
+size_of::<&[u32; 4]>() // 8    thin: the 4 is in the type
+size_of::<&[u32]>()    // 16   FAT: address + length
+```
+
+`[T]` on its own is legal, but you can never hold one: its size is unknown at
+compile time. Such types are **unsized**, usable only behind a pointer — and
+that pointer carries the missing length.
+
+<div class="info-box">
+Because a slice erases the length from the type, one function serves every
+container. Write <code>&amp;[T]</code> to read and <code>&amp;mut [T]</code> to
+write, and changing <code>NPROC</code> from 64 to 8 cannot make it wrong.
+</div>
+
+**RUN** `cargo run --bin 11_slices`
+
+---
+
+## Indexing Is Checked
+
+```asm
+    li      t0, 8
+    bgeu    a1, t0, .Lpanic   # unsigned: catches both ends at once
+    slli    t1, a1, 3
+    add     t1, a0, t1
+    ld      a2, 0(t1)
+```
+
+Three extra instructions and a branch that is never taken, so it is predicted
+perfectly. Iterator loops emit none at all.
+
+| Form | On a bad index | Use when |
+|---|---|---|
+| `table[i]` | panics | `i` is yours and provably in range |
+| `table.get(i)` | returns `None` | out-of-range is a normal outcome |
+| an explicit check | your error | the index came from **outside** |
+
+---
+
+## Validate at the Boundary
+
+```rust
+unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {
+    if fd >= NOFILE { return None; }
+    let f = (*p).ofile[fd];
+    ...
+}
+```
+
+That `fd` came out of a user register.
+
+<div class="highlight-box">
+A panic in a kernel is not a failed test. The handler prints and halts the
+machine — so a user program that can panic the kernel with one bad system-call
+argument owns a denial-of-service attack on the whole system.
+</div>
+
+Check once, where the number *enters*; index freely after that. In C the
+missing check reads into a neighbouring process control block.
+
+**RUN** `../examples/show-errors.sh e0080`
+
+---
+
+## Iterators Are Lazy, and Allocate Nothing
+
+```rust
+(0..n)
+    .map(|off| (self.next + off) % n)
+    .find(|&i| states[i] == ProcState::Runnable)
+    .map(|i| { self.next = (i + 1) % n; i })
+```
+
+Read it as English: consider `n` offsets, wrap each into a table index starting
+where we left off, take the first that is runnable, remember to resume after it.
+
+<div class="info-box">
+<code>map</code> does not produce a list of eight indices — it produces
+something that computes one index each time <code>find</code> asks, and
+<code>find</code> stops asking the moment it succeeds. The optimized code is
+the loop you would have written by hand.
+</div>
+
+`collect()` is the one adapter that breaks the rule: it has to put the results
+*somewhere*.
+
+---
+
+## Why `PROCS` Is an Array
+
+```rust
+static mut PROCS: [Proc; NPROC] = [const { Proc::new() }; NPROC];
+```
+
+1. **There is no allocator yet.** The table is used on the fourth line of boot.
+   The allocator is itself a data structure and cannot allocate.
+2. **The fault path must not allocate.** Allocation can fail, takes unbounded
+   time, and takes locks — none of which a trap handler survives.
+3. **A hard limit fails honestly.** The 65th `fork` returns -1, at the call that
+   asked for too much. It is testable. A `Vec` fails later, somewhere else, at
+   an unrelated allocation.
+
+<div class="highlight-box">
+"We might need more than N" is answered with a bigger constant and a recompile —
+not with growth. Letting a table grow is a promise you cannot keep, because the
+memory it would grow into belongs to somebody else.
+</div>
+
+**RUN** `cargo run --bin 12_tables_and_iterators`
+
+---
+
+## The Seven Failures
+
+Predict each one before it scrolls past.
+
+| File | Error |
+|---|---|
+| `e0004_non_exhaustive.rs` | a variant was added; a `match` was not |
+| `e0308_newtype_mismatch.rs` | a raw integer where a newtype belongs |
+| `e0382_method_moved_it.rs` | a by-value `self` consumed the value |
+| `e0184_copy_with_drop.rs` | `Copy` on a type with a destructor |
+| `e0015_non_const_in_const.rs` | a non-`const fn` in a const context |
+| `e0507_move_out_of_self.rs` | moving a field out of `&self` |
+| `e0080_const_index.rs` | a constant index past the end |
+
+**RUN** `./show-errors.sh`
+
+---
+
+## Do This Next
+
+1. `oslings run 04r_structs_impl` — due **Thursday**. `MemRegion`, a working
+   `Pte`, and a `PageGuard` whose `Drop` puts its page back.
+2. `oslings run 05r_enums_match` — due **Friday**. A process state machine from
+   an enum, a `match`, and an `Option`.
+3. Read the tests at the bottom of each `warmup/src/lib.rs` **first**. They are
+   the contract.
+
+<div class="info-box">
+Both run under <code>cargo test</code> on your laptop — no QEMU, no kernel. If
+the tests are green, you are done. Stuck? <code>oslings hint</code>.
+</div>
+
+Worked examples in the same shape, different domain:
+`04r_structs_impl_example/` and `05r_enums_match_example/`.
+
+---
+
+## Summary
+
+1. **A struct is its fields and nothing else** — no header, no vtable, no allocation
+2. **`impl` holds methods (`.`) and associated functions (`::`)** — `new` is a convention
+3. **The receiver is an ownership decision** — `&self` reads, `&mut self` excludes, `self` consumes
+4. **A newtype is free at run time and load-bearing at compile time**
+5. **`const fn` moves arithmetic into the compiler** — which is how a static table exists before code runs
+6. **`#[repr(C)]` turns layout into a contract** — and removing it fails silently
+7. **`Drop` makes release a closing brace** — and `Copy` XOR `Drop` is the double free, refused
+8. **Exhaustive `match` makes the compiler review your changes** — unless you wrote `_`
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

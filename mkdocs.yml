@@ -233,4 +233,5 @@ nav:
   - In Class:
       - "In Class": inclass/index.md
       - "Week 02 · Rust: Types, Ownership, and Borrowing": inclass/week02-slides.html
+      - "Week 03 · Structs, Enums, and Fixed Tables": inclass/week03-slides.html
   - Solutions: solutions/index.md

@@ -209,7 +209,8 @@ def sessions():
     add(2, 'thursday', 'Sep 3', 'exercise', '02r ownership', exercises=['02r_ownership'])
     add(2, 'friday', 'Sep 4', 'exercise', '03r borrowing', exercises=['03r_borrowing'])
 
-    add(3, 'tuesday', 'Sep 8', 'lecture', 'L05 Collections, Traits, and Errors')
+    add(3, 'tuesday', 'Sep 8', 'lecture', 'L05 Collections, Traits, and Errors',
+        links=L(("In-class slides", "/inclass/week03-slides.html")))
     add(3, 'thursday', 'Sep 10', 'exercise', '04r structs_impl', exercises=['04r_structs_impl'])
     add(3, 'friday', 'Sep 11', 'exercise', '05r enums_match', exercises=['05r_enums_match'])
 

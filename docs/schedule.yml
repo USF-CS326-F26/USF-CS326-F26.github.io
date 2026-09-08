@@ -113,6 +113,8 @@ weeks:
           url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables/"
         - text: "Slides"
           url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html"
+        - text: "In-class slides"
+          url: "inclass/week03-slides.html"
 
     thursday:
       date: "Sep 10"
