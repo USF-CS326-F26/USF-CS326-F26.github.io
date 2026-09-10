@@ -88,7 +88,7 @@ extra:
       url: https://usfca-cs326-f26.zulipchat.com/
       icon: fontawesome/solid/comments
     - name: Canvas
-      url: https://usfca.instructure.com/
+      url: https://usfca.instructure.com/courses/1634477 
       icon: fontawesome/solid/graduation-cap
     - name: Syllabus
       url: /syllabus/
