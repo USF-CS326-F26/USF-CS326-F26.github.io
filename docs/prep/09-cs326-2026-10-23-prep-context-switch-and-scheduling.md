@@ -47,7 +47,7 @@ loop:  switch(&L, &P)           # ret lands inside ping's own call; s3 is 7 agai
 
 ## What "done" looks like
 
-`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway (substantial credit), then finish it at a make-up session — office hours, on the class network — before the next session, and submit again.
+`oslings run` is green, then `oslings submit` before you leave. Not green? Submit anyway — the tests that pass earn their share — then finish it at a make-up session (office hours, on the class network) for three quarters, or anywhere else for half, and submit again.
 
 ## If you finish early
 

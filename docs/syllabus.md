@@ -83,11 +83,12 @@ join the network, open <http://signin.cs326>, and sign in with your USF Google
 account. After that it recognizes your laptop and there is nothing to do at the
 start of a session. See [The Classroom Network](guides/classroom-network.md).
 
-Exercise work happens only while connected to that network. You complete an
-exercise in the classroom during its session or, if you did not finish, at a
-**make-up session** — office hours with the instructor or TA, connected to the
-same **cs326** network — before the next exercise session begins. Exercise code
-written anywhere else earns no credit.
+Exercise work is meant to happen in the room, on that network, and the grade
+follows where it happened. Work done in the session counts in full; work
+finished at a **make-up session** — office hours with the instructor or TA, on
+the same **cs326** network — counts for three quarters; work done anywhere else
+counts for half. All three stop counting when the exercise's solution is
+released, which happens with the next exercise session.
 
 Your own work is archived in `my-work/`, and `oslings goto <name>` returns you
 to it.
@@ -103,23 +104,46 @@ to it.
 | **Final exam** — Tuesday, December 8 | 20% |
 | *Extra credit* (`14c`, `41k`, `47k`, `54k`, `55k`) | *up to +3%* |
 
-### How exercises are scored
+Each exercise **day** is one grade in Canvas, out of 100. A day with three
+exercises is still one grade.
 
-Each exercise is graded independently by re-running its real test against the
-snapshot you committed. Grading rebuilds and reboots your code, so a pass in
-class is a pass at grading time and editing local state cannot manufacture
-one.
+### How an exercise day is scored
 
-| | Criterion | Score |
-|---|---|---|
-| **Pass** | The test is green in the `oslings submit` you ran during the session | 100% |
-| **Completed at a make-up session** | Not passing in the session; you finish it at office hours with the instructor or TA, connected to the **cs326** network, **before the next exercise session begins**. Run `oslings submit` there. | 75% |
-| **Substantial** | Submitted from the session: compiles, markers meaningfully attempted, test not green | 50% |
-| **Nothing submitted** | Nothing by the time the next session begins | 0% |
+Each day is worth 100 points, in two halves.
 
-The lowest two exercise scores in each module are dropped. The make-up session
-is the only make-up path; exercise work done off the classroom network earns no
-credit.
+**Being there — 50 points.** The class server records how long your registered
+laptop was connected to **cs326** during that day's session. 75 minutes earns
+the full 50 on Thursdays, 70 minutes on Fridays; less than that earns
+proportionally less, and more earns no extra. Either section's session on that
+day counts, and two of your own devices count once.
+
+**The exercises — 50 points.** Your work is graded by re-running each
+exercise's real test against what you committed. Grading rebuilds and reboots
+your code, so a pass in class is a pass at grading time and editing local state
+cannot manufacture one. A partly-working exercise earns the share of its own
+tests that pass. The day's exercises are averaged, and the result is multiplied
+by where the work was done:
+
+| Where you did the work | Multiplier |
+|---|---|
+| In the session, on **cs326** | **× 1** |
+| At a **make-up session** — office hours with the instructor or TA, on **cs326** | **× 0.75** |
+| Anywhere else | **× 0.5** |
+
+Only the best attempt counts, so a later attempt can raise a score and never
+lowers one. Every attempt stops counting when that exercise's solution is
+released, which happens with the next exercise session.
+
+The multiplier follows the submission that first contained the work, not a
+later one that merely re-committed it, and being in the room is established by
+the class server rather than by anything your laptop reports. **The
+`oslings submit` you run in the room is the evidence — submit before you
+leave.** Extra credit is graded from your repository the same way, without a
+multiplier and without a deadline.
+
+The lowest two exercise **days** in each module are dropped. Module 1 is the 11
+days through October 1; module 2 is the 13 days from October 2, which is the
+first day that touches the kernel.
 
 ### Solutions
 
@@ -219,7 +243,8 @@ disclosed here rather than collected silently.
 It is **not scored, not ranked, and not part of your grade**, and it does not
 appear in any report the course produces. It exists so that if a question ever
 arises about a submission there is context for a conversation. It is a
-starting point for a discussion, never proof of anything.
+starting point for a discussion, never proof of anything. What *is* scored is
+the connected time described below, and the exercises themselves.
 
 ### Data recorded by the class server
 
@@ -232,11 +257,13 @@ session it records that the laptop was connected, and for how long.
 That is the whole list. No browsing history and no page contents are kept: the
 connections are encrypted, and nothing about what you visit is stored.
 
-**It is not scored, not ranked, and not part of your grade.** There is no
-attendance component in this course; the table above is the whole grade. It
-exists so that the exercise can be released to the room, and so that if a
-question arises later about a session there is a record of who was on the
-network.
+**Your connected time during an exercise session is half of that day's
+grade**, as described under [How an exercise day is
+scored](#how-an-exercise-day-is-scored). That is the only thing here that is
+scored: not which pages you visited, not how long you sat anywhere else, not
+the lecture days. The record also exists so that the exercise can be released
+to the room, and so that if a question arises later about a session there is a
+record of who was connected.
 
 You may ask to see your own record, and to have it deleted, at any time.
 Registrations and connection logs are erased at the end of the semester.

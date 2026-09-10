@@ -118,8 +118,9 @@ hide:
     last exercise, so you can start it over the weekend. What today's exercise
     is built on is linked from its **Prep** page.
 
-    Did not finish? Complete it at a **make-up session** — office hours, on the
-    **cs326** network — before the next session.
+    Did not finish? Complete it at a **make-up session** — office hours, on
+    the **cs326** network — for three quarters of the exercise half, or
+    anywhere else for half, until the solution ships with the next session.
 
 ---
 

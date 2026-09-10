@@ -189,11 +189,11 @@ exercise.
 
 | Situation | What happens |
 |---|---|
-| Unfinished in class | Run `oslings submit` before you leave anyway: a compiling, meaningfully attempted exercise scores **50%**. Finish it at a make-up session — office hours with the instructor or TA, connected to the **cs326** network — before the next exercise session begins, run `oslings submit` there, and it scores **75%**. |
-| Missed the session | The exercise was released at the start of the session; `oslings update` fetches it. Pass it at a make-up session before the next exercise session for **75%**. After that window closes it scores 0. |
+| Unfinished in class | Run `oslings submit` before you leave anyway: the tests that already pass earn their share at full weight. Finish it at a make-up session — office hours with the instructor or TA, connected to the **cs326** network — and the rest counts at **× 0.75**; finish it anywhere else and it counts at **× 0.5**. |
+| Missed the session | The exercise was released at the start of the session; `oslings update` fetches it. You lose that day's 50 points for being there, and the exercise counts at **× 0.75** at a make-up session or **× 0.5** elsewhere. Once the solution ships with the next session, nothing further counts. |
 | Resuming old work | `oslings goto <name>` restores your own work from `my-work/`, exactly as you left it. |
 
-All exercise work happens on the **cs326** network — in class, or at a make-up
-session during office hours. Exercise code written anywhere else earns no
-credit, and the same rules apply at a make-up session: your own work,
-explainable line by line.
+Exercise work is meant to happen on the **cs326** network — in class, or at a
+make-up session during office hours — and work done elsewhere counts for half.
+The same rules apply wherever you do it: your own work, explainable line by
+line.

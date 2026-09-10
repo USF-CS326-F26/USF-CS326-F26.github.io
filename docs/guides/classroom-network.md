@@ -85,11 +85,12 @@ connected, and for how long**.
 That is the whole list. No browsing history and no page contents are kept: the
 connections are encrypted, and nothing about what you visit is stored.
 
-**It is not scored, not ranked, and not part of your grade.** There is no
-attendance component in this course — the grading table in the
-[syllabus](../syllabus.md) is the whole grade. It exists so that the exercise
-can be released to the room, and so that if a question arises later about a
-session there is a record of who was on the network.
+**Your connected time during an exercise session is half of that day's
+grade** — see [How an exercise day is scored](../syllabus.md) in the syllabus.
+Nothing else recorded here is scored: not which pages you visited, not the
+lecture days. The record also exists so that the exercise can be released to
+the room, and so that if a question arises later about a session there is a
+record of who was connected.
 
 You may ask to see your own record, and to have it deleted, at any time.
 Registrations and connection logs are erased at the end of the semester.

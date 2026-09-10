@@ -2,10 +2,10 @@
 
 Every exercise in the course, in order. Each is released at the start of the
 session listed and you run `oslings submit` before you leave the room, passed
-or not. An exercise not passed in class can be finished on your own for 75%:
-an unfinished one is completed at a make-up session — office hours, on the
-class network — before the next session. Two hints ship
-with each exercise; the reference solution ships with the next release
+or not. Work finished after the session still counts — three quarters at a
+make-up session on the class network, half anywhere else — until that
+exercise's solution ships with the next release. Two hints ship with each
+exercise; the reference solution ships with the next release
 (`oslings solution <name>`).
 
 Run one with `oslings run <name>`, or just `oslings` for the full-screen app.

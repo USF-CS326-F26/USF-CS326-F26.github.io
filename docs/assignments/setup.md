@@ -212,8 +212,10 @@ Then check github.com and confirm the commit is really there.
 **Run `oslings submit` before you leave every session, whether or not the
 exercise passed.**
 
-What is committed by the end of the session is what earns credit: a passing
-exercise earns 100%, and substantial progress on one earns 50%. An exercise you
-finish at a make-up session — office hours with the instructor or TA, on the
-**cs326** network, before the next session — earns 75%. An exercise that
-was never submitted earns nothing.
+What is committed by the end of the session is what earns full credit, and a
+partly-working exercise earns the share of its own tests that pass. Finish it
+later at a make-up session — office hours with the instructor or TA, on the
+**cs326** network — and it counts for three quarters; finish it anywhere else
+and it counts for half, until the solution ships with the next session. An
+exercise that was never submitted earns nothing, and half of each day's grade
+is the time you spent connected in the room.
