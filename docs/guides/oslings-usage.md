@@ -140,7 +140,10 @@ crate and the `10c`–`14c` command exercises in the `commands` crate. Plain `st
 no QEMU, no cross-toolchain — which is why week 1 works while your bare-metal
 setup is still being fixed. Tests run with `--test-threads=1` so failure
 ordering is stable (`run_host_test()` in `runner.rs`). A 60-second overrun is reported as an
-infinite loop, not a slow machine (`TEST_TIMEOUT` in `runner.rs`).
+infinite loop, not a slow machine (`TEST_TIMEOUT` in `runner.rs`). Because cargo
+captures a passing test's output, a `println!` you add is thrown away exactly
+when the test goes green — see [OSlings Debugging](oslings-debugging.md) for how
+to run and step through your `warmup` code yourself.
 
 `build` covers exactly one exercise, `30k_kernel_basics`: getting `no_std`,
 the panic handler, and `no_main` right is the whole task, so compiling *is* the
