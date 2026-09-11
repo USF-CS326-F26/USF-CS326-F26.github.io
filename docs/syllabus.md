@@ -88,7 +88,9 @@ follows where it happened. Work done in the session counts in full; work
 finished at a **make-up session** — office hours with the instructor or TA, on
 the same **cs326** network — counts for three quarters; work done anywhere else
 counts for half. All three stop counting when the exercise's solution is
-released, which happens with the next exercise session.
+released — normally with the next exercise session, and occasionally sooner, in
+a solutions-only release before an exam. `oslings update` names the solutions
+that have just shipped, so you always know which windows have closed.
 
 Your own work is archived in `my-work/`, and `oslings goto <name>` returns you
 to it.
@@ -121,8 +123,10 @@ day counts, and two of your own devices count once.
 exercise's real test against what you committed. Grading rebuilds and reboots
 your code, so a pass in class is a pass at grading time and editing local state
 cannot manufacture one. A partly-working exercise earns the share of its own
-tests that pass. The day's exercises are averaged, and the result is multiplied
-by where the work was done:
+tests that pass, counted by the test **names** the course repository ships — so
+deleting a failing test lowers your score rather than raising it, and adding a
+passing one of your own does nothing. The day's exercises are averaged, and the
+result is multiplied by where the work was done:
 
 | Where you did the work | Multiplier |
 |---|---|
@@ -130,28 +134,66 @@ by where the work was done:
 | At a **make-up session** — office hours with the instructor or TA, on **cs326** | **× 0.75** |
 | Anywhere else | **× 0.5** |
 
-Only the best attempt counts, so a later attempt can raise a score and never
-lowers one. Every attempt stops counting when that exercise's solution is
-released, which happens with the next exercise session.
+Every distinct **version** of an exercise you commit is scored this way — the
+tests it passes times its multiplier — and the best one counts, so a later
+attempt can raise a score and never lowers one. Two consequences are worth
+knowing. A finished exercise written at home (every test, × 0.5) can beat a
+half-finished one written in class, so finishing late is always worth doing.
+And because versions are compared by their contents, re-committing work you
+already had buys nothing: bring the unfinished exercise to a make-up session
+and finish it there. Every version stops counting once that exercise's solution
+is released.
 
 The multiplier follows the submission that first contained the work, not a
 later one that merely re-committed it, and being in the room is established by
 the class server rather than by anything your laptop reports. **The
 `oslings submit` you run in the room is the evidence — submit before you
-leave.** Extra credit is graded from your repository the same way, without a
-multiplier and without a deadline.
+leave.** Extra credit is graded from your repository without a multiplier and
+without a deadline — where you wrote it does not matter — and is capped at
++3%; `55k_pipes`, a design exercise with no tests, is read by hand.
 
-The lowest two exercise **days** in each module are dropped. Module 1 is the 11
-days through October 1; module 2 is the 13 days from October 2, which is the
-first day that touches the kernel.
+Scoring of the network half, and of where the work was done, began on
+**September 10**, the day it was announced. The four sessions before it are
+scored on their exercises alone: everyone has the network half, and every
+version counts as in-class.
+
+If the class server records nothing at all for a session — it was down, or its
+clock could not be confirmed — that day is **held** rather than posted, and the
+network half is then given to the whole class. A day is recomputed whenever new
+work arrives, and only ever upward. If a number looks wrong, write in: every
+grade can be rebuilt from its evidence — the attendance rows behind the
+minutes, and every version of every exercise with its commit, its time and its
+tier — and that is the first thing we will do.
+
+**Five exercise days are dropped**, from anywhere in the semester — five of
+your 24, not a quota per module. They are applied at the end of the term, once
+every day has closed, and appear in Canvas as days marked excused. Until then
+your running total is computed without them, so it can only go up when they
+land.
+
+The five are chosen to **help you the most**, which is not always the same as
+your five lowest: a kernel day carries more weight than a Rust day, so dropping
+a slightly better kernel day can be worth more than dropping your worst Rust
+one. Whatever set you would have picked by hand, this one is at least as good.
+Fewer than five are dropped when a day would not change your grade — a perfect
+record loses none, and loses nothing by it.
+
+A day is only eligible once its window has closed, so a day you can still
+finish at a make-up session is never dropped out from under you. Extra credit
+is separate and is never dropped.
 
 ### Solutions
 
-The reference solution for an exercise is released with the next exercise —
-the point at which its make-up window closes — into `exercises/<name>/solution/` in your
-repository; `oslings solution <name>` prints it. Before that it exists in no
-repository you can fetch. Exam and practice-set solutions are posted on the
-site under [Solutions](solutions/index.md).
+The reference solution for an exercise is released into
+`exercises/<name>/solution/` in your repository, and `oslings solution <name>`
+prints it. Before that it exists in no repository you can fetch. Solutions ship
+with a release rather than on a date: normally the next exercise session ships
+the previous session's solutions, and occasionally one arrives sooner, in a
+solutions-only release before an exam. Shipping a solution is what closes that
+exercise's make-up window, and `oslings update` says which ones just arrived.
+
+Exam and practice-set solutions are posted on the site under
+[Solutions](solutions/index.md).
 
 ### Exams
 
