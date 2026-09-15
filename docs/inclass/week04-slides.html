@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collections, Traits, Errors, and Bytes — CS 326 Week 04</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="./">&larr; In Class</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- Title Slide -->
+            <section data-markdown>
+                <textarea data-template>
+# Collections, Traits, Errors, and Bytes
+
+## CS 326 Operating Systems &middot; Week 04, in class
+
+September 15, 2026 &middot; Run along: `cd examples &amp;&amp; cargo run --bin 01_array_slice_vec`
+
+---
+
+## Today, in Four Moves
+
+1. **Collections** — writing *through* the table, not around it
+2. **Traits** — one name, many types, and what a bound buys
+3. **Errors** — failure as a value, and where it becomes a number
+4. **Bytes** — a program that runs twice: argv in, bytes out, a number back
+
+<div class="info-box">
+Everything on these slides is a program in <code>examples/</code>. When you see
+<strong>RUN</strong>, run it — the sizes, the counts, and the error messages
+printed are the point.
+</div>
+
+Due this week: `06r_collections` and `07r_traits` (Thu), `08r_errors` and `10c_echo` (Fri).
+
+---
+
+## One System Call, Four Exercises
+
+```rust
+fn sys_open(&mut self, path: &[u8]) -> i64 {                  // IV: bytes in
+    let inode = match self.fs.lookup(path) {                   // III: a Result
+        Ok(i) => i,
+        Err(FsError::NotFound) => return -ENOENT,              //      becomes a number,
+        Err(FsError::NameTooLong) => return -ENAMETOOLONG,     //      exactly once
+        Err(FsError::IsADirectory) => return -EISDIR,
+    };
+    let fds = &mut self.current().fds;                         // I: a fixed table
+    match fds.iter_mut().enumerate().find(|(_, s)| s.is_none()) {
+        Some((fd, slot)) => { *slot = Some(File::new(inode)); fd as i64 }
+        None => -EMFILE,
+    }
+}
+```
+
+<div class="highlight-box">
+Every line of this is one of this week's four exercises. The <code>Out</code>
+and <code>Scheduler</code> traits (II) are the seam it sits behind.
+</div>
+
+---
+
+# Part I
+
+## Collections: writing through the table
+
+---
+
+## Three Ways to Hold N Things, Again
+
+```text
+  [Option<u32>; 8]     |slot|slot|slot|slot|slot|slot|slot|slot|   64 bytes: the table itself
+  &[Option<u32>]       [ptr ----> into somebody's table][len]     16 bytes: a borrowed view
+  Vec<Option<u32>>     [ptr ----> the heap][cap][len]             24 bytes: grows, asks an allocator
+```
+
+One function serves all three, because each argument becomes a slice at the call:
+
+```rust
+fn count_free(table: &[Option<u32>]) -> usize { table.iter().filter(|s| s.is_none()).count() }
+
+count_free(&arr);        // &[T; 8]  coerces to  &[T]
+count_free(&arr[..4]);   // already a slice
+count_free(&v);          // &Vec<T>  coerces to  &[T]
+```
+
+Write functions over slices. Every kind of table can call them.
+
+**RUN** `cargo run --bin 01_array_slice_vec`
+
+---
+
+## `iter()` Lends, `iter_mut()` Lends Exclusively
+
+```rust
+for c in chan.iter()      { if *c == Some(target) { sleepers += 1; } }   // c: &Option<usize>
+for c in chan.iter_mut()  { if *c == Some(target) { *c = None; } }       // c: &mut Option<usize>
+```
+
+`c` is a reference **into** the array. The star assigns *through* it, and the
+array changes. Without the star you would be overwriting the reference.
+
+```text
+  xv6:  wakeup(chan) — walk the whole table, move every sleeper on chan to runnable
+```
+
+One `&mut` per slot, handed out in turn. Nothing else can reach that slot while
+you hold it — which is exactly what lets the write be safe.
+
+**RUN** `cargo run --bin 02_iter_mut_and_enumerate`
+
+---
+
+## The Signature Decides
+
+| the function was handed | it may write | because |
+|---|---|---|
+| `table: &[T]` | `iter()` only | it bought the right to *read* |
+| `table: &mut [T]` | `iter()` or `iter_mut()` | it may read or write, one at a time |
+| `table: Vec<T>` (by value) | both, plus `push` | it *owns* the table |
+
+```rust
+fn alloc_slot(table: &[Option<u32>], pid: u32) -> Option<usize> {
+    for (i, slot) in table.iter_mut().enumerate() { /* ... */ }   // error[E0596]
+```
+
+<div class="info-box">
+The loop is fine. The <em>parameter</em> is wrong. No loop can add a right the
+signature threw away — fix the signature, not the body.
+</div>
+
+**RUN** `../examples/show-errors.sh e0596`
+
+---
+
+## Do Not Assign Into a Table You Are Iterating
+
+```rust
+for (i, slot) in table.iter().enumerate() {
+    if slot.is_some() {
+        table[i] = None;      // error[E0506]: cannot assign to `table[_]`
+    }                         //               because it is borrowed
+}
+```
+
+The iterator holds a shared borrow of the *whole table* for the *whole loop*.
+The assignment writes into it while that borrow is alive.
+
+```rust
+for (i, slot) in table.iter_mut().enumerate() { *slot = None; }   // FIX 1: write through
+for i in 0..table.len() { table[i] = None; }                      // FIX 2: no iterator
+```
+
+<div class="highlight-box">
+A <code>return</code> right after the write is accepted — the borrow checker
+sees the iterator is never used again. The moment the loop can
+<em>continue</em>, it is not. This is <code>06r</code>'s
+<code>alloc_slot</code>, with and without its <code>return</code>.
+</div>
+
+**RUN** `../examples/show-errors.sh e0506`
+
+---
+
+## `enumerate`: Because the Index Is the Answer
+
+```rust
+fn open_fd(fds: &mut [Option<File>], f: File) -> Option<usize> {
+    for (fd, slot) in fds.iter_mut().enumerate() {
+        if slot.is_none() { *slot = Some(f); return Some(fd); }
+    }
+    None                                     // an index, or nothing. Never -1.
+}
+```
+
+In the descriptor table the slot index **is** the descriptor. That is why every
+program's first `open` returns 3 — and why *lowest free* is a rule, not a
+preference:
+
+```text
+  close(1); open("out")  ->  1        the shell's `cmd > out`, and it works only bottom-up
+```
+
+Three spellings of the same search, and they compile to the same loop:
+`position(..)`, `enumerate().find(..)`, and `for i in 0..len`.
+
+**RUN** `cargo run --bin 03_slot_search`
+
+---
+
+## Adapters Are a Pipeline
+
+Watch the **item type** change at every link:
+
+| link | item type | what it did |
+|---|---|---|
+| `refs.iter()` | `&Option<u16>` | a reference into the table |
+| `.flatten()` | `&u16` | an `Option` is an iterator of 0 or 1 items |
+| `.copied()` | `u16` | dereference each one |
+| `.map(\|r\| r * 2)` | `u16` | whatever the closure returns |
+| `.collect()` | `Vec<u16>` | **the one link that allocates** |
+
+```rust
+let page = 4096;
+let bytes: Vec<usize> = refs.iter().flatten().map(|&r| r as usize * page).collect();
+```
+
+The closure reached `page` from the enclosing scope. That is a **capture**, and
+it is what lets a chain refer to a limit or a counter declared outside it.
+
+**RUN** `cargo run --bin 04_adapters_and_closures`
+
+---
+
+## `collect` Needs to Know the Container
+
+```rust
+let a: Vec<u16> = refs.iter().flatten().copied().collect();   // annotate the binding
+let b = refs.iter().flatten().copied().collect::<Vec<u16>>(); // or the call
+let c = refs.iter().flatten().copied().collect();             // error[E0282]: type annotations needed
+```
+
+`collect` can build a `Vec`, a `String`, a `HashMap`, a `Result<Vec<_>, _>`.
+It has to be told which, and it checks what it is fed: drop the `copied()` and
+`Vec<u16>` cannot be built from `&u16` (E0277).
+
+<div class="highlight-box">
+Every other adapter is lazy and allocates nothing — <code>map</code> computes
+one item at a time, <code>find</code> stops asking the moment it succeeds.
+<code>collect</code> has to put the results <em>somewhere</em>. That is why it
+is the one link kernel code leaves out.
+</div>
+
+---
+
+## `Vec` on the Laptop, Arrays in the Kernel
+
+`06r`'s `live_pids` returns a `Vec` — because it runs in a test, on a machine
+with a heap. Three reasons the kernel's tables are arrays, none of them taste:
+
+1. **There is no allocator yet.** The process table is used on the fourth line of boot.
+2. **The trap path may not allocate.** Allocation can fail, can block, takes locks.
+3. **A hard limit fails honestly.** The 9th `open` fails *at the call that asked*.
+
+| in `06r` | on the host | in the kernel |
+|---|---|---|
+| `new_table()` → `[None; NPROC]` | the same | `static mut PROCS` |
+| `alloc_slot` — `iter_mut` + `*slot =` | the same | `allocproc` in `34k` |
+| `live_pids` — `push` into a `Vec` | tests only | walk the table in place |
+
+Where a list must come back and a `Vec` is not allowed: return an iterator.
+`fn live(t: &[Option<u32>]) -> impl Iterator<Item = u32> + '_` allocates nothing.
+---
+
+# Part II
+
+## Traits: one name, many types
+
+---
+
+## A Trait Is a Promise About a Type
+
+```rust
+pub trait Uart {
+    fn putc(&mut self, b: u8);                     // required: no body
+    fn puts(&mut self, s: &[u8]) {                 // default: a body, written once
+        for &b in s { self.putc(b); }
+    }
+}
+```
+
+A trait holds no data. You never build one. Types **implement** it, and code
+written against the trait's name runs on every type that does.
+
+```c
+/* C: the same idea, with the checking removed */
+struct file_operations { ssize_t (*read)(struct file *, char *, size_t); ... };
+```
+
+The kernel's real `Out` trait (`46k`): the shell writes to the UART, the test
+writes to a buffer it can inspect. Same commands, two destinations.
+
+---
+
+## Required vs Default
+
+| kind | in the trait | the implementer |
+|---|---|---|
+| **required** | signature and a `;` | must write it |
+| **default** | a body | inherits it, may override it |
+
+```rust
+impl Sink for Tally {
+    fn put_line(&mut self, b: &[u8]) { self.bytes += b.len() + 1; }   // wrote the optional one
+}                                                                    // error[E0046]: missing: `put`
+```
+
+<div class="info-box">
+The default is <em>built on</em> the required one. Nothing works without
+<code>put</code>, and the compiler names exactly what is missing.
+</div>
+
+**RUN** `../examples/show-errors.sh e0046`
+
+---
+
+## `impl Trait for Type`: the Second Kind of `impl`
+
+```rust
+impl Console { pub fn new() -> Console { .. } }     // week 03: Console's own methods
+impl Uart for Console { fn putc(&mut self, b: u8) { .. } }   // this week: Console promises Uart
+```
+
+Three implementers, and each writes **only** `putc`:
+
+```rust
+pub struct Console;                       // a unit struct: zero bytes, exists to be a type
+pub struct Recorder { pub buf: Vec<u8> }  // the test's version
+pub struct Tally { pub bytes: usize }     // measure, and throw the bytes away
+
+impl Uart for Console  { fn putc(&mut self, b: u8) { stdout().write_all(&[b]); } }
+impl Uart for Recorder { fn putc(&mut self, b: u8) { self.buf.push(b); } }
+impl Uart for Tally    { fn putc(&mut self, _: u8) { self.bytes += 1; } }
+```
+
+`puts` and `putln` have no `impl` block anywhere. They were written once,
+against a `self` whose type did not exist yet.
+
+**RUN** `cargo run --bin 05_trait_required_default`
+
+---
+
+## You Have Been Using This Since Week 03
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]     // five `impl Trait for T` blocks, written by rustc
+pub struct Pte(pub u64);
+```
+
+`derive` is nothing more than the compiler writing `impl Debug for Pte`,
+`impl Clone for Pte`, … for you. This week you write the same shape by hand.
+
+```rust
+pub trait Write {                                          // core::fmt::Write
+    fn write_str(&mut self, s: &str) -> fmt::Result;       // one required method
+    fn write_char(&mut self, c: char) -> fmt::Result { .. }  // defaults
+    fn write_fmt(&mut self, a: Arguments) -> fmt::Result { .. }
+}
+```
+
+`07r`'s `Out::write_str(&mut self, s: &str)` is this signature without the
+`Result`. Implement `write_str` on the UART and `write!` works. **That is the
+kernel's `println!`, in its entirety.**
+
+---
+
+## A Generic Function Can Do Nothing
+
+```rust
+fn shout<T>(v: T) {
+    v.putc(1);           // error[E0599]: no method named `putc` found for type parameter `T`
+}
+```
+
+`T` is *some* type. The body may assume exactly what the bound says — and there
+is no bound. Read rustc's help text out loud, because it is the fix:
+
+```text
+help: the following trait defines an item `putc`, perhaps you need to
+      restrict type parameter `T` with it:
+      fn shout<T: Uart>(v: T) {
+                ++++++
+```
+
+<div class="highlight-box">
+This is not a missing <code>use</code>. It is a missing <em>bound</em>. The
+bound is the contract in both directions: what the body may call, and what the
+caller must prove.
+</div>
+
+**RUN** `../examples/show-errors.sh e0599`
+
+---
+
+## Four Spellings, Three Meanings
+
+```rust
+fn banner<U: Uart>(u: &mut U)                  // 1. the bound, inline
+fn banner<U>(u: &mut U) where U: Uart          // 2. a where clause: same thing, reads better when long
+fn banner(u: &mut impl Uart)                   // 3. impl Trait in argument position: same thing again
+fn banner(u: &mut dyn Uart)                    // 4. dyn: a DIFFERENT thing (next slides)
+```
+
+Bounds join with `+`, and each one is a capability the body buys:
+
+```rust
+fn largest<T: PartialOrd + Copy>(xs: &[T]) -> Option<T>    // may compare, may copy
+```
+
+`impl Trait` in **return** position is "an iterator, whose type I am not naming" —
+and it is how to return a list without a `Vec`:
+
+```rust
+fn live(t: &[Option<u32>]) -> impl Iterator<Item = u32> + '_ { t.iter().flatten().copied() }
+```
+
+**RUN** `cargo run --bin 06_generics_and_bounds`
+
+---
+
+## Monomorphization: One Copy Per Type Used
+
+```rust
+fn banner<U: Uart>(u: &mut U) {
+    u.puts(b"rv6 ready\n");
+    println!("[compiled for {}]", type_name::<U>());   // printed from INSIDE the body
+}
+```
+
+```text
+  banner(&mut console)   ->  [compiled for Console]
+  banner(&mut rec)       ->  [compiled for Recorder]      three names,
+  banner(&mut tally)     ->  [compiled for Tally]         ONE function body
+```
+
+The compiler did not emit one clever function. It emitted **three**, each with
+`putc` resolved and inlined:
+
+```text
+  called with:  Console, Recorder, Tally     ->  3 copies    (not one per type that EXISTS)
+  trace<S, O>:  2 schedulers x 2 sinks used  ->  up to 4     (only the combinations called)
+```
+
+The abstraction is not cheap. It is *gone*. The price is code size.
+
+---
+
+## `dyn`: a Fat Pointer and a Table
+
+```text
+  size_of::<&Console>()   = 8     [ptr]              thin
+  size_of::<&dyn Uart>()  = 16    [ptr][vtable]      fat
+  size_of::<&[u8]>()      = 16    [ptr][len]         fat, the other way
+```
+
+```text
+  vtable for Console as Uart:
+  +--------+--------+--------+--------+--------+--------+
+  | drop   | size   | align  | putc   | puts   | putln  |
+  +--------+--------+--------+--------+--------+--------+
+```
+
+`fn banner(u: &mut dyn Uart)` is **one** function. Each call loads the method
+pointer from the vtable and jumps through it. Nothing inlines across that jump.
+
+What it buys: `&mut dyn Uart` is *one type*, so three different implementers
+fit in the same array, struct field, or slot —
+
+```rust
+let sinks: [&mut dyn Uart; 3] = [&mut console, &mut rec, &mut tally];   // impossible with [&mut U; 3]
+```
+
+**RUN** `cargo run --bin 07_static_vs_dyn`
+
+---
+
+## Choosing Between Them
+
+<div class="mermaid" style="max-width: 720px; margin: 0 auto;">
+flowchart LR
+    Q1{"Must ONE slot hold different types over time,\nor one table hold several at once?"} -->|yes| D["&amp;mut dyn Trait\nfat pointer + vtable, one copy of the code\n(the trait must be dyn compatible)"]
+    Q1 -->|no| Q2{"Is the call on a hot path?\n(every tick, every byte)"}
+    Q2 -->|yes| G["generic T: Trait\none copy per type, direct call, inlined"]
+    Q2 -->|no| E["either — generics by default;\nthey read the same"]
+</div>
+
+The shell chose `dyn` (at 115200 baud an indirect call is nothing); the scheduler chose generics (`pick_next` runs every tick).
+
+---
+
+## What `dyn` Cannot Do
+
+```rust
+trait Sink {
+    fn put(&mut self, b: &[u8]);
+    fn put_each<I: Iterator<Item = &'static [u8]>>(&mut self, items: I) { .. }   // generic method
+}
+fn banner(out: &mut dyn Sink) { .. }     // error[E0038]: the trait `Sink` is not dyn compatible
+```
+
+A vtable has one slot per method. A generic method would need one slot per type
+it is ever called with — not a number the compiler knows. `fn new() -> Self`
+and methods without `self` fail the same way.
+
+| fix | what it does |
+|---|---|
+| `where Self: Sized` on `put_each` | exists for concrete types, vanishes from the vtable |
+| `put_each(&mut self, items: &[&[u8]])` | not generic any more |
+| `fn banner<S: Sink>(s: &mut S)` | go generic; never need `dyn` |
+
+And `&mut Sink` without the word `dyn` is E0782 — edition 2021 will not let a
+trait be mistaken for a type.
+
+**RUN** `../examples/show-errors.sh e0038`
+
+---
+
+## Policy Apart From Mechanism
+
+```rust
+pub trait Scheduler {
+    fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
+}
+```
+
+Three decisions, all in the signature:
+
+| part | says |
+|---|---|
+| `&mut self` | a policy *may* remember something between calls (round-robin's cursor); one that does not simply ignores the ability |
+| `states: &[ProcState]` | the policy sees the least it needs, read-only — no policy can corrupt the table |
+| `-> Option<usize>` | "nothing runnable" is an ordinary answer, not an error |
+
+The **mechanism** — how the CPU is handed over — is assembly in `35k`, and
+never changes when the policy does. `07r_traits_example`'s `Allocator::pick`
+makes the same three decisions over page frames.
+
+---
+
+## One Function, Every Combination
+
+```rust
+pub fn trace<S: Scheduler, O: Out>(sched: &mut S, states: &[ProcState],
+                                   names: &[&str], turns: usize, out: &mut O) {
+    for slot in sched.run_for(states, turns) {     // run_for: a default, written once against pick_next
+        out.write_line(names[slot]);               // write_line: a default, written once against write_str
+    }
+}
+```
+
+Two bounds. Inside the body you may call **only** what they promise — and that
+is all `trace` needs.
+
+```text
+  trace::<RoundRobin, StringOut>     compiled, because a test calls it
+  trace::<Priority,   CountingOut>   compiled, because a test calls it
+  trace::<RoundRobin, CountingOut>   not emitted — nobody asked
+```
+
+`run_for` was written once, against `pick_next` alone. Every policy that exists
+now or later gets it without another line of code. That is the whole trick.
+---
+
+# Part III
+
+## Errors as values
+
+---
+
+## A Kernel Has Nowhere to Throw
+
+Three reasons there are no exceptions in this kernel, none of them taste:
+
+1. **You may be in the middle of a trap** with interrupts off and a lock held. There is no stack to unwind *to*.
+2. **There is no unwinder.** `panic = "abort"`, and the machinery that walks frames is 10s of KiB the image does not have.
+3. **Stopping is not an option.** A user program's bad file name must not take the machine with it.
+
+So failure is a **return value** — and the compiler will not let you drop it
+on the floor:
+
+```text
+warning: unused `Result` that must be used
+   |     alloc_frame(&mut free);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: this `Result` may be an `Err` variant, which should be handled
+```
+
+That warning is the `-1` nobody checked in C, noticed at compile time.
+
+---
+
+## Absence Is Not Failure
+
+| type | it is | the question it answers |
+|---|---|---|
+| `Option<T>` | `Some(T)` or `None` | a question whose honest answer may be *nothing* |
+| `Result<T, E>` | `Ok(T)` or `Err(E)` | an operation that could not, and says *why* |
+
+```rust
+fn find(&self, name: &str) -> Option<Inode>              // a name not in a directory: nothing went wrong
+fn lookup(&self, name: &str) -> Result<Inode, FsError>   // somebody asked for a file, and there is none
+```
+
+Both are plain enums from week 03. Both are checked by `match`. The difference
+is what the caller is *told*: `None` says "not here"; `Err(e)` says "here is
+why not".
+
+<div class="info-box">
+Keep the two apart and the policy stays visible: <code>find</code> reports a
+fact, <code>lookup</code> makes a decision about it.
+</div>
+
+**RUN** `cargo run --bin 08_option_vs_result`
+
+---
+
+## `.ok_or`: Where the Policy Lives
+
+```rust
+self.find(name).ok_or(FsError::NotFound)      // Some(x) -> Ok(x),  None -> Err(NotFound)
+```
+
+is exactly
+
+```rust
+match self.find(name) {
+    Some(inode) => Ok(inode),
+    None        => Err(FsError::NotFound),
+}
+```
+
+That one word is the line where "not there" becomes "this call failed". It is
+the **only** line where that decision is made — and returning `find`'s
+`Option` from `lookup` without it is a type error, not a guess:
+
+```text
+error[E0308]: mismatched types
+   expected `Result<Inode, FsError>`, found `Option<Inode>`
+   help: try wrapping the expression in `Ok`        <- and that would be WRONG
+```
+
+**RUN** `../examples/show-errors.sh e0308`
+
+---
+
+## Your Own Error Type Is an Enum
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FsError {
+    NotFound,        // no entry has that name
+    NameTooLong,     // the name cannot fit in an entry
+    IsADirectory,    // the name resolved to a directory; the caller wanted bytes
+}
+```
+
+One variant per way to fail. Nothing else. No message strings, no error codes,
+no `Box<dyn Error>` — just week 03's sum type, doing what it does.
+
+<div class="highlight-box">
+Exhaustiveness, in reverse. When <code>40k</code> adds <code>AlreadyExists</code>,
+<code>DirFull</code>, and <code>FileTooBig</code>, every <code>match</code>
+that needs a decision stops compiling until it has one. Write the arms out.
+<code>Err(_)</code> is how you switch that off forever.
+</div>
+
+---
+
+## `?` Is a `match` With a `return` in It
+
+```rust
+pub fn read_file(&self, name: &str) -> Result<&[u8], FsError> {
+    let inode = self.lookup(name)?;    // Err? return it from read_file, right now
+    self.read(inode)                   // its Result is already what we return
+}
+```
+
+`expr?` desugars to:
+
+```rust
+match expr {
+    Ok(v)  => v,
+    Err(e) => return Err(From::from(e)),
+}
+```
+
+Three fallible steps, three different exits, and the function never mentions
+any of them:
+
+```text
+  load("init")       -> Ok(Image { size: 128 })       passed all three
+  load("nope")       -> Err(NotFound)                 stopped at open(name)?
+  load("notes.txt")  -> Err(BadMagic)                 stopped at check_magic(bytes)?
+  load("huge")       -> Err(TooBig)                   stopped at check_size(bytes)?
+```
+
+**RUN** `cargo run --bin 09_error_enum_and_question_mark`
+
+---
+
+## `?` Needs Somewhere to Return To
+
+```rust
+fn sys_getc(reg: &Registry, name: &str) -> i64 {
+    let dev = reg.lookup(name)?;     // error[E0277]: the `?` operator can only be used in a
+    ..                               //   function that returns `Result` or `Option`
+}
+```
+
+`?` is a `return Err(e)`. A function returning `i64` has no `Err` to return.
+
+<div class="highlight-box">
+The fix is <em>not</em> to remove the <code>?</code>. It is to split the
+function: <code>?</code> all the way down, and one <code>match</code> at the
+top. The function returning a number is the <strong>boundary</strong>, and the
+boundary is where <code>?</code> stops.
+</div>
+
+`10c`'s `fn run(args: Args) -> i32` is the same wall, seen from the user side.
+A command returns a number to the shell; the `Result` from `write_all` stops
+there, with `let _ =`.
+
+**RUN** `../examples/show-errors.sh e0277`
+
+---
+
+## `From`: `?` Converts on the Way Out
+
+That `From::from(e)` in the desugaring is the quiet part:
+
+```rust
+pub enum ShellError { Exec(ExecError), BadArgs }
+
+impl From<ExecError> for ShellError {                    // written once per pair of types
+    fn from(e: ExecError) -> ShellError { ShellError::Exec(e) }
+}
+
+fn run_cmd(argv: &[&str]) -> Result<Image, ShellError> {
+    let name = argv.first().ok_or(ShellError::BadArgs)?;
+    let image = load(name)?;         // load returns Err(ExecError) — ? wraps it, silently
+    Ok(image)
+}
+```
+
+```text
+  run_cmd(&["nope"])  ->  Err(Exec(NotFound))       nobody wrote the wrapping at the call
+```
+
+When the inner and outer error types match, `From` is the identity and you
+never notice it was there.
+
+---
+
+## Where a `Result` Becomes a Number
+
+<div class="mermaid">
+flowchart TD
+    A["dirlookup — fs.rs\nResult of Inode or FsError"] -->|"?"| B["read_file — fs.rs\nResult of bytes or FsError"]
+    B -->|"match, exactly once"| C["sys_read — syscall.rs\ni64: 13, or -2 / -21 / -36"]
+    C -->|"a0: one register"| T["══ the trap boundary ══\nno types cross it, only a number"]
+    T --> U["ulib::read — lib.rs\nResult of usize or Error(-1)"]
+    U -->|"?"| P["cat.rs\nfn run(args) -&gt; i32"]
+</div>
+
+---
+
+## The Errno Boundary
+
+```rust
+pub fn sys_read(&self, name: &str) -> i64 {
+    match self.read_file(name) {
+        Ok(bytes)                   => bytes.len() as i64,   // >= 0: success, and the value
+        Err(FsError::NotFound)      => -2,                   // ENOENT
+        Err(FsError::IsADirectory)  => -21,                  // EISDIR
+        Err(FsError::NameTooLong)   => -36,                  // ENAMETOOLONG
+    }
+}
+```
+
+A user program gets one register, `a0`. The convention (Linux's, and ours from
+`50k` on): `>= 0` success, negative is minus an error number.
+
+<div class="info-box">
+Collapse in <strong>exactly one place</strong>. Everything behind this
+<code>match</code> speaks <code>FsError</code>; everything in front of it
+speaks integers. Nothing else in the kernel ever spells <code>21</code>.
+</div>
+
+rv6 today writes `Err(_) => -1`. The cause is lost at the wall — which is why
+`ulib::Error` is a thin `i32` and not an enum: the kernel genuinely does not
+say more.
+
+**RUN** `cargo run --bin 10_errno_boundary`
+
+---
+
+## `unwrap`, `expect`, and the Dead Machine
+
+```rust
+let n = read_fd(&fds, 3).expect("fd 3 was just opened");   // honest: the line above proved it
+let n = read_fd(&fds, 9).unwrap();                          // panics: called `Result::unwrap()`
+                                                            //   on an `Err` value: BadFd
+```
+
+| where | a panic is |
+|---|---|
+| in a test | one red test, with a message |
+| in `10c`, on the host | the process dies with exit code 101 |
+| in the kernel | the word `panic` on the UART, and the machine stops |
+
+**The rule:** `Result` for what the world did to you — a bad name, a full table,
+a missing device. Panic for what *you* did to yourself — an index you just
+proved is in range. `args.get(i).unwrap()` inside `for i in 1..args.len()` is
+honest.
+
+The siblings that never panic: `unwrap_or(default)`, `if let Ok(v) = ..`,
+`match`, `.is_err()`, `.map(..)`.
+
+---
+
+## `#[must_use]`: the `-1` You Forgot
+
+```rust
+write_all(STDOUT, b"\n");            // warning: unused `Result` that must be used
+write_all(STDOUT, b"\n")?;           // error[E0277]: run returns i32, not Result
+let _ = write_all(STDOUT, b"\n");    // the honest discard
+```
+
+`Result` carries `#[must_use]`. Ignoring one is not an error — it is a warning
+that says, in the source, "you did not look".
+
+<div class="highlight-box">
+<code>let _ =</code> says "I looked, and I chose not to care", where the next
+reader can see it. There is nothing an <code>echo</code> can do if the console
+is gone. Say so.
+</div>
+
+This is `10c`'s one place for it — and `08_option_vs_result` builds with this
+exact warning on purpose, so that everyone has seen it once.
+---
+
+# Part IV
+
+## Bytes, argv, and a program that runs twice
+
+---
+
+## Four Types That Are Not Text
+
+| type | size | it is |
+|---|---|---|
+| `u8` | 1 | one byte |
+| `char` | 4 | one Unicode scalar value |
+| `&str` | 16 | pointer + length, **UTF-8 guaranteed** |
+| `&[u8]` | 16 | pointer + length, **no promise at all** |
+
+```rust
+let flag: &[u8; 2] = b"-n";      // a byte-string literal is an array reference
+let s: &[u8] = flag;             // ... and coerces to a slice
+arg == b"-n"                     // slices compare byte by byte
+arg == "-n"                      // error[E0277]: can't compare `[u8]` with `str`
+```
+
+The kernel boundary is defined in bytes: a UART sends bytes, a disk block is
+bytes, the argv `exec` builds is NUL-terminated bytes. `&str` is bytes *plus a
+promise* — and a promise has to be checked.
+
+**RUN** `cargo run --bin 11_bytes_vs_strings`
+
+---
+
+## `from_utf8` Is a Check, and It Can Fail
+
+```rust
+pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error>     // a Result. Part III again.
+```
+
+```text
+  "café".len()            = 5      bytes:  63 61 66 c3 a9
+  "café".chars().count()  = 4
+  from_utf8(b"hello")                  -> Ok("hello")
+  from_utf8(&[0xff, 0x41])             -> Err(Utf8Error { valid_up_to: 0, .. })
+  from_utf8(&"café".as_bytes()[..4])   -> Err(Utf8Error { valid_up_to: 3, .. })    a chunk boundary
+```
+
+A `read()` that stops mid-character hands you exactly the last case. That is
+why `Args::get` gives bytes and `Args::str` runs the check and says `None`.
+
+<div class="info-box">
+Every byte of a multi-byte character is <code>&gt;= 0x80</code>. A byte-wise
+search for <code>b'\n'</code> (<code>0x0a</code>) can never land inside one.
+Splitting a byte stream into lines is correct for free — and that is
+<code>ulib::Lines</code>.
+</div>
+
+---
+
+## A Command Is `argv` In, Bytes Out, a Number Back
+
+```rust
+fn run(args: Args) -> i32           // the whole interface of a Unix program
+```
+
+| piece | is |
+|---|---|
+| `args.len()` | `argc` |
+| `args.get(0)` | `argv[0]`: the name you were invoked as |
+| `args.get(i)` | `Option<&[u8]>` — bytes, and `None` past the end |
+| fd 1 | the answer |
+| fd 2 | the complaint, so `cmd > out` never puts "cannot open" in the data |
+| the `i32` | `$?` |
+
+```sh
+$ basename /usr/lib/ ; echo $?
+lib
+0
+$ basename ; echo $?
+basename: missing operand         <- fd 2
+1
+```
+
+---
+
+## Separator, Not Terminator
+
+```rust
+for i in 1..args.len() {
+    if i > 1 { let _ = write_all(STDOUT, b" "); }             // the space goes BEFORE, except the first
+    let _ = write_all(STDOUT, args.get(i).unwrap());          // honest: 1..len is always in range
+}
+let _ = write_all(STDOUT, b"\n");                             // exactly one, always
+```
+
+```text
+  echo a b       ->  "a b\n"      n words, n - 1 spaces
+  echo a "" b    ->  "a  b\n"     the empty argument is still an argument
+  echo           ->  "\n"         bare echo prints an empty line
+```
+
+<div class="highlight-box">
+Separator versus terminator is decided <em>before</em> the loop is written.
+<code>10c_echo_example</code>'s <code>basename</code> uses a terminator on
+purpose — one <code>\n</code> after every operand — so the two rules sit side
+by side.
+</div>
+
+---
+
+## `write_all`, and the `Result` You May Discard
+
+`write` may accept **fewer** bytes than it was given, and says so in its return.
+A UART, a pipe, and a socket all do this to you:
+
+```text
+  write(STDOUT, b"hello world\n")   ->  Ok(3)     "hel" went. Nothing complained.
+```
+
+```rust
+pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
+    while !buf.is_empty() {
+        let n = write(fd, buf)?;
+        if n == 0 { return Err(Error(-1)); }     // a stalled descriptor, not progress
+        buf = &buf[n..];                          // re-point the slice: no copy
+    }
+    Ok(())
+}
+```
+
+`ulib`'s host harness never short-writes, so a bare `write` in your command
+passes every test — and truncates on rv6. `10c_echo_example`'s harness can be
+told to, and then it fails one.
+
+**RUN** `cargo run --bin 12_argv_and_write_all`
+
+---
+
+## The Two-Line Ceremony
+
+```rust
+#![cfg_attr(target_os = "none", no_std, no_main)]     // line 1
+use ulib::{Args, STDOUT};
+ulib::main!(run);                                     // line 2
+
+fn run(args: Args) -> i32 { .. }                      // no cfg anywhere below this
+```
+
+| when building for | `target_os` | line 1 does |
+|---|---|---|
+| your laptop | `"macos"` / `"linux"` | nothing |
+| rv6 (`riscv64gc-unknown-none-elf`) | `"none"` | `no_std`: no standard library; `no_main`: no runtime calls `main` |
+
+`target_os` is derived from the target triple you hand cargo. It **cannot**
+disagree with what you are building. A cargo feature could — and the failure
+mode is an unreadable wall of `no_std` link errors.
+
+---
+
+## What `main!` Expands To
+
+```rust
+// on the host                                    // on rv6
+fn main() {                                       #[no_mangle] #[link_section = ".text.start"]
+    let owned = host_argv();                      pub extern "C" fn _start(argc: usize,
+    let refs: Vec<&[u8]> = ..;                                              argv: *const *const u8) -> ! {
+    let code = run(Args::from_slice(&refs));          let args = unsafe { argv_slices(argc, argv, ..) };
+    std::process::exit(code);                         exit(run(Args::from_slice(args)))
+}                                                 }
+```
+
+Same `run`. On the host the runtime calls `main`; on rv6 there is no runtime,
+so `_start` is placed first in the image by the linker script and `exec` jumps
+to the first byte, with `argc`/`argv` read off the stack `exec` built.
+
+<div class="info-box">
+Your command file contains neither half. That is the whole point of the
+façade: the file you write on September 18 is the file that runs on your own
+kernel in December.
+</div>
+
+---
+
+## Testing Through the Seam
+
+```rust
+#[test]
+fn joins_arguments_with_single_spaces() {
+    let out = testing::run(&["echo", "hello", "world"], super::run);   // calls run() DIRECTLY
+    assert_eq!(out.out(), "hello world\n");
+    assert_eq!(out.code, 0);
+}
+```
+
+No process is spawned. fd 1 and fd 2 are pointed at two `Vec`s, `run` is called
+as a function, and the buffers are handed back. The source under test is the
+source that ships — no `dyn Write` threaded through, no test-only path.
+
+| `10c`'s four tests | argv | expects |
+|---|---|---|
+| normal | `echo hello world` | `"hello world\n"` |
+| none | `echo` | `"\n"` |
+| single | `echo solo` | `"solo\n"` — no trailing space |
+| empty argument | `echo a "" b` | `"a  b\n"` |
+
+---
+
+## The Seven Failures
+
+| file | error | fix |
+|---|---|---|
+| `e0506_assign_while_iterating.rs` | assigning `table[i]` inside `table.iter()` | `iter_mut` and `*slot`, or an index loop |
+| `e0596_iter_mut_behind_shared_ref.rs` | `iter_mut` on a `&[T]` parameter | change the parameter, not the loop |
+| `e0046_missing_required_method.rs` | overrode the default, skipped the required | supply `put` |
+| `e0599_no_bound_no_method.rs` | a trait method on an unbounded `S` | add `S: Sink` |
+| `e0038_not_dyn_compatible.rs` | a generic method, then `&mut dyn Trait` | `where Self: Sized`, or go generic |
+| `e0308_option_is_not_result.rs` | returned `find`'s `Option` from `lookup` | `.ok_or(e)` |
+| `e0277_question_mark_needs_result.rs` | `?` in a function returning `i64` | `match` at the boundary |
+
+Predict each one before it scrolls past. Then fix each file two different ways.
+
+**RUN** `./show-errors.sh`
+
+---
+
+## Do This Next
+
+1. `oslings run 06r_collections` and `oslings run 07r_traits` — due **Thursday**
+2. `oslings run 08r_errors` and `oslings run 10c_echo` — due **Friday**
+3. Read the tests first. They are the contract, and every one is a sentence.
+
+<div class="info-box">
+All four are <code>cargo test</code> on your laptop. Stuck? <code>oslings hint</code>
+gives you two hints; the third is the code, and it is not released until after
+the session.
+</div>
+
+Each exercise has a worked companion in `inclass/week04/` — the same shape in a
+different domain, complete and passing, with a mapping table:
+
+```text
+  06r_collections_example/    a file-descriptor table        cargo run --bin basic_table
+  07r_traits_example/         Sink + Allocator + trace       cargo run --bin basic_trait
+  08r_errors_example/         a device registry              cargo run --bin basic_result
+  10c_echo_example/           basename, on a ulib façade     cargo run --bin basic_command -- a b
+```
+
+---
+
+## Where This Lands in the Kernel
+
+| this week | the kernel exercise |
+|---|---|
+| the lowest-free search over a fixed table | `sys_open` in `50k_file_descriptors` |
+| `Scheduler` with `RoundRobin` behind it | the scheduler in `36k_scheduling` |
+| `&mut dyn Out` | the shell in `46k_shell`, driven by the UART and by tests |
+| `FsError` and `?` | `dirlookup` in `40k_filesystem` — the enum grows to eight variants |
+| the one `match` that turns a `Result` into `-errno` | every syscall in `50k` |
+| `putc`-shaped byte output | the UART driver in `45k_console` |
+| `write_all` and `Lines` over `&[u8]` | `11c_cat` through `14c_head`, next week |
+
+Every one of them is one of today's twelve programs with the nouns changed.
+
+---
+
+## Summary
+
+- **Write through the slot, not around it.** `iter_mut` gives one `&mut` per slot; `*slot = x` lands in the caller's array.
+- **The signature decides the loop.** `&[T]` bought reading. Fix the parameter, not the body.
+- **A trait is a promise; a default is written once**, against a `self` that does not exist yet.
+- **The bound is the whole contract.** E0599 is a missing bound, not a missing `use`.
+- **`dyn` is a fat pointer; generics are copies.** Storage versus inlining.
+- **Absence is `Option`; failure is `Result`; `.ok_or` is the decision**, made in one place.
+- **`?` all the way down, one `match` at the top** — the only place errno is spelled.
+- **Bytes, not strings** — and `write_all`, always, with `let _ =` on the `Result` you cannot act on.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            plugins: [ RevealMarkdown, RevealHighlight ],
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Read decoded textContent (undo any HTML-entity escaping from the
+        // markdown pipeline) and wait for web fonts so text measurement does
+        // not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

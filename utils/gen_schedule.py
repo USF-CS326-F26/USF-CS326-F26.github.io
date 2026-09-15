@@ -214,7 +214,8 @@ def sessions():
     add(3, 'thursday', 'Sep 10', 'exercise', '04r structs_impl', exercises=['04r_structs_impl'])
     add(3, 'friday', 'Sep 11', 'exercise', '05r enums_match', exercises=['05r_enums_match'])
 
-    add(4, 'tuesday', 'Sep 15', 'lecture', 'L07 Buffers, Bytes, and Line-Oriented I/O')
+    add(4, 'tuesday', 'Sep 15', 'lecture', 'L07 Buffers, Bytes, and Line-Oriented I/O',
+        links=L(("In-class slides", "/inclass/week04-slides.html")))
     add(4, 'thursday', 'Sep 17', 'exercise', '06r collections · 07r traits',
         exercises=['06r_collections', '07r_traits'])
     add(4, 'friday', 'Sep 18', 'exercise', '08r errors · 10c echo',

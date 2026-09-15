@@ -147,3 +147,84 @@ item has a twin there; if you can say why the twins are the same shape, the
 exercise is mostly reading comprehension.
 
 **Next:** exercises `04r_structs_impl` (Thursday) and `05r_enums_match` (Friday).
+
+---
+
+## Week 04 · September 15 — Collections, Traits, Errors, and Bytes
+
+[Open the slides](week04-slides.html){ .md-button }
+
+Companion to [L06 Traits, Generics, and the `ulib` Façade](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md)
+and [L07 Buffers, Bytes, and Line-Oriented I/O](../lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io.md).
+Four exercises come due this week, so each of the four parts of the session
+aims at one of them: twelve programs, one idea each, and seven that must *not*
+compile.
+
+### The twelve programs
+
+Run them in order. Read the printed **counts, sizes, and error messages**, not
+just the text.
+
+| Program | The one idea | The line to watch |
+|---|---|---|
+| `01_array_slice_vec` | one function, three containers | `count_free(&arr)` and `count_free(&v)`: the same `&` |
+| `02_iter_mut_and_enumerate` | `*c = None` writes into the array | the `*` |
+| `03_slot_search` | an index, or nothing — never −1 | `position(..)` returning `Option<usize>` |
+| `04_adapters_and_closures` | three words, three types | `.flatten().copied().collect::<Vec<u16>>()` |
+| `05_trait_required_default` | the default was never written by any implementer | `puts` has a body in the trait; no `impl` mentions it |
+| `06_generics_and_bounds` | one body, three names | `type_name::<U>()` printed from inside the generic |
+| `07_static_vs_dyn` | a fat pointer is two words | `size_of::<&dyn Uart>() = 16` |
+| `08_option_vs_result` | absence is a fact, failure is a decision | `first_free(free).ok_or(AllocError::OutOfFrames)` |
+| `09_error_enum_and_question_mark` | each `?` is a different exit | the three `?`s in `load` |
+| `10_errno_boundary` | the collapse happens in exactly one place | the `match` in `sys_read` |
+| `11_bytes_vs_strings` | a string is bytes plus a checked promise | `str::from_utf8(..)` returns a `Result` |
+| `12_argv_and_write_all` | the slice is re-pointed, not copied | `buf = &buf[n..]` |
+
+One program, `08_option_vs_result`, builds with a single warning on purpose —
+the warning is the demo.
+
+### The seven failures
+
+These are in `broken/` and are deliberately not part of the package, so
+`cargo build` still succeeds. Walk all seven, pausing at each:
+
+```sh
+./show-errors.sh
+./show-errors.sh e0506     # or jump to one
+```
+
+| File | Error | The fix |
+|---|---|---|
+| `e0506_assign_while_iterating.rs` | assigning `table[i]` inside `table.iter()` | `iter_mut` and `*slot = …`, or an index loop |
+| `e0596_iter_mut_behind_shared_ref.rs` | `iter_mut` on a `&[T]` parameter | change the parameter, not the loop |
+| `e0046_missing_required_method.rs` | overrode the default, skipped the required | supply `put`; delete the override |
+| `e0599_no_bound_no_method.rs` | a trait method on an unbounded type parameter | add `S: Sink` |
+| `e0038_not_dyn_compatible.rs` | a generic method, then `&mut dyn Trait` | `where Self: Sized`, or take a slice, or go generic |
+| `e0308_option_is_not_result.rs` | returned `find`'s `Option` from `lookup` | `.ok_or(e)`, or the two-arm `match` |
+| `e0277_question_mark_needs_result.rs` | `?` in a function returning `i64` | `match` at the boundary; `?` only below it |
+
+Try to predict each error before it scrolls by, then fix each broken file two
+different ways. If a message still does not make sense, run
+`rustc --explain E0506` and bring the ones that survive that to the next
+session.
+
+### Four worked examples
+
+Each exercise has a companion project in the same repository — the same shape
+as the exercise, in a different domain, complete and passing:
+
+```sh
+cd week04/06r_collections_example && cargo run --bin basic_table   && cargo test
+cd week04/07r_traits_example      && cargo run --bin basic_trait   && cargo test
+cd week04/08r_errors_example      && cargo run --bin basic_result  && cargo test
+cd week04/10c_echo_example        && cargo run --bin basic_command -- a b && cargo test
+```
+
+Read each `src/lib.rs` beside the exercise skeleton. Every item has a twin
+there; if you can say why the twins are the same shape, the exercise is mostly
+reading comprehension. The `10c` companion is host-only, on a local façade with
+`ulib`'s exact signatures — it shows the ceremony, and it cannot be copied into
+`commands/`.
+
+**Next:** exercises `06r_collections` and `07r_traits` (Thursday), `08r_errors`
+and `10c_echo` (Friday).

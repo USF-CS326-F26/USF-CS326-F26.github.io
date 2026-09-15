@@ -152,6 +152,8 @@ weeks:
           url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io/"
         - text: "Slides"
           url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html"
+        - text: "In-class slides"
+          url: "inclass/week04-slides.html"
 
     thursday:
       date: "Sep 17"
