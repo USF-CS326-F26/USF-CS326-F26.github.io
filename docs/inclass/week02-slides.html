@@ -115,6 +115,23 @@
             color: var(--primary-color);
         }
 
+        .reveal a.ex-link {
+            font-size: 0.6em;
+            margin-left: 0.35em;
+            padding: 0.1em 0.5em;
+            border-radius: 4px;
+            background: #e8f5e9;
+            color: var(--primary-color);
+            text-decoration: none;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .reveal a.ex-link:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+
         .highlight-box {
             background: #fff3cd;
             border-left: 4px solid var(--accent-color);
@@ -264,7 +281,7 @@ let wide: u32 = small as u32;   // fine — you asked for it
 - `300u32 as u8` == `44`. It truncates, but only where you wrote `as`
 - In kernel code the casts you write are `usize` &harr; `*mut u8` &harr; `u64`
 
-**RUN** `cargo run --bin 01_scalars`
+**RUN** `cargo run --bin 01_scalars` <a class="ex-link" href="week02-examples.html#01_scalars" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -336,7 +353,7 @@ let head: Option<usize> = None;      // there is no null in safe Rust
 Free at run time; unforgettable at compile time.
 </div>
 
-**RUN** `cargo run --bin 02_compound`
+**RUN** `cargo run --bin 02_compound` <a class="ex-link" href="week02-examples.html#02_compound" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -384,7 +401,7 @@ Any pointer into the old buffer is now dangling. Hold that thought — it is
 exactly the bug the borrow checker will refuse in Part IV.
 </div>
 
-**RUN** `cargo run --bin 03_stack_and_heap`
+**RUN** `cargo run --bin 03_stack_and_heap` <a class="ex-link" href="week02-examples.html#03_stack_and_heap" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -462,7 +479,7 @@ Read "moved" as <strong>"given away."</strong> This message is a use-after-free,
 reported before the program ever ran.
 </div>
 
-**RUN** `../examples/show-errors.sh e0382`
+**RUN** `../examples/show-errors.sh e0382` <a class="ex-link" href="week02-examples.html#e0382" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -484,7 +501,7 @@ fn annotate(mut text: String, note: &str) -> String { ...; text }
 let log = annotate(log, "mmu on");   // move in, move out
 ```
 
-**RUN** `cargo run --bin 04_move`
+**RUN** `cargo run --bin 04_move` <a class="ex-link" href="week02-examples.html#04_move" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -521,7 +538,7 @@ The double free is not a bug you avoid by discipline — it is a combination the
 type system refuses.
 </div>
 
-**RUN** `cargo run --bin 05_copy_types`
+**RUN** `cargo run --bin 05_copy_types` <a class="ex-link" href="week02-examples.html#05_copy_types" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -545,7 +562,7 @@ impl Drop for Page {
 
 Early `return`, `?`, and even a panic unwind all run these. No path forgets.
 
-**RUN** `cargo run --bin 06_drop`
+**RUN** `cargo run --bin 06_drop` <a class="ex-link" href="week02-examples.html#06_drop" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -647,7 +664,7 @@ println!("{first}");    // C++: dangling read. Rust: error[E0502]
 The same rule kills iterator invalidation, and — once threads exist — the data
 race, because a data race *is* aliasing plus mutation.
 
-**RUN** `../examples/show-errors.sh e0502`
+**RUN** `../examples/show-errors.sh e0502` <a class="ex-link" href="week02-examples.html#e0502" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -683,7 +700,7 @@ fn write(buf: &[u8]);           // one value; the length cannot lie
 
 One function body serves an array, a `Vec`, or a window into either.
 
-**RUN** `cargo run --bin 09_slices`
+**RUN** `cargo run --bin 09_slices` <a class="ex-link" href="week02-examples.html#09_slices" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -702,7 +719,7 @@ One function body serves an array, a `Vec`, or a window into either.
   inside the free pages — that is what `unsafe` is for, and you write the proof
   in a comment
 
-**RUN** `cargo run --bin 08_borrow_mut`
+**RUN** `cargo run --bin 08_borrow_mut` <a class="ex-link" href="week02-examples.html#08_borrow_mut" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -736,7 +753,7 @@ a page allocator, is exactly what handing out a page means.
 | `E0596` | not declared as mutable | add `mut` |
 | `E0106` | missing lifetime | borrowed from *what?* — return the value instead |
 
-**RUN** `../examples/show-errors.sh` — all seven, with the fixes
+**RUN** `../examples/show-errors.sh` <a class="ex-link" href="week02-examples.html#broken" target="cs326-examples">all the errors &#8599;</a> — all seven, with the fixes
 
 ---
 

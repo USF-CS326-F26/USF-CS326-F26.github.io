@@ -115,6 +115,23 @@
             color: var(--primary-color);
         }
 
+        .reveal a.ex-link {
+            font-size: 0.6em;
+            margin-left: 0.35em;
+            padding: 0.1em 0.5em;
+            border-radius: 4px;
+            background: #e8f5e9;
+            color: var(--primary-color);
+            text-decoration: none;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .reveal a.ex-link:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+
         .highlight-box {
             background: #fff3cd;
             border-left: 4px solid var(--accent-color);
@@ -271,7 +288,7 @@ That is why structs work at the hardware boundary:
 is 4096 — exactly one page, exactly what a RISC-V page table must be.
 </div>
 
-**RUN** `cargo run --bin 01_structs`
+**RUN** `cargo run --bin 01_structs` <a class="ex-link" href="week03-examples.html#01_structs" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -347,7 +364,7 @@ flowchart TD
     Q3 -->|no| D["the binding is struck off"]
 </div>
 
-**RUN** `cargo run --bin 02_impl_and_self`
+**RUN** `cargo run --bin 02_impl_and_self` <a class="ex-link" href="week03-examples.html#02_impl_and_self" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -387,7 +404,7 @@ always cheap. It makes assignment stop <em>moving</em>.
 
 Derive it on small plain-data types. Leave it off anything that owns a resource.
 
-**RUN** `cargo run --bin 03_derive_and_copy`
+**RUN** `cargo run --bin 03_derive_and_copy` <a class="ex-link" href="week03-examples.html#03_derive_and_copy" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -410,7 +427,7 @@ error[E0184]: the trait `Copy` cannot be implemented for this
 
 Not a rule you have to remember — a combination the type system refuses.
 
-**RUN** `../examples/show-errors.sh e0184`
+**RUN** `../examples/show-errors.sh e0184` <a class="ex-link" href="week03-examples.html#e0184" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -481,7 +498,7 @@ let raw: u32 = block.0;      // one explicit unwrap
 let back = BlockNo(raw);     // one explicit wrap
 ```
 
-**RUN** `cargo run --bin 04_newtype` then `../examples/show-errors.sh e0308`
+**RUN** `cargo run --bin 04_newtype` <a class="ex-link" href="week03-examples.html#04_newtype" target="cs326-examples">code + output &#8599;</a> then `../examples/show-errors.sh e0308` <a class="ex-link" href="week03-examples.html#e0308" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -584,7 +601,7 @@ function call no. Hence the pile of <code>xxx_init()</code> routines in every C
 kernel whose only job is to fill in what the language could not.
 </div>
 
-**RUN** `cargo run --bin 05_const_fn` then `../examples/show-errors.sh e0015`
+**RUN** `cargo run --bin 05_const_fn` <a class="ex-link" href="week03-examples.html#05_const_fn" target="cs326-examples">code + output &#8599;</a> then `../examples/show-errors.sh e0015` <a class="ex-link" href="week03-examples.html#e0015" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -629,7 +646,7 @@ whatever field now sits at offset 0. The first symptom is a jump to a garbage
 address on the next context switch.
 </div>
 
-**RUN** `cargo run --bin 06_repr_c`
+**RUN** `cargo run --bin 06_repr_c` <a class="ex-link" href="week03-examples.html#06_repr_c" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -698,7 +715,7 @@ Two properties earn this its place in a kernel. It is **deterministic**, so a
 drop can carry real work — returning a page, releasing a lock, re-enabling
 interrupts. And it runs **wherever the owner ends**.
 
-**RUN** `cargo run --bin 07_drop_guard`
+**RUN** `cargo run --bin 07_drop_guard` <a class="ex-link" href="week03-examples.html#07_drop_guard" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -809,7 +826,7 @@ size_of::<Option<&u8>>()  // 8   <- SAME
 **Niche optimization**: a reference can never be all-zeroes, so that unused bit
 pattern becomes `None`.
 
-**RUN** `cargo run --bin 08_enums`
+**RUN** `cargo run --bin 08_enums` <a class="ex-link" href="week03-examples.html#08_enums" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -855,7 +872,7 @@ a decision, by file and line, before boot.
 
 Exhaustiveness is not a syntax rule. It is a **refactoring tool**.
 
-**RUN** `../examples/show-errors.sh e0004`
+**RUN** `../examples/show-errors.sh e0004` <a class="ex-link" href="week03-examples.html#e0004" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -910,7 +927,7 @@ reproduce it by hand.
 Guarded arms do not count toward exhaustiveness, so a `match` resting on one
 still needs a fallback.
 
-**RUN** `cargo run --bin 09_match`
+**RUN** `cargo run --bin 09_match` <a class="ex-link" href="week03-examples.html#09_match" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -975,7 +992,7 @@ fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>
 | `?` | return `None` from the whole function, now |
 | `.unwrap()` | **almost never** — in a kernel a panic halts the machine |
 
-**RUN** `cargo run --bin 10_option`
+**RUN** `cargo run --bin 10_option` <a class="ex-link" href="week03-examples.html#10_option" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1026,7 +1043,7 @@ container. Write <code>&amp;[T]</code> to read and <code>&amp;mut [T]</code> to
 write, and changing <code>NPROC</code> from 64 to 8 cannot make it wrong.
 </div>
 
-**RUN** `cargo run --bin 11_slices`
+**RUN** `cargo run --bin 11_slices` <a class="ex-link" href="week03-examples.html#11_slices" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1072,7 +1089,7 @@ argument owns a denial-of-service attack on the whole system.
 Check once, where the number *enters*; index freely after that. In C the
 missing check reads into a neighbouring process control block.
 
-**RUN** `../examples/show-errors.sh e0080`
+**RUN** `../examples/show-errors.sh e0080` <a class="ex-link" href="week03-examples.html#e0080" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -1120,7 +1137,7 @@ not with growth. Letting a table grow is a promise you cannot keep, because the
 memory it would grow into belongs to somebody else.
 </div>
 
-**RUN** `cargo run --bin 12_tables_and_iterators`
+**RUN** `cargo run --bin 12_tables_and_iterators` <a class="ex-link" href="week03-examples.html#12_tables_and_iterators" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1138,7 +1155,7 @@ Predict each one before it scrolls past.
 | `e0507_move_out_of_self.rs` | moving a field out of `&self` |
 | `e0080_const_index.rs` | a constant index past the end |
 
-**RUN** `./show-errors.sh`
+**RUN** `./show-errors.sh` <a class="ex-link" href="week03-examples.html#broken" target="cs326-examples">all the errors &#8599;</a>
 
 ---
 

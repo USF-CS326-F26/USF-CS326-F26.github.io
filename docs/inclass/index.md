@@ -26,7 +26,7 @@ the [schedule](../index.md).
 
 ## Week 02 · September 1 — Rust: Types, Ownership, and Borrowing
 
-[Open the slides](week02-slides.html){ .md-button }
+[Open the slides](week02-slides.html){ .md-button } [Code and output](week02-examples.html){ .md-button }
 
 Companion to [L03 Ownership, Borrowing, and Lifetimes](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md).
 Where the lecture derives the rules, this session runs them: ten programs, one
@@ -80,7 +80,7 @@ session.
 
 ## Week 03 · September 8 — Structs, Enums, and Fixed Tables
 
-[Open the slides](week03-slides.html){ .md-button }
+[Open the slides](week03-slides.html){ .md-button } [Code and output](week03-examples.html){ .md-button }
 
 Companion to [L04 Structs, `impl`, and `const fn`](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md)
 and [L05 Arrays, Slices, and Fixed Tables](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md).
@@ -152,7 +152,7 @@ exercise is mostly reading comprehension.
 
 ## Week 04 · September 15 — Collections, Traits, Errors, and Bytes
 
-[Open the slides](week04-slides.html){ .md-button }
+[Open the slides](week04-slides.html){ .md-button } [Code and output](week04-examples.html){ .md-button }
 
 Companion to [L06 Traits, Generics, and the `ulib` Façade](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md)
 and [L07 Buffers, Bytes, and Line-Oriented I/O](../lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io.md).

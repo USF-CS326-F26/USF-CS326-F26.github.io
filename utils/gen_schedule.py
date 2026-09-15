@@ -205,17 +205,20 @@ def sessions():
         links=L(("Rust for Systems", "/guides/rust-for-systems/")))
 
     add(2, 'tuesday', 'Sep 1', 'lecture', 'L03 Ownership, Borrowing, and Lifetimes',
-        links=L(("In-class slides", "/inclass/week02-slides.html")))
+        links=L(("In-class slides", "/inclass/week02-slides.html"),
+                ("Code and output", "/inclass/week02-examples.html")))
     add(2, 'thursday', 'Sep 3', 'exercise', '02r ownership', exercises=['02r_ownership'])
     add(2, 'friday', 'Sep 4', 'exercise', '03r borrowing', exercises=['03r_borrowing'])
 
     add(3, 'tuesday', 'Sep 8', 'lecture', 'L05 Collections, Traits, and Errors',
-        links=L(("In-class slides", "/inclass/week03-slides.html")))
+        links=L(("In-class slides", "/inclass/week03-slides.html"),
+                ("Code and output", "/inclass/week03-examples.html")))
     add(3, 'thursday', 'Sep 10', 'exercise', '04r structs_impl', exercises=['04r_structs_impl'])
     add(3, 'friday', 'Sep 11', 'exercise', '05r enums_match', exercises=['05r_enums_match'])
 
     add(4, 'tuesday', 'Sep 15', 'lecture', 'L07 Buffers, Bytes, and Line-Oriented I/O',
-        links=L(("In-class slides", "/inclass/week04-slides.html")))
+        links=L(("In-class slides", "/inclass/week04-slides.html"),
+                ("Code and output", "/inclass/week04-examples.html")))
     add(4, 'thursday', 'Sep 17', 'exercise', '06r collections · 07r traits',
         exercises=['06r_collections', '07r_traits'])
     add(4, 'friday', 'Sep 18', 'exercise', '08r errors · 10c echo',

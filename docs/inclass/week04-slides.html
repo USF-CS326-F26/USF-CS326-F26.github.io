@@ -115,6 +115,23 @@
             color: var(--primary-color);
         }
 
+        .reveal a.ex-link {
+            font-size: 0.6em;
+            margin-left: 0.35em;
+            padding: 0.1em 0.5em;
+            border-radius: 4px;
+            background: #e8f5e9;
+            color: var(--primary-color);
+            text-decoration: none;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .reveal a.ex-link:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+
         .highlight-box {
             background: #fff3cd;
             border-left: 4px solid var(--accent-color);
@@ -252,7 +269,7 @@ count_free(&v);          // &Vec<T>  coerces to  &[T]
 
 Write functions over slices. Every kind of table can call them.
 
-**RUN** `cargo run --bin 01_array_slice_vec`
+**RUN** `cargo run --bin 01_array_slice_vec` <a class="ex-link" href="week04-examples.html#01_array_slice_vec" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -273,7 +290,7 @@ array changes. Without the star you would be overwriting the reference.
 One `&mut` per slot, handed out in turn. Nothing else can reach that slot while
 you hold it — which is exactly what lets the write be safe.
 
-**RUN** `cargo run --bin 02_iter_mut_and_enumerate`
+**RUN** `cargo run --bin 02_iter_mut_and_enumerate` <a class="ex-link" href="week04-examples.html#02_iter_mut_and_enumerate" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -295,7 +312,7 @@ The loop is fine. The <em>parameter</em> is wrong. No loop can add a right the
 signature threw away — fix the signature, not the body.
 </div>
 
-**RUN** `../examples/show-errors.sh e0596`
+**RUN** `../examples/show-errors.sh e0596` <a class="ex-link" href="week04-examples.html#e0596" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -324,7 +341,7 @@ sees the iterator is never used again. The moment the loop can
 <code>alloc_slot</code>, with and without its <code>return</code>.
 </div>
 
-**RUN** `../examples/show-errors.sh e0506`
+**RUN** `../examples/show-errors.sh e0506` <a class="ex-link" href="week04-examples.html#e0506" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -350,7 +367,7 @@ preference:
 Three spellings of the same search, and they compile to the same loop:
 `position(..)`, `enumerate().find(..)`, and `for i in 0..len`.
 
-**RUN** `cargo run --bin 03_slot_search`
+**RUN** `cargo run --bin 03_slot_search` <a class="ex-link" href="week04-examples.html#03_slot_search" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -374,7 +391,7 @@ let bytes: Vec<usize> = refs.iter().flatten().map(|&r| r as usize * page).collec
 The closure reached `page` from the enclosing scope. That is a **capture**, and
 it is what lets a chain refer to a limit or a counter declared outside it.
 
-**RUN** `cargo run --bin 04_adapters_and_closures`
+**RUN** `cargo run --bin 04_adapters_and_closures` <a class="ex-link" href="week04-examples.html#04_adapters_and_closures" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -466,7 +483,7 @@ The default is <em>built on</em> the required one. Nothing works without
 <code>put</code>, and the compiler names exactly what is missing.
 </div>
 
-**RUN** `../examples/show-errors.sh e0046`
+**RUN** `../examples/show-errors.sh e0046` <a class="ex-link" href="week04-examples.html#e0046" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -492,7 +509,7 @@ impl Uart for Tally    { fn putc(&mut self, _: u8) { self.bytes += 1; } }
 `puts` and `putln` have no `impl` block anywhere. They were written once,
 against a `self` whose type did not exist yet.
 
-**RUN** `cargo run --bin 05_trait_required_default`
+**RUN** `cargo run --bin 05_trait_required_default` <a class="ex-link" href="week04-examples.html#05_trait_required_default" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -544,7 +561,7 @@ bound is the contract in both directions: what the body may call, and what the
 caller must prove.
 </div>
 
-**RUN** `../examples/show-errors.sh e0599`
+**RUN** `../examples/show-errors.sh e0599` <a class="ex-link" href="week04-examples.html#e0599" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -570,7 +587,7 @@ and it is how to return a list without a `Vec`:
 fn live(t: &[Option<u32>]) -> impl Iterator<Item = u32> + '_ { t.iter().flatten().copied() }
 ```
 
-**RUN** `cargo run --bin 06_generics_and_bounds`
+**RUN** `cargo run --bin 06_generics_and_bounds` <a class="ex-link" href="week04-examples.html#06_generics_and_bounds" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -626,7 +643,7 @@ fit in the same array, struct field, or slot —
 let sinks: [&mut dyn Uart; 3] = [&mut console, &mut rec, &mut tally];   // impossible with [&mut U; 3]
 ```
 
-**RUN** `cargo run --bin 07_static_vs_dyn`
+**RUN** `cargo run --bin 07_static_vs_dyn` <a class="ex-link" href="week04-examples.html#07_static_vs_dyn" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -667,7 +684,7 @@ and methods without `self` fail the same way.
 And `&mut Sink` without the word `dyn` is E0782 — edition 2021 will not let a
 trait be mistaken for a type.
 
-**RUN** `../examples/show-errors.sh e0038`
+**RUN** `../examples/show-errors.sh e0038` <a class="ex-link" href="week04-examples.html#e0038" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -766,7 +783,7 @@ Keep the two apart and the policy stays visible: <code>find</code> reports a
 fact, <code>lookup</code> makes a decision about it.
 </div>
 
-**RUN** `cargo run --bin 08_option_vs_result`
+**RUN** `cargo run --bin 08_option_vs_result` <a class="ex-link" href="week04-examples.html#08_option_vs_result" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -795,7 +812,7 @@ error[E0308]: mismatched types
    help: try wrapping the expression in `Ok`        <- and that would be WRONG
 ```
 
-**RUN** `../examples/show-errors.sh e0308`
+**RUN** `../examples/show-errors.sh e0308` <a class="ex-link" href="week04-examples.html#e0308" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -850,7 +867,7 @@ any of them:
   load("huge")       -> Err(TooBig)                   stopped at check_size(bytes)?
 ```
 
-**RUN** `cargo run --bin 09_error_enum_and_question_mark`
+**RUN** `cargo run --bin 09_error_enum_and_question_mark` <a class="ex-link" href="week04-examples.html#09_error_enum_and_question_mark" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -876,7 +893,7 @@ boundary is where <code>?</code> stops.
 A command returns a number to the shell; the `Result` from `write_all` stops
 there, with `let _ =`.
 
-**RUN** `../examples/show-errors.sh e0277`
+**RUN** `../examples/show-errors.sh e0277` <a class="ex-link" href="week04-examples.html#e0277" target="cs326-examples">rustc output &#8599;</a>
 
 ---
 
@@ -946,7 +963,7 @@ rv6 today writes `Err(_) => -1`. The cause is lost at the wall — which is why
 `ulib::Error` is a thin `i32` and not an enum: the kernel genuinely does not
 say more.
 
-**RUN** `cargo run --bin 10_errno_boundary`
+**RUN** `cargo run --bin 10_errno_boundary` <a class="ex-link" href="week04-examples.html#10_errno_boundary" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1021,7 +1038,7 @@ The kernel boundary is defined in bytes: a UART sends bytes, a disk block is
 bytes, the argv `exec` builds is NUL-terminated bytes. `&str` is bytes *plus a
 promise* — and a promise has to be checked.
 
-**RUN** `cargo run --bin 11_bytes_vs_strings`
+**RUN** `cargo run --bin 11_bytes_vs_strings` <a class="ex-link" href="week04-examples.html#11_bytes_vs_strings" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1126,7 +1143,7 @@ pub fn write_all(fd: Fd, mut buf: &[u8]) -> Result<(), Error> {
 passes every test — and truncates on rv6. `10c_echo_example`'s harness can be
 told to, and then it fails one.
 
-**RUN** `cargo run --bin 12_argv_and_write_all`
+**RUN** `cargo run --bin 12_argv_and_write_all` <a class="ex-link" href="week04-examples.html#12_argv_and_write_all" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1213,7 +1230,7 @@ source that ships — no `dyn Write` threaded through, no test-only path.
 
 Predict each one before it scrolls past. Then fix each file two different ways.
 
-**RUN** `./show-errors.sh`
+**RUN** `./show-errors.sh` <a class="ex-link" href="week04-examples.html#broken" target="cs326-examples">all the errors &#8599;</a>
 
 ---
 

@@ -76,6 +76,8 @@ weeks:
           url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html"
         - text: "In-class slides"
           url: "inclass/week02-slides.html"
+        - text: "Code and output"
+          url: "inclass/week02-examples.html"
 
     thursday:
       date: "Sep 3"
@@ -115,6 +117,8 @@ weeks:
           url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html"
         - text: "In-class slides"
           url: "inclass/week03-slides.html"
+        - text: "Code and output"
+          url: "inclass/week03-examples.html"
 
     thursday:
       date: "Sep 10"
@@ -154,6 +158,8 @@ weeks:
           url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html"
         - text: "In-class slides"
           url: "inclass/week04-slides.html"
+        - text: "Code and output"
+          url: "inclass/week04-examples.html"
 
     thursday:
       date: "Sep 17"
