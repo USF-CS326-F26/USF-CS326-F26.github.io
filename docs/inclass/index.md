@@ -18,6 +18,14 @@ cd inclass/week02/examples
 cargo run --bin 01_scalars
 ```
 
+Each week also has a **Code and output** page: every program beside the output
+it printed, one section per row, with each output line linked to the `println!`
+that printed it. On those pages you can also edit a program and run it. Pressing
+**Run** sends that code to the [Rust Playground](https://play.rust-lang.org/),
+which the classroom network allows; **Revert** puts the original back. Your
+exercise work still belongs in your own repository, where the test harness can
+see it.
+
 Nothing here is graded, and none of it is a substitute for the lecture page or
 for the Prep page of the exercise session that follows — both are linked from
 the [schedule](../index.md).
