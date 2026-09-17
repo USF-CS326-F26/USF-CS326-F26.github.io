@@ -615,6 +615,9 @@ The compiler did not emit one clever function. It emitted **three**, each with
 ```
 
 The abstraction is not cheap. It is *gone*. The price is code size.
+Put the parameter on a **struct** and the price is paid in layout instead: one definition, a type per `T`.
+
+**RUN** `cargo run --bin 14_generic_struct_and_guard` <a class="ex-link" href="week04-examples.html#14_generic_struct_and_guard" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1219,18 +1222,19 @@ source that ships — no `dyn Write` threaded through, no test-only path.
 
 ---
 
-## The Eight Failures
+## The Nine Failures
 
 | file | error | fix |
 |---|---|---|
-| `e0506_assign_while_iterating.rs` | assigning `table[i]` inside `table.iter()` | `iter_mut` and `*slot`, or an index loop |
-| `e0596_iter_mut_behind_shared_ref.rs` | `iter_mut` on a `&[T]` parameter | change the parameter, not the loop |
-| `e0046_missing_required_method.rs` | overrode the default, skipped the required | supply `put` |
-| `e0599_no_bound_no_method.rs` | a trait method on an unbounded `S` | add `S: Sink` |
-| `e0038_not_dyn_compatible.rs` | a generic method, then `&mut dyn Trait` | `where Self: Sized`, or go generic |
-| `e0107_one_type_per_call_site.rs` | `FdTable<S>` used without its type argument | name it, go generic, or `&'a mut dyn Sink` |
-| `e0308_option_is_not_result.rs` | returned `find`'s `Option` from `lookup` | `.ok_or(e)` |
-| `e0277_question_mark_needs_result.rs` | `?` in a function returning `i64` | `match` at the boundary |
+| `e0506_assign_while_iterating` | assigning `table[i]` inside `table.iter()` | `iter_mut` and `*slot` |
+| `e0596_iter_mut_behind_shared_ref` | `iter_mut` on a `&[T]` parameter | change the parameter |
+| `e0046_missing_required_method` | overrode the default, skipped the required | supply `put` |
+| `e0599_no_bound_no_method` | a trait method on an unbounded `S` | add `S: Sink` |
+| `e0038_not_dyn_compatible` | a generic method, then `&mut dyn Trait` | `where Self: Sized` |
+| `e0107_one_type_per_call_site` | `FdTable<S>` without its type argument | name it, or `dyn Sink` |
+| `e0392_type_parameter_never_used` | a generic struct that never holds its `T` | hold one, or `PhantomData` |
+| `e0308_option_is_not_result` | returned `find`'s `Option` from `lookup` | `.ok_or(e)` |
+| `e0277_question_mark_needs_result` | `?` in a function returning `i64` | `match` at the boundary |
 
 Predict each one before it scrolls past. Then fix each file two different ways.
 
@@ -1273,8 +1277,9 @@ different domain, complete and passing, with a mapping table:
 | the one `match` that turns a `Result` into `-errno` | every syscall in `50k` |
 | `putc`-shaped byte output | the UART driver in `45k_console` |
 | `write_all` and `Lines` over `&[u8]` | `11c_cat` through `14c_head`, next week |
+| a generic struct with a guard | `SpinLock<T>` in `37k_spinlocks` — `lock` and `try_lock` are yours |
 
-Every one of them is one of today's thirteen programs with the nouns changed.
+Every one of them is one of today's fourteen programs with the nouns changed.
 
 ---
 
