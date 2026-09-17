@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="pointat">
 <title>Code and Output: Collections, Traits, Errors, and Bytes — CS 326 Week 04</title>
-<script>document.documentElement.classList.add("js");window.POINTAT={"tool": "pointat/2", "week": "week04", "runner": "playground", "endpoint": "https://play.rust-lang.org/execute", "channel": "stable", "mode": "debug", "edition": "2021", "captured_rustc": "rustc 1.89.0 (29483883e 2025-08-04)", "timeout": 15, "palette": ["--s:#6a737d;--st:#edeeef;--sd:#5f6770;--sb:#ffffff", "--s:#0072B2;--st:#e0eef6;--sd:#006ca9;--sb:#ffffff", "--s:#E69F00;--st:#fcf3e0;--sd:#8a5f00;--sb:#111111", "--s:#009E73;--st:#e0f3ee;--sd:#007656;--sb:#111111", "--s:#CC79A7;--st:#f9eff4;--sd:#8f5575;--sb:#111111", "--s:#D55E00;--st:#faece0;--sd:#aa4b00;--sb:#111111", "--s:#56B4E9;--st:#ebf6fc;--sd:#346c8c;--sb:#111111", "--s:#7B5EA7;--st:#efecf4;--sd:#75599f;--sb:#ffffff", "--s:#9C6B2F;--st:#f3ede6;--sd:#8c602a;--sb:#ffffff"]};</script>
+<script>document.documentElement.classList.add("js");window.POINTAT={"tool": "pointat/2", "week": "week04", "runner": "playground", "endpoint": "https://play.rust-lang.org/execute", "channel": "stable", "mode": "debug", "edition": "2021", "captured_rustc": "rustc 1.89.0 (29483883e 2025-08-04)", "timeout": 15, "share": "http://cs326-f26.cs.usfca.edu/inclass/week04-examples.html", "palette": ["--s:#6a737d;--st:#edeeef;--sd:#5f6770;--sb:#ffffff", "--s:#0072B2;--st:#e0eef6;--sd:#006ca9;--sb:#ffffff", "--s:#E69F00;--st:#fcf3e0;--sd:#8a5f00;--sb:#111111", "--s:#009E73;--st:#e0f3ee;--sd:#007656;--sb:#111111", "--s:#CC79A7;--st:#f9eff4;--sd:#8f5575;--sb:#111111", "--s:#D55E00;--st:#faece0;--sd:#aa4b00;--sb:#111111", "--s:#56B4E9;--st:#ebf6fc;--sd:#346c8c;--sb:#111111", "--s:#7B5EA7;--st:#efecf4;--sd:#75599f;--sb:#ffffff", "--s:#9C6B2F;--st:#f3ede6;--sd:#8c602a;--sb:#ffffff"]};</script>
 <style>
 /* pointat: code beside output.  Inlined into every weekNN/examples.html.
    Colours follow the course slides: USF green, gold accent, a11y-light code. */
@@ -192,6 +192,13 @@ details.why { margin: 0 0 10px; font-family: var(--ui); font-size: calc(var(--fs
   user-select: none; -webkit-user-select: none;
 }
 .cell.code .badge { left: 9px; }
+
+/* A badge or an article number that copies its own link. Only JavaScript sets
+   role=button, so a page without it shows an inert badge, as before. */
+.badge[role="button"], .exh h2 .num[role="button"] { cursor: pointer; }
+.badge[role="button"]:hover, .exh h2 .num[role="button"]:hover { background: var(--accent); color: #000; }
+.badge[role="button"]:focus-visible, .exh h2 .num[role="button"]:focus-visible,
+.bylink:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ol.hd { font-weight: 700; color: var(--sd, var(--out-fg)); }
 .ol[data-src]::before {
   content: ""; position: absolute; left: calc(var(--gut) - 1.35ch); top: 0.62em;
@@ -218,6 +225,25 @@ details.why { margin: 0 0 10px; font-family: var(--ui); font-size: calc(var(--fs
   max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .by:hover { background: var(--primary-dark); }
+.bylink {
+  margin-left: 0.7em; padding: 0 0.4em; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22); cursor: pointer;
+}
+.bylink:hover { background: var(--accent); color: #000; }
+
+/* "copied #07_static_vs_dyn/s3", or the URL itself when neither the Clipboard
+   API nor execCommand is available. Fixed and on <body>: a badge sits in four
+   offset contexts, and edit mode reads a row's text back as source. */
+.copied {
+  position: fixed; z-index: 20; padding: 3px 9px; border-radius: 5px;
+  background: var(--primary); color: #fff;
+  font-family: var(--ui); font-size: 13px; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); white-space: nowrap;
+}
+.copied input {
+  margin-left: 0.4em; width: 34ch; max-width: 56vw; padding: 1px 4px;
+  border: 0; border-radius: 3px; font-family: var(--mono); font-size: 12px;
+}
 
 .run-label { padding-left: var(--gut); color: var(--muted); font-size: 0.8em; }
 .js .run-label { display: none; }
@@ -474,7 +500,7 @@ a.xref { color: inherit; text-decoration: underline; text-decoration-color: var(
     <select id="pick" aria-label="choose an example"><option value="index">All programs</option><optgroup label="Programs (14)"><option value="01_array_slice_vec">01 &middot; array_slice_vec</option><option value="02_iter_mut_and_enumerate">02 &middot; iter_mut_and_enumerate</option><option value="03_slot_search">03 &middot; slot_search</option><option value="04_adapters_and_closures">04 &middot; adapters_and_closures</option><option value="05_trait_required_default">05 &middot; trait_required_default</option><option value="06_generics_and_bounds">06 &middot; generics_and_bounds</option><option value="07_static_vs_dyn">07 &middot; static_vs_dyn</option><option value="08_option_vs_result">08 &middot; option_vs_result</option><option value="09_error_enum_and_question_mark">09 &middot; error_enum_and_question_mark</option><option value="10_errno_boundary">10 &middot; errno_boundary</option><option value="11_bytes_vs_strings">11 &middot; bytes_vs_strings</option><option value="12_argv_and_write_all">12 &middot; argv_and_write_all</option><option value="13_dispatch_at_run_time">13 &middot; dispatch_at_run_time</option><option value="14_generic_struct_and_guard">14 &middot; generic_struct_and_guard</option></optgroup><optgroup label="Must not compile (9)"><option value="e0038">E0038 &middot; not dyn compatible</option><option value="e0046">E0046 &middot; missing required method</option><option value="e0107">E0107 &middot; one type per call site</option><option value="e0277">E0277 &middot; question mark needs result</option><option value="e0308">E0308 &middot; option is not result</option><option value="e0392">E0392 &middot; type parameter never used</option><option value="e0506">E0506 &middot; assign while iterating</option><option value="e0596">E0596 &middot; iter mut behind shared ref</option><option value="e0599">E0599 &middot; no bound no method</option></optgroup></select>
     <button type="button" class="next" title="next example (n)">&rsaquo;</button>
   </nav>
-  <span class="legend"><kbd>Space</kbd>/<kbd>j</kbd>/<kbd>k</kbd> step sections &middot; click a line to pin &middot; <kbd>n</kbd>/<kbd>p</kbd> example &middot; <kbd>i</kbd> edit and run</span>
+  <span class="legend"><kbd>Space</kbd>/<kbd>j</kbd>/<kbd>k</kbd> sections &middot; click to pin &middot; <kbd>n</kbd>/<kbd>p</kbd> example &middot; <kbd>i</kbd> edit &middot; <kbd>l</kbd> copy link</span>
   <span class="size"><button type="button" data-fs="-2" title="smaller (-)">A&minus;</button><button type="button" data-fs="2" title="larger (+)">A+</button></span>
 </header>
 <main>
@@ -484,7 +510,8 @@ a.xref { color: inherit; text-decoration: underline; text-decoration-color: var(
 file in <code>examples/broken/</code> beside what <code>rustc</code> said about it. Each coloured,
 numbered section of code sits in the same row as the output it produced. Click an output line to light
 up the <code>println!</code> that printed it, or click a <code>println!</code> to find its output.
-Press <kbd>i</kbd> on a program to edit it and run it. On a phone the two columns do not fit, so a
+Click a section's number to copy a link straight to that section, to paste where students will
+follow it. Press <kbd>i</kbd> on a program to edit it and run it. On a phone the two columns do not fit, so a
 <b>Code</b>/<b>Output</b> switch shows one at a time.</p>
 <h2>The programs</h2>
 <table class="list"><thead><tr><th></th><th>Program</th><th>The one idea</th><th>The line to point at</th><th>Sections</th></tr></thead>
@@ -498,6 +525,8 @@ Press <kbd>i</kbd> on a program to edit it and run it. On a phone the two column
 <tr><td><kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>k</kbd> <kbd>&uarr;</kbd> <kbd>&larr;</kbd></td><td>previous section</td></tr>
 <tr><td><kbd>0</kbd>&ndash;<kbd>9</kbd></td><td>jump to that section</td></tr>
 <tr><td>click</td><td>pin an output line and the code that printed it (click again to unpin)</td></tr>
+<tr><td>click a number</td><td>copy a link to that section, or to the whole example from the number beside its title</td></tr>
+<tr><td><kbd>l</kbd></td><td>copy a link to the pinned line, else the section in focus, else this example</td></tr>
 <tr><td><kbd>Esc</kbd></td><td>unpin, then leave section focus</td></tr>
 <tr><td><kbd>n</kbd> <kbd>p</kbd></td><td>next or previous example</td></tr>
 <tr><td><kbd>r</kbd></td><td>next run, for programs run more than once</td></tr>
@@ -896,6 +925,114 @@ function outputBands(headers, lines) {
     void el.offsetWidth;
     el.classList.add("flash");
   }
+  // ---- links worth sharing ---------------------------------------------------
+  // This page is read from file://, from 127.0.0.1 under `serve`, and from the
+  // course site. A copied link is only useful if it is the one a student can
+  // open, so every link is built from the canonical base the generator wrote
+  // into the config, whatever the address bar says.
+  var CFG = window.POINTAT || {};
+  var SHARE = CFG.share || location.href.split("#")[0];
+  var bub = null, bubTimer = null;
+
+  function hideBubble() {
+    if (bubTimer) { clearTimeout(bubTimer); bubTimer = null; }
+    if (bub && bub.parentNode) bub.parentNode.removeChild(bub);
+    bub = null;
+  }
+
+  // Fixed to the viewport and parented to <body>, for two reasons: a badge sits
+  // in four different offset contexts (and in none at all on a phone), and edit
+  // mode reads a row's text back as source, so nothing new may live in a row.
+  function showBubble(rect, hash, url, ok) {
+    hideBubble();
+    bub = doc.createElement("div");
+    bub.className = "copied" + (ok ? "" : " manual");
+    bub.setAttribute("role", "status");
+    bub.dataset.url = url;
+    bub.title = url;
+    bub.textContent = ok ? "copied " + hash : "copy it: ";
+    if (!ok) {
+      var f = doc.createElement("input");
+      f.type = "text";
+      f.readOnly = true;
+      f.value = url;
+      bub.appendChild(f);
+      setTimeout(function () { f.focus(); f.select(); }, 0);
+    }
+    doc.body.appendChild(bub);
+    var w = bub.getBoundingClientRect().width;
+    bub.style.top = Math.min(window.innerHeight - 40, rect.bottom + 6) + "px";
+    bub.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - w - 8)) + "px";
+    if (ok) bubTimer = setTimeout(hideBubble, 1800);
+  }
+
+  // The site is plain http, where there is no Clipboard API at all, so the
+  // selection-and-execCommand path is the one that runs in the classroom.
+  function legacyCopy(text) {
+    var ta = doc.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:-1000px;left:0;opacity:0";
+    doc.body.appendChild(ta);
+    var ok = false;
+    try {
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      ok = doc.execCommand("copy");
+    } catch (err) { ok = false; }
+    doc.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyLink(rect, id, part) {
+    var hash = "#" + id + (part || ""), url = SHARE + hash;
+    var done = function (ok) { showBubble(rect, hash, url, ok); };
+    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { done(true); },
+                                             function () { done(legacyCopy(url)); });
+      return;
+    }
+    done(legacyCopy(url));
+  }
+
+  // Made clickable here rather than in Python: a page without JavaScript has no
+  // clipboard, so it never shows the affordance.
+  function linkable(el, id, part, what) {
+    el.setAttribute("role", "button");
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("aria-label", "copy a link to " + what);
+    el.title = "copy a link to " + what;
+    el.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();   // the row under a badge pins when clicked
+      copyLink(el.getBoundingClientRect(), id, part);
+    });
+    el.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      copyLink(el.getBoundingClientRect(), id, part);
+    });
+  }
+
+  // `l`: the narrowest link the page can name right now.
+  function copyHere() {
+    if (!cur) return;
+    var line = pinned.filter(function (el) {
+      return el.classList.contains("ln") && el.dataset.l;
+    })[0];
+    if (line) {
+      copyLink(line.getBoundingClientRect(), cur.id, "/L" + line.dataset.l);
+      return;
+    }
+    if (at >= 0 && secs[at] !== undefined) {
+      var cell = cur.querySelector('.cell.code.sec[data-sec="' + secs[at] + '"]');
+      copyLink((cell || bar).getBoundingClientRect(), cur.id, "/s" + secs[at]);
+      return;
+    }
+    copyLink(bar.getBoundingClientRect(), cur.id, "");
+  }
+
   function onClick(e) {
     // A link to the hash already showing does not fire hashchange; re-apply it.
     var link = e.target.closest('a[href^="#"]');
@@ -940,6 +1077,11 @@ function outputBands(headers, lines) {
       t.dataset.l = row.dataset.src;
       t.textContent = (below ? "↓" : "↑") + " line " + row.dataset.src + " · " + row.dataset.by +
         (row.dataset.drop ? " · runs when its owner's scope ends" : "");
+      var lk = doc.createElement("span");
+      lk.className = "bylink";
+      lk.textContent = "link";
+      linkable(lk, cur.id, "/L" + row.dataset.src, "line " + row.dataset.src);
+      t.appendChild(lk);
       row.appendChild(t);
     }
   }
@@ -996,6 +1138,7 @@ function outputBands(headers, lines) {
         if (secs.indexOf(k) >= 0) focusSec(secs.indexOf(k));
       }
     } else if (k === "Escape") {
+      if (bub) { hideBubble(); return; }
       if (pinned.length) unpin(); else unfocus();
     } else if (k === "n") {
       go(1);
@@ -1005,6 +1148,8 @@ function outputBands(headers, lines) {
       setFs(currentFs() + 2, true);
     } else if (k === "-" || k === "_") {
       setFs(currentFs() - 2, true);
+    } else if (k === "l") {
+      copyHere();
     } else if (k === "e") {
       toggleDetails();
     } else if (k === "r") {
@@ -1061,6 +1206,23 @@ function outputBands(headers, lines) {
     var grid = a.querySelector(".grid");
     if (grid) a.insertBefore(sw, grid);
   });
+  // Every section badge, in both columns, and every article's own number.
+  slice(doc.querySelectorAll(".cell.sec .badge")).forEach(function (b) {
+    var cell = b.closest(".cell.sec"), art = b.closest("article.ex");
+    if (cell && art && cell.dataset.sec) {
+      linkable(b, art.id, "/s" + cell.dataset.sec, "section " + cell.dataset.sec);
+    }
+  });
+  slice(doc.querySelectorAll("article.ex > .exh .num")).forEach(function (n) {
+    var art = n.closest("article.ex");
+    if (art) linkable(n, art.id, "", "this example");
+  });
+  // Not on scroll: `l` right after Space would lose its own bubble to the
+  // smooth scroll still running under it.
+  doc.addEventListener("click", function (e) {
+    if (bub && !bub.contains(e.target)) hideBubble();
+  }, true);
+
   if (narrow.addEventListener) {
     narrow.addEventListener("change", function () { setCol(col, cur); });
   }

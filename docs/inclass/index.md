@@ -20,7 +20,9 @@ cargo run --bin 01_scalars
 
 Each week also has a **Code and output** page: every program beside the output
 it printed, one section per row, with each output line linked to the `println!`
-that printed it. On those pages you can also edit a program and run it. Pressing
+that printed it. Clicking a section's number copies a link to that section, so a
+link your instructor sends you opens exactly the rows being discussed. On those
+pages you can also edit a program and run it. Pressing
 **Run** sends that code to the [Rust Playground](https://play.rust-lang.org/),
 which the classroom network allows; **Revert** puts the original back. Your
 exercise work still belongs in your own repository, where the test harness can
