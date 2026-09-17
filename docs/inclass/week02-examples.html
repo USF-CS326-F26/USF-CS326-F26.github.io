@@ -1731,8 +1731,20 @@ function outputBands(headers, lines) {
     if (APP.rescan) APP.rescan();
   }
 
+  // The run tab on screen is the one being edited: it decides which arguments
+  // a fresh run gets and which captured column Compare reads.  `r` can have
+  // moved it since this article's state was built.
+  function syncRun(st) {
+    if (!st.runs || !st.runs.length) return;
+    var n = parseInt(st.art.dataset.run || "1", 10) || 1;
+    if (n < 1 || n > st.runs.length) n = 1;
+    st.run = n;
+    st.args = st.runs[n - 1].args || [];
+  }
+
   function enterEdit(art) {
     var st = states[art.id] && states[art.id].live ? states[art.id] : build(stateFor(art));
+    syncRun(st);
     showLive(st);
     paintGutter(st);
     var first = st.scan.headers[0];

@@ -658,6 +658,9 @@ flowchart LR
 </div>
 
 The shell chose `dyn` (at 115200 baud an indirect call is nothing); the scheduler chose generics (`pick_next` runs every tick).
+And when the set of backends is closed, rv6 chooses neither: a one-byte tag and a `match`, which is the fd table.
+
+**RUN** `cargo run --bin 13_dispatch_at_run_time` <a class="ex-link" href="week04-examples.html#13_dispatch_at_run_time" target="cs326-examples">code + output &#8599;</a>
 
 ---
 
@@ -1216,7 +1219,7 @@ source that ships — no `dyn Write` threaded through, no test-only path.
 
 ---
 
-## The Seven Failures
+## The Eight Failures
 
 | file | error | fix |
 |---|---|---|
@@ -1225,6 +1228,7 @@ source that ships — no `dyn Write` threaded through, no test-only path.
 | `e0046_missing_required_method.rs` | overrode the default, skipped the required | supply `put` |
 | `e0599_no_bound_no_method.rs` | a trait method on an unbounded `S` | add `S: Sink` |
 | `e0038_not_dyn_compatible.rs` | a generic method, then `&mut dyn Trait` | `where Self: Sized`, or go generic |
+| `e0107_one_type_per_call_site.rs` | `FdTable<U>` used without its type argument | name it, go generic, or `&'a mut dyn Uart` |
 | `e0308_option_is_not_result.rs` | returned `find`'s `Option` from `lookup` | `.ok_or(e)` |
 | `e0277_question_mark_needs_result.rs` | `?` in a function returning `i64` | `match` at the boundary |
 
@@ -1270,7 +1274,7 @@ different domain, complete and passing, with a mapping table:
 | `putc`-shaped byte output | the UART driver in `45k_console` |
 | `write_all` and `Lines` over `&[u8]` | `11c_cat` through `14c_head`, next week |
 
-Every one of them is one of today's twelve programs with the nouns changed.
+Every one of them is one of today's thirteen programs with the nouns changed.
 
 ---
 

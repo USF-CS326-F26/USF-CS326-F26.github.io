@@ -165,10 +165,10 @@ exercise is mostly reading comprehension.
 Companion to [L06 Traits, Generics, and the `ulib` Façade](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md)
 and [L07 Buffers, Bytes, and Line-Oriented I/O](../lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io.md).
 Four exercises come due this week, so each of the four parts of the session
-aims at one of them: twelve programs, one idea each, and seven that must *not*
-compile.
+aims at one of them: thirteen programs, one idea each, and eight that must
+*not* compile.
 
-### The twelve programs
+### The thirteen programs
 
 Run them in order. Read the printed **counts, sizes, and error messages**, not
 just the text.
@@ -187,14 +187,15 @@ just the text.
 | `10_errno_boundary` | the collapse happens in exactly one place | the `match` in `sys_read` |
 | `11_bytes_vs_strings` | a string is bytes plus a checked promise | `str::from_utf8(..)` returns a `Result` |
 | `12_argv_and_write_all` | the slice is re-pointed, not copied | `buf = &buf[n..]` |
+| `13_dispatch_at_run_time` | who names the type: the call site, or the input | `fn open(&mut self, k: Kind) -> &mut dyn Uart` |
 
 One program, `08_option_vs_result`, builds with a single warning on purpose —
 the warning is the demo.
 
-### The seven failures
+### The eight failures
 
 These are in `broken/` and are deliberately not part of the package, so
-`cargo build` still succeeds. Walk all seven, pausing at each:
+`cargo build` still succeeds. Walk all eight, pausing at each:
 
 ```sh
 ./show-errors.sh
@@ -208,6 +209,7 @@ These are in `broken/` and are deliberately not part of the package, so
 | `e0046_missing_required_method.rs` | overrode the default, skipped the required | supply `put`; delete the override |
 | `e0599_no_bound_no_method.rs` | a trait method on an unbounded type parameter | add `S: Sink` |
 | `e0038_not_dyn_compatible.rs` | a generic method, then `&mut dyn Trait` | `where Self: Sized`, or take a slice, or go generic |
+| `e0107_one_type_per_call_site.rs` | `FdTable<U>` used without its type argument | name it, go generic too, or `&'a mut dyn Uart` |
 | `e0308_option_is_not_result.rs` | returned `find`'s `Option` from `lookup` | `.ok_or(e)`, or the two-arm `match` |
 | `e0277_question_mark_needs_result.rs` | `?` in a function returning `i64` | `match` at the boundary; `?` only below it |
 
