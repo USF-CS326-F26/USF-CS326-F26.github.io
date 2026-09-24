@@ -235,7 +235,7 @@ Most text processing is line-oriented, and a line is defined by a separator rath
 
 Splitting a stream into lines with a heap is trivial: read a chunk, find newlines, allocate a `String` per line, keep a growable remainder. Without a heap you have one fixed buffer and a problem, because lines do not align with reads. A 1024-byte buffer may end mid-line, and the next `read` has to be appended to the fragment already there — which means moving the fragment to the front first.
 
-`ulib::Lines` (`ulib/src/lines.rs`) does that, and is given to you so `14c_head` and `13c_grep` are exercises about heads and greps rather than about ring buffers. Its whole state is six fields:
+`ulib::Lines` (`ulib/src/lines.rs`) does that, and is given to you so `14c_head` and `13c_grep` are exercises about heads and greps rather than about ring buffers. Its whole state is eight fields:
 
 ```rust
 pub struct Lines<'b> {
@@ -244,7 +244,9 @@ pub struct Lines<'b> {
     len: usize,          // bytes currently held
     start: usize,        // where the next line begins
     eof: bool,
+    skipping: bool,      // inside a line too long for buf: drop up to its '\n'
     truncated: bool,
+    failed: bool,        // a read failed; Lines stopped as if at end of file
 }
 ```
 
@@ -252,26 +254,26 @@ pub struct Lines<'b> {
 
 1. **A newline is already in the buffer** (`lines.rs`) — return the slice before it and advance `start` past it. No syscall. This is the common case: one `read` typically yields many lines.
 2. **End of file with bytes left over** (`lines.rs`) — return them as a final line. This is what makes a file whose last line lacks a newline still produce that line.
-3. **Buffer full with no newline in it** (`lines.rs`) — a single line longer than the buffer. Return what there is, set the `truncated` flag, and continue. It cannot grow, so it says so instead of lying.
-4. **Otherwise, compact and refill** (`lines.rs`) — `copy_within(start..len, 0)` slides the unconsumed tail to the front, then `read` fills the space behind it.
+3. **Buffer full with no newline in it** (`lines.rs`) — a line at least as long as the buffer. Return all of it and set `skipping`: the next call first drops the rest of that line, up to and including its newline, before it looks for the next one. If it drops even one byte it sets `truncated`; if the very next byte is the newline, the line fit exactly and nothing is flagged. It cannot grow, so it cuts the line and says so instead of lying.
+4. **Otherwise, compact and refill** (`lines.rs`) — `copy_within(start..len, 0)` slides the unconsumed tail to the front, then `read` fills the space behind it. A `read` that fails ends the lines as end of file would, and sets `failed` so the caller can tell the two apart.
 
 ```text
 Case 4, with a 16-byte buffer:
 
-  before:  [ a b c \n d e f \n g h i j k l ]   start=8, len=16
-                            ^start        ^len
+  before:  [ a b c \n d e f \n g h i j k l . . ]   start=8, len=14
+                               ^start      ^len
            (lines "abc" and "def" already returned; "ghijkl" is a fragment)
 
-  compact: [ g h i j k l . . . . . . . . . ]   start=0, len=6
+  compact: [ g h i j k l . . . . . . . . . . ]     start=0, len=6
   refill:   read(fd, &mut buf[6..])  -> 10 bytes
-           [ g h i j k l m n \n o p q r s t ]   start=0, len=16
-                            ^
-  return:  "ghijklmn"                          start=9
+           [ g h i j k l m n \n o p q r s t u ]    start=0, len=16
+                                ^
+  return:  "ghijklmn"                              start=9
 ```
 
 Two things here matter more than the algorithm. The memory is *yours*: `Lines::new(fd, &mut buf)` borrows a buffer you declared, so the program's entire footprint is visible in the one line where you wrote `[0u8; 1024]`. And the borrow is what makes the returned slice safe — `next_line` returns `Option<&[u8]>` pointing **into** your buffer, and the `'b` lifetime on `Lines<'b>` forbids you touching `buf` while the iterator is alive. In C that discipline exists only in your head, and violating it is the classic dangling-pointer bug that survives for years because the memory usually still holds the old contents. Here it does not compile.
 
-Compare the two C answers. `fgets` writes into a caller-supplied array and, on a line longer than it, silently returns a prefix with no indication whether the line ended or was cut — the same truncation, without the flag. `getline` gets it right by `malloc`-ing and `realloc`-ing a buffer that grows to whatever the line needs, which is exactly the option a program with no allocator does not have. `Lines` takes the `fgets` shape and adds the honesty: `truncated()` at `lines.rs`.
+Compare the two C answers. `fgets` writes into a caller-supplied array and, on a line longer than it, silently returns a prefix with no indication whether the line ended or was cut, then hands back the rest of that line on the next call as if it were a new one. `getline` gets it right by `malloc`-ing and `realloc`-ing a buffer that grows to whatever the line needs, which is exactly the option a program with no allocator does not have. `Lines` takes the `fgets` shape and fixes both halves: a line that does not fit comes back cut to the buffer with its tail dropped, so one line in is still one line out, and `truncated()` at `lines.rs` says it happened.
 
 One more property: `next_line` **reads only when it must**. Cases 1 and 2 issue no syscall at all. Stop calling it and the reading stops with you — which is precisely what `head` needs.
 
@@ -527,22 +529,22 @@ ab\ncdefghijklmnop\nqr
 (20 bytes; note the second line is 14 bytes of text, longer than the buffer, and the file does not end with a newline.) Assume `read` always fills the space it is given.
 
 **(a)** List the sequence of values `next_line()` returns, in order, until `None`.
-**(b)** At which call does `truncated()` first become true, and which branch of `next_line` sets it?
+**(b)** At which call does `truncated()` first become true, and which part of `next_line` sets it?
 **(c)** How many `read` syscalls happen in total?
 **(d)** `head -n 2` is run over this descriptor. What is printed, and how does it differ from what real `head` would print?
 
 <details markdown="1">
 <summary>Click to reveal solution</summary>
 
-**(a)** `b"ab"`, `b"cdefghijklmn"`, `b"op"`, `b"qr"`, then `None`.
+**(a)** `b"ab"`, `b"cdefghijklmn"`, `b"qr"`, then `None`. The `op` is never returned: it is the tail of the line that did not fit.
 
-Trace: call 1 finds the buffer empty and reads 12 bytes, `ab\ncdefghijk`; the `\n` is at index 2, so it returns `b"ab"` and sets `start = 3`. Call 2 finds no `\n` in `buf[3..12]`, compacts the 9 remaining bytes (`cdefghijk`) to the front, reads 3 more into the tail, and holds `cdefghijklmn` — 12 bytes, still no newline. The buffer is full (`len == buf.len()`), so branch 3 at `lines.rs` fires: return all 12, mark truncated, reset `len = 0`. Call 3 asks for 12 and gets the 5 remaining (`op\nqr`), finds the `\n` at index 2, returns `b"op"`. Call 4 finds no newline, compacts, reads `0` and sets `eof`, then branch 2 at `lines.rs` returns the leftover `b"qr"`. Call 5 returns `None`.
+Trace: call 1 finds the buffer empty and reads 12 bytes, `ab\ncdefghijk`; the `\n` is at index 2, so it returns `b"ab"` and sets `start = 3`. Call 2 finds no `\n` in `buf[3..12]`, compacts the 9 remaining bytes (`cdefghijk`) to the front, reads 3 more into the tail, and holds `cdefghijklmn` — 12 bytes, still no newline. The buffer is full (`len == buf.len()`), so case 3 at `lines.rs` fires: return all 12, set `skipping`, reset `len = 0`. Call 3 is still skipping and has nothing buffered, so it reads the 5 remaining bytes (`op\nqr`), drops `op` up to and including the `\n`, and stops skipping. `qr` has no newline, so it compacts, reads `0` and sets `eof`, and case 2 at `lines.rs` returns the leftover `b"qr"`. Call 4 returns `None`.
 
-**(b)** At the **second** call, via the "buffer full with no newline" branch at `lines.rs`. That branch is the only place `truncated` is set.
+**(b)** At the **third** call, in the skipping step at the top of the loop, when it drops `op`. Call 2's full buffer does not set it: at that moment `Lines` cannot know whether the line ended exactly at byte 12. Had the next byte been the `\n`, nothing would have been lost and nothing would be flagged.
 
-**(c)** Four: 12 bytes, 3 bytes, 5 bytes, and the final `0`-returning call that sets `eof`. (Depending on how the underlying stream chunks, the middle two could be split further; the branch structure is unchanged.)
+**(c)** Four: 12 bytes, 3 bytes, 5 bytes, and the final `0`-returning call that sets `eof`. (Depending on how the underlying stream chunks, the middle two could be split further; the lines returned are the same either way.)
 
-**(d)** `head -n 2` prints `ab` and `cdefghijklmn`, each with a newline, then stops — so the last two `read` calls never happen. Real `head` prints `ab` and the whole 14-byte line `cdefghijklmnop`, because `getline` grows its buffer. Ours cannot grow, so it reports the truncation through `truncated()` rather than lying about it: bounded memory, and a flag when the bound was reached.
+**(d)** `head -n 2` prints `ab` and `cdefghijklmn`, each with a newline, then stops — so the last two `read` calls never happen. Real `head` prints `ab` and the whole 14-byte line `cdefghijklmnop`, because `getline` grows its buffer. Ours cannot grow, so it cuts the line rather than lying about it. Notice that `truncated()` is still `false` when `head` finishes: the flag is set only once the dropped bytes have actually been read, and `head` stops before that. A program that must know whether any line was cut checks `truncated()` after reading to the end.
 </details>
 
 ### Problem 6: Sizing a buffer under two budgets

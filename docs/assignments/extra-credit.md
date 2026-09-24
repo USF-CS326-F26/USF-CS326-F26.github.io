@@ -31,9 +31,9 @@ the end of the semester.
 `head` prints the first *n* lines of its input and then stops reading — and
 the stopping is the exercise. `cat` and `wc` drain a stream to the end;
 `grep` matches against every line; `head` is the one command whose correctness
-depends on *not* consuming input it does not need. You parse a `-n` flag with
-`ulib::parse_usize`, iterate with `ulib::Lines` over a fixed buffer, and
-return the moment the count is reached.
+depends on *not* consuming input it does not need. You parse the `-n` count with a
+`parse_usize` you write yourself, iterate with `ulib::Lines` over a fixed
+buffer, and return the moment the count is reached.
 
 It is the same shape as `13c_grep` and about the same length. It is extra
 credit rather than core because the calendar has one Friday for `wc` and

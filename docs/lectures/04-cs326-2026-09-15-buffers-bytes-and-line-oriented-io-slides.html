@@ -463,8 +463,9 @@ Without one: **one fixed buffer**, and lines do not align with reads.
    `start`. **No syscall.** The common case
 2. **EOF with bytes left** — return them; this is why a file with
    no trailing newline still yields its last line
-3. **Buffer full, no newline** — a line longer than the buffer:
-   return what there is and set `truncated`
+3. **Buffer full, no newline** — a line at least as long as the
+   buffer: return it cut, then skip the rest of that line; set
+   `truncated` only once a byte is dropped
 4. **Otherwise** — compact, then refill
 
 ---
@@ -472,16 +473,16 @@ Without one: **one fixed buffer**, and lines do not align with reads.
 ## Compaction
 
 ```text
-12-byte buffer, "ghijkl" is an unconsumed fragment
+16-byte buffer, "ghijkl" is an unconsumed fragment
 
-before:  [ a b c \n d e f \n g h i j k l ]   start=8, len=16
-                          ^start        ^len
+before:  [ a b c \n d e f \n g h i j k l . . ]   start=8, len=14
+                             ^start      ^len
 
-compact: [ g h i j k l . . . . . . . . . ]   start=0, len=6
+compact: [ g h i j k l . . . . . . . . . . ]     start=0, len=6
 refill:   read(fd, &mut buf[6..]) -> 10
-         [ g h i j k l m n \n o p q r s t ]   start=0, len=16
+         [ g h i j k l m n \n o p q r s t u ]    start=0, len=16
 
-return:  "ghijklmn"                          start=9
+return:  "ghijklmn"                              start=9
 ```
 
 The buffer is **yours**; `Lines<'b>` borrows it, so the compiler forbids you

@@ -93,9 +93,11 @@ want text, and `prog()` for `argv[0]`.
 
 **`Lines`** (`ulib/src/lines.rs`) is a line iterator that never allocates:
 `Lines::new(fd, &mut buf)` borrows *your* buffer and is the only storage it
-has. `next_line() -> Option<&[u8]>` returns each line without its `\n`. If a
-line is longer than the buffer it hands back what it has and sets
-`truncated()`. It is given, not implemented by you — without it, `grep` turns
+has. `next_line() -> Option<&[u8]>` returns each line without its `\n`. A
+line longer than the buffer comes back cut to `buf.len()` bytes, the rest of
+it is skipped, and `truncated()` reports that bytes were lost. A failed `read`
+ends the lines as end of file would; `failed()` tells the two apart. It is
+given, not implemented by you — without it, `grep` turns
 into an exercise about ring buffers instead of an exercise about matching.
 
 Note what is **absent**: no `fork`, `exec`, `wait`, `getpid`, `dup`, `mkdir`,
@@ -180,7 +182,8 @@ is byte-identical to the source that runs on rv6.
 You get back `Output { code, stdout, stderr }`, with `.out()` and `.err()`
 returning `&str` for readable assertions. Fds 0/1/2 are reserved in the
 capture table so your first `open` returns 3, exactly as on rv6
-(`run_full()` in `testing.rs`). Be aware of one honest limitation: under capture, `write`
+(`run_full()` in `testing.rs`), and a closed fd is handed out again, lowest
+first, as rv6's `fdalloc` does (`sys_open()` in `host.rs`). Be aware of one honest limitation: under capture, `write`
 to anything other than fd 1 or 2 returns `-1` (`sys_write()` in `host.rs`). The harness can
 give a command files to *read*, not files to write.
 
