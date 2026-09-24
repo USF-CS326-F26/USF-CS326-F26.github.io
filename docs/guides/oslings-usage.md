@@ -292,8 +292,10 @@ image must fit in 16 pages — 65 536 bytes (`MAX_IMAGE` in `ship.rs`). See
 
 ## `oslings doctor`
 
-Six checks, each with the exact fix command printed beside it: rustup, a
-nightly toolchain, the `riscv64gc-unknown-none-elf` target, the `rust-src` and
-`llvm-tools` components, and `qemu-system-riscv64` (`cmd_class_grade()` in `main.rs`). It exits
+Eight checks, each with the exact fix command printed beside it: rustup, a
+nightly toolchain, the `riscv64gc-unknown-none-elf` target on both nightly (for
+the kernel) and stable (for `asmlab` and `oslings ship`), the `rust-src` and
+`llvm-tools` components, `qemu-system-riscv64`, and whether the `oslings` you
+are running matches the version this repo builds (`cmd_doctor()` in `main.rs`). It exits
 non-zero if anything is missing, so it works in a script. Run it before you ask
 for help with a build failure — it answers most of them.

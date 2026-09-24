@@ -258,26 +258,25 @@ re-running it just resets the `course` URL.
 oslings doctor
 ```
 
-Six checks, each printed as `[ ok ]` or `[MISS]` with the exact fix command
-(`cmd_class_grade()` in `main.rs`). It exits non-zero if anything is missing.
+Eight checks, each printed as `[ ok ]` or `[MISS]` with the exact fix command
+(`cmd_doctor()` in `main.rs`). It exits non-zero if anything is missing.
 
 | Check | What it actually runs | Fix it prints |
 |---|---|---|
 | `rustup installed` | `rustup --version` | install Rust from `https://rustup.rs` |
 | `nightly toolchain` | `rustup toolchain list` contains `nightly` | `rustup toolchain install nightly` |
-| `riscv64gc-unknown-none-elf target` | `rustup target list --installed --toolchain nightly` | `rustup target add riscv64gc-unknown-none-elf --toolchain nightly` |
+| `riscv64gc target (nightly, for the kernel)` | `rustup target list --installed --toolchain nightly` | `rustup target add riscv64gc-unknown-none-elf --toolchain nightly` |
+| `riscv64gc target (stable, for asmlab + ship)` | `rustup target list --installed` | `rustup target add riscv64gc-unknown-none-elf` |
 | `rust-src component` | `rustup component list --installed --toolchain nightly` | `rustup component add rust-src --toolchain nightly` |
 | `llvm-tools component` | same component list | `rustup component add llvm-tools --toolchain nightly` |
 | `qemu-system-riscv64` | `qemu-system-riscv64 --version` | `sudo apt install qemu-system-misc` / `brew install qemu` |
+| `oslings <version>` | compares the `oslings` your shell runs with the version this repo builds (`version.rs`) | `oslings update`, or remove an older copy that shadows it on `PATH` |
 
-One honest gap: `doctor` checks the RISC-V target only on **nightly**. It does
-not check the stable toolchain, so a machine can show six green lines and still
-fail `20a` with a linker error. If that happens, run `setup.sh:35` by hand:
-
-```bash
-rustup target add riscv64gc-unknown-none-elf
-rustup target list --installed | grep riscv
-```
+The RISC-V target is checked twice because two toolchains build for it:
+nightly builds the kernel, and stable builds `asmlab` and the commands
+`oslings ship` compiles. A machine with the target on only one of them fails
+the other half of the course with a linker error, which is why each has its
+own row.
 
 ## Troubleshooting, keyed on what `doctor` reports
 
@@ -286,14 +285,15 @@ rustup target list --installed | grep riscv
 | `oslings: command not found` (before any output) | `~/.cargo/bin` is not on `PATH` | `source "$HOME/.cargo/env"`, then restart the terminal |
 | `[MISS] rustup installed` | rustup not installed, or a distro-packaged `rustc` shadows it | Install from `https://rustup.rs`; remove `apt`/`brew` Rust packages first |
 | `[MISS] nightly toolchain` | first run, or an interrupted download | `rustup toolchain install nightly --profile minimal` |
-| `[MISS] riscv64gc-unknown-none-elf target` | target added to stable only | `rustup target add riscv64gc-unknown-none-elf --toolchain nightly` |
+| `[MISS] riscv64gc target (nightly, for the kernel)` | target added to stable only | `rustup target add riscv64gc-unknown-none-elf --toolchain nightly` |
+| `[MISS] riscv64gc target (stable, for asmlab + ship)` | target added to nightly only; `20a` and `oslings ship` fail to link | `rustup target add riscv64gc-unknown-none-elf` |
 | `[MISS] rust-src component` | nightly installed with `--profile minimal` and no components | `rustup component add rust-src --toolchain nightly` |
 | `[MISS] llvm-tools component` | same | `rustup component add llvm-tools --toolchain nightly` |
 | `[MISS] qemu-system-riscv64` on Ubuntu | installed `qemu` instead of `qemu-system-misc` | `sudo apt-get install -y qemu-system-misc` |
 | `[MISS] qemu-system-riscv64` on macOS | Homebrew not on `PATH` | `export PATH=/opt/homebrew/bin:$PATH` in `~/.zprofile`, new terminal |
 | `[MISS] qemu-system-riscv64` but `qemu-riscv64` exists | installed the linux-user emulator | Install the *system* package; `qemu-riscv64` is never used in this course |
-| All six `[ ok ]`, but `20a` fails to link | RISC-V target missing on **stable** | `rustup target add riscv64gc-unknown-none-elf` |
-| All six `[ ok ]`, but everything is slow on Windows | repo lives under `/mnt/c` | Re-clone into your WSL home directory |
+| `[MISS] oslings … — this repo builds …` | an older `oslings` is installed, or another copy earlier on `PATH` shadows it | `oslings update`; for a shadowing copy, remove the path `doctor` names and run `hash -r` |
+| All `[ ok ]`, but everything is slow on Windows | repo lives under `/mnt/c` | Re-clone into your WSL home directory |
 
 Failures `doctor` cannot see:
 
