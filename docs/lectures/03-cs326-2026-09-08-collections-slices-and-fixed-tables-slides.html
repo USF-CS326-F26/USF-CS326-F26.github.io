@@ -452,19 +452,18 @@ for (index, slot) in table.iter().enumerate() {
 ## One Real Chain
 
 ```rust
-fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
-    let n = states.len();
-    (0..n)
-        .map(|off| (self.next + off) % n)
-        .find(|&i| states[i] == ProcState::Runnable)
-        .map(|i| { self.next = (i + 1) % n; i })
+fn first_hot_hour(readings_f: &[i32], limit_c: i32) -> Option<usize> {
+    readings_f
+        .iter()
+        .map(|&f| (f - 32) * 5 / 9)       // Fahrenheit to Celsius
+        .position(|c| c > limit_c)
 }
 ```
 
-`sched.rs` — consider `n` offsets, wrap from where we left off, take the
-first runnable, remember to resume after it.
+A thermostat log: convert each hourly reading, report the first hour over the
+limit.
 
-**Lazy:** `map` computes one index per `find` request; `find` stops on success.
+**Lazy:** `map` converts one reading per `position` request; `position` stops on success.
 No intermediate list, no allocation — the compiled code is a hand-written loop.
 
 ---
@@ -489,12 +488,8 @@ In ordinary Rust this looks like a beginner's mistake — surely a growable
 
 <div class="mermaid">
 flowchart TD
-    A["_entry: machine boots\nPROCS already exists in .bss"] --> B["uart::init()\nwe can print"]
-    B --> C["kalloc::init()\na PAGE allocator, 4096-byte chunks"]
-    C --> D["vm::kvminithart()\nthe MMU comes on"]
-    D --> E["proc::init()\nwalk PROCS, mark slots Unused"]
-    E --> F["trap::init(), fs init"]
-    F --> G["38k: kheap registers the\nglobal allocator — NOW Vec works"]
+    A["_entry: machine boots\nPROCS already exists in .bss"] --> B["early boot: the kernel's subsystems come up,\nthe process table among them\n(the only allocator hands out whole\nPAGES, 4096-byte chunks)"]
+    B --> G["38k: kheap registers the\nglobal allocator — NOW Vec works"]
     style A fill:#e8f5e9,stroke:#00543c
     style G fill:#fff3cd,stroke:#FDBB30
 </div>
@@ -503,7 +498,7 @@ flowchart TD
 
 ## Reason 1: No Allocator Yet
 
-- `PROCS` is used at `proc::init()` — the fourth line of `kinit` (`main.rs`)
+- `PROCS` is set up and used in early boot, long before any heap exists
 - `Vec` calls the **global allocator**; rv6 has none until exercise 38k (`ALLOCATOR` in `kheap.rs`)
 - `34k_processes` has no `kheap.rs`; `38k_semaphores/main.rs` is the first `extern crate alloc`
 

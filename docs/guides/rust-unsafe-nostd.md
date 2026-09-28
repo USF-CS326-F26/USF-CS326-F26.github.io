@@ -19,7 +19,7 @@ not a mode, not a flag, and not an escape hatch from the rest of the language.
 |---|-----------|--------------------------|
 | 1 | Dereference a raw pointer | `(*pte).is_valid()` — `vm.rs` |
 | 2 | Call an `unsafe fn` or an `extern` function | `kalloc::kalloc()` — `vm.rs`; `swtch(...)` — `swtch.rs` |
-| 3 | Read or write a `static mut` | `FREELIST = r;` — `kalloc.rs` |
+| 3 | Read or write a `static mut` | `NEXTPID += 1;` — `proc.rs` |
 | 4 | Implement an `unsafe trait` | `unsafe impl<T: Send> Sync for SpinLock<T>` — `spinlock.rs` |
 | 5 | Access a `union` field | (rv6 does not use unions) |
 
@@ -46,7 +46,7 @@ promise:
 - `unsafe { ... }` — *"I have satisfied it."*
 
 rv6 uses edition 2021, where the body of an `unsafe fn` is *implicitly* one big
-unsafe block. That is why `kfree` (`kalloc.rs`) dereferences `r` with no
+unsafe block. That is why `init()` (`proc.rs`) dereferences `p` with no
 inner `unsafe { }`. Edition 2024 removes that implicit block, so newer code you
 read elsewhere will have `unsafe { }` nested inside `unsafe fn`.
 
@@ -72,7 +72,7 @@ harmless. Only dereferencing needs `unsafe`.
 
 ```rust
 let p = 0x1000_0000 as *mut u8;        // from an integer (uart.rs)
-let q = pa as *mut Run;                // cast one pointer type to another (kalloc.rs)
+let q = kalloc::kalloc() as *mut Pte;  // cast one pointer type to another (proc.rs)
 let r = slice.as_ptr();                // from a slice (vm.rs)
 let s = ptr::addr_of_mut!(PROCS[i]);   // from a place, without a reference (proc.rs)
 let n: *mut Run = ptr::null_mut();     // the null pointer (kalloc.rs)
@@ -88,9 +88,9 @@ convention that the assembly and the page-table code expect.
 ### Dereferencing
 
 ```rust
-let pte = table.add(px(level, va));   // vm.rs — just arithmetic, safe
-if (*pte).is_valid() { ... }          // vm.rs — the deref needs unsafe
-*pte = Pte::new(page as usize, PTE_V); // vm.rs — so does the write
+let pte = table.add(i);                  // vm.rs (free_pt) — just arithmetic, safe
+if (*pte).flags() & PTE_U != 0 { ... }   // vm.rs — the deref needs unsafe
+*pte = Pte(0);                           // vm.rs — so does the write
 ```
 
 `(*p).field` is the standard spelling; Rust has no `->`. Auto-deref does not
@@ -100,7 +100,7 @@ works for the inherent pointer methods (`add`, `is_null`, `read`, `write`).
 ### Pointer arithmetic with `.add()`
 
 ```rust
-table.add(px(level, va))              // vm.rs
+old.add(i)                            // vm.rs
 image.as_ptr().add(off)               // vm.rs
 src.add(k)                            // vm.rs
 ```
@@ -180,7 +180,7 @@ What volatile does **not** give you:
 | `ptr::write_bytes(dst, val, n)` | `memset` | `n` is a count of `T` |
 
 ```rust
-ptr::write_bytes(page, 0, PGSIZE);                     // vm.rs  — zero a fresh page
+ptr::write_bytes(pt as *mut u8, 0, PGSIZE);            // proc.rs — zero a fresh page table
 ptr::copy_nonoverlapping(src as *const u8, tramp, len); // vm.rs — copy the trampoline
 ptr::copy_nonoverlapping(image.as_ptr().add(off), page, n); // vm.rs — load a program page
 ptr::copy_nonoverlapping(pte.pa() as *const u8, dst, PGSIZE); // vm.rs — fork's page copy
@@ -247,8 +247,8 @@ Rust 1.82 stabilized `&raw const PLACE` and `&raw mut PLACE` as native syntax
 for the same thing. `addr_of!`/`addr_of_mut!` remain and are what rv6 uses;
 treat the two spellings as synonyms when you read other kernels.
 
-Note that `static mut` scalars can also be touched directly — `FREELIST = r;`
-at `kfree()` (`kalloc.rs`) is a place assignment, not a reference — but routing
+Note that `static mut` scalars can also be touched directly — `NEXTPID += 1;`
+in `alloc_pid()` (`proc.rs`) is a place assignment, not a reference — but routing
 *everything* through `addr_of!` costs nothing and removes the need to reason
 about which expressions autoref.
 

@@ -23,7 +23,7 @@ timer, and the devices, and is the only code allowed to run privileged
 instructions. rv6's kernel is the whole `rv6` crate — one binary, running in
 supervisor mode after boot.
 
-**Where:** `30k`–`52k`, all of it · L01, L10 · `main.rs` (`kmain`)
+**Where:** `30k`–`52k`, all of it · L01, Week 7 · `main.rs` (`kmain`)
 
 ### privilege level
 
@@ -150,7 +150,7 @@ space, saved registers, a kernel stack, open files, a pid, a state. "Program" is
 a file; "process" is a program in motion. rv6 has room for 64 (`NPROC`) in a
 fixed array — kernels avoid growable structures on core paths.
 
-**Where:** `34k` · L13 · `proc.rs`, `param.rs`
+**Where:** `34k` · Week 9 · `proc.rs`, `param.rs`
 
 ### PCB (process control block)
 
@@ -159,7 +159,7 @@ table root, saved `Context`, trapframe pointer, kernel-stack page, open-file
 table, parent pointer, exit status. When a textbook says "the OS stores the
 process in the PCB," this struct is the PCB.
 
-**Where:** `34k` · L13 · `proc.rs`
+**Where:** `34k` · Week 9 · `proc.rs`
 
 ### process state
 
@@ -168,7 +168,7 @@ slot), `Runnable` (wants the CPU), `Running` (has it), `Sleeping` (waiting for
 something), `Zombie` (finished, not yet reaped). The scheduler only ever picks
 `Runnable` slots, and `wait` only ever reaps `Zombie` ones.
 
-**Where:** `34k`, `36k`, `51k` · L13 · `proc.rs`
+**Where:** `34k`, `36k`, `51k` · Week 9 · `proc.rs`
 
 ### context switch
 
@@ -178,7 +178,7 @@ registers and loading another. rv6's `swtch` saves only 14 registers — `ra`,
 calling convention already says the caller must not expect `t`/`a` registers to
 survive one.
 
-**Where:** `35k` · L14 · `swtch` (`swtch.rs`) — the `extern` declaration and the `global_asm!` (the
+**Where:** `35k` · Week 9 · `swtch` (`swtch.rs`) — the `extern` declaration and the `global_asm!` (the
 assembly)
 
 ### scheduler
@@ -188,7 +188,7 @@ back when it yields or exits. rv6 separates **mechanism** (`swtch`) from
 **policy** (which process): the loop lives in `scheduler()` (`usermode.rs`), the choice in
 `sched.rs`, and you can replace one without touching the other.
 
-**Where:** `36k`, `51k` · L14 · `scheduler()` (`usermode.rs`), `sched.rs`
+**Where:** `36k`, `51k` · Week 9 · `scheduler()` (`usermode.rs`), `sched.rs`
 
 ### round robin
 
@@ -197,7 +197,7 @@ one a turn, wrap around, repeat. The state it needs is a single index — where
 to resume scanning — which is why `RoundRobin` is one `usize`. Fairness here
 means no process starves, not that turns are equal in length.
 
-**Where:** `36k` · L14 · `sched.rs` (`pick_next`)
+**Where:** `36k` · Week 9 · `sched.rs` (`pick_next`)
 
 ### preemption
 
@@ -209,7 +209,7 @@ tick branch clears the pending bit and returns (`usermode.rs`) rather than
 rescheduling. rv6 schedules cooperatively, inside `wait` and `exit`.
 
 **Where:** `44k` (the mechanism), `36k`/`51k` (the cooperative reality) ·
-L14, L18 · `usermode.rs` (`proc_yield`)
+Week 9, L18 · `usermode.rs` (`proc_yield`)
 
 ### quantum
 
@@ -219,7 +219,7 @@ by writing `mtime + INTERVAL` into `mtimecmp` with `INTERVAL = 1_000_000` ticks
 of the 10 MHz clock, about 0.1 s. Since rv6 does not reschedule on a tick, that
 sets the tick rate rather than a real quantum.
 
-**Where:** `44k` · L14, L18 · `start.rs`, `timerinit()` (`start.rs`)
+**Where:** `44k` · Week 9, L18 · `start.rs`, `timerinit()` (`start.rs`)
 
 ---
 
@@ -304,7 +304,7 @@ at `0x1000_0000`, the PLIC at `0x0c00_0000`. Fixed by the QEMU `virt` board,
 identical for every program, and the only kind of address that exists before
 the MMU is switched on.
 
-**Where:** `31k`, `32k` · L10, L11 · `memlayout.rs`
+**Where:** `31k`, `32k` · Week 7 · `memlayout.rs`
 
 ### virtual address
 
@@ -313,7 +313,7 @@ Sv39 there are 39 usable bits; rv6 stops one bit short at `MAXVA = 1 << 38` so
 it never has to deal with sign-extended high addresses. After `39k`, "address"
 without a qualifier is ambiguous — always say which.
 
-**Where:** `33k`, `39k` · L12, L16 · `memlayout.rs`
+**Where:** `33k`, `39k` · Week 7, L16 · `memlayout.rs`
 
 ### address space
 
@@ -333,7 +333,7 @@ Everything about virtual memory is quantised to it — mappings, permissions,
 allocations, and faults. A page table is itself exactly one page: 512 entries
 of 8 bytes.
 
-**Where:** `32k`, `33k` · L11, L12 · `memlayout.rs`
+**Where:** `32k`, `33k` · Week 7 · `memlayout.rs`
 
 ### page frame
 
@@ -341,7 +341,7 @@ A page-sized, page-aligned slot of *physical* memory. "Page" is the unit of the
 virtual side, "frame" the unit of the physical side; a mapping is a pairing of
 one page with one frame. The page allocator hands out frames.
 
-**Where:** `32k` · L11 · `kalloc.rs`
+**Where:** `32k` · Week 7 · `kalloc.rs`
 
 ### page table
 
@@ -350,7 +350,7 @@ entries each; the nine bits at position `12 + level * 9` of the virtual address
 index one level. `walk` descends it, allocating missing interior pages when
 asked to; `mappages` calls `walk` once per page and writes the leaf.
 
-**Where:** `33k` · L12 · `walk` and `mappages` (`vm.rs`)
+**Where:** `33k` · Week 7 · `walk` and `mappages` (`vm.rs`)
 
 ### PTE (page table entry)
 
@@ -360,7 +360,7 @@ user-accessible). A leaf has at least one of `R`/`W`/`X`; an entry with only `V`
 set is an interior node. That test is how the teardown and copy walks tell
 leaves from branches.
 
-**Where:** `33k` · L12 · `PTE_V` and the other flag bits, and `Pte` (`vm.rs`)
+**Where:** `33k` · Week 7 · `PTE_V` and the other flag bits, and `Pte` (`vm.rs`)
 
 ### MMU
 
@@ -400,7 +400,7 @@ physical page frames (this is the real one), and `kheap` implements Rust's
 symbol `end` up to `PHYSTOP`, which is why the kernel's own image is never
 handed out.
 
-**Where:** `32k` · L11 · `kalloc.rs`
+**Where:** `32k` · Week 7 · `kalloc.rs`
 
 ### free list
 
@@ -410,7 +410,7 @@ overhead, because a page you are not using is free storage. It also means
 `kfree` cannot validate anything — free the same page twice and you get a
 list that loops back on itself.
 
-**Where:** `32k` · L11 · `kalloc.rs` (`Run`), `kalloc.rs`
+**Where:** `32k` · Week 7 · `kalloc.rs` (`Run`), `kalloc.rs`
 
 ### heap
 
@@ -434,7 +434,7 @@ there transmits a byte. This is why the kernel page table has to map the device
 pages before the MMU comes on: otherwise the first `uart::puts` after the
 `satp` write faults.
 
-**Where:** `21r`, `31k`, `41k` · L09, L17 · `memlayout.rs`, `uart.rs`
+**Where:** `21r`, `31k`, `41k` · Week 6, L17 · `memlayout.rs`, `uart.rs`
 
 ### `volatile`
 
@@ -444,7 +444,7 @@ does not need it; device registers always do, because reading `LSR` twice can
 legitimately give two different answers. In Rust it is a property of the
 access, not the type: `core::ptr::read_volatile` / `write_volatile`.
 
-**Where:** `21r`, `41k` · L09, L17 · `reg_read()` (`uart.rs`)
+**Where:** `21r`, `41k` · Week 6, L17 · `reg_read()` (`uart.rs`)
 
 ### polling
 

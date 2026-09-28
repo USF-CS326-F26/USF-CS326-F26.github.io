@@ -113,10 +113,11 @@ hide:
     before you leave, passed or not. **SUBMIT** lists what each session
     releases.
 
-    A **Reading** is for the week — or the day — named beside it, not for the
-    row it sits on. The following week's goes up on Friday, after that week's
-    last exercise, so you can start it over the weekend. What today's exercise
-    is built on is linked from its **Prep** page.
+    Each week's **Lecture** is linked on its Tuesday row and is about that
+    week's Thursday and Friday exercises: read its **Essentials** before
+    Tuesday. Week 9's lecture is given on Tue Oct 13, before fall break, and
+    its sessions link back to it. Weeks 1–5 still show their original second
+    lecture page as a **Reading** until those weeks are rebuilt.
 
     Did not finish? Complete it at a **make-up session** — office hours, on
     the **cs326** network — for three quarters of the exercise half, or

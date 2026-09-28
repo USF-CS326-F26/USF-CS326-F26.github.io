@@ -198,59 +198,63 @@ sequence, and most wrong ones fail silently.
    *Constraint:* this is the only way down a privilege level. There is no
    "enter supervisor mode" instruction.
 
-10. **`uart::init()` (`main.rs`).**
-    *Constraint:* first in `kinit`, because everything after it may want to
-    print, including the panic handler (`exec_self_check()` in `main.rs`). It needs nothing itself:
-    paging is off, so the MMIO registers at `UART0` are reachable directly.
+10. **`kinit` (`main.rs`) brings up the kernel's own subsystems.**
+    *Constraint:* each one needs something an earlier one built, so the order
+    is a dependency graph, not a list to memorize. Read an arrow as "must
+    already be up":
 
-11. **`kalloc::init()` (`main.rs` → `kalloc.rs`).**
-    *Constraint:* before anything allocates. It frees every page from the linker
-    symbol `end` up to `PHYSTOP` (`kalloc.rs`); `end` is defined by
-    `PROVIDE(end = .)` at the bottom of `kernel.ld`, which is what keeps the
-    allocator from handing out pages that hold the kernel image.
+    ```mermaid
+    flowchart TD
+      out["console output\n(paging is off: plain MMIO)"]
+      pages["physical page allocator"]
+      mmu["kernel page table, then the MMU on"]
+      vec["trap vector"]
+      irq["interrupts on\n(steps 12 and 13)"]
+      procs["process table, cleared"]
+      root["filesystem root directory"]
+      first["first process, first path lookup"]
+      out -->|"anything after it may print, or panic"| pages
+      pages -->|"every table page is allocated"| mmu
+      mmu -->|"the vector is a virtual address"| vec
+      vec -->|"a trap needs somewhere to land"| irq
+      procs --> first
+      root --> first
+    ```
 
-12. **`vm::kvminithart(vm::kvmmake())` (`main.rs`).**
-    *Constraint:* after the allocator, because `kvmmake` calls `kalloc` for the
-    root table and every level below it (`vm.rs`). `kvmmake`
-    must map the kernel identity — `KERNBASE..PHYSTOP` at `vm.rs` —
-    before `kvminithart` writes `satp` (`vm.rs`), because the instruction
-    *after* that `csrw` is fetched through the new page table. Same reason the
-    UART page is mapped (`vm.rs`): otherwise the kernel goes mute the
-    instant paging comes on.
+    The page-table edge is the one with teeth. The allocator hands out every
+    page from the linker symbol `end` up to `PHYSTOP` (`kalloc.rs`), and
+    `PROVIDE(end = .)` at the bottom of `kernel.ld` is what keeps it off the
+    kernel image. The page table must map the kernel's own RAM at identical
+    addresses before `satp` is written, because the instruction *after* that
+    `csrw` is fetched through the new table (`vm.rs`). The UART page needs a
+    mapping for the same reason, or the kernel goes mute the instant paging
+    comes on.
 
-13. **`proc::init()` (`main.rs` → `proc.rs`).**
-    *Constraint:* before the first `allocproc`. It only clears the `PROCS` array
-    and resets `NEXTPID`, so it is cheap, but a stale `state` in one slot means
-    that slot is never handed out again.
+    The process table and the root directory hang off nothing, so they are
+    free to move but not free to skip. A stale state left in one process slot
+    means that slot is never handed out again. Without the root directory,
+    every file command fails the same way, with "not a directory". Saying
+    which steps could trade places, and why, is the whole of an
+    order-the-steps question.
 
-14. **`trap::init()` (`main.rs` → `trap.rs`).**
-    *Constraint:* `stvec` must hold a valid *virtual* address, so this belongs
-    after paging is on; and it must be done before interrupts are enabled, which
-    is why it comes before the console.
-
-15. **`fs::FS.lock().init()` (`kinit()` (`main.rs`) → `fs.rs`).**
-    *Constraint:* before any path is resolved. It marks inode 1 (`ROOT`) as a
-    directory; without it, `dirlookup` on the root returns `NotADirectory` and
-    every file command fails identically.
-
-16. **Print the banner (`main.rs`).** From here the two build modes
+11. **Print the banner (`main.rs`).** From here the two build modes
     diverge: with `--features harness`, `kmain` runs a self-check and calls
     `testdev::exit_success()` (`main.rs`); without it, the interactive
     kernel boots.
 
-17. **`console::init()` (`main.rs` → `console.rs`): re-init the UART,
+12. **`console::init()` (`main.rs` → `console.rs`): re-init the UART,
     enable its receive interrupt, configure the PLIC, set `sie.SEIE`.**
     *Constraint:* after `kvmmake`, because `plic::init` writes MMIO at
     `PLIC + 0x2080` and `PLIC + 0x20_1000` (`PLIC_SENABLE` in `plic.rs`) and the PLIC's
     4 MiB window is only mapped at `vm.rs`. Also after `trap::init`, or the
     first keystroke traps through an uninitialized `stvec`.
 
-18. **`trap::intr_on()` (`main.rs` → `trap.rs`): `sie.SSIE`, then
+13. **`trap::intr_on()` (`main.rs` → `trap.rs`): `sie.SSIE`, then
     `sstatus.SIE`.**
     *Constraint:* dead last. Enabling interrupts is a promise that a handler and
     a vector exist; every earlier step is part of keeping that promise.
 
-19. **`shell::run()` (`main.rs` → `shell.rs`) — the read-eval-print loop
+14. **`shell::run()` (`main.rs` → `shell.rs`) — the read-eval-print loop
     that never returns.**
 
 ## Address spaces
@@ -439,10 +443,9 @@ sequenceDiagram
     uservec->>uservec: load kernel_sp, kernel_trap, kernel_satp (usermode.rs)
     uservec->>usertrap: sfence, csrw satp, sfence, jr t0 (usermode.rs)
     usertrap->>usertrap: stvec = kernelvec (usermode.rs)
-    usertrap->>usertrap: tf.epc = sepc + 4 (usermode.rs, 401)
-    usertrap->>dispatch: dispatch(a7, a0, a1, a2) (usermode.rs)
+    usertrap->>dispatch: scause 8: the call number and arguments, as saved (usermode.rs)
     dispatch->>usertrap: return value
-    usertrap->>usertrapret: tf.a0 = ret (usermode.rs, 435)
+    usertrap->>usertrapret: resume the program (usermode.rs)
     usertrapret->>usertrapret: stvec = TRAMPOLINE + uservec offset (usermode.rs)
     usertrapret->>usertrapret: refill kernel_satp / kernel_sp / kernel_trap (usermode.rs)
     usertrapret->>usertrapret: sstatus.SPP = 0, SPIE = 1, sepc = tf.epc (usermode.rs)
@@ -480,8 +483,9 @@ of each `csrw satp` (`usermode.rs`): changing
 
 Three details students routinely get wrong:
 
-- **`epc += 4` (`usermode.rs`).** `sepc` points at the `ecall` itself. Skip
-  the increment and the process re-executes the syscall forever.
+- **Step past the `ecall` (`usermode.rs`).** `sepc` points at the `ecall`
+  itself, a 4-byte instruction: an `ecall` at `0x1c` must resume at `0x20`.
+  Resume at `0x1c` and the process re-executes the syscall forever.
 - **The return value goes in the trapframe, not a register** (`usertrap()` in `usermode.rs`).
   `userret` restores `a0` from `TRAPFRAME + 112` much later.
 - **`stvec` moves twice per trap.** It points at `uservec` while user code runs
@@ -688,7 +692,7 @@ hand from the `rv6$` prompt.
 | One tick, then the kernel freezes | `trap.rs` — `sip.SSIP` never cleared |
 | Keystrokes ignored entirely | `console.rs` (`enable_rx_interrupt`, `plic::init`, `sie.SEIE`), `plic.rs` |
 | Exactly one keystroke works | `console.rs` — `plic::complete` not called |
-| `ecall` repeats the same instruction forever | `usermode.rs` — `epc += 4` |
+| `ecall` repeats the same instruction forever | `usermode.rs` — the saved PC never steps past the `ecall` |
 | User program faults at its very first instruction | `exec.rs` (`epc = USER_CODE`), `vm.rs` (`PTE_R\|PTE_X\|PTE_U`, `fence.i`) |
 | User program faults on its first store | `vm.rs` (stack page) or `exec.rs` (`tf.sp`) |
 | `argc`/`argv` are garbage in a user program | `exec.rs` (`push_argv`) and `exec.rs` |

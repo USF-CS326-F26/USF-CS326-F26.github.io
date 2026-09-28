@@ -811,7 +811,8 @@ in Rust, just before jumping to the trampoline:
 
 ```rust
 asm!("csrw sepc, {}", in(reg) (*tf).epc as usize);
-let user_satp = vm::make_satp((*p).pagetable);
+let root = (*p).pagetable;
+let user_satp = vm::make_satp(root);
 asm!("sfence.vma zero, zero");
 asm!("csrw satp, {}", in(reg) user_satp);     // <-- moved here
 asm!("sfence.vma zero, zero");

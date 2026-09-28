@@ -193,16 +193,19 @@ you buy is at compile time.
 ### What it catches
 
 The Sv39 walk (`vm.rs`) reads an entry, pulls a physical address out of it,
-and treats that address as the next level's table:
+and treats that address as the next level's table. The same move in a smaller
+setting, a ticket whose low byte names a seat:
 
 ```rust
-if (*pte).is_valid() {
-    table = (*pte).pa() as *mut Pte;   // the entry's PPN *is* the next table
-}
+#[derive(Clone, Copy)]
+struct Ticket(u32);
+impl Ticket { fn seat(self) -> usize { (self.0 & 0xff) as usize } }
+
+let row = &seats[Ticket(0x0304).seat()];   // a ticket goes in, an index comes out
 ```
 
-The value changes meaning mid-line: an entry goes in, an address comes out, and
-every paging bug lives near a line like that. With `Pte` a distinct type an entry
+In the walk the value changes meaning mid-step: an entry goes in, an address
+comes out, and every paging bug lives near a step like that. With `Pte` a distinct type an entry
 cannot be passed where an address is expected, and the one deliberate
 reinterpretation is spelled with an explicit cast you can grep for.
 
@@ -470,20 +473,23 @@ for closed ones you defined yourself.
 
 ### Guards
 
-An arm may carry an `if` condition, a **guard** (`sys_read()` in `syscall.rs`):
+An arm may carry an `if` condition, a **guard**. Here is one at a library desk:
 
 ```rust
-let file = match getfile(p, fd) {
-    Some(f) if f.readable => f,
-    _ => return -1,
-};
+fn desk(book: Option<&Book>) -> &'static str {
+    match book {
+        Some(b) if b.on_shelf => "check it out",
+        Some(_) => "on loan: place a hold",
+        None => "not in the catalog",
+    }
+}
 ```
 
-"There is an open file here **and** it is readable." What matters is the failure
+"There is a book here **and** it is on the shelf." What matters is the failure
 case: matching *continues with the next arm* rather than leaving the `match`, so
-a write-only file falls through to `_` and the read fails with -1 — exactly the
-Unix semantics. Testing inside the arm body loses that fall-through and forces
-you to restate the failure path.
+a book that is out on loan falls through to `Some(_)` and gets the hold message.
+Testing inside the arm body loses that fall-through and forces you to restate
+the failure path.
 
 Because the compiler will not reason about arbitrary conditions, **guarded arms
 do not count toward exhaustiveness**, so a `match` resting on one still needs a
@@ -523,7 +529,7 @@ under `cargo test` — no QEMU, no kernel. Read the tests at the bottom of each
 | Enum / variant | Sum type: exactly one of a fixed set of named cases | `ProcState::{Unused, Runnable, ...}` (`proc.rs`) |
 | Exhaustiveness | Every value must be covered, or `E0004` | Adding a variant breaks each incomplete `match` |
 | `Option<T>` | `Some(T)` or `None`: absence with its own type | `fn pick_next(..) -> Option<usize>` (`sched.rs`) |
-| Match guard | `if` on an arm; failure falls through to the next arm | `Some(f) if f.readable => f` (`syscall.rs`) |
+| Match guard | `if` on an arm; failure falls through to the next arm | `Some(b) if b.on_shelf => ...` |
 
 ---
 

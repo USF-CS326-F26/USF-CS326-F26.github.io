@@ -1,6 +1,11 @@
 # Prep: Processes and the PCB — 34k
 
-**Session:** Thu Oct 22, 1h45 · **Exercises:** `34k_processes` · **Prep time:** ~45 min · **Lecture:** [Processes and the Process Control Block](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md)
+**Session:** Thu Oct 22, 1h45 · **Exercises:** `34k_processes` · **Prep time:** ~25 min · **Lecture:** [Week 9 · Processes, the Context Switch, and Scheduling](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md)
+
+## Back from break
+
+This session's lecture was Tue Oct 13, before Midterm 1 and fall break. Before class, reread [Week 9 · This week](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#this-week) and all of [Thursday · `34k` Processes](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#thu-34k), from [A process is a data structure](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-process) through [Ownership by hand](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-ownership).
+Three ideas matter most today: a claimed slot starts `Runnable`, not `Running`; slots are recycled, but pids never are; and a slot reads `Unused` only once it owns nothing.
 
 ## What you will build
 
@@ -8,22 +13,23 @@ The kernel's process table: a fixed static array of `NPROC` process control bloc
 
 ## Concepts you need
 
-- **A process is the unit of isolation and of scheduling; the PCB is the process** — [Processes §1](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#1-a-process-is-a-data-structure) · [rv6 Architecture § Processes, switching, and scheduling](../guides/rv6-architecture.md#processes-switching-and-scheduling)
-- **Deriving `Proc` field by field: pid, state, page-table root** — [Processes §2](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#2-deriving-the-pcb-field-by-field)
-- **The five-state lifecycle as a Rust `enum`; a new slot starts `Runnable`** — [Processes §3](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#3-the-process-state-machine)
-- **A fixed static table built at compile time from a `const fn`** — [Processes §4](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#4-the-process-table)
-- **pids are never reused; slot indices are** — [Processes §4](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#pids-and-slots-are-different-things)
-- **Raw pointers into a `static mut` through `addr_of_mut!`, never `&mut`** — [Processes §4](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#raw-pointers-into-a-static-mut)
-- **Ownership by hand: one owner, one release; release first, `Unused` last** — [Processes §5](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#5-ownership-without-the-borrow-checker)
+- **A process is the unit of isolation and of scheduling; the PCB is the process** — [Week 9 · A process is a data structure](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-process) · [rv6 Architecture: Processes, switching, and scheduling](../guides/rv6-architecture.md#processes-switching-and-scheduling)
+- **Deriving `Proc` field by field: pid, state, page-table root** — [Week 9 · The PCB: what it holds, and when](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-pcb)
+- **The five-state lifecycle as a Rust `enum`; a new slot starts `Runnable`** — [Week 9 · Five states, one enum](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-states)
+- **A fixed static table built at compile time from a `const fn`** — [Week 9 · The process table: slots and pids](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-table) · [Rust for Systems: `const fn`](../guides/rust-for-systems.md#const-fn)
+- **pids are never reused; slot indices are** — [Week 9 · The process table: slots and pids](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-table)
+- **Raw pointers into a `static mut` through `addr_of_mut!`, never `&mut`** — [Week 9 · Ownership by hand](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-ownership) · [Unsafe guide: `static mut` and `addr_of!`](../guides/rust-unsafe-nostd.md#static-mut-and-addr_of)
+- **Ownership by hand: one owner, one release; release first, `Unused` last** — [Week 9 · Ownership by hand](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-ownership)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Processes §1–§2 (definition; the PCB field by field) | 15 min |
-| Processes §3–§4 (state machine; fixed table; pids versus slots) | 15 min |
-| Processes §5, §7 (ownership by hand; what is not in the PCB yet) | 10 min |
-| rv6 Architecture § Processes, switching, and scheduling | 5 min |
+| [Week 9 · This week](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#this-week), then [Thursday · `34k` Processes](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#thu-34k) through [The PCB: what it holds, and when](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-pcb) | 3 min |
+| [Week 9 · Five states, one enum](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-states) and [The process table: slots and pids](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-table) | 3 min |
+| [Week 9 · Ownership by hand](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-ownership) | 2 min |
+| [Unsafe guide: `static mut` and `addr_of!`](../guides/rust-unsafe-nostd.md#static-mut-and-addr_of) | 3 min |
+| [rv6 Architecture: Processes, switching, and scheduling](../guides/rv6-architecture.md#processes-switching-and-scheduling), the table and the six lifecycle steps | 4 min |
 
 ## Mental model
 
@@ -51,4 +57,4 @@ A `*mut Proc` to slot 0 taken on line 2 still points at slot 0 on line 5, but th
 
 ## If you finish early
 
-Work [Problem 1](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#problem-1-slots-pids-and-reuse) and [Problem 4](../lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md#problem-4-legal-and-illegal-transitions) on paper, then start reading Friday's prep page, [Prep: Context Switch and Scheduling](09-cs326-2026-10-23-prep-context-switch-and-scheduling.md), where today's slots get a scheduler. For the C ancestor, read chapter 7, "Scheduling," of the [xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf).
+Work [Week 9 · Problem 1: Slots, pids, and reuse](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#problem-1) and [Problem 2: Legal and illegal transitions](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#problem-2) on paper, then start reading Friday's prep page, [Prep: Context Switch and Scheduling](09-cs326-2026-10-23-prep-context-switch-and-scheduling.md), where today's slots get a scheduler. For the C ancestor, read chapter 7, "Scheduling," of the [xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf).

@@ -161,8 +161,8 @@ not at the level it is on.
 | 1 | all zero | **branch**: PPN is the physical address of the next-level table |
 | 1 | any set | **leaf**: PPN is the physical page being mapped, and the walk ends |
 
-rv6 relies on this in both directions: `walk` builds interior nodes with
-`Pte::new(page, PTE_V)` and nothing else (`vm.rs`), and the teardown and fork
+rv6 relies on this in both directions: `walk()` (`vm.rs`) builds interior
+nodes with `V` set and R/W/X clear, and the teardown and fork
 paths recover the structure with `flags() & (PTE_R | PTE_W | PTE_X) != 0`
 (`free_pt()` and `copy_level()` (`vm.rs`)).
 
@@ -200,31 +200,22 @@ Three memory reads per translation, before the access you actually wanted: that
 is the cost the TLB exists to hide.
 
 rv6's software version does the same descent and stops one entry short, handing
-back a pointer to the level-0 entry so the caller can fill it in (`walk()` in `vm.rs`):
+back a pointer to the level-0 entry so the caller can fill it in (`walk()` in `vm.rs`).
+Side by side, the two descents differ only at the end:
 
-```rust
-pub unsafe fn walk(mut table: *mut Pte, va: usize, alloc: bool) -> *mut Pte {
-    let mut level = 2;
-    while level > 0 {
-        let pte = table.add(px(level, va));
-        if (*pte).is_valid() {
-            table = (*pte).pa() as *mut Pte;
-        } else {
-            if !alloc { return ptr::null_mut(); }
-            let page = kalloc::kalloc();
-            // ... zero it, then:
-            *pte = Pte::new(page as usize, PTE_V);
-            table = page as *mut Pte;
-        }
-        level -= 1;
-    }
-    table.add(px(0, va))
-}
+```text
+hardware:  root[VPN2] ──▶ L1[VPN1] ──▶ L0[VPN0] ──▶ leaf PPN × 4096 + offset
+software:  root[VPN2] ──▶ L1[VPN1] ──▶ L0[VPN0]
+                                          ▲
+                           stops here: hands back this slot's address,
+                           and the caller writes the leaf into it
 ```
 
-Two things to notice: the loop runs for levels 2 and 1 only, returning the
-level-0 entry rather than following it, and in `alloc` mode a missing interior
-table is created on the spot — which is why mapping one page at a fresh virtual
+Two things to notice. Only the root and level-1 entries are followed; the
+level-0 entry is returned rather than read. And in `alloc` mode a missing interior
+table is created on the spot. A table made that way must be zeroed before use:
+the allocator hands back pages holding whatever their last owner wrote, and any
+stale word with bit 0 set reads as a valid entry. That on-demand creation is also why mapping one page at a fresh virtual
 address can cost three physical pages. `mappages` (`vm.rs`) is a loop
 around `walk` that page-aligns the range, ends at `pgrounddown(va + size - 1)`,
 and stores `Pte::new(pa, perm | PTE_V)` for each page: the `V` bit is added for
@@ -251,11 +242,15 @@ table *the* page table.
 | 10 | Sv57 — five levels |
 
 The PPN field holds the root table's physical address **shifted right by 12**,
-not the address itself. rv6 builds the value in one line (`vm.rs`):
+not the address itself. By hand, for a root table at `0x8765_4000`:
 
-```rust
-pub const SATP_SV39: usize = 8 << 60;
-pub fn make_satp(root: *mut Pte) -> usize { SATP_SV39 | ((root as usize) >> 12) }
+```text
+MODE  = 8 << 60                         = 0x8000_0000_0000_0000
+PPN   = 0x8765_4000 >> 12               = 0x0000_0000_0008_7654
+satp  = MODE | PPN                      = 0x8000_0000_0008_7654
+
+back: satp >> 60                        = 8, so Sv39
+      (satp & 0xFFF_FFFF_FFFF) << 12    = 0x8765_4000
 ```
 
 rv6 always leaves ASID at 0. A nonzero ASID lets the hardware tag TLB entries by
@@ -352,7 +347,7 @@ Now walk, reading one 8-byte entry per level:
 | L0 | `0x87FF_7000` | 1 → byte offset 8 | `0x0000_0000_2008_040F` | PPN → `0x8020_1000`, flags `0xF` = V+R+W+X → **leaf** |
 
 Result: `0x8020_1000 | offset 0x000` = **`0x8020_1000`**. Identity, as promised
-by `mappages(root, KERNBASE, PHYSTOP - KERNBASE, KERNBASE, ...)` at `kvmmake()` (`vm.rs`).
+by the all-of-RAM mapping that `kvmmake()` (`vm.rs`) installs.
 Check the leaf by hand: `(0x8020_1000 >> 12) << 10 = 0x8020_1 << 10 =
 0x2008_0400`, plus flags `0xF` = `0x2008_040F`. No `U` bit, so a user program
 that reaches this address gets a fault instead of the kernel's code.

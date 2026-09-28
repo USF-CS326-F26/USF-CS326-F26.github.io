@@ -56,16 +56,27 @@ reading.
 
 | Day | Length | Shape |
 |---|---|---|
-| **Tuesday** | 1h45 | Lecture. Ends with a short walk-through of Thursday's Prep page. |
+| **Tuesday** | 1h45 | Lecture on that week's exercises. Ends with a short walk-through of Thursday's and Friday's Prep pages. |
 | **Thursday** | 1h45 | Exercise session |
 | **Friday** | 1h30 | Exercise session |
 
-One lecture is delivered live each week, on Tuesday. The second lecture page
-for that week is posted with its slides and is **reading**.
+One lecture is delivered live each week, on Tuesday, and it is about exactly
+that week's Thursday and Friday exercises. Its page, linked from the Tuesday
+row of the [schedule](index.md) with its slides, has three parts:
+
+- **Essentials**: what Thursday and Friday assume. Read it before Tuesday.
+- **For the exam**: a short list of examinable topics that no exercise needs.
+- **Going deeper**: optional material, which is not on the exam.
+
+The lecture cannot cover everything on the page; it covers the Essentials.
+Two weeks shift because of the calendar: week 9's lecture is given on Tuesday,
+October 13 (October 20 is fall break), and week 15's two lectures are given on
+November 24 and December 1.
 
 Every exercise session has a **Prep page**, linked from its row on the
-[schedule](index.md). It says what you will build, which lecture sections and
-guides to reread, and what to check that you understand before you arrive.
+[schedule](index.md). It says what you will build, which sections of the
+week's lecture page and which guides to read, and what to check that you
+understand before you arrive.
 **Read the Prep page before class.** It is the bridge between the lecture and
 the exercise: a student who has read it spends the session writing code, and a
 student who has not spends it reading.
@@ -315,7 +326,7 @@ Registrations and connection logs are erased at the end of the semester.
 Sessions run on a restricted network that reaches GitHub, the Rust toolchain and
 documentation, and this site — so that `oslings update`, `oslings submit` and
 `cargo` all work and very little else does. You sign in to it once per laptop,
-and it recognises you after that.
+and it recognizes you after that.
 
 [The Classroom Network](guides/classroom-network.md) covers signing in, the full
 list of what is reachable, what the class server records about you, and what to

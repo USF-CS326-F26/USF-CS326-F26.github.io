@@ -197,16 +197,17 @@ L03 &middot; September 1, 2026 &middot; Exercises `02r_ownership`, `03r_borrowin
 
 ## Start With the Object
 
-The kernel's physical page allocator, in full (`kalloc.rs`):
+The kernel's physical page allocator (you build it in exercise 32k):
 
-```rust
-pub unsafe fn kalloc() -> *mut u8 {
-    let r = FREELIST;
-    if !r.is_null() {
-        FREELIST = (*r).next;
-    }
-    r as *mut u8
-}
+```text
+   FREELIST
+      │
+      ▼
+   ┌──────────────┐      ┌──────────────┐
+   │ next ────────┼─────▶│ next ────────┼─────▶ null
+   │ 4088 unused  │      │ 4088 unused  │
+   └──────────────┘      └──────────────┘
+     0x8000_5000           0x8000_6000
 ```
 
 - A **page** is 4096 bytes — `PGSIZE` (`memlayout.rs`)
@@ -564,9 +565,7 @@ pub struct Args<'a> {          // ulib/src/lib.rs
 ## The Destination: `SpinLockGuard`
 
 ```rust
-pub fn lock(&self) -> SpinLockGuard<'_, T> {   // spinlock.rs
-    /* spin */ SpinLockGuard { lock: self }
-}
+// SpinLock::lock(&self) returns a SpinLockGuard<'_, T> borrowing the lock
 
 pub struct SpinLockGuard<'a, T> {              // spinlock.rs
     lock: &'a SpinLock<T>,

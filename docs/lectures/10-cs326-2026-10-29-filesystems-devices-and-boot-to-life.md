@@ -42,7 +42,7 @@ rv6 for real. See the
 - Exercise `33k_paging`, L16 *Virtual Memory II*, and the
   [Sv39 Paging guide](../guides/sv39-paging.md) — `satp`, `kvmmake`, identity
   mapping, `sfence.vma`.
-- Exercise `31k_boot` and [Boot: From Reset to `kmain`](05-cs326-2026-09-24-boot-from-reset-to-kmain.md)
+- Exercise `31k_boot` and [Week 7 · From Reset to Page Tables](07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#thu-31k)
   — MMIO, `_entry`, and the blind-write console this session replaces.
 - Exercise `37k_spinlocks` — the whole filesystem lives behind one lock.
 - Exercise `08r_errors` — `Result`, `?`, and matching a specific variant.
@@ -760,7 +760,7 @@ allocator, MMU, processes.
   identity map is what lets `kvminithart` return.
 - [QEMU and GDB](../guides/qemu-gdb.md) — breaking in `kinit`, `info registers
   satp`, and `-d int,mmu`.
-- [Boot: From Reset to `kmain`](05-cs326-2026-09-24-boot-from-reset-to-kmain.md)
+- [Week 7 · From Reset to Page Tables](07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#thu-31k)
   — `_entry`, the stack, and the blind-write console this session upgrades.
 - [File Commands over a Filesystem API](14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md)
   — the November 24 lecture behind the extra-credit `47k_file_commands`, which

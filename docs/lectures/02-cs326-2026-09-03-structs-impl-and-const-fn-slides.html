@@ -327,16 +327,18 @@ The cost: `pte + 1` is a type error until you write a method. That is the point.
 
 ## What the Newtype Catches
 
-The Sv39 walk, `vm.rs`:
+The Sv39 walk (`vm.rs`) turns an entry into the next table's address. The same move, smaller:
 
 ```rust
-if (*pte).is_valid() {
-    table = (*pte).pa() as *mut Pte;   // the entry's PPN *is* the next table
-}
+#[derive(Clone, Copy)]
+struct Ticket(u32);
+impl Ticket { fn seat(self) -> usize { (self.0 & 0xff) as usize } }
+
+let row = &seats[Ticket(0x0304).seat()];   // ticket in, index out
 ```
 
-- The value changes meaning mid-line: entry in, address out
-- Every paging bug lives near a line like this one
+- In the walk the value changes meaning mid-step: entry in, address out
+- Every paging bug lives near a step like that one
 - With a distinct type, the one deliberate reinterpretation is an explicit cast you can grep for
 
 ---
@@ -606,15 +608,16 @@ The rule: <code>_</code> for open domains, never for closed ones you defined you
 ## Match Guards
 
 ```rust
-let file = match getfile(p, fd) {          // syscall.rs
-    Some(f) if f.readable => f,
-    _ => return -1,
-};
+match book {
+    Some(b) if b.on_shelf => "check it out",
+    Some(_) => "on loan: place a hold",
+    None => "not in the catalog",
+}
 ```
 
-- "There is an open file here **and** it is readable"
+- "There is a book here **and** it is on the shelf"
 - When the guard fails, matching **continues with the next arm**
-- A write-only fd falls through to `_` and the read returns -1 — Unix semantics
+- A book out on loan falls through to `Some(_)` and gets the hold message
 - Guarded arms **do not count** toward exhaustiveness: you still need a fallback
 
 Guards compose with tuple patterns: `match (state, event)`.

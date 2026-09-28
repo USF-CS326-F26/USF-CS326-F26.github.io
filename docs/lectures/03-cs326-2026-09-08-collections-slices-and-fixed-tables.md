@@ -288,26 +288,25 @@ You need about eight of the hundred-odd methods on `Iterator`.
 rv6's line reader finds a newline with
 `self.buf[self.start..self.len].iter().position(|&b| b == b'\n')`
 (`lines.rs`): subslice first, then search, so the position is relative to
-the region that holds data. The round-robin scheduler is one chain:
+the region that holds data. A longer chain, from a thermostat log rather than
+the kernel:
 
 ```rust
-fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
-    let n = states.len();
-    (0..n)
-        .map(|off| (self.next + off) % n)
-        .find(|&i| states[i] == ProcState::Runnable)
-        .map(|i| { self.next = (i + 1) % n; i })
+fn first_hot_hour(readings_f: &[i32], limit_c: i32) -> Option<usize> {
+    readings_f
+        .iter()
+        .map(|&f| (f - 32) * 5 / 9)       // Fahrenheit to Celsius
+        .position(|c| c > limit_c)
 }
 ```
 
-`RoundRobin::pick_next()` (`sched.rs`). Read it as English: consider `n` offsets, wrap each into a
-table index starting from where we left off, take the first that is runnable,
-remember to resume after it next time.
+Read it as English: convert each hourly reading to Celsius, and report the hour
+of the first one over the limit.
 
 The important property is that this **allocates nothing and builds nothing**.
-Rust's iterators are lazy: `map` does not produce a list of eight indices, it
-produces something that computes one index each time `find` asks, and `find`
-stops asking the moment it succeeds. The optimized code is the loop you would
+Rust's iterators are lazy: `map` does not produce a list of converted readings,
+it produces something that converts one reading each time `position` asks, and
+`position` stops asking the moment it succeeds. The optimized code is the loop you would
 have written by hand, which is why the style is legal in a kernel with no heap
 at all. `collect()` is the one adapter that breaks the rule, because it has to
 put the results *somewhere*.
@@ -329,21 +328,17 @@ not, and the reasons generalize.
 
 ### Reason 1: there is no allocator yet
 
-Look at the order rv6 brings itself up, in `BANNER` (`main.rs`):
+Look at where a heap arrives in rv6's life:
 
 ```mermaid
 flowchart TD
-    A["_entry: machine boots\nPROCS already exists in .bss"] --> B["uart::init()\nwe can print"]
-    B --> C["kalloc::init()\na PAGE allocator, 4096-byte chunks"]
-    C --> D["vm::kvminithart()\nthe MMU comes on"]
-    D --> E["proc::init()\nwalk PROCS, mark slots Unused"]
-    E --> F["trap::init(), fs init"]
-    F --> G["38k: kheap registers the\nglobal allocator — NOW Vec works"]
+    A["_entry: machine boots\nPROCS already exists in .bss"] --> B["early boot: the kernel's subsystems come up,\nthe process table among them\n(the only allocator hands out whole\nPAGES, 4096-byte chunks)"]
+    B --> G["38k: kheap registers the\nglobal allocator — NOW Vec works"]
     style A fill:#e8f5e9,stroke:#00543c
     style G fill:#fff3cd,stroke:#FDBB30
 ```
 
-The table is used at `proc::init()`, the fourth line of `kinit`. A `Vec<Proc>`
+The table is set up and used in early boot, long before any heap exists. A `Vec<Proc>`
 calls the **global allocator**, and rv6 has none until exercise 38k, where
 `kheap.rs` provides a `GlobalAlloc` impl and `#[global_allocator]` registers
 it (`ALLOCATOR` in `kheap.rs`). Before that, `extern crate alloc` does not even compile:
@@ -495,7 +490,7 @@ allocator does: `KernelHeap::alloc` (`kheap.rs`) hands out one whole
 | Unsized type | Size unknown at compile time; usable only behind a pointer | `[T]`, `str` |
 | Bounds check | Compare-and-branch inserted before an indexed load | `bgeu a1, t0, .Lpanic` |
 | Boundary validation | Range-checking an untrusted index once, where it enters | `if fd >= NOFILE { return None }` (`syscall.rs`) |
-| Iterator adapter | Lazy wrapper; transforms without materialising a list | `.map(..).find(..)` (`sched.rs`) |
+| Iterator adapter | Lazy wrapper; transforms without materialising a list | `.map(..).position(..)` |
 | `.bss` | Zero-initialized static region reserved by the linker | Where `PROCS` lives before code runs |
 | Global allocator | The `GlobalAlloc` impl `Box`/`Vec` call; absent until ex 08 | `KernelHeap` (`kheap.rs`) |
 | Static resource bound | Compile-time cap with a defined failure | `NPROC = 64`; `fork` returns -1 when full |
@@ -630,93 +625,95 @@ pays a check per access and is the C habit, not the Rust one.
 
 ### Problem 4: The missing check
 
-Suppose `getfile` in `syscall.rs` had been written without its first two
-lines:
+A small kernel keeps, in each task's record, a table of eight alarm deadlines,
+and every `Task` lives in one static array. The `alarm_get(slot)` system call
+looks a slot up. Suppose it had been written without a range check:
 
 ```rust
-unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {
-    let f = (*p).ofile[fd];          // no range check
-    if f.kind == FileKind::None { None } else { Some(f) }
+struct Task { name: [u8; 16], alarms: [u64; 8], /* more fields */ }
+
+fn alarm_at(t: &Task, slot: usize) -> Option<u64> {
+    let d = t.alarms[slot];          // no range check
+    if d == 0 { None } else { Some(d) }
 }
 ```
 
-A user program calls `read(99, buf, 10)`. (a) What happens in Rust? (b) What
-would happen in C, where `ofile` is a plain array? (c) Of `ofile[fd]`,
-`ofile.get(fd)`, and an explicit `if fd >= NOFILE`, which is right, and why?
+A user program calls `alarm_get(99)`. (a) What happens in Rust? (b) What would
+happen in C, where `alarms` is a plain array? (c) Of `alarms[slot]`,
+`alarms.get(slot)`, and an explicit `if slot >= NALARM`, which is right, and
+why?
 
 <details markdown="1">
 <summary>Click to reveal solution</summary>
 
-**(a)** `ofile` is `[File; 16]` (`Proc` in `proc.rs`), so `ofile[99]` fails the
-bounds check and calls `panic_bounds_check`; the panic handler prints and
-halts the hart. The machine is dead, and any user program can do it with one
-system call and no privileges. The check turned a memory-safety bug into an
-availability bug — a real improvement, and still critical.
+**(a)** `alarms` is `[u64; 8]`, so `alarms[99]` fails the bounds check and
+calls `panic_bounds_check`; in a kernel the panic handler prints and halts the
+hart. The machine is dead, and any user program can do it with one system call
+and no privileges. The check turned a memory-safety bug into an availability
+bug — a real improvement, and still critical.
 
-**(b)** In C, `ofile[99]` is `ofile + 99 × sizeof(File)` — 2,376 bytes past
-the start of `ofile`, and since `Proc` is 568 bytes that lands roughly four
-`Proc`s further along inside `PROCS`: **inside another process's control
-block**, reinterpreting whatever sits at that offset as a `File`. If it looks
-open, the caller gets a descriptor onto a file it never opened in a process it
-does not own, and `sys_close(99)` would *write* `File::none()` there. Textbook
-confused-deputy privilege escalation.
+**(b)** In C, `alarms[99]` is `alarms + 99 × 8` — 792 bytes past the start of
+`alarms`. If a `Task` is 200 bytes, that lands roughly four `Task`s further
+along in the static array: **inside another task's record**, reinterpreting
+whatever sits at that offset as a deadline. A matching `alarm_clear(99)` would
+*write* a zero there, into a record the caller has no right to touch. Textbook
+confused-deputy bug: the kernel does, on the caller's behalf, what the caller
+could never do itself.
 
-**(c)** The explicit `if fd >= NOFILE { return None; }`:
+**(c)** The explicit `if slot >= NALARM { return None; }`:
 
-- `ofile[fd]` is wrong because `fd` is attacker-controlled, and an untrusted
-  number must never reach an indexing operation whose failure mode is "halt".
-- `ofile.get(fd)` is *safe* and would work, but it checks at the access rather
-  than at the boundary. The kernel wants one validation point per untrusted
-  value, near where it enters, so downstream code may assume a good value —
-  concretely, `sys_read` later writes `(*p).ofile[fd].off += n`
-  (`syscall.rs`), indexing directly, which is sound only because `getfile`
-  already vouched for `fd`.
-- The explicit check documents the interface: `NOFILE` appears in the
+- `alarms[slot]` is wrong because `slot` is attacker-controlled, and an
+  untrusted number must never reach an indexing operation whose failure mode
+  is "halt".
+- `alarms.get(slot)` is *safe* and would work, but it checks at the access
+  rather than at the boundary. The kernel wants one validation point per
+  untrusted value, near where it enters, so downstream code may assume a good
+  value — concretely, the code that later clears `t.alarms[slot]` when the
+  alarm fires indexes directly, which is sound only because the entry point
+  already vouched for `slot`.
+- The explicit check documents the interface: `NALARM` appears in the
   condition, so the limit and the failure mode are visible in two lines.
 </details>
 
 ### Problem 5: Trace the scheduler
 
-`RoundRobin` (`sched.rs`) is called with `self.next == 3` and this state
-array (`n = 8`):
+A round-robin policy keeps a cursor. Each call starts at the cursor, skips every
+slot that is not `Runnable`, wraps past the end, and moves the cursor to just
+past the slot it picks. The cursor is at 3, with this state array (`n = 8`):
 
 ```text
 index:   0         1        2         3        4         5        6        7
 state:   Running   Unused   Runnable  Zombie   Runnable  Unused   Unused   Sleeping
 ```
 
-Give the return value and the new `self.next` for three successive calls,
-assuming the states do not change. Then say how many times the closure inside
-`map` runs during the first call, and why that matters.
+Give the pick and the new cursor for three successive calls, assuming the
+states do not change. Then say how many slots a lazy search examines during
+the first call, and why that matters.
 
 <details markdown="1">
 <summary>Click to reveal solution</summary>
 
-The chain: `(0..n)` produces offsets, `map` turns `off` into index
-`(next + off) % n`, `find` takes the first `Runnable` index, and the trailing
-`map` records where to resume.
+**Call 1** — cursor 3. Candidates: 3 (Zombie), 4 (Runnable). Picks
+**`Some(4)`**; the cursor moves to 5.
 
-**Call 1** — `next = 3`. Candidates: 3 (Zombie), 4 (Runnable). Returns
-**`Some(4)`**, sets `next = 5`.
-
-**Call 2** — `next = 5`. Candidates: 5 (Unused), 6 (Unused), 7 (Sleeping),
+**Call 2** — cursor 5. Candidates: 5 (Unused), 6 (Unused), 7 (Sleeping),
 0 (Running — note *Running* is not *Runnable*, so no), 1 (Unused), 2
-(Runnable, yes). Returns **`Some(2)`**, sets `next = 3`.
+(Runnable, yes). Picks **`Some(2)`**; the cursor moves to 3.
 
-**Call 3** — `next = 3`, identical to call 1. Returns **`Some(4)`**, sets
-`next = 5`.
+**Call 3** — cursor 3, identical to call 1. Picks **`Some(4)`**; the cursor
+moves to 5.
 
 So the scheduler alternates 4, 2, 4, 2, … and the two runnable processes share
 the CPU evenly, which is the point of round robin. A policy that scanned from
-0 every time would return 2 forever and starve process 4; the stored `next` is
+0 every time would return 2 forever and starve process 4; the stored cursor is
 what makes it fair.
 
-**The closure runs twice** in call 1 — offsets 0 and 1 — then never again,
-because `find` succeeded and stopped pulling. That is what "lazy" means: no
-eight-element intermediate is built, nothing is touched beyond the two states
-examined, and the compiled code is a loop with an early `break`. An eager
-`map` would need somewhere to put eight indices, which in a kernel with no
-allocator means a stack buffer and a size limit.
+**Two slots are examined** in call 1 — 3 and 4 — and then the search stops,
+because it has its answer. That is what "lazy" means: no eight-element list of
+candidates is built, nothing is touched beyond the two states examined, and the
+compiled code is a loop with an early `break`. An eager version would need
+somewhere to put eight indices, which in a kernel with no allocator means a
+stack buffer and a size limit.
 </details>
 
 ### Problem 6: The tempting refactor

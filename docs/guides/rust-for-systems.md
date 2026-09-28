@@ -124,19 +124,22 @@ the filesystem lock while it allocates a `String`.
 
 Below a certain level there are no owners, only addresses the hardware gave
 you. The page allocator is that level. `kalloc` hands out a `*mut u8` — a raw
-pointer, which is `Copy`, carries no ownership, and is never dropped:
+pointer, which is `Copy`, carries no ownership, and is never dropped. You can
+see all three properties on a buffer of your own:
 
 ```rust
-pub unsafe fn kalloc() -> *mut u8 {   // kalloc.rs
-    let r = FREELIST;
-    if !r.is_null() {
-        FREELIST = (*r).next;
-    }
-    r as *mut u8
-}
+let mut buf = [0u8; 16];
+let p: *mut u8 = buf.as_mut_ptr();
+let q = p;                 // Copy: `p` is still alive
+unsafe {
+    *p = 1;                // two writers to one byte,
+    *q = 2;                // and the compiler says nothing
+}                          // buf[0] is 2; neither `p` nor `q` is ever dropped
 ```
 
-Nothing in that function is checked by the borrow checker. Calling `kfree` twice
+Read `let q = p` as "two names for one address", not a transfer. The borrow
+checker checks nothing about `p` and `q`, and nothing about the pages `kalloc`
+hands out either. Calling `kfree` twice
 on the same page corrupts the free list exactly the way C would. This is honest
 and it is the point: `unsafe` is where you take over the proof obligation, and
 everything above `kalloc` — page tables, processes, the filesystem — gets to be
@@ -267,18 +270,15 @@ impl<T> DerefMut for SpinLockGuard<'_, T> {   // spinlock.rs
 
 `Deref`/`DerefMut` make the guard behave like the data it protects, and the
 lifetime `'a` means a reference obtained through the guard cannot outlive it.
-So a use-after-unlock is a compile error rather than a 3 a.m. debugging session:
+So a use-after-unlock is a compile error rather than a 3 a.m. debugging session.
+Here is a function of your own that keeps a high score behind a lock:
 
 ```rust
-pub fn try_wait(&self) -> bool {   // semaphore.rs
-    let mut count = self.count.lock();   // SpinLockGuard<'_, i64>
-    if *count > 0 {                      // Deref
-        *count -= 1;                     // DerefMut
-        true
-    } else {
-        false
-    }
-}                                        // guard dropped -> unlock()
+fn record_high(best: &SpinLock<u32>, score: u32) -> u32 {
+    let mut b = best.lock();       // SpinLockGuard<'_, u32>
+    *b = (*b).max(score);          // Deref to read, DerefMut to write
+    *b                             // a copy of the u32 leaves; the guard does not
+}                                  // guard dropped -> unlock()
 ```
 
 ```text
@@ -286,8 +286,8 @@ pub fn try_wait(&self) -> bool {   // semaphore.rs
     │                                                  │
     ├── locked = true ────────────────────────────────►├── locked = false
     │                                                  │
-    └──[ guard alive: *count reads and writes here ]───┘
-              ^ any &mut i64 taken here is tied to 'a
+    └──[ guard alive: *b reads and writes here ]───────┘
+              ^ any &mut u32 taken here is tied to 'a
 ```
 
 > **Where you need this:** `37k` — spinlocks and their guards (`spinlock.rs`),
@@ -451,7 +451,7 @@ The `derive` list is doing real work and is worth reading:
 | Derive | Gives you | Needed because |
 |---|---|---|
 | `Clone`, `Copy` | duplication instead of moves | these live inside `Copy` table entries |
-| `PartialEq`, `Eq` | `==` and `!=` | `states[i] == ProcState::Runnable` (sched.rs) |
+| `PartialEq`, `Eq` | `==` and `!=` | the scheduler must ask whether a slot is `ProcState::Runnable` (sched.rs) |
 
 Without `PartialEq` on `ProcState`, the round-robin scheduler cannot be written
 at all.
@@ -625,27 +625,23 @@ unsafe fn image(start: *const u8, end: *const u8) -> &'static [u8] {   // exec.r
 ### Iteration
 
 An iterator is anything with a `next()` method; the adapters are lazy and
-compile down to the loop you would have written. `RoundRobin::pick_next` is the
-densest example in the kernel and repays reading slowly:
+compile down to the loop you would have written. Here is a small chain of your
+own, over a day of hourly temperature readings:
 
 ```rust
-impl Scheduler for RoundRobin {           // sched.rs
-    fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
-        let n = states.len();
-        (0..n)
-            .map(|off| (self.next + off) % n)         // slot numbers, starting after the last
-            .find(|&i| states[i] == ProcState::Runnable)  // the first runnable one
-            .map(|i| {                                 // remember where to resume, return i
-                self.next = (i + 1) % n;
-                i
-            })
-    }
+fn first_hot(temps: &[i32], limit: i32) -> Option<(usize, i32)> {
+    temps.iter()
+        .copied()                          // i32 values instead of &i32
+        .enumerate()                       // (hour, reading) pairs
+        .find(|&(_, t)| t > limit)         // Option<(usize, i32)>; stops at the first hit
+        .map(|(h, t)| (h + 1, t - limit))  // 1-based hour, degrees over the limit
 }
 ```
 
-`find` returns `Option<usize>`, and the second `map` transforms the `Some` case
-while leaving `None` alone — so "nothing runnable" flows straight out as `None`
-without a branch. The result is a round-robin scan with no index bookkeeping.
+`find` returns an `Option`, and the `map` after it transforms the `Some` case
+while leaving `None` alone — so "no hour was over the limit" flows straight out
+as `None` without a branch. The result is a scan with no index bookkeeping:
+`enumerate` does the counting.
 
 The adapters rv6 actually uses:
 
@@ -675,8 +671,8 @@ rather than a borrow of a temporary table.
 
 ### Traits
 
-A trait is a named set of methods a type promises to provide. It has no data
-and you never build one. rv6's two teaching traits are deliberately tiny:
+A trait is a contract: a list of method signatures that a type agrees to
+supply. It has no data and you never build one. rv6's two teaching traits are deliberately tiny:
 
 ```rust
 pub trait Scheduler {                                              // sched.rs
@@ -724,7 +720,7 @@ actually use, it stamps out a separate copy with `T` substituted. rv6 uses two:
 - `SpinLock<FileSystem>` — the global `FS` (fs.rs)
 
 so the compiled kernel contains two complete, separately optimized spinlocks.
-Nothing is looked up at run time; `*count -= 1` through a
+Nothing is looked up at run time; `*count += 1` through a
 `SpinLockGuard<'_, i64>` compiles to exactly the instruction it would if you had
 written the lock by hand for `i64`. That is the trade: generics cost code size,
 not speed.

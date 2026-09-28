@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 9 · Processes, the Context Switch, and Scheduling - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="09-cs326-2026-10-13-processes-context-switch-and-scheduling/">&larr; Week 9 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 9 · Processes
+
+## The context switch and scheduling
+
+CS 326 Operating Systems · Tuesday, October 13
+
+**Thu Oct 22** `34k_processes` · **Fri Oct 23** `35k_context_switch`, `36k_scheduling`
+
+[The Week 9 page](09-cs326-2026-10-13-processes-context-switch-and-scheduling/): Part I is on Midterm 1 this Thursday. Reread **Essentials** before Oct 22.
+
+Notes:
+**Minute plan** (105 minutes; this Tuesday is also the Midterm 1 review)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–10 | Practice Set 1 questions (its solutions post today) | title, this-week, ps1-questions |
+| 10–30 | Part I · Thursday Oct 22 · `34k` (7 core, all exam slides: On Midterm 1) | thu-34k … exam-failed-claim |
+| 30–55 | Part II · Friday Oct 23 · `35k` (4 core): 20a's idea scaled up, and the Midterm 1 trace-the-registers review. The core takes about 15 min; spend the other ~10 on ↓ Problem 3 (under 35k-fresh) parts 1–3, the Midterm 1 trace drill, and drop it first when behind | fri-35k … 35k-one-thing |
+| 55–85 | Part III · Friday Oct 23 · `36k` (5 core), then the survey (2 exam slides: On Midterm 2) | fri-36k … exam-survey |
+| 85–95 | Summary, Midterm 1 logistics, then Before Oct 22 and Before Oct 23 (back from break: reread Essentials first); overflow runs into the buffer | summary, midterm-1, before-oct-22, before-oct-23, next-week |
+| 95–105 | Buffer: Midterm 1 questions, or one ↓ stack (Problem 4 under 36k-round-robin) | |
+
+**Fast path** (the minimum lecture, 17 ids; longer than usual because Part I is all exam material, and fri-35k and fri-36k carry Midterm 2 scope): this-week, ps1-questions, thu-34k, 34k-pcb, 34k-states, 34k-table, 34k-ownership, 34k-one-thing, exam-failed-claim, fri-35k, 35k-offsets, fri-36k, 36k-round-robin, 36k-double-switch, exam-terms, exam-survey, midterm-1.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack, Problem 3 included: never press down. The page has all of it.
+2. next-week: say it aloud on before-oct-23.
+3. summary: skip it; the Before slides recap by question.
+4. 36k-one-thing and 35k-one-thing: one sentence each on the slide before ("the rotation lives in the cursor"; "save into one context, load from the other").
+5. 36k-adapters: leave the code up and read the `.find` and `.map` comments; 30 seconds.
+6. Compress only, never skip (Midterm 2 scope): fri-36k in 30 seconds: the switch is how, the policy is which, and `&mut self` lets the policy keep its cursor.
+7. 35k-fresh: two sentences: `ra` is the entry, `sp` the top of the page (`0x8003_8000` for a page at `0x8003_7000`).
+8. Compress only, never skip (Midterm 2 scope): fri-35k: leave the "14 registers, 112 bytes" line up and say "the call already saved the rest, and `ra` is kept as the resume point".
+9. before-oct-23: point at the prep page; its questions can open Friday's session.
+10. before-oct-22: last to go. At minimum say "back from break, reread Essentials first".
+
+Never cut: the nine exam slides, thu-34k, 34k-pcb, 34k-states, 34k-table, 34k-ownership, 34k-one-thing and exam-failed-claim ("On Midterm 1"), and exam-terms and exam-survey ("On Midterm 2"). Never cut midterm-1 either: the exam is in two days. ps1-questions is time-boxed, not cut: stop at 10 minutes.
+
+**Practice Set 1 anchors (Part F):** P13 (a) → 34k-states · (b) → 34k-states and its notes · (c) → 34k-states (the missing edges); ↓ Problem 2 drills more · P14 (a), (b), (c) → exam-failed-claim · (d) → exam-failed-claim and 34k-ownership. The register traces of P6 and P7 → 35k-offsets, as review; the Week 6 deck holds their exam slides.
+
+**Practice Set 2 anchors (Midterm 2):** P1 → 35k-offsets, 36k-double-switch · P2 → fri-35k, 35k-offsets · P3 → 36k-round-robin, exam-terms, exam-survey.
+
+- Fall break (Oct 20) sits between this lecture and its sessions, so the page asks for Essentials twice: before today, and again before Oct 22.
+- **Q:** "Is Going deeper on the midterm?" No. Part I and the page's For the exam section are; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Oct 22 | `34k_processes` | the process table | one owner, one release |
+| Fri Oct 23 | `35k_context_switch` | the context switch | `ret` lands in the context you loaded |
+| Fri Oct 23 | `36k_scheduling` | a round-robin scheduler | scan from just past the last pick |
+
+<div class="highlight-box">Midterm 1: this Thursday, Oct 15, everything through <code>33k</code> plus Part I. Fall break: Oct 20.</div>
+
+Notes:
+- Start from where this goes: in `48k` a user program traps into your kernel and later carries on, and in `51k` `fork` turns one process into two. Both need many programs taking turns on one CPU.
+- By Friday night, Oct 23: three processes share one CPU, each resuming exactly where it stopped.
+- **Q:** "Why is this lecture nine days before its sessions?" Oct 20 is fall break, so today is the last Tuesday before Oct 22, and the PCB part is on Thursday's exam. That is why Part I comes first.
+
+---
+
+<!-- .slide: id="ps1-questions" -->
+
+## Questions on Practice Set 1?
+
+Its solutions go up today. Bring what you got wrong.
+
+| Part | Topic | Problems |
+|---|---|---|
+| A | Rust semantics | 1–3 |
+| B | The numbers the kernel runs on | 4–5 |
+| C | RISC-V and the calling convention | 6–7 |
+| D | Bare metal and boot | 8–9 |
+| E | Physical memory and Sv39 | 10–12 |
+| F | Processes: Part I today | 13–14 |
+
+[Practice Set 1](../assignments/practice-set-01/)
+
+Notes:
+- Ten minutes, then move on. Ask for problem numbers first, tally them, and take the most-asked.
+- Hold Part F questions for Part I: Problem 13 lands on 34k-states and Problem 14 on exam-failed-claim. Part C and Problem 8 are week 6, whose deck has their exam slides; Problems 5 and 9 and Part E are week 7.
+- **Q:** "Is the midterm like the practice set?" Yes: the same three shapes, trace the registers, decode the bits and order the steps, plus short "explain why" questions. The Midterm 1 slide near the end has the logistics.
+
+---
+
+<!-- .slide: id="thu-34k" class="exam" -->
+
+# Part I · Thursday Oct 22
+
+## `34k_processes`: a process is a data structure
+
+A **process** is one run of a program, plus the kernel's record of that run: the **process control block** (PCB). rv6's is `Proc`, and to the kernel a pointer to it *is* the process.
+
+- Its page table: the unit of **isolation**
+- Its saved registers: the unit of **scheduling**
+
+Notes:
+- All of Part I is on Midterm 1: "what a `Proc` must hold and why", but not the code of `34k`, which comes after the exam.
+- Run a program three times and you get three processes: the same code, three records. Its loads and stores go through its own page-table root; copy its registers out, run something else, copy them back, and it carries on.
+- ↓ below: Linux's `task_struct`, and threads (optional).
+- **Q:** "Is a process the same as a program?" No. A program is a file; a process is one run of it. In `51k`, `fork` turns one run into two processes of the same program.
+
+--
+
+<!-- .slide: id="deeper-task-struct" class="deeper" -->
+
+## Linux's `task_struct`, and threads
+
+- Linux's PCB is `struct task_struct` in `include/linux/sched.h`, hundreds of fields long. Most answer questions rv6 never asks: namespaces, cgroups, scheduling classes, security.
+- Its name field, `comm`, is 16 bytes, like rv6's `name`, which is why `ps` truncates long command names.
+- A `task_struct` is a **thread**, not a process. Threads share one address space and one set of open files, but each has its own context and stack.
+- A Linux process is a thread group: `task_struct`s sharing one `mm_struct` and one `tgid`, which `getpid()` returns.
+- rv6 has no threads: each `Proc` is one address space and one context.
+
+---
+
+<!-- .slide: id="34k-pcb" class="exam" -->
+
+## The PCB: what it holds, and when
+
+| Field | It answers | Arrives in |
+|---|---|---|
+| `pid` | Which run is this? | `34k` |
+| `state` | May it run? | `34k` |
+| `pagetable` | What may it touch? | `34k` |
+| `name` | What do we print? | `34k` |
+| `context` | Where does it resume? | `36k` |
+| `trapframe`, `kstack` | Where do user registers and kernel frames go? | `48k` |
+| `ofile` | What has it open? | `50k` |
+| `parent`, `xstate` | Who hears its exit status? | `51k` |
+
+Notes:
+- Midterm 1 asks "what a `Proc` must hold and why": answer each field with its question. You start `34k` with the top four.
+- rv6 never fills in `name`.
+- **Q:** "Why not put every field in from the start?" Each arrives with the exercise that first needs it. A `context` means nothing until something switches, and a trapframe nothing until there is a user mode to trap from.
+
+---
+
+<!-- .slide: id="34k-states" class="exam" -->
+
+## Five states, one enum
+
+```rust
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ProcState { Unused, Runnable, Running, Sleeping, Zombie }
+```
+
+<div class="mermaid">
+stateDiagram-v2
+    direction LR
+    [*] --> Unused: cleared at boot
+    Unused --> Runnable: a slot is claimed
+    Runnable --> Running: the scheduler picks it
+    Running --> Runnable: it yields
+    Running --> Zombie: it exits
+    Zombie --> Unused: the parent collects it
+</div>
+
+A new slot is `Runnable`, not `Running`: only the scheduler puts a process on the CPU. A `Zombie` never runs again; only teardown sends a slot straight to `Unused`. `Sleeping` exists, but no kernel path in rv6 puts a process to sleep.
+
+Notes:
+- On Midterm 1. PS1 Problem 13 is this slide: (a) is the diagram's labels, (b) the `Sleeping` line, (c) the missing edges. `PartialEq, Eq` allow `==`; `Copy` lets Friday's scheduler copy the states out.
+- rv6 waits by yielding and retrying instead of sleeping. The `36k` test marks one slot `Sleeping` by hand, only to check that the scheduler skips it.
+- ↓ below: why `Zombie` exists, then Problem 2 (legal and illegal transitions).
+- **Q:** "Why keep `Sleeping` if nothing uses it?" It is the state a real `sleep` would write: park the running process on an event, and a `wakeup` makes it `Runnable` again. xv6 has both; rv6 has neither yet.
+
+--
+
+<!-- .slide: id="deeper-zombie" class="deeper" -->
+
+## Why `Zombie` exists
+
+- The obvious design frees a slot the moment its process exits. It cannot, because the exit status has an addressee: the parent may not have called `wait` yet.
+- So an exiting process records its status, becomes a `Zombie`, and switches away for good.
+- The slot lingers, running nothing, until the parent's `wait` collects the status and frees it.
+- A parent that never waits leaks slots; `ps` on Linux marks such processes `Z`.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: legal and illegal transitions
+
+For each transition, say whether rv6 as written ever makes it. If it does, say what causes it; if not, say what would have to change, or why it must never happen.
+
+1. `Runnable → Zombie`
+2. `Sleeping → Running`
+3. `Running → Sleeping`
+4. `Runnable → Unused`
+5. `Zombie → Runnable`
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+1. **No.** Only a running process exits, and it marks *itself* `Zombie`. Even xv6's `kill` only sets a flag: the victim exits itself the next time it runs.
+2. **Never.** Waking makes a sleeper `Runnable`, and only the scheduler makes anything `Running`.
+3. **Not in rv6**, where no kernel path writes `Sleeping`. It needs a `sleep` that parks the running process on an event and a `wakeup` that makes every process parked there `Runnable`. xv6 has both.
+4. **Yes, in teardown only.** A claim that fails partway hands its half-built slot to the teardown, and the finished kernel's end-of-run cleanup frees every leftover slot, whatever its state. The normal road is `Running → Zombie → Unused`.
+5. **Never.** A zombie switched away for the last time; the code after that switch is `unreachable!()`. Its parent is owed a finished process.
+
+---
+
+<!-- .slide: id="34k-table" class="exam" -->
+
+## The process table: slots and pids
+
+`NPROC` (64) slots in a fixed static array: no heap, and the table runs out only by being full. The same shape, for lockers:
+
+```rust
+pub struct Locker { owner: u32, open: bool }
+impl Locker { pub const fn empty() -> Locker { Locker { owner: 0, open: false } } }
+static mut LOCKERS: [Locker; 4] = [const { Locker::empty() }; 4];
+```
+
+Slots are recycled; pids never are. A full table refuses with null:
+
+```text
+               slot 0   slot 1   slot 2   slot 3   next pid
+claim 4 times  pid 1    pid 2    pid 3    pid 4    5
+claim          refused: null                       5
+give back 2    pid 1    pid 2    -        pid 4    5
+claim          pid 1    pid 2    pid 5    pid 4    6
+```
+
+An old pointer to slot 2 now names pid 5. Remember a process by its pid.
+
+Notes:
+- On Midterm 1. Read `[const { Locker::empty() }; 4]` as "run `empty()` at compile time and stamp it into every slot". Without the `const { }`, rustc says ``the trait bound `Locker: Copy` is not satisfied``. Do not derive `Copy`: a slot that owns a page must never be copied.
+- A pid names one run and is never handed out twice; a slot is a place, and it is reused. The Thursday prep's second question is exactly this.
+- ↓ below: Problem 1 (slots, pids, and reuse).
+- **Q:** "Why not a `Vec<Proc>`?" There is no heap yet: the kernel heap arrives in week 10. A table built at compile time exists before the kernel's first instruction, so the table's only way to run out is "full".
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: slots, pids, and reuse
+
+A four-slot table starts empty, with the next pid 1. A claim takes the lowest `Unused` slot, and a refused claim takes no pid:
+
+```text
+a = claim;  b = claim;  c = claim
+give back a;  give back c
+d = claim;  e = claim;  f = claim;  g = claim
+give back d
+h = claim
+```
+
+Give each claim's slot and pid, or say it was refused. A log kept `a` as "the logger". What does that pointer name at the end, and what should the log have kept?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+| Claim | `a` | `b` | `c` | `d` | `e` | `f` | `g` | `h` |
+|---|---|---|---|---|---|---|---|---|
+| Slot | 0 | 1 | 2 | 0 | 2 | 3 | refused | 0 |
+| pid | 1 | 2 | 3 | 4 | 5 | 6 | none | 7 |
+
+`d` takes slot 0 because it is the lowest free slot again. `g` finds all four slots taken, so it gets null. Seven pids went to four slots.
+
+`a`, `d` and `h` are the same pointer, so the log's `a` now names pid 7, a process that never logged anything. The log should have kept pid 1. A lookup of pid 1 now finds nothing, which is the truth.
+
+---
+
+<!-- .slide: id="34k-ownership" class="exam" -->
+
+## Ownership by hand
+
+A claim takes a page-table page from `kalloc`, and the slot becomes its **owner**: the give-back returns it. No compiler watches the table, so the rule is yours: **one owner, one release**. A slot reads `Unused` only once it owns nothing.
+
+A half-built claim gives back everything it took, usually newest first:
+
+```text
+build:  slot claimed -> piece 1 taken -> piece 2 taken -> piece 3: none left
+undo:   slot: Unused <- piece 1 back  <- piece 2 back  <- start here
+then:   report failure: null
+```
+
+Reach a slot through `addr_of_mut!(LOCKERS[2])`, never `&mut`.
+
+Notes:
+- On Midterm 1. `Unused` invites the next claim, so a slot that still owns something must not say `Unused` yet. In `34k` a slot owns one piece; from `48k` on, three, and rv6's one teardown frees whichever are not null, so its order does not matter.
+- A `&mut` promises that nothing else touches that memory. rustc flags `&mut LOCKERS`, "creating a mutable reference to mutable static", but `&mut LOCKERS[2]` slips past. `addr_of_mut!` makes the raw pointer without ever making the reference.
+- **Q:** "Who else could touch the table while I hold that pointer?" In `34k`, nothing: one CPU, no interrupts, no other process running. That changes with interrupts and more harts, which is why locks arrive in `37k`.
+
+---
+
+<!-- .slide: id="34k-one-thing" class="exam" -->
+
+## The one thing to get right · `34k`
+
+You return the page, yet a `[fail]` line says the page table was not dropped. Why?
+
+Returning a page and forgetting it are two acts. You did the first.
+
+<div class="highlight-box">A field that still holds the address lets the next release free that page twice.</div>
+
+Notes:
+- On Midterm 1. A leak costs one page. A double free costs the allocator: the page sits on the free list twice, and two later processes can get the same page-table root, each reading and writing the other's memory.
+- **Q:** "If the slot is `Unused`, why does a stale address matter?" A release frees whatever the field holds, and failure paths may release a slot a second time. A field that holds nothing makes that second release harmless.
+
+---
+
+<!-- .slide: id="exam-failed-claim" class="exam" -->
+
+## A claim that fails halfway
+
+A claim takes a pid, marks its slot `Runnable`, finds no page, and returns null. What breaks?
+
+- The slot is lost: only `Unused` slots are claimed
+- The scheduler switches into a context nobody built
+- No test runs out of memory; only reading catches this
+
+<div class="info-box">The cure: one teardown that tolerates a half-built slot, called from every failure path.</div>
+
+Notes:
+- On Midterm 1. PS1 Problem 14 is this story; take its questions here.
+- The teardown copes with any field still null or zero, so one call unwinds however far the claim got. Cleanup written inline at each failure point is where the third resource leaks, once `48k` adds two more.
+- **Q:** "Isn't setting the slot back to `Unused` enough?" In `34k`, where the slot owns one piece and the failed piece is null, it is. From `48k` on a claim can fail after some pieces succeeded, and only the tolerant teardown gives them all back.
+
+---
+
+<!-- .slide: id="fri-35k" -->
+
+# Part II · Friday Oct 23
+
+## `35k_context_switch`: what a context is
+
+Stop a computation and only its registers are lost. Its **context** is the registers it needs back.
+
+Not all 31: the switch is entered by a call, so the caller has saved what it needs. That leaves `s0`–`s11` and `sp`, plus `ra`: caller-saved, but kept, because it is where the computation resumes. 14 registers, 112 bytes, no program counter.
+
+Notes:
+- This is week 6's callee-saved bargain paying off, and Midterm 1 asks for exactly this consequence. Week 6's `resume` loaded two registers; the switch saves fourteen and loads fourteen.
+- `ra` is caller-saved in the ABI, yet the switch keeps it: a paused computation is always paused inside its own call to the switch, and `ret` jumps to `ra`, so `ra` does the program counter's job. PS2 Problem 2(b) asks exactly this.
+- ↓ below: the second place a process's registers are saved, from `48k` on (optional).
+- **Q:** "Where did the `t` and `a` values go?" Onto the caller's stack before the call, if the caller still needed them, and the saved `sp` points at that stack. Restore `sp` and they come back with it.
+
+--
+
+<!-- .slide: id="deeper-two-saves" class="deeper" -->
+
+## Two register saves, for two reasons
+
+From `48k` on, a process has registers saved in two places:
+
+| | The context | `Trapframe` (`usermode.rs`) |
+|---|---|---|
+| Holds | 14 registers | all 31, the user program counter `epc`, and four kernel fields |
+| Written by | a voluntary call, when kernel code gives up the CPU | every trap from user mode |
+| Lives | inside the PCB | in a page of its own |
+
+A trap is not a call: user code never agreed to lose a register, so the trapframe saves them all. A switch goes kernel to kernel; a trap goes user to kernel.
+
+---
+
+<!-- .slide: id="35k-offsets" -->
+
+## The offset contract, and a `ret` that lands elsewhere
+
+`#[repr(C)]` keeps each offset where the declaration puts it. Three moves: save, load, `ret`. With a made-up `Pause` (`sp` at 0, `s1` at 8, `ra` at 16), A calls `trade(&A, &B)`:
+
+```text
+                       ra            sp            s1   A's Pause (sp, s1, ra)
+enter trade(&A, &B)    0x8000_1A04   0x8021_0F80   5    (old contents)
+after the three saves  0x8000_1A04   0x8021_0F80   5    0x8021_0F80, 5, 0x8000_1A04
+after the three loads  0x8000_2B10   0x8022_0FD0   9    unchanged
+ret                    jumps to 0x8000_2B10, on B's stack
+```
+
+The saves change no register; the loads replace all three; `ret` goes where the loads said. Midterm 1's trace-the-registers shape.
+
+Notes:
+- The switch finds each register by an offset welded into an `sd` or `ld`. In `35k` the save half is given, and its offsets are the contract. Without `#[repr(C)]`, Rust may reorder the fields: an `ra` or `sp` that Rust code writes then sits where the assembly reads another register, with no compile error (PS2 Problem 2(c)).
+- One row per point, as on week 6's exam-trace slide. A's `Pause` now holds exactly what a later `trade(&B, &A)` needs to bring A back.
+- ↓ below: xv6's `swtch.S`, and why rv6's is `global_asm!` (optional).
+- **Q:** "Why do the saves change no register?" A store only copies a register into memory. Nothing in the CPU changes until the loads, and control stays put until `ret`.
+
+--
+
+<!-- .slide: id="deeper-swtch" class="deeper" -->
+
+## xv6's `swtch.S`, and why rv6's is `global_asm!`
+
+- xv6, the C kernel rv6 descends from, keeps its switch in an assembly file, `swtch.S`, declared to C as `void swtch(struct context *old, struct context *new)`. Its `struct context` holds the same 14 registers, and the routine makes the same three moves.
+- xv6 holds the process's lock across the switch, and whichever side arrives releases it, so no other CPU can take the process halfway through.
+- A compiled Rust function gets a prologue and an epilogue that may move `sp` and restore registers from it. A routine that replaces `sp` cannot sit inside code that trusts it, so rv6 uses `global_asm!`: a bare label with no Rust around it.
+- Since Rust 1.88, a `#[unsafe(naked)]` function holding one `naked_asm!` block is the other way to write it.
+
+---
+
+<!-- .slide: id="35k-fresh" -->
+
+## Starting a context that never ran
+
+Nothing is saved yet, so you forge the first context:
+
+- `ra` = its entry function, so the first switch `ret`s into it
+- `sp` = the *top* of a fresh page, since stacks grow down: a page at `0x8003_7000` gives `0x8003_8000`
+
+```rust
+extern "C" fn blink() -> ! { loop {} }
+let entry: extern "C" fn() -> ! = blink;   // the function, as a pointer
+let ra = entry as usize;                   // the pointer, as a number
+```
+
+The shortcut `blink as usize` draws a warning: "direct cast of function item into an integer".
+
+Notes:
+- A function item names one function and has no size; coerce it to a function pointer first, and that pointer casts to an address.
+- The entry is typed `-> !` because it has nothing to return to: its `ra` is not a caller's. ↓ Problem 3, part 4, shows what happens otherwise.
+- ↓ below: Problem 3 (trace a switch through a hub).
+- **Q:** "Why the top and not the bottom?" The first push moves `sp` down and stores below it. Start at the bottom and that push writes into whatever lies below the page, and nothing faults until that memory is used.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: trace a switch through a hub
+
+Use `Pause` and `trade`: `sp` at 0, `s1` at 8, `ra` at 16. A hub H runs with `sp = 0x8021_0F80` and `s1 = 5`. Worker X has never run; its `Pause` was forged with `sp = 0x8006_0000`, `s1 = 0` and `ra = 0x8000_3000`, the address of `x_entry`.
+
+1. H calls `trade(&H, &X)`, so `ra = 0x8000_1A04`. Where does the `ret` land, with what `sp` and `s1`?
+2. `x_entry` sets `s1 = 40`, moves `sp` down 16, and calls `trade(&X, &H)` with `ra = 0x8000_3010`. What does X's `Pause` hold? Where does the `ret` land, with what `s1`?
+3. Back in H, `s1` is 5 and `sp` is `0x8021_0F60`. H calls `trade(&H, &X)` with `ra = 0x8000_1A40`; X resumes, changes nothing, and calls `trade(&X, &H)` with `ra = 0x8000_3024`. Where does that `ret` land, with what `sp`, and why not at `0x8000_1A04`?
+4. Worker Y is forged the same way, but `y_entry` sets `a0 = 1` and returns without calling `trade`. Where does its `ret` go?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+| Part | `ret` lands at | `sp` | `s1` | Saved on the way |
+|---|---|---|---|---|
+| 1 | `0x8000_3000`, the first instruction of `x_entry` | `0x8006_0000` | 0 | H's `Pause`: `0x8021_0F80`, 5, `0x8000_1A04` |
+| 2 | `0x8000_1A04`, back in H | `0x8021_0F80` | 5 | X's `Pause`: `0x8005_FFF0`, 40, `0x8000_3010` |
+| 3 | `0x8000_1A40`, H's latest save | `0x8021_0F60` | 5 | X's `Pause`: `0x8005_FFF0`, 40, `0x8000_3024` |
+
+<span>**Part 2:** H gets its own `s1` back, although X wrote 40, because `s1` is in the context. **Part 3:** H's second `trade` overwrote its `Pause`: a context resumes from its latest switch, never an earlier one.</span> <!-- .element: class="small" -->
+
+<span>**Part 4:** back to `y_entry`. The `ret` in `trade` leaves `ra` alone, so Y starts with `ra` holding its own entry address. Its `ret` jumps to its first instruction, and Y runs again and again, never giving the CPU back. That is why a real entry function is typed `-> !`.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="35k-one-thing" -->
+
+## The one thing to get right · `35k`
+
+`[fail] task never ran`, though every load is there. Why?
+
+The loads read the context you just saved into. They put back what you had, so `ret` returns to your own caller.
+
+<div class="highlight-box">Save into one context; load from the <em>other</em>.</div>
+
+Notes:
+- The switch "worked": it saved, loaded and returned, but the loads brought back the caller's own registers, so the task was never entered.
+- **Q:** "Could a wrong offset look the same?" Rarely. A wrong offset usually puts a garbage value in `sp` or `ra`, so the first push or `ret` goes somewhere wild: silence, then a timeout, as in week 6. "Never ran" means the switch came straight back.
+
+---
+
+<!-- .slide: id="fri-36k" -->
+
+# Part III · Friday Oct 23
+
+## `36k_scheduling`: mechanism and policy
+
+The switch is **mechanism**: *how* the CPU moves between processes. *Which* process runs next is **policy**. Keep them apart, and a new policy never touches the assembly. The seam is a trait, as in `07r_traits`:
+
+```rust
+pub trait Scheduler {
+    fn pick_next(&mut self, states: &[ProcState]) -> Option<usize>;
+}
+```
+
+Notes:
+- Read it as "given every slot's state, name a slot, or say that none can run".
+- It is the method of `07r`'s trait, unchanged, and students wrote a `RoundRobin` against it there; `&mut self` is what lets it keep its cursor. `Priority` remembered nothing.
+- **Q:** "Why hand the policy a slice of states, not the table itself?" A copied slice is safe to hand out. The policy stays ordinary safe Rust, never touches the `static mut` table, and can be tried on any array you write by hand.
+
+---
+
+<!-- .slide: id="36k-round-robin" -->
+
+## Round robin, by its rules
+
+**Round robin** gives each runnable process a turn, then comes around again:
+
+- scan from a cursor, not from slot 0
+- skip what is not `Runnable`, and wrap past the end
+- move the cursor just past your pick; a lap that finds nothing answers `None`
+
+`[Runnable, Runnable, Unused, Sleeping, Runnable]`, cursor at 1:
+
+```text
+cursor   scans     picks   new cursor
+1        1         1       2
+2        2, 3, 4   4       0
+0        0         0       1
+```
+
+Notes:
+- One row per pick, with the cursor after each: that table is the whole technique, for Friday and for Midterm 2.
+- The next scan starts at 1 again, so every runnable slot gets one turn per lap, and the dead slots cost only a look.
+- ↓ below: Problem 4 (predict the round-robin order).
+- **Q:** "Is the `Sleeping` slot starved?" No. Starvation is a *runnable* process waiting without bound. A sleeper is not runnable, so skipping it is correct, and it rejoins the rotation the moment it wakes.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: predict the round-robin order
+
+Five slots start as `[Runnable, Sleeping, Zombie, Runnable, Runnable]`, with the cursor at 2. Slot 4's process exits during its first turn. Slot 1's process wakes, becoming `Runnable`, right after the third pick. The others yield at the end of each turn.
+
+- List the first eight picks and the cursor after each.
+- Then give the order when every scan starts at slot 0.
+- Is the sleeping slot starved before it wakes?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+| Pick | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Scans | 2, 3 | 4 | 0 | 1 | 2, 3 | 4, 0 | 1 | 2, 3 |
+| Picks | 3 | 4 | 0 | 1 | 3 | 0 | 1 | 3 |
+| Cursor after | 4 | 0 | 1 | 2 | 4 | 1 | 2 | 4 |
+
+Slot 4 becomes `Zombie` at pick 2, and slot 1 wakes after pick 3. Slot 1 runs on the first scan after it wakes, because the cursor sits on it, and the dead slot 4 costs one extra look per lap.
+
+Starting every scan at 0 picks slot 0 all eight times. Slots 3 and 4, and slot 1 once awake, are runnable and never chosen: that is starvation. Before it wakes, slot 1 is not starved, because a sleeper is not runnable.
+
+---
+
+<!-- .slide: id="36k-adapters" -->
+
+## Two iterator adapters, on a playlist
+
+`36k` invites an iterator chain. Two of the adapters it can use:
+
+```rust
+let songs = ["intro", "Blue Monday", "Heroes", "outro"];
+let long = songs.iter().find(|s| s.len() > 6);   // Some(&"Blue Monday")
+let chars = long.map(|s| s.len());               // Some(11)
+```
+
+- `.find`: the first item that passes, or `None`
+- `.map` on an `Option`: change what is inside the `Some`; leave `None` alone
+- on an iterator, `.map` changes every item instead
+
+Notes:
+- `.find` is lazy: it pulls "intro", then "Blue Monday", and stops, so "Heroes" and "outro" are never looked at.
+- **Q:** "Do I have to use iterators?" No. A plain loop with an early `return` is just as correct; the chain says the same thing in one expression, and `36k` is where the course meets it.
+
+---
+
+<!-- .slide: id="36k-double-switch" -->
+
+## The double switch
+
+A process never switches straight to another. It switches to the scheduler, which has its own context and stack, and the scheduler switches onward:
+
+<div class="mermaid">
+sequenceDiagram
+    participant A as Process A
+    participant S as Scheduler
+    participant B as Process B
+    S->>A: switch in
+    A->>S: A yields
+    Note over S: the policy picks B
+    S->>B: switch in
+    B->>S: B yields
+</div>
+
+The detour costs a second switch and buys a stack that belongs to no process. Each CPU has its own scheduler context; rv6 runs one hart, so it has one.
+
+Notes:
+- A process's locals live on its own stack, and its saved `sp` points there, so they survive every yield.
+- ↓ below: why the detour through the scheduler (optional).
+- **Q:** "Isn't the second switch wasted work?" It costs one more save and load of 14 registers. It buys a place to run the policy that is never a stack about to be freed, and a place to wait when nothing is runnable.
+
+--
+
+<!-- .slide: id="deeper-hub" class="deeper" -->
+
+## Why the detour through the scheduler
+
+Switching process to process would save one switch per handover. rv6 pays it anyway:
+
+- **Whose stack?** Choosing the next process takes code, and code needs a stack. A direct switch would run it on the outgoing process's kernel stack, which may be a zombie's awaiting release or, on a multi-CPU machine, one that another CPU is about to resume.
+- **Nowhere to go.** When nothing is runnable, a direct switch has no target; the scheduler loop simply looks again.
+- **Many CPUs.** xv6 keeps each hart's scheduler context in a per-CPU `struct cpu`, beside the process that hart is running.
+
+---
+
+<!-- .slide: id="36k-one-thing" -->
+
+## The one thing to get right · `36k`
+
+The processes run one after another, each taking all its turns before the next starts. What went wrong?
+
+Every scan began at the same slot, so it found the same process until that one finished.
+
+<div class="highlight-box">The rotation lives in the cursor, not the scan.</div>
+
+Notes:
+- The order is what the test checks, so this mistake cannot hide: the processes all finish, just in the wrong order. The run prints `[fail] run order is not round-robin`.
+- **Q:** "What if the cursor lands on the pick itself, not past it?" Then the next scan finds that same slot first, and you see the same symptom: it runs until it is no longer runnable.
+
+---
+
+<!-- .slide: id="exam-terms" class="exam" -->
+
+## The scheduling vocabulary
+
+| Term | Meaning |
+|---|---|
+| **Throughput** | jobs finished per unit time |
+| **Turnaround** | finish time minus arrival |
+| **Response** | first run minus arrival |
+| **Quantum** | the most CPU time per turn |
+| **Fairness** | each runnable process gets its share |
+| **Starvation** | a runnable process waiting without bound; a sleeper is not starved |
+| **Cooperative** | waits for a yield, as in `36k` |
+| **Preemptive** | a timer takes the CPU back |
+
+Notes:
+- Not needed on Oct 22 or 23; on Midterm 2, Thursday Nov 19, with the survey on the next slide.
+- Starvation is about *runnable* processes: a sleeper waiting for its event is not starved. ↓ Problem 4, under round robin, ends on exactly this. rv6 stays cooperative, even after `44k` starts the timer: it only counts the ticks.
+- **Q:** "Why does rv6 stay cooperative once it has a timer?" Determinism: a wrong policy gives the same wrong order on every run, not a failure once in fifty runs.
+
+---
+
+<!-- .slide: id="exam-survey" class="exam" -->
+
+## The scheduling survey
+
+| Policy | Runs next | Preempts? | Starves? |
+|---|---|---|---|
+| FCFS | earliest arrival | no | no; long jobs delay others |
+| SJF | shortest job | no; SRTF, yes | yes, long jobs |
+| Priority | highest priority | either | yes, without aging |
+| Round robin | next in turn, one quantum | on a timer | no |
+| MLFQ | top non-empty queue; used-up allotments demote | yes | yes, without boosts |
+| CFS | least weighted runtime | yes | no |
+
+Same arrival time: SJF minimizes average turnaround; round robin bounds each first wait.
+
+Notes:
+- On Midterm 2, Thursday Nov 19; not needed on Oct 22 or 23. Read each row as three answers: who runs next, whether the running job can be interrupted, and whether a runnable job can wait forever.
+- SJF gives the best average turnaround when all jobs arrive together, but it must know the future; MLFQ earns most of that by watching behavior. Round robin caps each job's first wait at one quantum per job ahead of it. PS2 Problem 3 compares round robin with SJF.
+- ↓ below: MLFQ and CFS, up close (optional).
+- **Q:** "Which one does rv6 use?" Round robin, cooperatively, so it has no quantum: a process runs until it yields.
+
+--
+
+<!-- .slide: id="deeper-mlfq-cfs" class="deeper" -->
+
+## MLFQ, up close
+
+- The **multilevel feedback queue** descends from CTSS (1962) and still shapes the schedulers of BSD, Solaris and Windows.
+- It earns SJF's advantage by watching behavior instead of knowing the future.
+- Higher queues get shorter quanta, and the top non-empty queue runs, round robin within it.
+- A new job starts at the top. A job that uses up its allotment at a level drops a level, however it spread the time out.
+- Every so often all jobs are boosted to the top, so a long job cannot starve.
+
+--
+
+<!-- .slide: id="deeper-cfs" class="deeper" -->
+
+## CFS, up close
+
+- The **Completely Fair Scheduler** was Linux's default from 2.6.23 (2007) until EEVDF replaced it in 6.6 (2023). It has no fixed quantum.
+- Each task carries a virtual runtime that grows as it runs, scaled by its weight: nice 0 weighs 1024, and each nice level changes the weight by about 1.25×.
+- The smallest virtual runtime runs next, found as the leftmost node of a red-black tree.
+- A waiting task's virtual runtime stands still while the others grow, so it always reaches the front.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- A process is a PCB: a page table isolates it; registers schedule it
+- Five states, new slots `Runnable`; slots recycle, pids never
+- One owner, one release; one teardown for a failed claim
+- A context: 14 registers at `#[repr(C)]` offsets; save, load, `ret`
+- Mechanism: the double switch. Policy: round robin, from past the last pick
+- On Midterm 2: the survey and its vocabulary
+
+Notes:
+- One sentence per bullet, in the order of the page. The first three are on Midterm 1, Thursday; the last three are on Midterm 2.
+- **Q:** "What should I study for Thursday from today?" Part I and the failed-claim slide, then PS1 Part F. The page's Problems 1 and 2 are the same material.
+
+---
+
+<!-- .slide: id="midterm-1" -->
+
+## [Midterm 1](../assignments/midterm-1/): this Thursday, Oct 15
+
+- In class, full period; closed book, the printed Cheatsheet only, no devices
+- Scope: everything through `33k`, plus today's Part I (the PCB, not `34k`'s code)
+- Not on it: the context switch and scheduling
+- Three shapes: trace the registers, decode the bits, order the steps; plus short "explain why" questions
+- No session on Friday, Oct 16
+
+Notes:
+- Walk the Midterm 1 page for the full scope list. Today's 35k-offsets trace is the register-trace shape; the Week 6 deck's exam slides are the rest of the assembly review.
+- **Q:** "Will `35k` or `36k` be on Thursday?" No: the Midterm 1 page lists them under "Not on this exam". The callee-saved split and its consequence for switching are on it, from week 6.
+
+---
+
+<!-- .slide: id="before-oct-22" -->
+
+## [Before Oct 22](../prep/09-cs326-2026-10-22-prep-processes/): reread Essentials first
+
+Back from break, start with Thursday · `34k` in Essentials, then the prep. You build the process table. Prep: about 25 minutes.
+
+**1.** A freshly claimed slot is marked `Runnable`, not `Running`. Why?
+
+**2.** Slot 2 held pid 5, was given back, and is claimed again. What pid does it hold now, and what does a stale `*mut Proc` to slot 2 refer to?
+
+**3.** Why null the page-table field right after releasing the page?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build: the kernel's process table, a fixed array of `NPROC` PCBs, and the bookkeeping that claims a free slot and gives it back. Nothing runs or switches yet; that is Friday.
+- Nine days pass between today and Oct 22, so reread Essentials before the prep. The three questions are the prep's own Check yourself; answers are on the prep page.
+- **Q:** "Will Midterm 1 ask for `34k`'s code?" No. It asks what a `Proc` must hold and why; the code of `34k` comes after the exam.
+
+---
+
+<!-- .slide: id="before-oct-23" -->
+
+## [Before Oct 23](../prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling/): check yourself
+
+You build the switch, then round robin. Reread Friday's Essentials first. Prep: about 20 minutes.
+
+**1.** Why does a context hold `ra`, `sp`, and `s0`–`s11` but no `t` or `a` registers and no program counter?
+
+**2.** States are `[Runnable, Sleeping, Runnable, Sleeping, Runnable]` and the cursor is 3; next four picks and final cursor? What if the cursor is set to the winner instead?
+
+**3.** A forged context sets `sp` to the base of its fresh page rather than base + 4096. What goes wrong, and when?
+
+Notes:
+- Walk the prep page (about 20 minutes). What you build: first the mechanism, the switch that saves one context and resumes another; then the policy, a round-robin pick that drives the double switch through the scheduler.
+- Back from break, reread Essentials (Friday · `35k` and Friday · `36k`) first. The three questions are the prep's own Check yourself; answers are on the prep page.
+- **Q:** "Is `35k` in QEMU?" Yes, like every kernel exercise since `31k`: `oslings run` boots it, and green is `OSLINGS:PASS`.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+Week 10 (Tuesday, Oct 27): locks, semaphores, the heap, and the MMU on. Read its Essentials before Tuesday.
+
+Notes:
+- The Week 10 page is not published yet, so there is no link here. Add one when it exists.
+- **Q:** "Is there class on Oct 20?" No: it is fall break. The sessions on Oct 22 and 23 come first, then the Oct 27 lecture.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

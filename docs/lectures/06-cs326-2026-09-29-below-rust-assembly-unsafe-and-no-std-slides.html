@@ -182,20 +182,6 @@
             border-radius: 4px;
         }
 
-        /* Exam material: always a core (horizontal) slide, never cut.
-           Mark it with <!-- .slide: class="exam" data-exam="On Midterm 1" --> */
-        .reveal .slides section.exam::before {
-            content: attr(data-exam);
-            position: absolute;
-            top: -1.6em;
-            right: 0;
-            font-size: 0.45em;
-            font-weight: 700;
-            color: var(--primary-color);
-            background: var(--accent-color);
-            padding: 0.15em 0.7em;
-            border-radius: 4px;
-        }
 
         /* Make the down arrow obvious when a stack has depth below it. */
         .reveal .controls .navigate-down.enabled {
@@ -263,12 +249,12 @@ Notes:
 10. 20a-memory: show `find_byte`, say `1b` = back and `2f` = forward, and leave the load/store bullets up without talk.
 11. before-thursday: last to go; the doctor reminder is also on this-week.
 
-The Part title slides thu-20a and fri-21r take ten seconds each. Never cut: exam-lb-lbu, exam-prologue, exam-trace (the gold "On Midterm 1" tag).
+The Part title slides thu-20a and fri-21r take ten seconds each. Never cut: exam-lb-lbu, exam-prologue, exam-trace (the Midterm 1 slides).
 
 **Practice Set 1 anchors:** P6 → exam-lb-lbu, 20a-convention (c), exam-trace · P7 → exam-prologue, 20a-saved · P8 (a) fri-30k, (b) 30k-skeleton, (c) 21r-volatile, (d) 21r-pointers and 21r-unsafe.
 
 - Week 6 went up late, so the page asks for Essentials before Thursday, not before today.
-- **Q:** "Is Going deeper on the midterm?" No. The gold tag marks what is; every ↓ slide is optional.
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
 
 ---
 
@@ -531,7 +517,7 @@ Notes:
 
 ---
 
-<!-- .slide: id="exam-lb-lbu" class="exam" data-exam="On Midterm 1" -->
+<!-- .slide: id="exam-lb-lbu" class="exam" -->
 
 ## `lb` versus `lbu`
 
@@ -589,7 +575,7 @@ With `lbu`, `find_byte` returns `p + 1`. With `lb`, `t0` holds `0xFFFF_FFFF_FFFF
 
 ---
 
-<!-- .slide: id="exam-prologue" class="exam" data-exam="On Midterm 1" -->
+<!-- .slide: id="exam-prologue" class="exam" -->
 
 ## Stack frames: prologue and epilogue
 
@@ -615,7 +601,7 @@ Notes:
 
 ---
 
-<!-- .slide: id="exam-trace" class="exam" data-exam="On Midterm 1" -->
+<!-- .slide: id="exam-trace" class="exam" -->
 
 ## Trace the registers
 

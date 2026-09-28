@@ -52,16 +52,19 @@ reference.
 Start with the object. A **physical page allocator** manages RAM in fixed-size
 blocks called **pages** — 4096 bytes on RISC-V, the constant `PGSIZE`
 (`memlayout.rs`). It keeps a list of unused pages, hands one out (`kalloc`),
-takes one back (`kfree`). Here is the real one, in full, `kalloc.rs`:
+takes one back (`kfree`). You build it in exercise 32k; for now, what matters
+is where the list lives:
 
-```rust
-pub unsafe fn kalloc() -> *mut u8 {
-    let r = FREELIST;
-    if !r.is_null() {
-        FREELIST = (*r).next;
-    }
-    r as *mut u8
-}
+```text
+   FREELIST
+      │
+      ▼
+   ┌──────────────┐      ┌──────────────┐
+   │ next ────────┼─────▶│ next ────────┼─────▶ null
+   │ 4088 unused  │      │ 4088 unused  │
+   │ bytes        │      │ bytes        │
+   └──────────────┘      └──────────────┘
+     0x8000_5000           0x8000_6000
 ```
 
 The free list is a `static mut` raw pointer (`FREELIST` in `kalloc.rs`) whose nodes live
@@ -398,7 +401,7 @@ Everything above converges on one type, built in exercise 37k — `SpinLock::loc
 `SpinLockGuard`, and its `Drop` (`spinlock.rs`):
 
 ```rust
-pub fn lock(&self) -> SpinLockGuard<'_, T> { /* spin */ SpinLockGuard { lock: self } }
+// SpinLock::lock(&self) hands back a SpinLockGuard<'_, T> that borrows the lock.
 
 pub struct SpinLockGuard<'a, T> {
     lock: &'a SpinLock<T>,

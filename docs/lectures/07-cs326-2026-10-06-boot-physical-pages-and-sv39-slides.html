@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 7 · From Reset to Page Tables: Boot, the Free List, and Sv39 - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="07-cs326-2026-10-06-boot-physical-pages-and-sv39/">&larr; Week 7 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 7 · From Reset to Page Tables
+
+## Boot, the Free List, and Sv39
+
+CS 326 Operating Systems · Tuesday, October 6
+
+**Thu Oct 8** `31k_boot`, `32k_physical_memory` · **Fri Oct 9** `33k_paging`
+
+[The Week 7 page](07-cs326-2026-10-06-boot-physical-pages-and-sv39/): **Essentials** is what Thursday and Friday assume.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week, and the Midterm 1 note | title, this-week |
+| 5–27 | Part I · Thursday · `31k` (6 core, ending with the boot-order exam slide) | thu-31k … exam-boot-order |
+| 27–52 | Part II · Thursday · `32k` (4 core) | thu-32k … 32k-one-thing |
+| 52–90 | Part III · Friday · `33k` (10 core, ending with the three exam slides) | fri-33k … exam-wx |
+| 90–93 | Summary | summary |
+| 93–103 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 103–105 | Buffer: questions | |
+
+Part II has slack by design: if you are on time at minute 40, work ↓ Problem 4 (the double free, under 32k-free-list) at the board.
+
+**Fast path** (the minimum lecture, 12 ids): this-week, 31k-stack, exam-boot-order, 32k-free-list, 32k-building, 33k-address, 33k-pte, 33k-encode, 33k-walk, exam-satp, exam-maxva, exam-wx. The Midterm 1 slides off the fast path (31k-reset, 31k-linker, thu-32k, fri-33k, 33k-bits) are never dropped: show each in its cut-order form, about 30 seconds each.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. before-friday: point at the prep page and its worksheet, and open Friday's session with its questions.
+5. 31k-one-thing and 32k-one-thing: one sentence each on the slide before ("silence means `sp`"; "write the link before you publish the node").
+6. fri-33k: leave the table up and say "only the page number is translated".
+7. 33k-bits: leave the table up (every translation is these four moves); skip the FAT example.
+8. 31k-reset: leave the map up (Midterm 1 asks for it) and say "`-bios none`: the first instruction in RAM is yours".
+9. 31k-linker: "`.entry` first at `0x8000_0000`; `end` is the first byte past the image". Skip the `extern` idiom.
+10. thu-32k: leave the bullets up and say "one size makes both O(1); page-aligned means the hex ends in `000`".
+11. 33k-one-thing: one sentence on 33k-walk: "a page from the allocator is not an empty table until it is zeroed".
+12. before-thursday: last to go.
+
+The Part title slide thu-31k takes thirty seconds; thu-32k and fri-33k double as the first concept slide of their Part. Never cut: exam-boot-order, exam-satp, exam-maxva, exam-wx (the Midterm 1 slides).
+
+**Practice Set 1 anchors:** P4 (a) → 33k-pte, 33k-bits; (d) → thu-32k · P5 (all four parts) → 32k-building · P9 → exam-boot-order, 31k-linker, 31k-stack · P10 (a), (b) → 32k-free-list; (c) → 32k-building · P11 → 33k-encode, exam-wx · P12 (a), (b) → exam-satp, 33k-address, 33k-walk; (c), (d) → exam-maxva; (e) → 33k-address. P4 (b) and (c) are Module 1.
+
+- Practice Set 1 goes out today, on paper and ungraded; its solutions post Tue Oct 13. Do not work its problems on the slides: the ↓ problems use other numbers.
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Oct 8 | `31k_boot` | a kernel that boots and prints | no Rust before a stack |
+| Thu Oct 8 | `32k_physical_memory` | a page allocator | free pages hold the list |
+| Fri Oct 9 | `33k_paging` | Sv39 page tables | the offset is never translated |
+
+<div class="highlight-box">Midterm 1: Thu Oct 15, everything through <code>33k</code>. Practice Set 1 is out today.</div>
+
+Notes:
+- Start from where this goes: in `34k` every process gets a page table of its own, and in `48k` a user program runs at virtual address 0 on RAM it cannot see past. Both rest on the three layers you build this week.
+- By Friday night your kernel boots, allocates pages, and translates addresses in software, with the MMU still off. Translation by hand is Midterm 1's longest question.
+- **Q:** "Is Practice Set 1 graded?" No. Work it on paper, closed book, before Oct 13, and bring what you got wrong to that Tuesday's lecture.
+
+---
+
+<!-- .slide: id="thu-31k" -->
+
+# Part I · Thursday
+
+## `31k_boot`: from reset to Rust
+
+Every kernel exercise starts when QEMU powers on and your first instruction runs.
+
+On Thursday that instruction is yours, and Rust prints over the serial port.
+
+Notes:
+- Part I runs 22 minutes: this title, three concept slides, the one thing, and the boot-order exam slide.
+- ↓ below: the boot ROM up close (optional).
+- **Q:** "Is this the crate from `30k`?" Yes. In `30k` it compiled for a machine with no OS; on Thursday it runs on one.
+
+--
+
+<!-- .slide: id="deeper-rom" class="deeper" -->
+
+## The boot ROM up close
+
+Stop QEMU before its first instruction (`-S`): `pc` is `0x1000`, and `satp`, `mtvec` and every register are 0. That is a QEMU courtesy; the spec does not promise it.
+
+```asm
+0x1000:  auipc  t0, 0          # t0 = 0x1000
+0x1004:  addi   a2, t0, 40     # a2 = 0x1028, a table for OpenSBI
+0x1008:  csrr   a0, mhartid    # a0 = 0, this hart's ID
+0x100c:  ld     a1, 32(t0)     # a1 = 0x87E0_0000, the device tree
+0x1010:  ld     t0, 24(t0)     # t0 = 0x8000_0000, the jump target
+0x1014:  jr     t0
+```
+
+QEMU writes both loaded words into the ROM at startup. The **device tree** describes the board, 2 MiB below `PHYSTOP`. rv6 ignores it and hardcodes `virt`, so it boots there and nowhere else.
+
+---
+
+<!-- .slide: id="31k-reset" -->
+
+## The machine at reset
+
+One hart starts at `pc = 0x1000`, in machine mode, paging off. `-bios none` removes firmware and bootloader: a six-instruction ROM jumps to `0x8000_0000`, where QEMU copied your kernel.
+
+```text
+0x0000_1000   boot ROM: six instructions, then a jump to RAM
+0x0010_0000   test finisher: storing 0x5555 ends the run
+0x0200_0000   CLINT: the timer from week 6
+0x0c00_0000   PLIC: routes device interrupts
+0x1000_0000   UART: a byte stored here reaches your terminal
+0x8000_0000   RAM: 128 MiB, up to 0x8800_0000
+```
+
+Each device row is MMIO: a character goes out as a volatile write of its byte to the UART's address.
+
+Notes:
+- On a real board, firmware (OpenSBI, on RISC-V) and a bootloader run first. `-bios none` deletes both, so the first instruction after the ROM is yours.
+- The map is Midterm 1 material: UART, CLINT, PLIC, RAM. The devices sit below RAM, in the same address space.
+- **Q:** "Who copies the kernel into RAM, with no bootloader?" QEMU itself. It reads the ELF and places each section at its link address before the first instruction runs.
+
+--
+
+<!-- .slide: id="deeper-volatile" class="deeper" -->
+
+## Nineteen stores become one
+
+Send the 19 bytes of `"\nrv6 is booting...\n"` to the UART with plain stores and compile with `-O`: the loop becomes one `sb` of the final newline. The volatile version keeps all nineteen.
+
+`oslings` builds without optimization, so the plain version passes every test.
+
+It is week 6's [deleted store](06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/#deeper-emitted), hitting the boot banner.
+
+---
+
+<!-- .slide: id="31k-linker" -->
+
+## The linker script puts you first
+
+```text
+ENTRY( _entry )
+SECTIONS {
+  . = 0x80000000;
+  .text : { *(.entry) *(.text .text.*) ... }
+  ...                          then .rodata, .data and .bss
+  PROVIDE(end = .);
+}
+```
+
+- `.` is the **location counter**: "place what follows here"
+- `*(.entry)` comes first; the entry function carries `#[link_section = ".entry"]`
+- `ENTRY` only sets the ELF header's entry address, which the ROM never reads
+
+```rust
+extern "C" { static end: u8; }
+let first_free = unsafe { &end as *const u8 as usize };
+```
+
+Notes:
+- `PROVIDE(end = .)` after `.bss` names the first address past the image. Read `static end: u8` as "some byte lives here": the byte is meaningless, and its address is the answer.
+- `end` moves whenever the kernel grows, so it is a symbol, not a constant. Thursday's allocator starts there.
+- **Q:** "What happens without the `.entry` attribute?" It lands wherever the linker sorts it, and the ROM starts executing some other function, before any stack exists.
+
+---
+
+<!-- .slide: id="31k-stack" -->
+
+## A stack before any Rust
+
+Almost every compiled function opens with a prologue that stores through `sp`. At reset `sp` is garbage, and Rust cannot fix it: the fixing function's own prologue runs first.
+
+So an assembly stub, the boot **trampoline**, makes `sp` valid, then calls Rust.
+
+```text
+high   base + 16 KiB   <- sp starts here; each call moves it down
+low    base            <- the array's own address names this end
+```
+
+The stack is a static array below `end`, so the allocator never hands it out.
+
+Notes:
+- The stub's job, in words: point `sp` at the top of the boot stack, using no stack itself, then call the first Rust function. You write it on Thursday.
+- Read the array's address as its bottom. Start `sp` there, and every push lands below the array, on someone else's data.
+- **Q:** "Why not put the stack above `end`?" Everything above `end` goes on the free list, so the stack would be handed out while the kernel still runs on it.
+
+---
+
+<!-- .slide: id="31k-one-thing" -->
+
+## The one thing to get right · `31k`
+
+Nothing prints. What happened?
+
+Ten seconds of silence, then `oslings` reports a QEMU timeout and suggests checking the stack setup.
+
+The first prologue stored through a garbage `sp`. With the trap vector still 0, the machine faults forever before one byte reaches the UART.
+
+<div class="highlight-box">Silence at boot means Rust never ran its first line: suspect <code>sp</code> first.</div>
+
+Notes:
+- In `20a` silence meant a `ret` went astray. Here it means Rust never started. Neither prints a `[fail]` line, because no check ever ran.
+- Any output at all, even the banner, means the stub worked, and the problem is in Rust.
+- **Q:** "How can I see where it is stuck?" Attach GDB to QEMU and read `pc`. The QEMU and GDB guide's diagnostic playbook starts there.
+
+---
+
+<!-- .slide: id="exam-boot-order" class="exam" -->
+
+## Reset to Rust: each step needs the one before
+
+1. QEMU copies the ELF to its link addresses, before any instruction
+2. Reset: `pc = 0x1000`, and the ROM jumps to `0x8000_0000`
+3. The entry stub is there: the linker script put `.entry` first
+4. The stub points `sp` at the boot stack's top, using no stack
+5. Only then does it call Rust: `kmain` now, `start` from `43k`
+
+Notes:
+- Midterm 1. The exam shape is "order the steps, and justify": the pieces come shuffled, and you name the constraint that fixes each position. PS1 Problem 9 is this, with a symbol table.
+- Step 4 is one job, not one instruction; how the stub does it is Thursday's work. What can never move is the call, after it.
+- **Q:** "What is `sp` when Rust begins?" The stack array's address plus its size: the top, one past its last byte. The first push moves it down before storing.
+
+---
+
+<!-- .slide: id="thu-32k" -->
+
+# Part II · Thursday
+
+## `32k_physical_memory`: pages on a free list
+
+RAM, `KERNBASE` `0x8000_0000` to `PHYSTOP` `0x8800_0000`, is 128 MiB: 32,768 **pages** of 4096 bytes.
+
+- `kalloc` hands out a page nobody uses; `kfree` takes one back
+- One block size: any free page fits any request, so both are O(1)
+- 2ᵏ-aligned: the low k bits are 0. **Page-aligned** ends in `000` in hex; dropping those digits divides by 4096
+
+Notes:
+- Part II runs 25 minutes over four slides, so there is room for ↓ Problem 4 at the board.
+- From `33k` on, every page table is a page the kernel hands itself.
+- Alignment in general: `0x8002_3D40` ends in `40`, six zero bits, so it is 64-byte aligned, not page-aligned. Dropping three hex digits is dividing by 4096; PS1 Problem 4 (d) uses it.
+- **Q:** "Why not any size, like `malloc`?" One size keeps both operations O(1) and leaves no gaps too small to use. A heap for small objects arrives in week 10, built on these pages.
+
+---
+
+<!-- .slide: id="32k-free-list" -->
+
+## The intrusive free list
+
+Each free page stores the address of the next in its first 8 bytes: an **intrusive** list. A free needs no memory of its own, so it cannot fail: the page being returned carries its own record.
+
+Both operations work at the front. Pages `0x8710_xxxx`:
+
+```text
+                   head   first 8 bytes of each free page
+start              3000   3000:2000   2000:1000   1000:null
+allocate -> 3000   2000   2000:1000   1000:null
+free 5000          5000   5000:2000   2000:1000   1000:null
+allocate -> 5000   2000   2000:1000   1000:null
+```
+
+Read `5000:2000` as "page `…5000` holds `…2000`". The page freed last comes out next: **LIFO**.
+
+Notes:
+- Over 32,000 free pages to track, and no memory to allocate bookkeeping in. The free pages have room to spare; one head pointer lives outside them.
+- Why "cannot fail" matters: a kernel frees pages most urgently when it has run out of them. PS1 Problem 10 is this trace, longer.
+- **Q:** "Where does the head live?" In one `static mut`, so touching it needs `unsafe`. One hart runs for now; locks arrive in `37k`.
+
+--
+
+<!-- .slide: id="deeper-free-list" class="deeper" -->
+
+## What the free list gives up
+
+No adjacent pages (DMA buffers and superpages need them), no zeroing, no detection (a double free makes a cycle: ↓ Problem 4), and no lock.
+
+| | Free list | Bitmap | Buddy |
+|---|---|---|---|
+| Allocate / free | O(1) / O(1) | scan / O(1) | O(log n) / O(log n) |
+| Bookkeeping outside the pages | one pointer | a bit per page | a list per size |
+| Contiguous runs | no | yes | yes, by design |
+
+A **bitmap** keeps a bit per page: 32,768 pages need one page of bits, and k zero bits in a row are k contiguous pages. A **buddy** allocator keeps a list per power-of-two size, splits a larger block to serve a request, and on free merges a block with its buddy, one address bit away.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: a double free, drawn
+
+The list is `head → 4000 → 9000 → 2000 → null`, for pages `0x8700_4000`, `0x8700_9000` and `0x8700_2000`.
+
+The kernel allocates twice, frees the first page it got, frees the second, then by mistake frees the first page again.
+
+- Draw the list after each step.
+- Give the next three allocations, if nobody writes to the pages.
+- What went wrong, and why can the allocator not notice?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+```text
+start              head -> 4000 -> 9000 -> 2000 -> null
+allocate -> 4000   head -> 9000 -> 2000 -> null
+allocate -> 9000   head -> 2000 -> null
+free 4000          head -> 4000 -> 2000 -> null
+free 9000          head -> 9000 -> 4000 -> 2000 -> null
+free 4000 again    4000's link becomes 9000, the head
+                   head -> 4000 -> 9000 -> 4000 -> 9000 -> ...
+```
+
+The next three allocations return `4000`, `9000`, `4000`. Two callers now own `0x8700_4000`, `9000` is next in line for a second owner, and `2000` is lost.
+
+The allocator gets only an address: no size, no owner, no "allocated" bit. Detecting a double free takes a walk of the whole list, or a bit per page: a bitmap.
+
+---
+
+<!-- .slide: id="32k-building" -->
+
+## Building the list from `end`
+
+The given code rounds `end` up to a page (`pgroundup`), then frees every page from there to `PHYSTOP`, ascending:
+
+```text
+end                     0x8002_3D40
+add 0xFFF               0x8002_4D3F   a partial page crosses its boundary
+clear the low 12 bits   0x8002_4000   the first page the allocator may use
+round down instead      0x8002_3000   the clear step alone
+pages                   (0x8800_0000 - 0x8002_4000) >> 12 = 32,732
+check                   32,768 in RAM - 36 below 0x8002_4000 = 32,732
+```
+
+Only a power-of-two page size makes `PGSIZE - 1` a run of ones, like `0xFFF`. The last page freed, `0x87FF_F000`, pops first.
+
+Pages are not zeroed: each keeps its old bytes and a stale link, which the list never reads again.
+
+Notes:
+- An aligned address stays put: adding `0xFFF` cannot carry it past its own boundary. "Clear the low 12 bits" is "zero the last three hex digits".
+- The check line is the habit to teach: count from both ends, and the two must agree. PS1 Problem 5 is this arithmetic with another `end`.
+- **Q:** "Why does it matter that pages are not zeroed?" On Friday a fresh page becomes a page table, and a table must start empty: the one thing for `33k`.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: the first pages out
+
+A build puts `end` at `0x8002_7F08`, and `PHYSTOP` is `0x8800_0000`.
+
+- **(a)** Which page does the building loop free first, and which last? How many pages go on the list?
+- **(b)** What do the first three allocations return?
+- **(c)** What is in the first 8 bytes of the third page from (b)? Does it matter?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+**(a)**
+
+```text
+0x8002_7F08 + 0xFFF = 0x8002_8F07   clear the low 12 bits: 0x8002_8000, first
+last page freed     = 0x8800_0000 - 0x1000 = 0x87FF_F000
+pages               = (0x8800_0000 - 0x8002_8000) >> 12 = 0x7FD8 = 32,728
+```
+
+Check: 32,768 pages less the kernel's 40 (`0x2_8000 >> 12`) is 32,728.
+
+**(b)** `0x87FF_F000`, `0x87FF_E000`, `0x87FF_D000`: pushed last, popped first.
+
+**(c)** `0x87FF_C000`, the link written while the list was built. The list no longer reads it, but a caller expecting zeros gets a pointer: an invalid PTE only because page addresses have bit 0 clear.
+
+---
+
+<!-- .slide: id="32k-one-thing" -->
+
+## The one thing to get right · `32k`
+
+The first allocation works. Why would the second return the same page?
+
+`[fail] second kalloc reused or failed`
+
+A free publishes a page by making the head name it. Publish it before writing its link, and the link records the page itself: a one-page loop, every other page lost.
+
+<div class="highlight-box">Write the link before you publish the node.</div>
+
+Notes:
+- The self-test names the check that failed; "reused" points straight at the link. Say the principle twice: the same ordering rule returns with every shared list you meet after `37k`.
+- **Q:** "Why does the first allocation still work?" The head names a real page, so the first pop returns it, but the head's new value is that page's link, which names the page itself. The head never moves, and the second pop returns the same page.
+
+---
+
+<!-- .slide: id="fri-33k" -->
+
+# Part III · Friday
+
+## `33k_paging`: a tree of tables
+
+The **MMU** translates through a **page table** the kernel builds:
+
+| | Without | With a table per process |
+|---|---|---|
+| Isolation | anyone reaches any byte | unmapped pages do not exist |
+| Relocation | built for where it lands | every program links at one address |
+| Protection | code and data look alike | per-page R, W, X bits |
+
+Only the page number is translated; the 12-bit **offset** is copied.
+
+Notes:
+- Part III runs 38 minutes: six concept slides (this one included), the one thing, and three exam slides. From `48k` on, every user program runs at virtual address 0, on its own RAM; `33k` builds the tree behind it.
+- The offset rule is a free check on every translation: the answer ends in the same three hex digits as the question.
+- ↓ below: how xv6 and Linux do all three layers (optional).
+- **Q:** "If the MMU is off, what does Friday test?" The tree itself: a software translator in the test walks what you built, the way the hardware will in week 10.
+
+--
+
+<!-- .slide: id="deeper-others" class="deeper" -->
+
+## How xv6 and Linux do it
+
+- **xv6**, rv6's C ancestor, also boots with `-bios none` at `0x8000_0000`, but starts every hart, each on a 4 KiB slice of one stack array.
+- Its allocator panics on a misaligned or out-of-range free, fills pages with junk so stale data shows early, and takes a spinlock.
+- **Linux** on RISC-V boots under OpenSBI, picks Sv57, Sv48 or Sv39 by what the hardware supports, and takes physical pages from a buddy allocator.
+
+---
+
+<!-- .slide: id="33k-bits" -->
+
+## Bits by hand
+
+| Move | How | Example |
+|---|---|---|
+| Shift | `<< k` moves up; `>> k` drops the low k | `0x8_1234 << 12` = `0x8123_4000` |
+| Mask | `(1 << n) - 1` is n ones; `x & !m` clears those | `0xFFF`, `0x3FF`, `0x1FF`: 12, 10, 9 |
+| Extract | shift down, mask | `(0x8123_4ABC >> 12) & 0x1FF` = `0x34` |
+| Pack | shift into place, then OR | `(0x5 << 4) \| 0x3` = `0x53` |
+
+```rust
+// FAT dates: years since 1980 in bits 15..9, month in 8..5, day in 4..0
+const fn pack_date(y: u16, m: u16, d: u16) -> u16 { (y << 9) | (m << 5) | d }
+const fn month(date: u16) -> u16 { (date >> 5) & 0xF }
+```
+
+`month(0x5D49)` is 10. Unmasked: `0x2EA`, the year still attached.
+
+Notes:
+- Every Friday check and every midterm translation is these four moves, in hex. A hex digit is 4 bits, so shifts by 4, 8 and 12 move whole digits; a shift by 10 is "`<< 8`, then times 4".
+- `pack_date(46, 10, 9)` is `0x5D49`: October 9, 2026. `const fn` lets the compiler compute a call with constant arguments, so a packed constant costs nothing at run time.
+- **Q:** "Why `!m` and not `~m`?" Rust spells bitwise NOT `!`, on integers as well as on `bool`. C's `~` does not exist in Rust.
+
+---
+
+<!-- .slide: id="33k-address" -->
+
+## The Sv39 address
+
+**Sv39** addresses have 39 bits: the offset under a 27-bit **virtual page number** (VPN), cut into three 9-bit indices.
+
+```text
+ 38        30 29        21 20        12 11          0
++------------+------------+------------+-------------+
+|   VPN[2]   |   VPN[1]   |   VPN[0]   |   offset    |
++------------+------------+------------+-------------+
+ root: 1 GiB  level 1: 2 MiB level 0: 4 KiB  byte in page
+```
+
+VPN[i] is `(va >> (12 + 9 * i)) & 0x1FF`.
+
+- Nine bits: one page holds 512 entries of 8 bytes, and 512 is 2⁹
+- A tree: a flat table for 2²⁷ pages is 1 GiB per process; a tree, 12 KiB for one page
+
+Notes:
+- The labels under the fields say how much one entry at that level covers: 1 GiB, 2 MiB, 4 KiB. Cost follows how scattered the mappings are, not how many: pages in one 2 MiB neighborhood share their tables.
+- PS1 Problem 12 (b) asks for each VPN. Shift first, then mask, and check VPN[0] twice.
+- **Q:** "What about bits 63 to 39?" Sv39 requires them to copy bit 38. rv6 never sets bit 38 (`MAXVA`, on an exam slide shortly), so they are all 0.
+
+---
+
+<!-- .slide: id="33k-pte" -->
+
+## The page-table entry
+
+A table holds 512 8-byte **PTEs**: V 1, R 2, W 4, X 8, U 16.
+
+```text
+ 63    54 53             10 9 8 7 6 5 4 3 2 1 0
++--------+-----------------+---+-+-+-+-+-+-+-+-+
+|reserved|  PPN (44 bits)  |RSW|D|A|G|U|X|W|R|V|
++--------+-----------------+---+-+-+-+-+-+-+-+-+
+```
+
+Valid with R, W, X all clear is a **branch** to the next table. Valid with any set is a **leaf**, naming the mapped page.
+
+```rust
+#[repr(transparent)]
+pub struct Pixel(pub u32);               // its own type, laid out as a u32
+let fb = 0x8600_0000 as *mut Pixel;      // a 640-pixel-wide screen
+let row1 = unsafe { fb.add(640) };       // 0x8600_0A00
+```
+
+Notes:
+- The flags are powers of two, so a set of flags is a sum: V R W is 7, V R X U is `0x1B`. PS1 Problem 4 (a) reads flags out of a byte.
+- `#[repr(transparent)]`: a new type to the compiler, only the integer in memory, so the wrapper costs nothing where hardware reads the bits. `.add` counts elements: 640 pixels along is 2,560 bytes, and index 511 of a table of 8-byte entries is 4,088 bytes in.
+- The **PPN** is the physical address without its low 12 bits, at bit 10. Redraw the boxes from memory: Midterm 1 asks for the PTE layout.
+- **Q:** "Why a page number and not an address?" A page's low 12 bits are always 0. Storing them would waste the room the flags need.
+
+--
+
+<!-- .slide: id="deeper-pte" class="deeper" -->
+
+## The rest of the PTE, and superpages
+
+```text
+63    62..61   60..54     53..10   9..8   7   6   5   4   3   2   1   0
+N     PBMT     reserved   PPN      RSW    D   A   G   U   X   W   R   V
+```
+
+- `G` marks a mapping present in every address space, a hint for the **TLB**, the MMU's cache of translations.
+- `A` (accessed) and `D` (dirty) record use, for paging to disk. Hardware may set them or fault so the kernel can; QEMU sets them itself, which is why rv6 never touches them.
+- X W R = 010 and 110 are reserved.
+
+A leaf need not sit at level 0: at level 1 it maps a 2 MiB **superpage**, and at the root 1 GiB. rv6 never builds one. Mapping all 128 MiB of RAM with 4 KiB leaves takes 66 table pages; one 1 GiB leaf at root entry 2 would need none below it.
+
+---
+
+<!-- .slide: id="33k-encode" -->
+
+## Encode and decode by hand
+
+Pack: `((pa >> 12) << 10) | flags`. Unpack: `(entry >> 10) << 12`, flags in `entry & 0x3FF`. Encode `0x8123_4000` as V R W (7):
+
+```text
+pa            0x8123_4000
+pa >> 12      0x0008_1234   the PPN: three hex digits dropped
+PPN << 10     0x2048_D000   << 8 appends 00, then multiply by 4
+| flags       0x2048_D007   V R W: a leaf
+```
+
+Read it upward to decode. Low digit 1, `0x2048_D001`: a branch to a table at `0x8123_4000`.
+
+The shifts do not cancel: `>> 12` drops the offset; `<< 10` makes room for flags.
+
+Notes:
+- The classic slip is decoding with a shift of 12: `0x2048_D001` becomes `0x2048_D000`, page-aligned, plausible, wrong. It fails Friday's first check.
+- PS1 Problem 11 is this, and its (d) asks why the shifts do not cancel.
+- **Q:** "For an aligned `pa`, isn't that just `pa >> 2`?" Numerically, yes. Write both shifts anyway: they say what each step means, and `>> 2` of an unaligned address would push offset bits into the flags.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: encode and decode
+
+- **(a)** Encode a user code page: physical `0x8034_5000` with V, R, X and U.
+- **(b)** Decode `0x0400_0017`: flags, address, leaf or branch. Should a kernel ever build it?
+- **(c)** Decode `0x21FF_F801`. What would a decoder that shifts by 12 return?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+**(a)** Flags are 1 + 2 + 8 + 16 = `0x1B`.
+
+```text
+0x8034_5000 >> 12   0x0008_0345
+<< 8                0x0803_4500
+times 4             0x200D_1400   that is << 10
+| 0x1B              0x200D_141B
+```
+
+**(b)** `& 0x3FF` = `0x017` = V R W U: a leaf. `>> 10` is `0x1_0000`, `<< 12` is `0x1000_0000`: the UART, writable from user mode. No kernel should: with U, any program drives the serial port around the kernel.
+
+**(c)** Flags `0x001`, V alone: a branch. `>> 10` is `0x8_7FFE`, so the next table is at `0x87FF_E000`. Shifting by 12 gives `0x21FF_F000`: page-aligned, plausible, and nowhere near the table.
+
+---
+
+<!-- .slide: id="33k-walk" -->
+
+## The walk
+
+<div class="mermaid">
+flowchart LR
+    R["root: entry VPN[2]"] -->|branch| M["level 1: entry VPN[1]"]
+    M -->|branch| L["level 0: entry VPN[0]"]
+    L -->|leaf| P["the page, plus the offset"]
+    R -.->|"V = 0"| F["not mapped: page fault"]
+    M -.->|"V = 0"| F
+    L -.->|"V = 0"| F
+</div>
+
+Each lookup is one 8-byte load from `table + index × 8`. The tree holds only the tables some mapping needs, and a new table must be all zeros before anything points at it.
+
+Checking R, W, X and U is the hardware's job, not the walk's.
+
+Notes:
+- Mapping one high page into a bare root adds two tables, level 1 and level 0. That is Friday's prep question 3.
+- Three loads before the real one is why the hardware caches translations (the TLB, ↓ under 33k-pte).
+- **Q:** "Why V alone on an interior entry, not V R W?" Any of R, W or X makes it a leaf. A software check of V would still follow it, but the hardware stops there and treats it as a superpage (↓).
+
+--
+
+<!-- .slide: id="deeper-mmu-on" class="deeper" -->
+
+## Week 10: the hardware reads your tree
+
+On Friday only the test's software translator reads your tree. In `39k` you build the kernel's own table, an identity map in which every address maps to itself, check it with your walk while translation is off, and only then install its root in `satp`. From `43k`, with the kernel in supervisor mode, the hardware walks the tree on every access.
+
+The hardware asks more than your walk: it stops at the first entry with R, W or X, and it enforces them. So an interior entry with R set passes every software check, then fails in hardware as a superpage leaf. With no trap handler yet, that is a silent hang, which is why week 10 verifies first.
+
+---
+
+<!-- .slide: id="33k-one-thing" -->
+
+## The one thing to get right · `33k`
+
+Every check passes. Can a walk follow an entry nobody wrote?
+
+Yes. On a fresh boot a new page looks empty: its one nonzero word, a free-list link, has bit 0 clear.
+
+A recycled page holds its last owner's bytes; any word with bit 0 set looks valid.
+
+<div class="highlight-box">An allocated page is not an empty table until you zero it.</div>
+
+Notes:
+- This mistake hides on Friday, because every page is fresh. It surfaces once pages are freed and reused, which starts when processes come and go in `34k`.
+- Friday's prep question 2 asks exactly this.
+- **Q:** "Doesn't the free-list link look like a valid entry?" No: a link is a page address, and page addresses end in `000`, so bit 0 is clear. That is why a fresh page happens to read as empty, and why you cannot count on it.
+
+---
+
+<!-- .slide: id="exam-satp" class="exam" -->
+
+## Translation by hand, from `satp`
+
+`satp` holds MODE in bits 63:60 (8 is Sv39, 0 is off), an address-space ID in 59:44, and the root table's PPN in 43:0.
+
+```text
+satp  0x8000_0000_0008_7FFF   Sv39; PPN 0x8_7FFF: root at 0x87FF_F000
+va    0x20_00A0_35F0          VPN[2] 128, VPN[1] 5, VPN[0] 3, offset 0x5F0
+
+root, entry 128   = 0x21FF_F801   V only: table at 0x87FF_E000
+level 1, entry 5  = 0x21FF_F401   V only: table at 0x87FF_D000
+level 0, entry 3  = 0x2014_8C07   V R W: page at 0x8052_3000
+
+pa = 0x8052_3000 | 0x5F0 = 0x8052_35F0
+```
+
+Notes:
+- Midterm 1. The order of work: `satp` gives the root; split the address; at each level read the flags, then the PPN; glue the offset back on. V alone means keep going.
+- The three tables are the first three pages the allocator hands out, `0x87FF_F000`, `E000`, `D000`: Thursday's LIFO order in Friday's numbers. PS1 Problem 12 is this shape, and PS1 calls it the shape of Midterm 1's longest question; ↓ Problem 3 is another.
+- **Q:** "How do I split the address without a calculator?" Shift, then mask: `va >> 12` is `0x200_0A03`, and its low 9 bits are 3. Nine bits further down gives VPN[1]; nine more, VPN[2].
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: translate by hand
+
+`satp` is `0x8000_0000_0008_0602`. The reachable tables hold only these nonzero entries:
+
+```text
+table at 0x8060_2000:   [5]  = 0x2018_1C01
+table at 0x8060_7000:   [3]  = 0x2018_0C01
+table at 0x8060_3000:   [10] = 0x2024_5417
+```
+
+- **(a)** Give the mode and the root table's address.
+- **(b)** Translate `0x1_4060_A7E4`, showing each VPN and the offset.
+- **(c)** Translate `0x1_4060_B7E4`.
+- **(d)** May user code store to the address in (b)? May it jump there?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+**(a)** `satp >> 60` = 8, Sv39. The low 44 bits are PPN `0x8_0602`, so the root is at `0x8060_2000`.
+
+```text
+va >> 30 = 0x5                            VPN[2] = 5
+va >> 21 = 0xA03,     & 0x1FF = 0x003     VPN[1] = 3
+va >> 12 = 0x1_4060A, & 0x1FF = 0x00A     VPN[0] = 10      offset 0x7E4
+root [5]  = 0x2018_1C01   flags 0x001, branch   -> table 0x8060_7000
+L1   [3]  = 0x2018_0C01   flags 0x001, branch   -> table 0x8060_3000
+L0   [10] = 0x2024_5417   flags 0x017, V R W U  -> page  0x8091_5000
+```
+
+**(b)** `0x8091_5000 | 0x7E4` = **`0x8091_57E4`**. **(c)** Only VPN[0] changes, to 11. Entry 11 is 0, so V is clear: not mapped, a page fault. **(d)** A store, yes: W and U are set. A jump, no: X is clear, so the fetch faults.
+
+---
+
+<!-- .slide: id="exam-maxva" class="exam" -->
+
+## The top pages, and who may reach them
+
+`MAXVA` is `1 << 38` = `0x40_0000_0000`: one bit short of 39, so no rv6 address needs sign extension.
+
+| Page | Address | Flags |
+|---|---|---|
+| `TRAMPOLINE`, in every table | `0x3F_FFFF_F000` | R X |
+| `TRAPFRAME`, one per process | `0x3F_FFFF_E000` | R W |
+
+Neither has U. The kernel's software check of user addresses, `walkaddr`, returns 0 at or above `MAXVA`, when unmapped, or for a leaf without U.
+
+Notes:
+- Midterm 1. The MMU, in supervisor mode, translates `TRAPFRAME`; `walkaddr`, checking for a user, refuses it. Being mapped is not the same as being yours.
+- The trampoline is code (R X) and the trapframe is data (R W): W⊕X, the next slide, in action. Week 12 shows what they are for.
+- **Q:** "Why does the kernel need its own U check?" It reads user memory by walking the user's table in software, not through the MMU, so checking U is its job.
+
+---
+
+<!-- .slide: id="exam-wx" class="exam" -->
+
+## W⊕X: never writable and executable
+
+A writable, executable page lets code rewrite itself: whoever can write can run anything. Spot a leaf with W (4) and X (8).
+
+| Page holds | Flags |
+|---|---|
+| code | R X |
+| stack or data | R W |
+| code you can rewrite | R W X: the violation |
+
+Predict: low bits `0x0F`? `0x0B`?
+
+`0x0F`: V R W X, a violation. `0x0B`: V R X, code.
+
+Notes:
+- Midterm 1. The exam asks you to spot it in a decoded PTE: W and X both set in the low hex digit, as in `0x0F` or `0x1F`.
+- PS1 Problem 11 (b) is this check.
+- **Q:** "Then how does a JIT compiler work?" It maps a page writable, fills it, then remaps it executable and not writable: both permissions, never at once.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- The ROM jumps to `0x8000_0000`, where `.entry` sits
+- No Rust until `sp` points at a stack top
+- Free pages hold the list: LIFO, never zeroed
+- Write the link before you publish the node
+- Sv39: three 9-bit indices, offset copied
+- PTE: the PPN at bit 10; V alone is a branch
+- Midterm 1: boot order, `satp` translation, top pages, W⊕X
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 1?" Practice Set 1 Parts B, D and E on paper, then the page's Problems 1 to 4. Redraw the Sv39 split and the PTE from memory.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/07-cs326-2026-10-08-prep-boot-and-physical-memory/): check yourself
+
+You boot a kernel that prints over the UART, then give it a page allocator, both in QEMU (`oslings doctor` if unsure). Prep: about 20 minutes.
+
+**1.** At reset `sp` is garbage. Why can the first Rust function not simply fix it?
+
+**2.** `ENTRY(...)` does not tell QEMU where to jump. What guarantees your entry stub runs first?
+
+**3.** The initial list is built by freeing every page from the page-rounded `end` up to `PHYSTOP`, ascending. Which page does the first allocation return?
+
+Notes:
+- Walk the prep page (about 20 minutes). What you build: a kernel that boots in QEMU and prints over the UART, then a page allocator for the RAM above `end`. Green is `OSLINGS:PASS` for each.
+- Both exercises boot in QEMU. If `oslings run` has not worked for you since `20a`, run `oslings doctor` tonight. The three questions are the prep's own Check yourself (31k-stack, 31k-linker, 32k-building); answers are on the prep page.
+- **Q:** "Do I need Friday's bit tricks on Thursday?" Only the rounding of `end`, and the given code does it. The rest of the primer is Friday's.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/07-cs326-2026-10-09-prep-paging/): check yourself
+
+You build the Sv39 page-table tree the hardware will read in week 10, on pages from Thursday's allocator; the MMU stays off. Prep: about 35 minutes, including a paper worksheet to bring.
+
+**1.** PTE `0x0000_0000_2010_0401`: leaf or branch, and what address?
+
+**2.** Why zero a freshly allocated interior table before linking it in?
+
+**3.** A table has only a root. You map one page whose subtree does not exist. How many table pages are allocated, with what low ten bits?
+
+Notes:
+- Walk the prep page (about 35 minutes). What you build: the page-table tree for one address space. A software translator in the test stands in for the MMU and reads what you built.
+- The worksheet: draw the PTE as boxes, encode one entry, decode one. For question 2, the stale words to fear are a recycled page's old bytes; the free-list link itself has bit 0 clear (33k-one-thing).
+- **Q:** "Is Friday's material on the midterm?" All of it. Translation by hand is the longest question, six days later.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 9 · Processes, the Context Switch, and Scheduling](09-cs326-2026-10-13-processes-context-switch-and-scheduling/) is presented Tue Oct 13, because of fall break. Its PCB section is on Midterm 1 and Practice Set 1 Part F: read its Essentials before Tuesday.
+
+Notes:
+- Next Tuesday is also Midterm 1 review: bring your Practice Set 1 questions; its solutions post that day.
+- **Q:** "Is all of Week 9 on Midterm 1?" Only its PCB section, Thursday · `34k`. The context switch and scheduling are for Oct 22–23 and Midterm 2.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

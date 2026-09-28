@@ -144,21 +144,24 @@ it as a failure value (`vm.rs`) instead of an `Option`. Test with
 `p.add(n)` is the address `n` **elements** past `p` — not `n` bytes, unless the
 element happens to be one byte. On a `*mut u8` the two coincide, which is why
 the UART driver's `base.add(offset)` reads naturally. On anything else they do
-not, and this is the most common pointer bug in the paging exercises:
+not, and this is the most common pointer bug in the paging exercises. Here is
+the trap in a latency histogram that fills one 4096-byte page with 512 `u64`
+buckets:
 
 ```rust
-const fn px(level: usize, va: usize) -> usize {   // vm.rs
-    (va >> (12 + level * 9)) & 0x1ff              // an index, 0..=511
+const fn bucket(t_us: usize) -> usize {       // which of 512 buckets
+    (t_us >> 4) & 0x1ff                        // an index, 0..=511
 }
-let pte = table.add(px(level, va));               // vm.rs
+let slot = hist.add(bucket(t_us));             // hist: *mut u64
 ```
 
-`table` is a `*mut Pte`, and `Pte` is a `#[repr(transparent)]` wrapper around a
-`usize` (`vm.rs`), so one element is 8 bytes. `table.add(511)` lands at
-byte offset 4088 — the last entry of a 4096-byte page table, exactly right.
-Write `(table as *mut u8).add(511)` and you land 4081 bytes too early, in the
-middle of another entry, and the kernel dies somewhere unrelated ten thousand
-instructions later.
+`hist` is a `*mut u64`, so one element is 8 bytes. `hist.add(511)` lands at
+byte offset 4088 — the last bucket of the page, exactly right. Write
+`(hist as *mut u8).add(511)` and you land 4081 bytes too early, in the middle
+of another bucket, and the program dies somewhere unrelated ten thousand
+instructions later. A page table has the same shape: `Pte` is a
+`#[repr(transparent)]` wrapper around a `usize` (`vm.rs`), so `.add` on a
+`*mut Pte` also steps 8 bytes per entry.
 
 `.add` is itself an `unsafe fn`, for a reason worth knowing: **the result must
 stay inside the same allocated object as the input.** Computing an address
@@ -170,8 +173,9 @@ the allocation it came from. For the kernel, "the same object" usually means
 ### Dereferencing
 
 ```rust
-if (*pte).is_valid() { ... }             // vm.rs
-*pte = Pte::new(page as usize, PTE_V);   // vm.rs
+let s: *mut Sensor = sensors.add(2);
+if (*s).armed { ... }                    // read a field through the pointer
+(*s).count += 1;                         // write one
 ```
 
 Rust has no `->`; `(*p).field` is the spelling, and the parentheses are

@@ -629,11 +629,11 @@ The compiler put the most-aligned field first, and it was entitled to.
 ## You Need It When Something Else Reads the Bytes
 
 ```text
-        Context  (#[repr(C)])          swtch  (hand-written asm)
+        Context  (#[repr(C)])          swtch  (hand-written asm; a0 = old)
 offset  +--------------------------+
-   0    | ra   return address      | <-->  sd ra,  0(a0)  /  ld ra,  0(a1)
-   8    | sp   stack pointer       | <-->  sd sp,  8(a0)  /  ld sp,  8(a1)
-  16    | s0                       | <-->  sd s0, 16(a0)  /  ld s0, 16(a1)
+   0    | ra   return address      | <-->  sd ra,  0(a0)
+   8    | sp   stack pointer       | <-->  sd sp,  8(a0)
+  16    | s0                       | <-->  sd s0, 16(a0)
         +--------------------------+
 ```
 
@@ -1096,20 +1096,20 @@ missing check reads into a neighbouring process control block.
 ## Iterators Are Lazy, and Allocate Nothing
 
 ```rust
-(0..n)
-    .map(|off| (self.next + off) % n)
-    .find(|&i| states[i] == ProcState::Runnable)
-    .map(|i| { self.next = (i + 1) % n; i })
+table.iter()
+    .filter(|e| e.major != 0)
+    .map(|e| (e.name, e.reads))
+    .find(|&(_, reads)| reads > limit)
 ```
 
-Read it as English: consider `n` offsets, wrap each into a table index starting
-where we left off, take the first that is runnable, remember to resume after it.
+Read it as English: skip the empty slots, pair each device with its read count,
+and stop at the first busy one.
 
 <div class="info-box">
-<code>map</code> does not produce a list of eight indices — it produces
-something that computes one index each time <code>find</code> asks, and
-<code>find</code> stops asking the moment it succeeds. The optimized code is
-the loop you would have written by hand.
+<code>filter</code> and <code>map</code> do not build a list of live devices —
+each produces one item each time <code>find</code> asks, and <code>find</code>
+stops asking the moment it succeeds. The optimized code is the loop you would
+have written by hand.
 </div>
 
 `collect()` is the one adapter that breaks the rule: it has to put the results

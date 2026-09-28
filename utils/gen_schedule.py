@@ -192,6 +192,12 @@ def sessions():
 
     L = lambda *pairs: [{"text": t, "url": u} for t, u in pairs]
 
+    # Week 9 has no Tuesday (fall break), so its lecture is given the Tuesday
+    # before, Oct 13, and both of its sessions link back to it.
+    WEEK9 = "/lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling"
+    WEEK9_LECTURE = (("Lecture · given Oct 13", f"{WEEK9}/"),
+                     ("Slides · given Oct 13", f"{WEEK9}-slides.html"))
+
     # ---- Module 1 : Rust, commands, and the bridges to bare metal ---------
     add(1, 'tuesday', 'Aug 25', 'lecture', 'L01 Building an Operating System',
         links=L(("Syllabus", "/syllabus/"), ("Setup", "/assignments/setup/"),
@@ -241,14 +247,14 @@ def sessions():
         links=L(("Memory Map", "/guides/memory-map/")))
 
     # ---- Module 2 : Build the kernel --------------------------------------
-    add(7, 'tuesday', 'Oct 6', 'lecture', 'L13 Processes and the PCB',
+    add(7, 'tuesday', 'Oct 6', 'lecture', 'From Reset to Page Tables: Boot, the Free List, and Sv39',
         links=L(("Practice Set 1", "/assignments/practice-set-01/")))
     add(7, 'thursday', 'Oct 8', 'exercise', '31k boot · 32k physical_memory',
         exercises=['31k_boot', '32k_physical_memory'])
     add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
         links=L(("Sv39 Paging", "/guides/sv39-paging/")))
 
-    add(8, 'tuesday', 'Oct 13', 'lecture', 'L14 The Context Switch and the Scheduler',
+    add(8, 'tuesday', 'Oct 13', 'lecture', "Week 9's lecture: Processes, the Context Switch, and Scheduling",
         links=L(("Exam Prep", "/guides/exam-prep/"),
                 ("Practice Set 1", "/assignments/practice-set-01/")))
     add(8, 'thursday', 'Oct 15', 'exam', 'MIDTERM 1 — Module 1 + kernel through 33k paging',
@@ -256,9 +262,11 @@ def sessions():
     add(8, 'friday', 'Oct 16', 'holiday', 'No class — exam week')
 
     add(9, 'tuesday', 'Oct 20', 'holiday', 'Fall Break — no class')
-    add(9, 'thursday', 'Oct 22', 'exercise', '34k processes', exercises=['34k_processes'])
+    add(9, 'thursday', 'Oct 22', 'exercise', '34k processes', exercises=['34k_processes'],
+        links=L(*WEEK9_LECTURE))
     add(9, 'friday', 'Oct 23', 'exercise', '35k context_switch · 36k scheduling',
-        exercises=['35k_context_switch', '36k_scheduling'])
+        exercises=['35k_context_switch', '36k_scheduling'],
+        links=L(*WEEK9_LECTURE))
 
     add(10, 'tuesday', 'Oct 27', 'lecture', 'L16 Virtual Memory II: Turning the MMU On')
     add(10, 'thursday', 'Oct 29', 'exercise', '37k spinlocks · 38k semaphores',

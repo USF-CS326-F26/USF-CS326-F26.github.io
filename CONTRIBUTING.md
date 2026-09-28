@@ -271,7 +271,8 @@ every deck:
 - Slide numbers read current/total (`slideNumber: 'c/t'`), counting every
   slide, stacks included.
 - Exam material is always a core slide, never in a stack and never in the cut
-  order: `<!-- .slide: class="exam" data-exam="On Midterm 1" -->`.
+  order. Mark it `<!-- .slide: class="exam" -->`: the class shows nothing on
+  screen (no badge); it only records which slides the cut order must keep.
 - `Notes:` at the end of a slide starts speaker notes (press **S**). The title
   slide's notes hold the minute plan, a fast path of about a dozen slide ids,
   and the cut order. Every core slide's notes hold 1–3 talking points and one

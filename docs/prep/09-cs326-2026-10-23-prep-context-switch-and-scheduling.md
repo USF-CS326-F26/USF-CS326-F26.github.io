@@ -1,28 +1,33 @@
 # Prep: The Context Switch and the Scheduler — 35k · 36k
 
-**Session:** Fri Oct 23, 1h30 · **Exercises:** `35k_context_switch`, `36k_scheduling` · **Prep time:** ~35 min · **Lecture:** [The Context Switch and the Scheduler](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md)
+**Session:** Fri Oct 23, 1h30 · **Exercises:** `35k_context_switch`, `36k_scheduling` · **Prep time:** ~20 min · **Lecture:** [Week 9 · Processes, the Context Switch, and Scheduling](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md)
+
+## Back from break
+
+This session's lecture was Tue Oct 13, before Midterm 1 and fall break. Before class, reread [Week 9 · This week](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#this-week), then all of [Friday · `35k` The context switch](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#fri-35k) and [Friday · `36k` Round robin](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#fri-36k).
+Three ideas matter most today: a context is only 14 registers, because the switch is entered by an ordinary call; the switch saves into one context and loads from the *other*, so its `ret` lands where the loaded `ra` points; and round robin keeps its place in a cursor that moves just past each pick.
 
 ## What you will build
 
-First the mechanism: a context is the fourteen callee-saved registers laid out by `#[repr(C)]`, and the switch routine freezes the running context, thaws another, and `ret`s into a different thread. Half of that assembly is given; you write the other half. Then the policy: a round-robin picker that scans the process table from a rotation cursor, skips anything not `Runnable`, wraps around, and drives the double switch. The harness checks that a switch round-trips (control comes back after the call) and that three runnable processes plus one sleeping one run interleaved, one turn each per rotation, instead of one running to completion.
+First the mechanism: a context is the fourteen registers `ra`, `sp` and `s0`–`s11`, laid out by `#[repr(C)]`, and the switch routine freezes the running context, thaws another, and `ret`s into a different thread. Half of that assembly is given; you write the other half. Then the policy: a round-robin picker that scans the process table from a rotation cursor, skips anything not `Runnable`, wraps around, and drives the double switch. The harness checks that a switch round-trips (control comes back after the call) and that three runnable processes plus one sleeping one run interleaved, one turn each per rotation, instead of one running to completion.
 
 ## Concepts you need
 
-- **Callee-saved vs. caller-saved: why 14 registers** — [Context Switch and Scheduler §1](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#1-what-a-context-actually-is) · [RISC-V § The caller/callee split](../guides/riscv.md#the-callercallee-split)
-- **`#[repr(C)]` offsets (`ra` 0, `sp` 8, `s11` 104); `ld`/`sd` with `off(reg)`** — [Context Switch and Scheduler §1](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#two-languages-have-to-agree-on-byte-offsets) · [RISC-V § Loads, stores, and offsets](../guides/riscv.md#loads-stores-and-offsets)
-- **`ret` jumps to the `ra` just loaded; `global_asm!`, `extern "C"`** — [Context Switch and Scheduler §2](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md) · [RISC-V § Assembly inside Rust](../guides/riscv.md#assembly-inside-rust)
-- **The double switch; forging a context that has never run** — [Context Switch and Scheduler §3](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#3-the-double-switch), [§3 Bootstrapping](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#bootstrapping-a-context-that-has-never-run)
-- **Mechanism vs. policy: a trait with `&mut self` state** — [Context Switch and Scheduler §4](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#4-mechanism-and-policy) · [Traits, Generics, and the ulib Facade §2](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#2-traits-a-contract-between-types)
-- **Round robin: cursor, wraparound, advance past the winner; iterator adapters** — [Context Switch and Scheduler §5](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#5-round-robin) · [Rust for Systems § Iteration](../guides/rust-for-systems.md#iteration)
+- **Callee-saved vs. caller-saved: why 14 registers** — [Week 9 · What a context is](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#35k-context) · [RISC-V guide: The caller/callee split](../guides/riscv.md#the-callercallee-split)
+- **`#[repr(C)]` offsets the assembly relies on; `ld`/`sd` with `off(reg)`** — [Week 9 · The offset contract, and a `ret` that lands elsewhere](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#35k-offsets) · [RISC-V guide: Loads, stores, and offsets](../guides/riscv.md#loads-stores-and-offsets)
+- **`ret` jumps to the `ra` just loaded; `global_asm!`, `extern "C"`** — [Week 9 · The offset contract, and a `ret` that lands elsewhere](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#35k-offsets) · [RISC-V guide: Assembly inside Rust](../guides/riscv.md#assembly-inside-rust)
+- **The double switch; forging a context that has never run** — [Week 9 · The double switch](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#36k-double-switch), [Week 9 · Starting a context that never ran](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#35k-fresh)
+- **Mechanism vs. policy: a trait with `&mut self` state** — [Week 9 · Mechanism and policy](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#36k-policy)
+- **Round robin: cursor, wraparound, advance past the winner; iterator adapters** — [Week 9 · Round robin, by its rules](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#36k-round-robin)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Context Switch and Scheduler §1–§2 | 12 min |
-| Context Switch and Scheduler §3 | 8 min |
-| Context Switch and Scheduler §4–§5 | 8 min |
-| RISC-V guide: The caller/callee split; Loads, stores, and offsets | 7 min |
+| [Week 9 · This week](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#this-week), then [Friday · `35k` The context switch](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#fri-35k), all three sections | 5 min |
+| [Week 9 · Friday · `36k` Round robin](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#fri-36k), all three sections | 3 min |
+| [Week 9 · For the exam](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam): [The vocabulary](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam-terms) and [The scheduling survey](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam-survey). Not needed today; on Midterm 2 | 2 min |
+| [RISC-V guide: The caller/callee split](../guides/riscv.md#the-callercallee-split) and [Loads, stores, and offsets](../guides/riscv.md#loads-stores-and-offsets) | 3 min |
 
 ## Mental model
 
@@ -51,4 +56,4 @@ loop:  switch(&L, &P)           # ret lands inside ping's own call; s3 is 7 agai
 
 ## If you finish early
 
-Work [Practice Problems](../lectures/08-cs326-2026-10-13-context-switch-and-scheduling.md#practice-problems) 3 and 5; the §6 vocabulary is Midterm 2 material. Then read chapter 7, "Scheduling," of the xv6 book, or start the next prep page, [Prep: Spinlocks and Semaphores](10-cs326-2026-10-29-prep-spinlocks-and-semaphores.md).
+Work [Week 9 · Problem 3: Trace a switch through a hub](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#problem-3) and [Problem 4: Predict the round-robin order](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#problem-4); [Week 9 · The vocabulary](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam-terms) and [The scheduling survey](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam-survey) are Midterm 2 material. Then read chapter 7, "Scheduling," of the xv6 book, or start the next prep page, [Prep: Spinlocks and Semaphores](10-cs326-2026-10-29-prep-spinlocks-and-semaphores.md).

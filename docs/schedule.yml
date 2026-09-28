@@ -218,10 +218,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/05-cs326-2026-09-25-prep-wc-and-grep/"
-        - text: "Reading · Week 7"
-          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain/"
-        - text: "Slides · Week 7"
-          url: "lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
 
@@ -261,14 +257,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics/"
-        - text: "Reading · Week 7"
-          url: "lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list/"
-        - text: "Slides · Week 7"
-          url: "lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list-slides.html"
-        - text: "Reading · Week 7"
-          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
-        - text: "Slides · Week 7"
-          url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html"
         - text: "Memory Map"
           url: "guides/memory-map/"
 
@@ -278,12 +266,12 @@ weeks:
     tuesday:
       date: "Oct 6"
       type: "lecture"
-      topic: "L13 Processes and the PCB"
+      topic: "From Reset to Page Tables: Boot, the Free List, and Sv39"
       links:
         - text: "Lecture"
-          url: "lectures/07-cs326-2026-10-06-processes-and-the-process-control-block/"
+          url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39/"
         - text: "Slides"
-          url: "lectures/07-cs326-2026-10-06-processes-and-the-process-control-block-slides.html"
+          url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html"
         - text: "Practice Set 1"
           url: "assignments/practice-set-01/"
 
@@ -315,12 +303,12 @@ weeks:
     tuesday:
       date: "Oct 13"
       type: "lecture"
-      topic: "L14 The Context Switch and the Scheduler"
+      topic: "Week 9's lecture: Processes, the Context Switch, and Scheduling"
       links:
         - text: "Lecture"
-          url: "lectures/08-cs326-2026-10-13-context-switch-and-scheduling/"
+          url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
         - text: "Slides"
-          url: "lectures/08-cs326-2026-10-13-context-switch-and-scheduling-slides.html"
+          url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
         - text: "Exam Prep"
           url: "guides/exam-prep/"
         - text: "Practice Set 1"
@@ -358,6 +346,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/09-cs326-2026-10-22-prep-processes/"
+        - text: "Lecture · given Oct 13"
+          url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
+        - text: "Slides · given Oct 13"
+          url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
 
     friday:
       date: "Oct 23"
@@ -372,6 +364,10 @@ weeks:
           url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
         - text: "Slides · Week 10"
           url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
+        - text: "Lecture · given Oct 13"
+          url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
+        - text: "Slides · given Oct 13"
+          url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
 
 
 # === WEEK 10 ===

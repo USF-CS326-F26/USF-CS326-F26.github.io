@@ -296,15 +296,15 @@ Memorize the last two rows.
 ## `.add(n)` Scales by the Pointee
 
 ```rust
-const fn px(level: usize, va: usize) -> usize {  // vm.rs
-    (va >> (12 + level * 9)) & 0x1ff             // an index, 0..=511
+const fn bucket(t_us: usize) -> usize {       // which of 512 buckets
+    (t_us >> 4) & 0x1ff                        // an index, 0..=511
 }
-let pte = table.add(px(level, va));              // vm.rs
+let slot = hist.add(bucket(t_us));             // hist: *mut u64
 ```
 
-- `Pte` is `#[repr(transparent)]` over `usize` → one element = **8 bytes**
-- `table.add(511)` → byte offset 4088, the last entry of a 4 KiB page table
-- `(table as *mut u8).add(511)` → 4081 bytes too early, mid-entry, silent corruption
+- `u64` is 8 bytes → one element = **8 bytes**; so is a `Pte` (`#[repr(transparent)]` over `usize`)
+- `hist.add(511)` → byte offset 4088, the last bucket of a 4 KiB page
+- `(hist as *mut u8).add(511)` → 4081 bytes too early, mid-bucket, silent corruption
 
 ---
 

@@ -344,15 +344,13 @@ unsafe fn cleanup_except(root: *mut Proc) {
 
 - Exercises 48k–50k ran exactly **one** process: no decision to make
 - After `sys_fork` returns there are two `Runnable` processes and a real choice
+- The 36k policy, unchanged: start at the cursor, skip what is not `Runnable`, wrap, leave the cursor one past the pick
 
-```rust
-// sched.rs — exercise 36k, unchanged, finally load-bearing
-fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
-    let n = states.len();
-    (0..n).map(|off| (self.next + off) % n)
-          .find(|&i| states[i] == ProcState::Runnable)
-          .map(|i| { self.next = (i + 1) % n; i })
-}
+```text
+pass  slot 0     slot 1     slots 2-3  cursor  looks at  picks
+1     parent R   Unused     Unused     0       0         0
+2     parent R   child R    Unused     1       1         1
+3     parent R   child Z    Unused     2       2, 3, 0   0
 ```
 
 The cursor advances past the winner: no runnable process is skipped twice.

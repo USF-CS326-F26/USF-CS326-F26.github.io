@@ -53,7 +53,7 @@ first four kernel exercises (`30k`–`33k`). Worth 15% of the course grade.
 - Physical page allocation and the intrusive free list
 - Sv39: the address split, the PTE bit layout, the three-level walk,
   **translation by hand**
-- The process control block as L13 presents it — what a `Proc` must hold and
+- The process control block as the [Oct 13 lecture](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#thu-34k) presents it — what a `Proc` must hold and
   why — but not the code of `34k_processes`, which comes after the exam
 
 **Not on this exam**: the context switch and scheduling (`35k`, `36k`),

@@ -226,7 +226,7 @@ Top bit: 1 = interrupt, 0 = exception; low bits say which. rv6 reads
 | 12, 13, 15 | instruction / load / store page fault | bad memory access |
 
 On any `ecall`, `sepc` points **at** the `ecall`, so the handler must add 4 or
-it re-executes forever: `(*tf).epc += 4` (`usermode.rs`); same for `ebreak`
+it re-executes forever: an `ecall` at `0x1c` resumes at `0x20` (`usermode.rs`); same for `ebreak`
 (`kerneltrap()` in `trap.rs`).
 
 ## Supervisor CSRs

@@ -1,6 +1,6 @@
 # Prep: Boot, and Physical Memory — 31k · 32k
 
-**Session:** Thu Oct 8, 1h45 · **Exercises:** `31k_boot`, `32k_physical_memory` · **Prep time:** ~45 min · **Lecture:** [Boot: From Reset to `kmain`](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md), [Physical Memory and the Free List](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md)
+**Session:** Thu Oct 8, 1h45 · **Exercises:** `31k_boot`, `32k_physical_memory` · **Prep time:** ~20 min · **Lecture:** [Week 7 · From Reset to Page Tables](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md)
 
 ## What you will build
 
@@ -8,23 +8,22 @@ First, a kernel that boots: QEMU's ROM jumps to `0x8000_0000`, the linker script
 
 ## Concepts you need
 
-- **Reset state and `-bios none`** — [L05 §1](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#1-the-machine-at-reset)–[§2](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#2-firmware-and-what-bios-none-deletes) · [Memory Map §Why `0x8000_0000`](../guides/memory-map.md#why-0x8000_0000-and-what-bios-none-buys-you)
-- **`virt` memory map and MMIO** — [L05 §3](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#3-the-address-space-of-the-virt-board) · [Memory Map §The QEMU `virt` physical map](../guides/memory-map.md#the-qemu-virt-physical-map)
-- **Linker script: `.entry` first, `end` last** — [L05 §4](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#4-kernelld-line-by-line) · [Memory Map §`kernel.ld`, line by line](../guides/memory-map.md#kernelld-line-by-line)
-- **A stack before any Rust** — [L05 §5](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#what-happens-if-you-skip-it) · [RISC-V §Calling convention](../guides/riscv.md#calling-convention)
-- **Volatile UART stores; the test finisher** — [L05 §6](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#why-volatile-is-not-optional)–[§7](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#7-stopping-the-machine-and-what-comes-next) · [Unsafe Rust §Volatile access and MMIO](../guides/rust-unsafe-nostd.md#volatile-access-and-mmio)
-- **Pages; where free memory starts** — [L06 §2](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#2-why-pages), [§4](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#4-where-the-list-comes-from) · [Memory Map §What the allocator does with `end`](../guides/memory-map.md#what-the-allocator-does-with-end)
-- **Intrusive free list, LIFO, the ordering bug** — [L06 §3](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#3-the-intrusive-free-list), [§7](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#7-the-ordering-bug) · [Unsafe Rust §Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers)
+- **Reset state and `-bios none`** — [Week 7 · The machine at reset](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#31k-reset) · [Memory Map guide: Why `0x8000_0000`](../guides/memory-map.md#why-0x8000_0000-and-what-bios-none-buys-you)
+- **`virt` memory map and MMIO** — [Week 7 · The machine at reset](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#31k-reset) · [Memory Map guide: The QEMU `virt` physical map](../guides/memory-map.md#the-qemu-virt-physical-map)
+- **Linker script: `.entry` first, `end` last** — [Week 7 · The linker script puts you first](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#31k-linker) · [Memory Map guide: `kernel.ld`, line by line](../guides/memory-map.md#kernelld-line-by-line)
+- **A stack before any Rust** — [Week 7 · A stack before any Rust](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#31k-stack) · [RISC-V guide: Calling convention](../guides/riscv.md#calling-convention)
+- **Volatile UART stores; the test finisher** — [Week 7 · The machine at reset](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#31k-reset) · [Unsafe guide: Volatile access and MMIO](../guides/rust-unsafe-nostd.md#volatile-access-and-mmio)
+- **Pages; where free memory starts** — [Week 7 · Why pages](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#32k-pages), [Building the list from `end`](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#32k-building) · [Memory Map guide: What the allocator does with `end`](../guides/memory-map.md#what-the-allocator-does-with-end)
+- **Intrusive free list, LIFO, the ordering bug** — [Week 7 · The intrusive free list](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#32k-free-list) · [Unsafe guide: Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| L05 §§1–5 | 18 min |
-| L05 §§6–7 | 7 min |
-| L06 §§1–4 | 12 min |
-| L06 §7 | 3 min |
-| Memory Map §What the allocator does with `end` | 5 min |
+| [Week 7 · This week](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#this-week), then [Thursday · `31k` Boot](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#thu-31k), all three sections | 5 min |
+| [Week 7 · Thursday · `32k` The free list](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#thu-32k), all three sections | 5 min |
+| [Week 7 · For the exam: Reset to Rust](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#exam-boot-order). Not needed today; on Midterm 1 | 1 min |
+| [Memory Map guide: What the allocator does with `end`](../guides/memory-map.md#what-the-allocator-does-with-end) | 3 min |
 
 ## Mental model
 
@@ -53,4 +52,4 @@ Why a kernel cares: freeing can never fail, because the room to record a free pa
 
 ## If you finish early
 
-Start reading Friday's prep page, [Prep: Paging](07-cs326-2026-10-09-prep-paging.md): the pages you just handed out become page tables. Or the xv6 book's "Code: starting xv6" section (Chapter 2) and its physical memory allocation sections (Chapter 3).
+Work [Week 7 · Problem 1: The first pages out](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#problem-1) and [Problem 4: A double free, drawn](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#problem-4) on paper. Then start reading Friday's prep page, [Prep: Paging](07-cs326-2026-10-09-prep-paging.md): the pages you just handed out become page tables. Or the xv6 book's "Code: starting xv6" section (Chapter 2) and its physical memory allocation sections (Chapter 3).

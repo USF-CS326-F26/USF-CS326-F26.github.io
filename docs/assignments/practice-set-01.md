@@ -21,7 +21,7 @@ you. See [Exam Prep](../guides/exam-prep.md) for the three question shapes;
 each is labeled below.
 
 Scope: all of Module 1, plus kernel exercises `30k`–`33k`. Part F draws on
-L13 (the process control block), which is lecture material before the exam
+the [Oct 13 lecture](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#thu-34k) (the process control block), which is lecture material before the exam
 even though `34k_processes` itself is worked after it.
 
 ---

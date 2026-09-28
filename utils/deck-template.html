@@ -182,20 +182,6 @@
             border-radius: 4px;
         }
 
-        /* Exam material: always a core (horizontal) slide, never cut.
-           Mark it with <!-- .slide: class="exam" data-exam="On Midterm 1" --> */
-        .reveal .slides section.exam::before {
-            content: attr(data-exam);
-            position: absolute;
-            top: -1.6em;
-            right: 0;
-            font-size: 0.45em;
-            font-weight: 700;
-            color: var(--primary-color);
-            background: var(--accent-color);
-            padding: 0.15em 0.7em;
-            border-radius: 4px;
-        }
 
         /* Make the down arrow obvious when a stack has depth below it. */
         .reveal .controls .navigate-down.enabled {

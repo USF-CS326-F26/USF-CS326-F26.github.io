@@ -248,17 +248,16 @@ marks the winner `Running`, sets `CURPROC`, and `swtch`-es into it; control
 returns to the next line when that process yields or exits.
 
 The policy itself is unchanged from exercise 36k — a rotation cursor and a
-scan:
+scan. Start at the cursor, skip every slot that is not `Runnable`, wrap past the
+last slot, and leave the cursor one past the winner. Here is `forktest` by
+hand, with the table shrunk to four slots, the parent in slot 0 and the child
+landing in slot 1:
 
-```rust
-fn pick_next(&mut self, states: &[ProcState]) -> Option<usize> {
-    let n = states.len();
-    (0..n)
-        .map(|off| (self.next + off) % n)
-        .find(|&i| states[i] == ProcState::Runnable)
-        .map(|i| { self.next = (i + 1) % n; i })
-}
-```
+| Pass | Slot 0 | Slot 1 | Slots 2–3 | Cursor | Looks at | Picks | Cursor after |
+|---|---|---|---|---|---|---|---|
+| 1 | parent, Runnable | Unused | Unused | 0 | 0 | 0 | 1 |
+| 2 | parent, Runnable | child, Runnable | Unused | 1 | 1 | 1 | 2 |
+| 3 | parent, Runnable | child, Zombie | Unused | 2 | 2, 3, 0 | 0 | 1 |
 
 Because the cursor advances past the process it just picked, no runnable
 process is skipped twice in a row — the no-starvation invariant, finally
@@ -438,7 +437,7 @@ reserve `fork` for the window they actually need.
 
 | Survives `exec` | Replaced by `exec` |
 |---|---|
-| pid, parent pointer | user page table (`(*p).pagetable`) |
+| pid, parent pointer | user page table, `(*p).pagetable` |
 | open file table `ofile` | program image, all code and data |
 | kernel stack page | user stack, and everything on it |
 | trapframe **page** (same physical page) | trapframe **contents**: `epc`, `sp`, `a0`, `a1` |
@@ -829,7 +828,7 @@ Page-table changes:
    kernel table. `copyinstr` and `copyout` reach user memory by *walking* the
    user page table in software (`vm.rs`), never by switching
    to it. That is why those functions exist.
-3. `usertrapret` computes `vm::make_satp((*p).pagetable)` — now the **new**
+3. `usertrapret` builds a `satp` value from `(*p).pagetable` — now the **new**
    table — and `userret` writes it to `satp` (`usermode.rs`).
    **Kernel → new user table.**
 
