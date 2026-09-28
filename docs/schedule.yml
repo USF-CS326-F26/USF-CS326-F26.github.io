@@ -180,10 +180,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/04-cs326-2026-09-18-prep-errors-and-echo/"
-        - text: "Reading · Week 6"
-          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly/"
-        - text: "Slides · Week 6"
-          url: "lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html"
         - text: "ulib and Commands"
           url: "guides/ulib-and-commands/"
 
@@ -235,12 +231,12 @@ weeks:
     tuesday:
       date: "Sep 29"
       type: "lecture"
-      topic: "L11 Physical Memory and the Free List"
+      topic: "Below Rust: Assembly, unsafe, and no_std"
       links:
         - text: "Lecture"
-          url: "lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list/"
+          url: "lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/"
         - text: "Slides"
-          url: "lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list-slides.html"
+          url: "lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std-slides.html"
 
     thursday:
       date: "Oct 1"
@@ -265,6 +261,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics/"
+        - text: "Reading · Week 7"
+          url: "lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list/"
+        - text: "Slides · Week 7"
+          url: "lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list-slides.html"
         - text: "Reading · Week 7"
           url: "lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables/"
         - text: "Slides · Week 7"

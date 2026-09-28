@@ -376,15 +376,15 @@ If you cannot state the promise in one sentence, you do not know whether it is t
 
 ## C Has All of This — Invisibly
 
+xv6's `uart.c` reaches the same UART through three macros:
+
 ```c
-void kfree(void *pa) {
-    struct run *r = (struct run*)pa;
-    r->next = kmem.freelist;
-    kmem.freelist = r;
-}
+#define Reg(reg) ((volatile unsigned char *)(UART0 + (reg)))
+#define ReadReg(reg) (*(Reg(reg)))
+#define WriteReg(reg, v) (*(Reg(reg)) = (v))
 ```
 
-Every line is *exactly* as unsafe as rv6's `kfree`. C has no way to say so.
+Every use is *exactly* as unsafe as a raw-pointer store in Rust. C has no way to say so.
 
 <div class="highlight-box">
 Rust does not make kernel programming safe. It makes the unsafe parts <strong>greppable</strong>: "show me every place that could corrupt memory" has a finite answer.

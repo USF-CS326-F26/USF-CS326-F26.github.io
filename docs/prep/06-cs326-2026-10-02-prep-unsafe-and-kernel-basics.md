@@ -1,6 +1,6 @@
 # Prep: unsafe, and Leaving std — 21r · 30k
 
-**Session:** Fri Oct 2, 1h30 · **Exercises:** `21r_unsafe_bridge` · `30k_kernel_basics` · **Prep time:** ~45 min · **Lecture:** [L09 Leaving `std`: `no_std` and Bare-Metal Rust](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md)
+**Session:** Fri Oct 2, 1h30 · **Exercises:** `21r_unsafe_bridge` · `30k_kernel_basics` · **Prep time:** ~25 min · **Lecture:** [Week 6 · Below Rust](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md)
 
 ## What you will build
 
@@ -8,22 +8,22 @@ First, on your laptop, the inner loop of a UART driver: a raw pointer to a fixed
 
 ## Concepts you need
 
-- **Raw pointer vs. reference; `.add(n)` scales by the pointee** — [L09 §2](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#2-raw-pointers) · [Guide § Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers)
-- **`unsafe`: five operations, nothing disabled** — [L09 §3](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#3-unsafe-five-operations-and-a-promise) · [Guide § What unsafe does not do](../guides/rust-unsafe-nostd.md#what-unsafe-does-not-do)
-- **Safe wrapper, unsafe core** — [L09 §3](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#the-shape-that-follows-safe-wrapper-unsafe-core) · [Guide § Before you write unsafe](../guides/rust-unsafe-nostd.md#before-you-write-unsafe)
-- **Volatile MMIO** — [L09 §4](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#4-volatile-why-mmio-without-it-means-nothing) · [Guide § Volatile access and MMIO](../guides/rust-unsafe-nostd.md#volatile-access-and-mmio)
-- **`core` / `alloc` / `std`** — [L09 §5](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#the-three-layers) · [Guide § core, alloc, and std](../guides/rust-unsafe-nostd.md#core-alloc-and-std)
-- **The `no_std` skeleton, by build error** — [L09 §5](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#learn-the-errors-not-the-incantations) · [Guide § The no_std skeleton](../guides/rust-unsafe-nostd.md#the-no_std-skeleton)
+- **Raw pointer vs. reference; `.add(n)` scales by the pointee** — [Week 6 · Memory you cannot borrow: MMIO and raw pointers](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#21r-pointers) · [Unsafe guide: Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers)
+- **`unsafe`: five operations, nothing disabled** — [Week 6 · What `unsafe` unlocks, and what it does not](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#21r-unsafe) · [Unsafe guide: What unsafe does not do](../guides/rust-unsafe-nostd.md#what-unsafe-does-not-do)
+- **Safe wrapper, unsafe core** — [Week 6 · What `unsafe` unlocks, and what it does not](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#21r-unsafe) · [Unsafe guide: Before you write unsafe](../guides/rust-unsafe-nostd.md#before-you-write-unsafe)
+- **Volatile MMIO** — [Week 6 · Volatile: the load that never repeats](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#21r-volatile)
+- **`core` / `alloc` / `std`** — [Week 6 · What `std` is, and why a kernel cannot have it](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#30k-std) · [Unsafe guide: core, alloc, and std](../guides/rust-unsafe-nostd.md#core-alloc-and-std)
+- **The `no_std` skeleton, by build error** — [Week 6 · The bare-metal skeleton](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#30k-skeleton) · [Unsafe guide: The no_std skeleton](../guides/rust-unsafe-nostd.md#the-no_std-skeleton)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| [L09 §1–4](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#1-the-boundary-where-the-type-system-stops) | 15 min |
-| [L09 §5–6](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#5-the-cliff-no_std) | 10 min |
-| [Guide § What unsafe does](../guides/rust-unsafe-nostd.md#what-unsafe-does) through § Volatile access and MMIO | 10 min |
-| [Guide § The no_std skeleton](../guides/rust-unsafe-nostd.md#the-no_std-skeleton) and [§ Symptoms and their causes](../guides/rust-unsafe-nostd.md#symptoms-and-their-causes) | 5 min |
-| [Setup §6](../assignments/setup.md#6-check-your-environment) — target installed? | 5 min |
+| [Week 6 · Friday · `21r` Raw pointers, `unsafe`, and volatile](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#fri-21r), all three sections | 4 min |
+| [Week 6 · Friday · `30k` Leaving `std`](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#fri-30k), both sections | 2 min |
+| [Unsafe guide: What unsafe does](../guides/rust-unsafe-nostd.md#what-unsafe-does) through [Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers) | 7 min |
+| [Unsafe guide: The no_std skeleton](../guides/rust-unsafe-nostd.md#the-no_std-skeleton) and [Symptoms and their causes](../guides/rust-unsafe-nostd.md#symptoms-and-their-causes) | 4 min |
+| [Setup: Check your environment](../assignments/setup.md#6-check-your-environment) — target installed? | 2 min |
 
 ## Mental model
 
@@ -53,4 +53,4 @@ Making the pointer is safe; only the store needs `unsafe`, in a one-line block w
 
 ## If you finish early
 
-Work [L09 Problem 1](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#problem-1-which-lines-need-unsafe-and-which-error-survives-it) and [Problem 5](../lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md#problem-5-interrogate-the-target), then start reading [Thursday's prep page](07-cs326-2026-10-08-prep-boot-and-physical-memory.md) and its lecture, [Boot: From Reset to `kmain`](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md). Afterward, the [xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf) chapter 2 through §2.6, and [The Rustonomicon](https://doc.rust-lang.org/nomicon/) chapters 1–3.
+Work [Week 6 · Problem 2: Which lines need `unsafe`?](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#problem-2), then run the `rustc --print cfg` command from [Week 6 · Reading `riscv64gc-unknown-none-elf`](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#deeper-target) yourself. Then start reading [next Thursday's prep page](07-cs326-2026-10-08-prep-boot-and-physical-memory.md) and its lecture, [Boot: From Reset to `kmain`](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md). Afterward, the [xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf) chapter 2 through section 2.6, and [The Rustonomicon](https://doc.rust-lang.org/nomicon/) chapters 1–3.

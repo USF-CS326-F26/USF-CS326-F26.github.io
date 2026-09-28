@@ -141,11 +141,8 @@ swtch:
     ...
     sd s11, 104(a0)
 
-    ld ra,  0(a1)          # a1 = new: thaw the TARGET context
-    ld sp,  8(a1)
-    ld s0,  16(a1)
-    ...
-    ld s11, 104(a1)
+    # ... then the same fourteen registers are loaded
+    # ... from *new (a1): thaw the TARGET context
 
     ret                    # jump to the ra we just LOADED
 ```
@@ -177,27 +174,7 @@ later passes that first context as `new`.
 ### `baby_swtch` and `swtch`, side by side
 
 You have already written this. In `20a_asm_bridge`, `baby_swtch` saves and restores
-four registers through a four-field `Ctx`:
-
-```asm
-.globl baby_swtch                 .globl swtch
-baby_swtch:                       swtch:
-    sd   ra, 0(a0)                    sd ra,  0(a0)
-    sd   sp, 8(a0)                    sd sp,  8(a0)
-    sd   s0, 16(a0)                   sd s0,  16(a0)
-    sd   s1, 24(a0)                   sd s1,  24(a0)
-                                      ...            (s2..s10)
-                                      sd s11, 104(a0)
-
-    ld   ra, 0(a1)                    ld ra,  0(a1)
-    ld   sp, 8(a1)                    ld sp,  8(a1)
-    ld   s0, 16(a1)                   ld s0,  16(a1)
-    ld   s1, 24(a1)                   ld s1,  24(a1)
-                                      ...            (s2..s10)
-                                      ld s11, 104(a1)
-
-    ret                               ret
-```
+four registers through a four-field `Ctx`; `swtch` does the same with fourteen.
 
 Ten more registers, and a `Context` living inside a `Proc` (`proc.rs`) instead of a
 test harness. Same argument registers, same ordering constraint, same `ret`. 20a's
@@ -624,40 +601,6 @@ routine.
 
 (e) B's stack. A's frames are intact at `0x8020_0FF0` and below, unreachable until
 someone switches back into A and restores `sp` from `A + 8`.
-
-</details>
-
-### Problem 2: Find the bug
-
-This passes the exercise-05 test; used in a scheduler, the kernel hangs.
-
-```asm
-.globl swtch
-swtch:
-    ld ra,  0(a1)
-    sd ra,  0(a0)
-    ld sp,  8(a1)
-    sd sp,  8(a0)
-    # ... same pattern for s0..s11 ...
-    ret
-```
-
-What is wrong, and why does the one-way test still pass?
-
-<details markdown="1">
-<summary>Click to reveal solution</summary>
-
-Load and store are **interleaved in the wrong order**: each register is loaded from
-`new` *before* being saved to `old`, so `*old` ends up a copy of `*new` rather than a
-snapshot of the caller. The caller's context is destroyed.
-
-The forward switch still works — `ra` and `sp` are correctly loaded from `new`, so
-`ret` lands in the target, which is why a one-way test passes. But nothing can switch
-*back*: `old.ra` now points into the target, so `swtch(&new, &old)` returns into the
-target's entry again on a stale `sp`. In a scheduler loop that looks like one process
-running forever, or an immediate fault — both far from the real bug.
-
-The 20a rule is exactly this: **save all fourteen before loading any.**
 
 </details>
 

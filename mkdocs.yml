@@ -119,6 +119,14 @@ extra_javascript:
   - javascripts/mermaid-init.js
   - javascripts/schedule.js
 
+# A dead #anchor is a warning, so `mkdocs build --strict` fails on it. The prep
+# pages link hundreds of lecture sections by anchor; without this a renamed
+# heading breaks them silently. Never gate on `mkdocs build -v`: at DEBUG level
+# mkdocs skips anchor validation entirely.
+validation:
+  links:
+    anchors: warn
+
 # ==============================================================================
 # Navigation
 # ==============================================================================
@@ -195,14 +203,14 @@ nav:
       - "Sep 10 · Slides": lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html
       - "Sep 15 · Buffers, Bytes, and Line-Oriented I/O": lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io.md
       - "Sep 15 · Slides": lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html
-      - "Sep 17 · RISC-V Registers and Calling Assembly from Rust": lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md
-      - "Sep 17 · Slides": lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly-slides.html
       - "Sep 22 · L09 Leaving `std`: `no_std` and Bare-Metal Rust": lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md
       - "Sep 22 · Slides": lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust-slides.html
       - "Sep 24 · Boot: From Reset to `kmain`": lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md
       - "Sep 24 · Slides": lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain-slides.html
-      - "Sep 29 · Physical Memory and the Free List": lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list.md
-      - "Sep 29 · Slides": lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list-slides.html
+      - "Sep 29 · Week 6 · Below Rust: Assembly, `unsafe`, and `no_std`": lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md
+      - "Sep 29 · Slides": lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std-slides.html
+      - "Oct 1 · Physical Memory and the Free List": lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md
+      - "Oct 1 · Slides": lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list-slides.html
       - "Oct 1 · Virtual Memory I: Sv39 Page Tables": lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables.md
       - "Oct 1 · Slides": lectures/06-cs326-2026-10-01-virtual-memory-i-sv39-page-tables-slides.html
       - "Oct 6 · Processes and the Process Control Block": lectures/07-cs326-2026-10-06-processes-and-the-process-control-block.md

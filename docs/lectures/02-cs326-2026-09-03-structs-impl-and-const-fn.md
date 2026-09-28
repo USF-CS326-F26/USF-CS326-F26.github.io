@@ -316,13 +316,13 @@ offset (`swtch.rs`). The contract is that field *i* lives at offset
 8*i*:
 
 ```text
-        Context  (Rust, #[repr(C)])     swtch  (hand-written asm; a0=old, a1=new)
+        Context  (Rust, #[repr(C)])     swtch  (hand-written asm; a0=old)
 offset  +--------------------------+
-   0    | ra   return address      | <-->  sd ra,  0(a0)   /  ld ra,  0(a1)
-   8    | sp   stack pointer       | <-->  sd sp,  8(a0)   /  ld sp,  8(a1)
-  16    | s0                       | <-->  sd s0,  16(a0)  /  ld s0,  16(a1)
+   0    | ra   return address      | <-->  sd ra,  0(a0)
+   8    | sp   stack pointer       | <-->  sd sp,  8(a0)
+  16    | s0                       | <-->  sd s0,  16(a0)
   ...   |  ...                     |
- 104    | s11                      | <-->  sd s11, 104(a0) /  ld s11, 104(a1)
+ 104    | s11                      | <-->  sd s11, 104(a0)
         +--------------------------+       112 bytes = 14 x 8
 ```
 

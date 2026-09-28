@@ -29,7 +29,7 @@ docs/
   syllabus.md  staff.md
   assignments/              setup, exercises (generated), extra credit, practice sets, exams
   guides/                   the reference layer
-  lectures/                 WW-cs326-YYYY-MM-DD-topic.md + matching -slides.html
+  lectures/                 one page per week, WW-cs326-<Tuesday>-topic.md + matching -slides.html
   notes/                    CS326-SS YYYY-MM-DD Topic.pdf, the handwritten class notes
   prep/                     WW-cs326-YYYY-MM-DD-prep-slug.md, one per exercise session
   solutions/                exam + practice-set solutions ONLY (never exercise code)
@@ -46,6 +46,7 @@ utils/
   check_details.py          every block-level <details> carries markdown="1", so it renders
   rename_exercises.py       one-shot exercise rename (old → new names); --dry-run reports leftovers
   americanize.py            British → American spelling pass; --dry-run reports
+  deck-template.html        the shared head/CSS/scripts every weekly -slides.html starts from
 ```
 
 Run the generators in this order after any change to the calendar, to
@@ -159,80 +160,147 @@ mistyped date does not 404 silently.
 
 ## Lecture pages
 
-Filename: `{WW}-cs326-{YYYY-MM-DD}-{kebab-topic}.md`, where `WW` is the
-zero-padded **week** number, repeated across the sessions in that week. Each
-gets a matching `-slides.html`.
+There is **one lecture page per week**, and it is about exactly that week's
+Thursday and Friday exercises. It is presented on the Tuesday of the same week
+and read before it. Pages still in the older seven-section layout (Overview,
+Learning Objectives, … Summary) are being replaced week by week; do not write
+new pages that way.
 
-Every lecture page uses the same seven sections, in this order. The
-consistency is the point — students learn where to look.
+Filename: `{WW}-cs326-{YYYY-MM-DD}-{kebab-topic}.md` plus a matching
+`-slides.html`. The date is the **Tuesday the page is presented**, which is
+how `gen_schedule.py` attaches it to that Tuesday's row. `WW` is the
+zero-padded week **the page serves**. That is the same week except in two
+places: the week-9 page is presented Tue Oct 13 (week 8, because Oct 20 is
+fall break), and the two week-15 pages are presented Nov 24 and Dec 1.
 
 ```markdown
-# <Descriptive Title>
+# Week N · <Title>
 
-## Overview
-<one dense paragraph, 100-180 words: what this session covers, the arc it
- sits in, and links to the exercise and guides it relates to>
+> **Thu <Mon D>** `NNx_name` · **Fri <Mon D>** `NNx_name`, `NNx_name`
+>
+> Read **Essentials** before Tuesday: it is what Thursday and Friday assume.
+> **Going deeper** is optional and is not on the exam.
 
-## Learning Objectives
-- 6-8 bullets, each starting with a verb (Explain, Describe, Trace, Derive,
-  Implement, Decode, Distinguish)
+[Slides](<stem>-slides.html){ .md-button }
+[Thursday prep](../prep/<thursday-prep>.md){ .md-button }
+[Friday prep](../prep/<friday-prep>.md){ .md-button }
 
-## Prerequisites
-- 4-6 bullets naming prior lectures, exercises, or guides
-
----
-
-## 1. <Numbered Section>
-## 2. <Numbered Section>
-### <sub-heading>
+## This week { #this-week }          80–150 words; opens with the later exercise that needs it
 
 ---
 
-## Key Concepts
-| Concept | Definition | Example |    <- 3 columns, 10-12 rows
+## Essentials { #essentials }
+
+### Thursday · `NNx` <title> { #thu-NNx }
+#### <concept> { #NNx-<slug> }       1–5 per exercise, at most 12 per week
+> **The one thing to get right:**    the classic mistake: symptom, then why
+
+### Friday · `NNx` <title> { #fri-NNx }
+> **Extra credit · `NNx`** …          a blockquote box for an extra-credit exercise
+
+### For the exam { #exam }            lecture-only exam topics, tagged, ≤ 300 words
 
 ---
 
-## Practice Problems
-### Problem 1: <short title>
-<prose + code>
-<details>
+## Going deeper { #deeper }
+*Optional. Nothing here is needed on Thursday or Friday, and nothing here is on the exam.*
+### <topic> { #deeper-<slug> }
+### Practice problems { #problems }
+#### Problem 1: <short title> { #problem-1 }
+<prose + analog code>
+
+<details markdown="1">
 <summary>Click to reveal solution</summary>
+
 <worked solution>
+
 </details>
-                                        <- 5-6 problems
 
 ---
 
-## Further Reading
-- course-internal links first, then external
-
----
-
-## Summary
-1. **Bold lead-in.** One or two sentences.
-                                        <- 8 numbered items
+## Key terms { #terms }              Term | Meaning | Where you use it — 8–12 rows
+## Further reading { #reading }
 ```
 
-Target 4,400–5,900 words. **No YAML front matter** — the page starts with
-`# Title` on line 1.
+- **Essentials** is written in the voice of the OSlings README "Learn"
+  sections (`07r_traits` is the model):
+  - second person, sentences of about 18 words, paragraphs of 2–4 sentences
+  - each concept motivated by the later exercise that needs it
+  - one reason per concept
+  - bold only at a term's first definition
+  - code in blocks of eight lines or fewer, introduced by one sentence and
+    glossed by one
+
+  Aim for about three quarters of the week's README Learn word count. Students
+  do not see the README until the session, so Essentials must stand on its own.
+- **For the exam** holds the topics the exams test that no exercise needs
+  (`lb` vs `lbu`, the scheduling-policy survey, the two-table file-descriptor
+  design, …). Tag each one with its exam. It is part of Essentials; nothing
+  examinable lives only in Going deeper.
+- **Going deeper** is where history, xv6 and Linux comparisons, alternatives,
+  and bit-level detail go: 800–2,000 words, plus 3–5 practice problems. The
+  whole page is 2,500–4,500 words.
+- Give every heading that anything links to an explicit `{ #id }`. The prep
+  pages link these ids, and `mkdocs.yml` turns a dead anchor into a warning,
+  so `--strict` fails on it.
+- **No YAML front matter**: the page starts with `# Week N · …` on line 1.
+
+## Slide decks
+
+Each lecture page has one deck, `<stem>-slides.html`. It is the deck
+presented on Tuesday; weekly decks live only in `docs/lectures/`, and the
+`inclass` repository carries runnable examples. Start every deck from
+`utils/deck-template.html` (replace `{{TITLE}}`, `{{PAGE_STEM}}`,
+`{{WEEK_LABEL}}` and `{{MARKDOWN}}`); its head, CSS and scripts are the same in
+every deck:
+
+- It is reveal.js 5.0.4 with one `<section data-markdown>` and one
+  `<textarea data-template>` holding the whole deck as markdown.
+- A line `---` (blank lines around it) starts a new **core** slide.
+- A line `--` (blank lines around it) starts a **vertical** slide under the
+  current one, reached with the down arrow. Going-deeper material and the
+  practice problems live only in these stacks, marked
+  `<!-- .slide: class="deeper" -->`, under the core slide they extend: a
+  deeper topic as one slide, a practice problem as two (the problem, then its
+  solution below it). PageDown/PageUp, which is what a clicker sends, are
+  mapped to right/left, so the clicker walks the core slides and skips the
+  stacks.
+- **No builds.** Every slide shows all of its content at once. The template
+  sets `fragments: false`; do not write `class="fragment"`. A question and its
+  answer can share a slide: pose it aloud, then point at the answer.
+- Slide numbers read current/total (`slideNumber: 'c/t'`), counting every
+  slide, stacks included.
+- Exam material is always a core slide, never in a stack and never in the cut
+  order: `<!-- .slide: class="exam" data-exam="On Midterm 1" -->`.
+- `Notes:` at the end of a slide starts speaker notes (press **S**). The title
+  slide's notes hold the minute plan, a fast path of about a dozen slide ids,
+  and the cut order. Every core slide's notes hold 1–3 talking points and one
+  question students will ask. **Notes are public** in the HTML, so the no-leak
+  rule applies to them.
+- The shape is: title, This week, one Part per exercise (concept slides, a
+  "one thing to get right" slide, its exam slides),
+  Summary, Before Thursday and Before Friday (a walk-through of the prep
+  pages, using their Check-yourself questions), and next week's page.
+- The budget is 20–26 core slides (≤ 60 words and ≤ 10 code lines each) for
+  about 80 minutes, and at most 45 slides in all.
 
 ## Prep pages
 
 Every exercise session has one page in `docs/prep/`, named
 `{WW}-cs326-{YYYY-MM-DD}-prep-{slug}.md` with the session's date, so
 `gen_schedule.py` can link it and `check_links.py` can insist on it. It is the
-bridge between the Tuesday lecture and the in-class exercise: students read it
-before the session; the Tuesday lecture ends with a walk-through of it.
+bridge between the week's lecture page and the in-class exercise: students read
+it before the session, and the Tuesday deck ends with a walk-through of both of
+the week's prep pages.
 
 ```markdown
 # Prep: <Topic> — <short forms, e.g. 12c, 13c (+14c extra credit)>
 
 **Session:** Fri Sep 25 · **Exercises:** `12c_wc`, `13c_grep` · **Prep time:** ~30 min ·
-**Lecture:** [L07 ...](../lectures/...)
+**Lecture:** [Week 5 · …](../lectures/...)
 
 ## What you will build
-## Concepts you need            <- links to lecture §§ and guides
+## Concepts you need            <- links to the week page's Essentials ids and guides
 ## Read before class            <- table: what, minutes
 ## Mental model                 <- a tiny example, never the exercise itself
 ## Check yourself               <- 2–3 questions in <details>
@@ -241,10 +309,10 @@ before the session; the Tuesday lecture ends with a walk-through of it.
 ## If you finish early          <- Rustlings / 100 Exercises pointers
 ```
 
-400–700 words. **The no-leak rule:** a prep page never names the staged files,
-the `IMPLEMENT` markers, the functions to implement, or a numbered implement
-list — those live in the exercise README, which is released only in class. It
-says *what* and *why*; the README says *where* and *how*.
+400–700 words. Link text names the section ("Week 6 · Registers have jobs"),
+never a section number. The prep page keeps its own "Mental model" example; the
+lecture page uses different ones. **The no-leak rule** below applies here too: a
+prep page says *what* and *why*; the README says *where* and *how*.
 
 ## Exercise naming
 
@@ -258,20 +326,39 @@ takes and what a first mention in a page should use. Extra credit is
 `14c`, `41k`, `47k`, `54k` and the design-only `55k`. Never write a bare
 number with no track letter, and never write "lab" — everything is an exercise.
 
-### The contract with exercise READMEs
+### The contract with exercise READMEs, and the no-leak rule
 
 This matters more than anything else on this page.
 
-Each exercise already ships a `README.md` inside OSlings that teaches *how* to
-do it: what to type, what the markers mean, what API to call. **The lecture
-page must not repeat that.** The lecture carries the concept, the hardware,
-the history, the comparison to xv6 and Linux, the diagrams, and the practice
-problems.
+Each exercise ships a `README.md` inside OSlings, released only in class,
+that teaches *how* to do it: what the markers mean, what to type, what API to
+call. The lecture page teaches the same *ideas* before class, in the same
+voice, with **different examples**. Every page, deck, speaker note, and
+`<details>` solution on this site is public before the session it serves, so:
 
-The test: a lecture page should be worth reading by someone who never opens
-the exercise, and the exercise should be doable by someone who skipped the
-lecture — with a worse experience. If you find yourself writing the
-implementation steps, stop; that belongs in the exercise.
+- **Never:**
+  - solution or hint code
+  - an `IMPLEMENT` function's signature with its body
+  - `IMPLEMENT` marker counts
+  - an ordered step list that maps onto a marker's solution
+  - the staged filenames students edit, in Essentials
+  - "find the bug" problems built on exercise code
+  - sentences carried over from the README or `hints.md`
+- **Always:**
+  - analog code in a different domain, with a different *shape*, not just
+    different names. A counted copy loop is bytecopy's shape, so use a
+    sentinel loop; a context swap with `baby_swtch`'s layout is the answer,
+    so use another layout.
+  - xv6-standard concept names (`kalloc`, `walk`, `swtch`, `fork`) are fine.
+- **Exam facts that coincide with a solution line** (the `sepc` + 4 rule,
+  `satp` packing, the child's `a0` = 0, …) appear as a prose principle, as
+  hand arithmetic, or as a diagram, never as code.
+- A few idioms are allowed as code because every bare-metal crate has them:
+  `#![no_std]`, `#![no_main]`, the `#[panic_handler]` signature, `extern "C"`
+  blocks, and `read_volatile`/`write_volatile` in general.
+
+The test: a student who reads only Essentials walks into Thursday ready, and
+the README still has everything left to teach.
 
 ## Formatting conventions
 
@@ -281,13 +368,17 @@ implementation steps, stop; that belongs in the exercise.
 - **Asides are blockquotes** (`> Key distinction: ...`), not admonitions.
   CS 315 uses only 5 `!!!` blocks across 36 lecture pages and 95 blockquote
   lines; match that ratio. Reserve `!!!` for genuine warnings.
-- **Practice problem solutions go in `<details><summary>Click to reveal
-  solution</summary>`.** This is the single most characteristic device on the
-  site and students rely on it.
+- **Practice problem solutions go in a collapsible block**: `<details
+  markdown="1">` alone on its line, `<summary>Click to reveal
+  solution</summary>` on the next, then a blank line (`check_details.py`
+  enforces this). This is the single most characteristic device on the site
+  and students rely on it.
 - **Code fences are tagged**: `rust`, `asm`, `bash`, `text`, `mermaid`.
   Terminal transcripts, register dumps, and ASCII diagrams are `text`.
-- **Cite kernel code as `file.rs:NNN`**, the way the CS 631 octox lecture
-  does. Read the source; do not cite from memory.
+- **Cite kernel code as `` `item()` (`file.rs`) ``**, never with a line number
+  (`check_refs.py` rejects `file.rs:NNN` anywhere, even inside a pasted panic
+  message). Read the source; do not cite from memory. Never attach a citation
+  to analog code, and never put a made-up `.rs` name in backticks.
 - **Tables for anything enumerable.** Registers, bit fields, flags, addresses.
 
 ## Things not to copy from CS 315 / CS 631

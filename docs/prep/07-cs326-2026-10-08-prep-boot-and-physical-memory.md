@@ -1,6 +1,6 @@
 # Prep: Boot, and Physical Memory — 31k · 32k
 
-**Session:** Thu Oct 8, 1h45 · **Exercises:** `31k_boot`, `32k_physical_memory` · **Prep time:** ~45 min · **Lecture:** [Boot: From Reset to `kmain`](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md), [Physical Memory and the Free List](../lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list.md)
+**Session:** Thu Oct 8, 1h45 · **Exercises:** `31k_boot`, `32k_physical_memory` · **Prep time:** ~45 min · **Lecture:** [Boot: From Reset to `kmain`](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md), [Physical Memory and the Free List](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md)
 
 ## What you will build
 
@@ -13,8 +13,8 @@ First, a kernel that boots: QEMU's ROM jumps to `0x8000_0000`, the linker script
 - **Linker script: `.entry` first, `end` last** — [L05 §4](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#4-kernelld-line-by-line) · [Memory Map §`kernel.ld`, line by line](../guides/memory-map.md#kernelld-line-by-line)
 - **A stack before any Rust** — [L05 §5](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#what-happens-if-you-skip-it) · [RISC-V §Calling convention](../guides/riscv.md#calling-convention)
 - **Volatile UART stores; the test finisher** — [L05 §6](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#why-volatile-is-not-optional)–[§7](../lectures/05-cs326-2026-09-24-boot-from-reset-to-kmain.md#7-stopping-the-machine-and-what-comes-next) · [Unsafe Rust §Volatile access and MMIO](../guides/rust-unsafe-nostd.md#volatile-access-and-mmio)
-- **Pages; where free memory starts** — [L06 §2](../lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list.md#2-why-pages), [§4](../lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list.md#4-where-the-list-comes-from) · [Memory Map §What the allocator does with `end`](../guides/memory-map.md#what-the-allocator-does-with-end)
-- **Intrusive free list, LIFO, the ordering bug** — [L06 §3](../lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list.md#3-the-intrusive-free-list), [§7](../lectures/06-cs326-2026-09-29-physical-memory-and-the-free-list.md#7-the-ordering-bug) · [Unsafe Rust §Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers)
+- **Pages; where free memory starts** — [L06 §2](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#2-why-pages), [§4](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#4-where-the-list-comes-from) · [Memory Map §What the allocator does with `end`](../guides/memory-map.md#what-the-allocator-does-with-end)
+- **Intrusive free list, LIFO, the ordering bug** — [L06 §3](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#3-the-intrusive-free-list), [§7](../lectures/06-cs326-2026-10-01-physical-memory-and-the-free-list.md#7-the-ordering-bug) · [Unsafe Rust §Raw pointers](../guides/rust-unsafe-nostd.md#raw-pointers)
 
 ## Read before class
 

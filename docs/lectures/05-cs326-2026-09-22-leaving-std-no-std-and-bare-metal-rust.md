@@ -230,14 +230,13 @@ lines inside one `unsafe` hides which line matters.
 
 ### C has all of this, invisibly
 
-xv6, the C kernel this course descends from, contains the same free list:
+xv6, the C kernel this course descends from, talks to the same UART through
+three macros in `uart.c`:
 
 ```c
-void kfree(void *pa) {
-    struct run *r = (struct run*)pa;
-    r->next = kmem.freelist;
-    kmem.freelist = r;
-}
+#define Reg(reg) ((volatile unsigned char *)(UART0 + (reg)))
+#define ReadReg(reg) (*(Reg(reg)))
+#define WriteReg(reg, v) (*(Reg(reg)) = (v))
 ```
 
 Every line is *exactly* as unsafe as ours. C has no way to say so, so the
@@ -692,10 +691,10 @@ This safe function is meant to be the checked boundary around an unsafe core.
 It compiles and passes a test that writes offsets `0..regs.len()`.
 
 ```rust
-pub fn write_reg_at(regs: &mut [u8], offset: usize, value: u8) -> bool {
-    let base = regs.as_mut_ptr();
-    unsafe { core::ptr::write_volatile(base.add(offset), value); }
-    if offset > regs.len() {
+pub fn set_pixel(fb: &mut [u32], i: usize, color: u32) -> bool {
+    let base = fb.as_mut_ptr();
+    unsafe { *base.add(i) = color; }
+    if i > fb.len() {
         return false;
     }
     true
@@ -709,31 +708,21 @@ Name every defect, and say why it is *unsound* rather than merely buggy.
 
 Three defects:
 
-1. **The check happens after the write.** By the time `offset > regs.len()` is
+1. **The check happens after the write.** By the time `i > fb.len()` is
    evaluated the store has landed. Ordering is the entire content of a bounds
    check.
-2. **Off-by-one.** Valid indices are `0..regs.len()`, so the test must be
-   `offset >= regs.len()`; with `>`, `offset == len` writes one byte past the
-   end.
-3. **`base.add(offset)` is UB before the store executes** when `offset` leaves
+2. **Off-by-one.** Valid indices are `0..fb.len()`, so the test must be
+   `i >= fb.len()`; with `>`, `i == len` writes one pixel past the end.
+3. **`base.add(i)` is UB before the store executes** when `i` leaves
    the slice's allocation. Computing the address is already the violation.
 
 Why *unsound*: a safe function promises that **no** call from safe code can
-cause undefined behavior. `write_reg_at(&mut buf, 9_999_999, 0)` is legal safe
+cause undefined behavior. `set_pixel(&mut fb, 9_999_999, 0)` is legal safe
 Rust with no `unsafe` in the caller's file, and it produces a wild store — the
-unsafety escaped the module that promised to contain it. A sound version checks
-first and returns early:
-
-```rust
-pub fn write_reg_at(regs: &mut [u8], offset: usize, value: u8) -> bool {
-    if offset >= regs.len() { return false; }
-    unsafe { core::ptr::write_volatile(regs.as_mut_ptr().add(offset), value); }
-    true
-}
-```
-
-Now the promise fits in one sentence: "`offset` is less than the length of a
-slice I hold `&mut` to, so `base.add(offset)` is inside that allocation and
+unsafety escaped the module that promised to contain it. A sound version tests
+`i >= fb.len()` first and returns early; only then does it compute the address
+and store. Now the promise fits in one sentence: "`i` is less than the length
+of a slice I hold `&mut` to, so `base.add(i)` is inside that allocation and
 writable."
 </details>
 

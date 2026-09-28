@@ -232,7 +232,7 @@ def sessions():
         exercises=['12c_wc', '13c_grep'], extra=['14c_head'],
         links=L(("Extra Credit", "/assignments/extra-credit/")))
 
-    add(6, 'tuesday', 'Sep 29', 'lecture', 'L11 Physical Memory and the Free List')
+    add(6, 'tuesday', 'Sep 29', 'lecture', 'Below Rust: Assembly, unsafe, and no_std')
     add(6, 'thursday', 'Oct 1', 'exercise', '20a asm_bridge — QEMU deadline',
         exercises=['20a_asm_bridge'],
         links=L(("RISC-V", "/guides/riscv/"), ("QEMU and GDB", "/guides/qemu-gdb/")))

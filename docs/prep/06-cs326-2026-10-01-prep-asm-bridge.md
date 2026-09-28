@@ -1,6 +1,6 @@
 # Prep: The Assembly Bridge — 20a
 
-**Session:** Thursday Oct 1, 1h45 · **Exercises:** `20a_asm_bridge` · **Prep time:** ~45 min · **Lecture:** [RISC-V Registers and Calling Assembly from Rust](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md)
+**Session:** Thursday Oct 1, 1h45 · **Exercises:** `20a_asm_bridge` · **Prep time:** ~30 min · **Lecture:** [Week 6 · Below Rust](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md)
 
 !!! warning "QEMU deadline is today"
 
@@ -23,22 +23,24 @@ passes when the serial console prints `OSLINGS:PASS`.
 
 ## Concepts you need
 
-- **ABI names and the register file** — [Lecture §2](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#2-the-rv64-register-file) · [RISC-V guide: Registers](../guides/riscv.md#registers)
-- **Caller-saved vs. callee-saved** — [Lecture §3](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#3-caller-saved-and-callee-saved), [§3.1](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#31-why-a-context-switch-is-cheap) · [RISC-V guide: caller/callee split](../guides/riscv.md#the-callercallee-split)
-- **The calling convention: `a0`–`a7`, `ra`, `sp`** — [Lecture §4](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#4-the-calling-convention-and-the-stack-frame) · [RISC-V guide: Calling convention](../guides/riscv.md#calling-convention)
-- **Loads, stores, and `1b`/`2f` labels** — [Lecture §5.1](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#51-only-loads-and-stores-touch-memory), [§5.2](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#52-local-numeric-labels) · [RISC-V guide: Local numeric labels](../guides/riscv.md#local-numeric-labels)
-- **`global_asm!`, `extern "C"`, and `#[repr(C)]`** — [Lecture §6.1](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#61-global_asm), [§6.2](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#62-extern-c-and-why-calling-it-is-unsafe), [§6.3](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#63-reprc-now-load-bearing) · [RISC-V guide: Assembly inside Rust](../guides/riscv.md#assembly-inside-rust)
-- **A `ret` that lands somewhere else** — [Lecture §8.3](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#83-what-just-happened), [§8.4](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#84-save-everything-before-loading-anything)
+- **ABI names and the register file** — [Week 6 · Registers have jobs](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-registers) · [RISC-V guide: Registers](../guides/riscv.md#registers)
+- **Caller-saved vs. callee-saved** — [Week 6 · Caller-saved and callee-saved](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-saved) · [RISC-V guide: caller/callee split](../guides/riscv.md#the-callercallee-split)
+- **The calling convention: `a0`–`a7`, `ra`, `sp`** — [Week 6 · The calling convention](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-convention) · [RISC-V guide: Calling convention](../guides/riscv.md#calling-convention)
+- **Loads, stores, and `1b`/`2f` labels** — [Week 6 · Loads, stores, and local labels](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-memory) · [RISC-V guide: Local numeric labels](../guides/riscv.md#local-numeric-labels)
+- **`global_asm!`, `extern "C"`, and `#[repr(C)]`** — [Week 6 · The bridge](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-bridge) · [RISC-V guide: Assembly inside Rust](../guides/riscv.md#assembly-inside-rust)
+- **A `ret` that lands somewhere else** — [Week 6 · A `ret` that lands somewhere else](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-resume)
+- **PASS, `[fail]`, a timeout, and getting out of QEMU** — [Week 6 · Running under QEMU](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-qemu) · [QEMU guide: how to get out of QEMU](../guides/qemu-gdb.md#first-how-to-get-out-of-qemu)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| [Lecture §2–§4](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#2-the-rv64-register-file) | 15 min |
-| [Lecture §5–§6](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#5-the-instructions-you-actually-need) | 12 min |
-| [Lecture §8.3–§8.4](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#83-what-just-happened) | 5 min |
-| [RISC-V guide](../guides/riscv.md#registers): Registers, Calling convention, Local labels | 5 min |
-| [Dev Setup §7](../guides/dev-setup.md#7-oslings-doctor): run `oslings doctor` · [QEMU guide: how to get out of QEMU](../guides/qemu-gdb.md#first-how-to-get-out-of-qemu) | 8 min |
+| [Week 6 · This week](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#this-week), then [Thursday · `20a` The assembly bridge](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#thu-20a) from Registers have jobs through The calling convention | 3 min |
+| [Week 6 · Loads, stores, and local labels](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-memory) and [The bridge](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-bridge) | 3 min |
+| [Week 6 · A `ret` that lands somewhere else](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-resume) and [Running under QEMU](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#20a-qemu) | 2 min |
+| [Week 6 · For the exam](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#exam): `lb` versus `lbu`, stack frames, register traces. Not needed today; on Midterm 1 | 2 min |
+| [RISC-V guide: Registers](../guides/riscv.md#registers), [Calling convention](../guides/riscv.md#calling-convention), [Local numeric labels](../guides/riscv.md#local-numeric-labels) | 7 min |
+| [Dev Setup: `oslings doctor`](../guides/dev-setup.md#7-oslings-doctor), and run it · [QEMU guide: how to get out of QEMU](../guides/qemu-gdb.md#first-how-to-get-out-of-qemu) | 6 min |
 
 ## Mental model
 
@@ -80,4 +82,4 @@ the machine runs perfectly, in the wrong place.
 
 ## If you finish early
 
-Work lecture [Practice Problem 3](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#problem-3-compute-the-offsets) and [Problem 4](../lectures/04-cs326-2026-09-17-riscv-registers-and-calling-assembly.md#problem-4-find-the-bug), then start reading [Friday's prep page](06-cs326-2026-10-02-prep-unsafe-and-kernel-basics.md). Chapter 2 of the [xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf) shows where the assembly lives in a real kernel.
+Work [Week 6 · Problem 1: Sign extension by hand](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#problem-1), [Problem 3: Offsets by hand](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#problem-3) and [Problem 4: Trace a resume](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md#problem-4), then start reading [Friday's prep page](06-cs326-2026-10-02-prep-unsafe-and-kernel-basics.md). Chapter 2 of the [xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf) shows where the assembly lives in a real kernel.

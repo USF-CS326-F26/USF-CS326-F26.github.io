@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 6 · Below Rust: Assembly, unsafe, and no_std - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+        /* Exam material: always a core (horizontal) slide, never cut.
+           Mark it with <!-- .slide: class="exam" data-exam="On Midterm 1" --> */
+        .reveal .slides section.exam::before {
+            content: attr(data-exam);
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: var(--primary-color);
+            background: var(--accent-color);
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/">&larr; Week 6 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 6 · Below Rust
+
+## Assembly, `unsafe`, and `no_std`
+
+CS 326 Operating Systems · Tuesday, September 29
+
+**Thu Oct 1** `20a_asm_bridge` · **Fri Oct 2** `21r_unsafe_bridge`, `30k_kernel_basics`
+
+[The Week 6 page](06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/): read **Essentials** before Thursday.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week; run `oslings doctor` tonight | title, this-week |
+| 5–45 | Part I · Thursday · `20a` (11 core, ending with the three exam slides) | thu-20a … exam-trace |
+| 45–50 | Running under QEMU | 20a-qemu |
+| 50–72 | Part II · Friday · `21r` (5 core) | fri-21r … 21r-one-thing |
+| 72–82 | Part III · Friday · `30k` (3 core) | fri-30k … 30k-one-thing |
+| 82–85 | Summary | summary |
+| 85–97 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 97–105 | Buffer: questions, or one ↓ stack (the compiler listings under 21r-volatile) | |
+
+**Fast path** (the minimum lecture, 13 ids): this-week, 20a-saved, 20a-bridge, 20a-resume, 20a-one-thing, exam-lb-lbu, exam-prologue, exam-trace, 20a-qemu, 21r-unsafe, 21r-volatile, fri-30k, 30k-skeleton. The Midterm 1 slides off the fast path (20a-registers, 20a-convention, 20a-memory, 21r-pointers) are never dropped: show each in its cut-order form, about 30 seconds each.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. before-friday: point at the prep page, and open Friday's session with its questions.
+5. 30k-one-thing and 21r-one-thing: one sentence each on the slide before.
+6. 20a-registers: 30 seconds, but leave the ABI-name table up (Midterm 1 asks for it); talk only about `ra` and `sp`.
+7. 20a-convention: 30 seconds: "`a0`–`a7` in, `a0` out; a leaf that sticks to `a` and `t` needs no frame". Skip the predict.
+8. 21r-pointers: two sentences: a raw pointer is an address with no guarantees, and making one is safe; `.add(3)` is 24 bytes.
+9. fri-30k: leave the three-layer table up (PS1 Problem 8 (a) is this table), say "a kernel is what `std` calls; `core` survives", and skip the re-export sentence.
+10. 20a-memory: show `find_byte`, say `1b` = back and `2f` = forward, and leave the load/store bullets up without talk.
+11. before-thursday: last to go; the doctor reminder is also on this-week.
+
+The Part title slides thu-20a and fri-21r take ten seconds each. Never cut: exam-lb-lbu, exam-prologue, exam-trace (the gold "On Midterm 1" tag).
+
+**Practice Set 1 anchors:** P6 → exam-lb-lbu, 20a-convention (c), exam-trace · P7 → exam-prologue, 20a-saved · P8 (a) fri-30k, (b) 30k-skeleton, (c) 21r-volatile, (d) 21r-pointers and 21r-unsafe.
+
+- Week 6 went up late, so the page asks for Essentials before Thursday, not before today.
+- **Q:** "Is Going deeper on the midterm?" No. The gold tag marks what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Oct 1 | `20a_asm_bridge` | Rust calling your assembly, in QEMU | `ret` goes where `ra` points |
+| Fri Oct 2 | `21r_unsafe_bridge` | a device reached by raw pointer | device → volatile, RAM → plain |
+| Fri Oct 2 | `30k_kernel_basics` | a kernel crate with no OS | a kernel is what `std` calls |
+
+<div class="highlight-box">The QEMU deadline is Thursday: <code>oslings doctor</code> tonight.</div>
+
+Notes:
+- Start from where this goes: in `35k` your kernel stops one process and resumes another, and in `31k` it boots with nothing beneath it. Neither can be written in ordinary Rust.
+- By Friday night: assembly running on the bare machine, and a kernel crate that compiles with no OS.
+- **Q:** "What if `oslings doctor` shows red?" The Dev Setup troubleshooting table is keyed on what doctor reports. Come to office hours before Thursday, not during.
+
+---
+
+<!-- .slide: id="thu-20a" -->
+
+# Part I · Thursday
+
+## `20a_asm_bridge`: the assembly bridge
+
+In `35k`, one call returns into a different process, on a different stack. No Rust statement names `ra` or `sp`.
+
+So on Thursday you write that part in assembly and call it from Rust.
+
+Notes:
+- Part I runs 40 minutes and ends with the three exam slides.
+- ↓ below: the same few places every kernel needs assembly (optional).
+- **Q:** "Couldn't a smarter compiler do it?" No. A switch names specific registers and returns to a different `ra`; compiled Rust never lets you pick either. It is not an optimization.
+
+--
+
+<!-- .slide: id="deeper-places" class="deeper" -->
+
+## The same few places, in every kernel
+
+| Place | Why it cannot be Rust | Exercise |
+|---|---|---|
+| Boot trampoline | Rust needs a valid `sp` before its first instruction | `31k` |
+| Context switch | It names 14 registers and returns to a different `ra` | `35k` |
+| Trap vectors | Entered between any two instructions, with every register live | `43k` |
+| Return to user mode | It switches page tables and keeps running | `48k` |
+
+None of it is an optimization: Rust cannot express it at all, and no compiler will change that.
+
+---
+
+<!-- .slide: id="20a-registers" -->
+
+## Registers have jobs
+
+| Name | Job |
+|---|---|
+| `zero` | always 0; writes vanish |
+| `ra` | return address |
+| `sp` | stack pointer |
+| `a0`–`a7` | arguments; `a0` is also the result |
+| `t0`–`t6` | temporaries |
+| `s0`–`s11` | saved registers |
+
+- `ra` is ordinary: `call f` fills it, and `ret` is `jalr zero, 0(ra)`
+- The stack grows down; `sp` is a multiple of 16 at every call
+
+Notes:
+- 32 registers, `x0`–`x31`; the ABI names say what each is for, and nobody writes the x-numbers.
+- `ret` is not special: it jumps to whatever `ra` holds. Park that; it pays off at the end of Part I.
+- A fresh stack is entered at its top, its highest address.
+- **Q:** "Why 16 and not 8?" The RISC-V psABI requires 16-byte alignment at every call, so 16-byte values on the stack stay aligned. Every other function assumes it, so you keep it.
+
+---
+
+<!-- .slide: id="20a-saved" -->
+
+## Caller-saved and callee-saved
+
+- **Caller-saved** (`t0`–`t6`, `a0`–`a7`, `ra`): garbage after any `call`, unless you stashed them.
+- **Callee-saved** (`s0`–`s11`, `sp`): borrowed from your caller, owed back before `ret`.
+
+How many must a context switch save?
+
+<div class="info-box">14 in <code>35k</code>, not 31. A switch is entered by a <code>call</code>, so the <code>t</code> and <code>a</code> values are already saved. Left: <code>s0</code>–<code>s11</code>, <code>sp</code>, and <code>ra</code>.</div>
+
+Notes:
+- A bargain with two sides: whoever borrows an `s` register pays it back, and whoever needs a `t` after a `call` stashed it first.
+- The count follows from the bargain: the compiler already saved what it needed before the `call`. The switch replaces `ra` on purpose; that is how it returns elsewhere.
+- PS1 Problem 7 (a) asks what a routine breaks when it writes an `s` register and returns.
+- **Q:** "If the callee must return to `ra`, why is `ra` caller-saved?" Because the callee's own `call` overwrites it. A function that calls saves its own `ra`: that is the prologue, on an exam slide shortly.
+
+---
+
+<!-- .slide: id="20a-convention" -->
+
+## The calling convention
+
+`extern "C"` selects it:
+
+- `a0` through `a7` carry the arguments, left to right
+- `a0` carries the result
+- a pointer or a `u64` fills one register
+
+A **leaf function** calls nothing, so its `ra` survives. If it also sticks to `a` and `t` registers, it needs no stack frame.
+
+Predict: in `f(p, n, c)`, which register holds `c`?
+
+`a2`, the third.
+
+Notes:
+- The convention is why the assembly and the Rust side can be written apart and still meet.
+- PS1 Problem 6 (c) asks why a routine that never touches `ra` or `sp` needs no prologue. This slide is the answer.
+- **Q:** "And a ninth argument?" It goes on the stack, per the psABI. Keep your routines to eight arguments or fewer and you never meet it.
+
+---
+
+<!-- .slide: id="20a-memory" -->
+
+## Loads, stores, and local labels
+
+```asm
+find_byte:               # a0 = string, a1 = byte wanted
+1:  lbu  t0, 0(a0)       # load a byte
+    beq  t0, a1, 2f      # found: to the exit
+    beqz t0, 2f          # the NUL: to the exit too
+    addi a0, a0, 1       # next byte
+    j    1b              # back to the top
+2:  ret                  # a0 = match or NUL
+```
+
+- Only loads and stores touch memory: `ld`/`sd` move 8 bytes; `lb`, `lbu`, `sb` move one
+- In `off(rs)`, `off` is a signed 12-bit constant (−2048 to 2047) welded into the instruction
+- `1b` is the nearest `1:` behind; `2f` the nearest `2:` ahead
+
+Notes:
+- Read `beq t0, a1, 2f` as "if equal, jump ahead to 2".
+- The loop keeps no count: the NUL is its only brake. With no 0 and no match, it reads on through memory.
+- Labels share one flat namespace. Numeric labels may repeat, which is the reason they exist.
+- **Q:** "Why `lbu` and not `lb`?" Hold it for the exam slide. Short version: with `lb`, the byte `0xE9` never equals `a1`.
+
+---
+
+<!-- .slide: id="20a-bridge" -->
+
+## The bridge: Rust calls your assembly
+
+```rust
+core::arch::global_asm!(r#"
+.globl span_end
+span_end:                # a0 = *const Span
+    ld   t0, 0(a0)       # t0 = start
+    ld   t1, 8(a0)       # t1 = len
+    add  a0, t0, t1      # a0 = start + len
+    ret
+"#);
+#[repr(C)] pub struct Span { pub start: u64, pub len: u64 }
+extern "C" { fn span_end(s: *const Span) -> u64; }
+```
+
+- `extern "C"` is a claim Rust cannot check, so every call is `unsafe`
+- `#[repr(C)]` keeps declaration order, so the `0` and `8` stay true
+
+Insert a field ahead of `len`. Does it still compile?
+
+Yes, and it adds the wrong number.
+
+Notes:
+- `.globl` exports the name so the linker can resolve it from Rust; the raw string `r#"…"#` carries quotes and backslashes through untouched.
+- Declare the parameter as `u64` instead, and `unsafe { span_end(7) }` compiles; the assembly then loads from address 7. Nothing complains. The signature is your promise.
+- **Q:** "Why is the call `unsafe` if my assembly is right?" Rust cannot read assembly, so it cannot know. The `unsafe` is you signing for it; on Friday a safe wrapper signs once for every caller.
+
+--
+
+<!-- .slide: id="deeper-asm" class="deeper" -->
+
+## `asm!` versus `global_asm!`
+
+- `global_asm!` emits whole functions.
+- Its sibling `asm!` places an instruction or two inside a Rust function and wires them to Rust values: `asm!("csrr {}, sstatus", out(reg) x)` lets the compiler pick the register.
+- Both treat braces as operand placeholders, so a literal brace must be doubled.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: offsets by hand
+
+```rust
+#[repr(C)]
+pub struct Packet { pub kind: u8, pub len: u32, pub addr: u64, pub flags: u16 }
+```
+
+- Give each field's offset, the size and the alignment.
+- Which instruction loads `addr` into `t0` when `a0` points at a `Packet`?
+- Which field order makes the struct smallest?
+- What changes without `#[repr(C)]`?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+```text
+offset  0   kind    u8     1 byte, then 3 bytes of padding (u32 aligns to 4)
+offset  4   len     u32    4 bytes
+offset  8   addr    u64    8 bytes
+offset 16   flags   u16    2 bytes, then 6 bytes of padding (size rounds to 8)
+size = 24, align = 8
+```
+
+- The load is `ld t0, 8(a0)`.
+- Widest first, `addr, len, flags, kind`, gives offsets 0, 8, 12 and 14 and a size of 16.
+- Without `#[repr(C)]` the layout is unspecified, and today's `rustc` picks exactly that widest-first order. Now `ld t0, 8(a0)` loads `len`, `flags`, `kind` and a padding byte, glued into one number.
+
+---
+
+<!-- .slide: id="20a-resume" -->
+
+## A `ret` that lands somewhere else
+
+`ret` jumps to whatever `ra` holds *now*:
+
+```asm
+resume:                  # a0 = *const Resume: sp at 0, ra at 8
+    ld   sp, 0(a0)       # the saved stack
+    ld   ra, 8(a0)       # the saved return address
+    ret                  # "return" into it
+```
+
+- A one-way door: nothing records where its caller was. It is C's `longjmp`; `setjmp` is the half that records "where I am".
+
+A process that has never run gets its first record written by hand; `35k` shows how.
+
+Notes:
+- Load a new `ra` and a function returns elsewhere. Load a new `sp` too, and you are running a different computation on its own stack.
+- **Q:** "What happens to the computation that called `resume`?" Nothing records it, so it is gone. Its partner `checkpoint` is the half that records "where I am": ↓ Problem 4, under the trace slide.
+
+---
+
+<!-- .slide: id="20a-one-thing" -->
+
+## The one thing to get right · `20a`
+
+What does a lost return address look like under QEMU?
+
+Ten seconds of nothing, then "QEMU timed out". The output stops after the last `[ok]`; no `[fail]`.
+
+A `ret` went somewhere wrong; control never came back.
+
+<div class="highlight-box"><code>ret</code> keeps no memory of its own; it trusts <code>ra</code> at the instant it runs. Before any <code>ret</code>, know which instruction last wrote <code>ra</code>.</div>
+
+Notes:
+- The symptom is the tell: a `[fail]` line means a check ran and said no; silence means control never came back. `oslings run` shows the output only after the timeout, so the ten seconds are blank.
+- **Q:** "Why is there no `[fail]` line?" A `[fail]` needs a check to finish and compare, and control never got back to one. The last `[ok]` line tells you how far it got.
+
+---
+
+<!-- .slide: id="exam-lb-lbu" class="exam" data-exam="On Midterm 1" -->
+
+## `lb` versus `lbu`
+
+Memory holds the byte `0xE9`. Predict each load.
+
+| Load | Fills the upper 56 bits with | `0xE9` loads as |
+|---|---|---|
+| `lb` | the top bit (sign-extends) | `0xFFFF_FFFF_FFFF_FFE9`, −23 |
+| `lbu` | zeros (zero-extends) | `0xE9`, 233 |
+
+
+Below `0x80` the two agree.
+
+Load data bytes, such as characters and sizes, with `lbu`: under `lb`, each byte of `0x80` or more counts 256 too small.
+
+Notes:
+- `lb` copies bit 7 into all 56 bits above it; `lbu` fills them with zeros.
+- PS1 Problem 6 turns on exactly this: a byte-summing routine that uses `lb`.
+- A copy does not care: `sb` stores the low 8 bits either way. Sums and comparisons do.
+- **Q:** "When would I ever want `lb`?" When the byte is a signed number, an `i8`: a small signed offset stored in one byte, say.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: sign extension by hand
+
+Memory at `p` holds the bytes `41 E9 7F 80`, and `a0 = p`. Give each destination register in hex:
+
+```asm
+    lb   t0, 1(a0)
+    lbu  t1, 1(a0)
+    lb   t2, 3(a0)
+    lb   t3, 2(a0)
+    add  t4, t0, t1
+```
+
+Then `find_byte` runs on the bytes `41 E9 7F 00` with `a1 = 0xE9`. What does it return, and what with `lb` for `lbu`?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+| Register | Value | Why |
+|---|---|---|
+| `t0` | `0xFFFF_FFFF_FFFF_FFE9` | the top bit of `0xE9`, copied upward: −23 |
+| `t1` | `0x0000_0000_0000_00E9` | `lbu` fills with zeros: 233 |
+| `t2` | `0xFFFF_FFFF_FFFF_FF80` | −128 |
+| `t3` | `0x0000_0000_0000_007F` | top bit clear, so both loads agree |
+| `t4` | `0x0000_0000_0000_00D2` | −23 + 233 = 210; the add wraps past 2^64 |
+
+With `lbu`, `find_byte` returns `p + 1`. With `lb`, `t0` holds `0xFFFF_FFFF_FFFF_FFE9`, which never equals `a1 = 0xE9` (a Rust `u8` argument arrives zero-extended). The loop walks on to the NUL and returns `p + 3`, "not found".
+
+---
+
+<!-- .slide: id="exam-prologue" class="exam" data-exam="On Midterm 1" -->
+
+## Stack frames: prologue and epilogue
+
+A function that calls must save `ra` (its own `call` overwrites it). Any function that uses an `s` register must save it:
+
+```asm
+    addi sp, sp, -16     # claim 16 bytes; sp stays 16-byte aligned
+    sd   ra, 8(sp)       # we call, so save ra
+    sd   s0, 0(sp)       # we use s0, so save the caller's s0
+    ...                  # the body
+    ld   s0, 0(sp)       # the epilogue: the prologue, backwards
+    ld   ra, 8(sp)
+    addi sp, sp, 16
+    ret
+```
+
+<div class="highlight-box">Skip the <code>s0</code> save and a unit test can still pass: its tiny caller keeps nothing in <code>s0</code>. A real caller does, and breaks later, somewhere else.</div>
+
+Notes:
+- `sp` moves down by a multiple of 16, and the epilogue undoes exactly that. `sp` is callee-saved too.
+- PS1 Problem 7 is this story, the clobbered `s0`.
+- **Q:** "What if I save only one register?" Still 16 bytes: `sp` must stay 16-byte aligned, so the frame rounds up and 8 bytes are padding.
+
+---
+
+<!-- .slide: id="exam-trace" class="exam" data-exam="On Midterm 1" -->
+
+## Trace the registers
+
+Given a routine and its inputs: each register's value at marked points, and where `ret` goes.
+
+- One row per point; update only the register each instruction writes
+- `li` loads a constant, `mv` copies, `bnez` branches if nonzero
+- Watch sign extension
+- `ret` uses `ra` as it is *at that moment*
+
+Practice: ↓ Problem 1 (under `lb` versus `lbu`), ↓ Problem 4 (here).
+
+Notes:
+- The Midterm 1 page names this as one of three question shapes; PS1 Problem 6 is one.
+- The row-per-point table is the whole technique. Most wrong answers update a register the instruction did not write.
+- **Q:** "Will we write assembly on the exam?" Mostly you read and trace, per the Midterm 1 page. Short pieces can be asked, like the instructions around a routine in PS1 Problem 7 (c).
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: trace a resume
+
+```asm
+checkpoint:              # a0 = *mut Resume -> 0
+    sd   sp, 0(a0)
+    sd   ra, 8(a0)
+    li   a0, 0
+    ret
+resume_with:             # a0 = *const Resume, a1 = value
+    ld   sp, 0(a0)
+    ld   ra, 8(a0)
+    mv   a0, a1
+    ret
+```
+
+<span>`R` is at `0x8000_9000`. Function `f` calls `checkpoint(&R)` with `sp = 0x8000_5600` and `ra = 0x8000_1044`, gets 0, and calls `g`. `g`'s prologue saves `f`'s `s1` and drops `sp` to `0x8000_55E0`, then uses `s1` and calls `resume_with(&R, 7)`, with `ra = 0x8000_2214`.</span> <!-- .element: class="small" -->
+
+<span>**Part 1.** Give `ra`, `sp` and `a0` after each instruction of `resume_with`. Where does `ret` go, and what does `f` see? **Part 2.** What does `f` find in `s1` afterwards?</span> <!-- .element: class="small" -->
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+| After | `ra` | `sp` | `a0` |
+|---|---|---|---|
+| `ld sp, 0(a0)` | `0x8000_2214` | `0x8000_5600` | `0x8000_9000` |
+| `ld ra, 8(a0)` | `0x8000_1044` | `0x8000_5600` | `0x8000_9000` |
+| `mv a0, a1` | `0x8000_1044` | `0x8000_5600` | `7` |
+
+`ret` jumps to `0x8000_1044`, right after `f`'s call. `f` sees `checkpoint` return a second time, now with 7, on its own stack.
+
+**Part 2.** `f` finds `g`'s value: only `g`'s epilogue would have restored `f`'s `s1`, and it never ran. `s1` is callee-saved, so `f` was entitled to trust it. That is why `setjmp` also records `s0`–`s11`, and why a real switch saves every callee-saved register.
+
+---
+
+<!-- .slide: id="20a-qemu" -->
+
+## Running under QEMU
+
+`oslings run 20a_asm_bridge` builds for `riscv64gc-unknown-none-elf`, boots it in `qemu-system-riscv64` (no firmware, no OS) and reads the serial output.
+
+| You see | It means |
+|---|---|
+| `OSLINGS:PASS` | pass |
+| a `[fail]` line | that check said no |
+| silence, then "QEMU timed out" | control never came back |
+
+To quit a QEMU you started: `Ctrl-A`, then `x`. `Ctrl-C` does nothing.
+
+Notes:
+- The timeout is 10 seconds. Its message blames "the stack setup", but in `20a` the stack is given: read it as "control never came back".
+- `20a` has no host-side fallback, which is why Thursday is the QEMU deadline.
+- **Q:** "How do I debug a hang?" Attach GDB to QEMU: the QEMU and GDB guide has a diagnostic playbook.
+
+---
+
+<!-- .slide: id="fri-21r" -->
+
+# Part II · Friday
+
+## `21r_unsafe_bridge`: reaching a device
+
+From `31k` on, every character your kernel prints is one byte stored at a device address. Friday practices that under `cargo test`, where each mistake names itself in a failing assertion.
+
+Notes:
+- Part II runs 22 minutes over five slides. Sep 22 touched this material; today is the full version.
+- **Q:** "Does `21r` run in QEMU?" No: it runs on your laptop under `cargo test`, and `oslings watch` reruns it on save. QEMU returns in `31k`.
+
+---
+
+<!-- .slide: id="21r-pointers" -->
+
+## Memory you cannot borrow
+
+A store to a device address reaches a chip: **memory-mapped I/O**. No reference fits: the borrow checker never saw anything created there.
+
+```rust
+const MTIMECMP: *mut u64 = 0x0200_4000 as *mut u64;  // one alarm per hart
+let hart3 = unsafe { MTIMECMP.add(3) };               // 0x0200_4018
+```
+
+A **raw pointer** is an address with a type and no guarantees. Making one is safe: it reads and writes nothing until you use it.
+
+Why `0x0200_4018`, not `0x0200_4003`?
+
+`.add(n)` counts elements: three `u64`s, 24 bytes.
+
+Notes:
+- On QEMU's `virt` board the serial port answers at `0x1000_0000`, the CLINT timer at `0x0200_0000`, and RAM starts at `0x8000_0000`. The Memory Map guide has every device.
+- `.add` is itself an `unsafe fn`: leaving the pointer's object is already undefined behavior, even with no load. The value is `*p`, or `(*p).field`.
+- **Q:** "Why is making a pointer safe if it can be garbage?" Creating it reads and writes nothing. Harm needs a load or a store, so that is where `unsafe` goes (PS1 Problem 8 (d)).
+
+---
+
+<!-- .slide: id="21r-unsafe" -->
+
+## What `unsafe` unlocks, and what it does not
+
+- Unlocks: dereference a raw pointer; call an `unsafe fn`, including `extern` functions; touch a `static mut`. Two rarer ones make five.
+- Turns nothing off: two `&mut` of one element still fail with `E0499` inside `unsafe { }`.
+
+```rust
+pub fn end_of(s: &Span) -> u64 {
+    // promise: s is live, aligned, and 16 bytes long
+    unsafe { span_end(s) }
+}
+```
+
+A **safe wrapper** around an unsafe core: the `&Span` is the proof, so no safe call can break `end_of`. It is **sound**.
+
+Notes:
+- `unsafe` is a signed claim. An `unsafe fn` hands the claim to its caller; an `unsafe` block says "checked here". In this course's edition, 2021, the whole body of an `unsafe fn` already counts as an `unsafe` block.
+- A reference is always non-null, aligned and alive, which is why taking `&Span` keeps the promise. When a type cannot prove it, the wrapper checks at run time and refuses.
+- **Q:** "Why not make `end_of` an `unsafe fn` and be done?" Then every caller inherits the promise, and the unsafe spreads. The wrapper settles it once, and everything above it stays safe Rust.
+
+--
+
+<!-- .slide: id="deeper-c" class="deeper" -->
+
+## C has all of this, invisibly
+
+xv6, the C teaching kernel rv6 descends from, reaches its UART through three macros:
+
+```c
+#define Reg(reg) ((volatile unsigned char *)(UART0 + (reg)))
+#define ReadReg(reg) (*(Reg(reg)))
+#define WriteReg(reg, v) (*(Reg(reg)) = (v))
+```
+
+Every line is as unsafe as the Rust version, and C has no way to say so. Rust does not make a kernel safe. It makes the unsafe parts searchable, so "where could this corrupt memory?" has a finite answer.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: which lines need `unsafe`?
+
+Say whether each numbered line compiles, and name any error.
+
+```rust
+static mut HITS: u64 = 0;
+
+pub fn touch(words: &mut [u64; 4]) -> u64 {
+    let start = words.as_mut_ptr();         // 1
+    let p = start.add(2);                   // 2
+    unsafe {
+        *p = 7;                             // 3
+        let a = &mut words[0];              // 4
+        let b = &mut words[0];              // 5
+        *a += 1; *b += 1;
+        HITS += 1;                          // 6
+        core::ptr::read_volatile(start)     // 7
+    }
+}
+```
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+- **1 compiles.** Making a pointer is safe.
+- **2 fails:** ``error[E0133]: call to unsafe function `…::add` is unsafe and requires unsafe function or block``. Nothing is dereferenced, but `.add` is an `unsafe fn`.
+- **3 and 4 compile.**
+- **5 fails:** ``error[E0499]: cannot borrow `words[_]` as mutable more than once at a time``, raised inside the block. No amount of `unsafe` fixes it.
+- **6 compiles.** Writing a `static mut` is on the list.
+- **7 compiles.** It calls an `unsafe fn` inside the block.
+
+---
+
+<!-- .slide: id="21r-volatile" -->
+
+## Volatile: the load that never repeats
+
+`mtime` ticks ten million times a second:
+
+```rust
+const MTIME: *const u64 = 0x0200_BFF8 as *const u64;
+unsafe fn wait_until(deadline: u64) {
+    while *MTIME < deadline {}      // a plain load
+}
+```
+
+Predict: what does an optimized build do?
+
+It loads `*MTIME` once, since nothing in the loop writes it; if the deadline has not passed, it spins forever.
+
+Of two plain stores to one register, the first is deleted.
+
+`read_volatile` and `write_volatile`: performed as written, every time. Device → volatile; RAM → plain `*p`.
+
+Notes:
+- The optimizer assumes only your program changes memory. Devices break that assumption.
+- Stores fail the opposite way from loads: the load is done too few times, the store vanishes. ↓ shows the real `rustc -O` listing, hoisted load and deleted store. PS1 Problem 8 (c) is the store half.
+- **Q:** "Does volatile make it thread-safe?" No. Volatile stops the compiler from dropping or merging the access; it is not a lock. Locks arrive with `37k`.
+
+--
+
+<!-- .slide: id="deeper-emitted-load" class="deeper" -->
+
+## What the compiler emits: the hoisted load
+
+`rustc -O` for `riscv64gc-unknown-none-elf`, with `MTIME` as before:
+
+```rust
+unsafe fn plain_wait(d: u64)     { while *MTIME < d {} }
+unsafe fn volatile_wait(d: u64)  { while read_volatile(MTIME) < d {} }
+```
+
+```asm
+plain_wait:                     volatile_wait:
+    lui  a1, 8204                   lui  a1, 8204
+    ld   a1, -8(a1)             .LBB5_1:
+    bgeu a1, a0, .LBB3_2            ld   a2, -8(a1)
+.LBB3_1:                            bltu a2, a0, .LBB5_1
+    j    .LBB3_1                    ret
+.LBB3_2:
+    ret
+```
+
+<span>`plain_wait` loads once, above the loop; if the deadline has not passed, `j .LBB3_1` branches to itself. That is loop-invariant code motion, legal because nothing said this memory could change. `lui a1, 8204` builds `0x0200_C000`, so `-8(a1)` is `0x0200_BFF8`.</span> <!-- .element: class="small" -->
+
+--
+
+<!-- .slide: id="deeper-emitted-store" class="deeper" -->
+
+## What the compiler emits: the deleted store
+
+```rust
+unsafe fn plain_rearm(t: u64)    { *MTIMECMP = u64::MAX; *MTIMECMP = t; }
+unsafe fn volatile_rearm(t: u64) { write_volatile(MTIMECMP, u64::MAX);
+                                   write_volatile(MTIMECMP, t); }
+```
+
+```asm
+plain_rearm:                    volatile_rearm:
+    lui  a1, 8196                   lui  a1, 8196
+    sd   a0, 0(a1)                  li   a2, -1
+    ret                             sd   a2, 0(a1)
+                                    sd   a0, 0(a1)
+                                    ret
+```
+
+<span>`plain_rearm` stores once: the `u64::MAX` store was dead, so it vanished. On RAM that is a free win; on a timer it is a skipped step. A debug build does none of this, which is how a missing volatile survives `cargo test` and every `oslings run`.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="21r-one-thing" -->
+
+## The one thing to get right · `21r`
+
+Every test is green. Can a volatile mistake still be in there?
+
+- Yes: an optimized kernel loses a byte or hangs.
+- The tests' "device" is an array, and `oslings` builds without optimization: plain and volatile pass alike.
+
+<div class="highlight-box">Choose by the rule, not the test: device → volatile, RAM → plain.</div>
+
+Notes:
+- This is the one mistake the tests cannot see. Say the rule twice.
+- **Q:** "Then how do I know I chose right?" Ask of each access: is this address a device register or RAM? The answer picks the access, and the review is yours.
+
+---
+
+<!-- .slide: id="fri-30k" -->
+
+# Part III · Friday
+
+## `30k_kernel_basics`: leaving `std`
+
+```text
+std     needs an OS     println!, files, threads, HashMap
+alloc   needs a heap    Box, Vec, String
+core    needs nothing   Option, Result, slices, iterators, core::ptr, PanicInfo
+```
+
+A kernel cannot have `std`: a kernel is what `std` calls. `std` re-exports `core`, so `std::ptr::write_volatile` *is* `core::ptr::write_volatile`, and most of Module 1 survives.
+
+Notes:
+- From `31k` on, your code starts with no loader, no C runtime and no OS. `30k` tells the compiler so, and passes once the kernel compiles. No QEMU yet.
+- The target, `riscv64gc-unknown-none-elf`, names its OS `none` (↓ reads the whole name). PS1 Problem 8 (a) is this table.
+- **Q:** "Can I use `Vec` in the kernel?" Not yet: it needs `alloc` and an allocator, and the kernel heap arrives in week 10 (↓). Fixed-size arrays until then.
+
+--
+
+<!-- .slide: id="deeper-target" class="deeper" -->
+
+## Reading `riscv64gc-unknown-none-elf`
+
+```text
+riscv64  gc   -unknown  -none  -elf
+   |      |       |       |      +-- object format: plain ELF
+   |      |       |       +--------- operating system: none; you are about to be it
+   |      |       +----------------- vendor: unspecified
+   |      +------------------------- extensions: G and C
+   +-------------------------------- base ISA: 64-bit RISC-V
+```
+
+- `G` bundles multiply, atomics, single and double float, CSR access (Zicsr) and instruction fences (Zifencei); `C` adds 16-bit compressed encodings
+- `rustc --print cfg --target riscv64gc-unknown-none-elf` answers `target_os="none"`
+- `qemu-riscv64` emulates one Linux process, so it cannot run your kernel; `qemu-system-riscv64` emulates a whole machine
+
+--
+
+<!-- .slide: id="deeper-alloc" class="deeper" -->
+
+## Getting `alloc` back
+
+`#![no_std]` does not forbid a heap; it refuses to invent one.
+
+In week 10 rv6 builds a kernel heap on the page allocator from `32k`, registers it with `#[global_allocator]`, and declares `extern crate alloc;`. Then `Box`, `Vec` and `String` work in the kernel.
+
+`HashMap` still does not: its default hasher seeds itself with randomness from the OS, so it lives only in `std`.
+
+---
+
+<!-- .slide: id="30k-skeleton" -->
+
+## The bare-metal skeleton
+
+Every bare-metal Rust binary has these; each answers an error:
+
+```rust
+#![no_std]      // link core, not std
+#![no_main]     // no generated main
+#[panic_handler]
+fn panic(_: &PanicInfo) -> ! { … }
+```
+
+| Leave out | `rustc` says |
+|---|---|
+| `#![no_std]` | ``error[E0463]: can't find crate for `std` `` |
+| the panic handler | `` `#[panic_handler]` function required, but not found `` |
+| `#![no_main]` | ``error[E0601]: `main` function not found in crate …`` |
+
+`!` is the **never type**: a panic has nowhere to return. No C runtime calls `main`; the **linker script** names the entry.
+
+Notes:
+- Learn the errors, not the incantations: each line exists because `rustc` asked for it.
+- The body must never return, and `!` makes the compiler hold you to that. The entry symbol carries `#[no_mangle]`, keeping its name exact, and `extern "C"` (↓ mangling). PS1 Problem 8 (b) asks why the handler is required and why it returns `!`.
+- **Q:** "Why take `&PanicInfo` if nothing can print yet?" The signature is fixed by the language. From `31k` on you have a UART, so a panic handler could report where it happened.
+
+--
+
+<!-- .slide: id="deeper-mangle" class="deeper" -->
+
+## Symbol names: mangling and `#[no_mangle]`
+
+- Rust **mangles** names so two functions called `tick` in different modules can coexist: `tick` in crate `mg` becomes something like `_ZN2mg4tick17hc8025ea44c9d2c45E` (nightly, which rv6 uses, now emits the newer form `_RNvCs…_2mg4tick`).
+- A linker script that says `ENTRY(tick)` needs the plain name, which `#[no_mangle]` keeps.
+- `#[no_mangle]` fixes the name, and `extern "C"` the convention.
+- Edition 2024 makes the promise visible: it requires `#[unsafe(no_mangle)]` and `unsafe extern "C" { … }`.
+
+---
+
+<!-- .slide: id="30k-one-thing" -->
+
+## The one thing to get right · `30k`
+
+You add `no_std` at the top and rebuild. What can still go wrong?
+
+``error[E0463]: can't find crate for `std` `` again, beside a warning to "add an exclamation mark".
+
+Without the `!`, `#[no_std]` decorates the item below it, and the crate never hears it.
+
+<div class="highlight-box">The <code>!</code> is what makes an attribute speak for the whole crate.</div>
+
+Notes:
+- The warning is the clue. Read the warnings in a bare-metal build, not only the errors.
+- **Q:** "Why only a warning?" An outer attribute that does nothing where it sits is a lint, not an error. The error is the real consequence: the crate still asks for `std`, and this target has none.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- `ret` jumps to whatever `ra` holds now
+- Callee-saved registers are why a switch saves 14, not 31
+- `extern "C"` and `#[repr(C)]` are promises the assembly relies on
+- On Midterm 1: `lb`/`lbu`, prologues, register traces
+- A raw pointer has no guarantees; `unsafe` unlocks, never disables
+- Device → volatile; RAM → plain
+- A kernel is what `std` calls: `core`, `#![no_std]`, `#![no_main]`, a panic handler
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 1?" Practice Set 1 Parts C and D, then the page's Problems 1 to 4.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/06-cs326-2026-10-01-prep-asm-bridge/): `oslings doctor` first
+
+You build RISC-V routines called from Rust, booted bare-metal under QEMU. Green is `OSLINGS:PASS`. Prep: about 30 minutes.
+
+**1.** A function you call uses `s3` and `t2` as scratch. Which must it save and restore, and why?
+
+**2.** `ret` is a pseudo-instruction. What does it expand to, and what does that say about a function that overwrites `ra` before returning?
+
+**3.** Assembly does `sd a1, 8(a0)` into a struct that is *not* `#[repr(C)]`. What can go wrong?
+
+Notes:
+- Walk the prep page (about 30 minutes of prep). What you build: your own RISC-V routines, called from Rust through `global_asm!` and `extern "C"`, booted bare-metal under QEMU by a given harness. Green is `OSLINGS:PASS`.
+- Run `oslings doctor` before class: Thursday is the QEMU deadline, with no host-side fallback. Anything red: the Dev Setup troubleshooting table, or office hours now. The three questions are the prep's own Check yourself; answers are on the prep page.
+- **Q:** "Can I do `20a` if QEMU is broken on my laptop?" No, not this time; there is no host-side fallback. That is why doctor is tonight.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/06-cs326-2026-10-02-prep-unsafe-and-kernel-basics/): check yourself
+
+`21r` under `cargo test`, then `30k`: a kernel crate that builds for `riscv64gc-unknown-none-elf`. No QEMU on Friday. Prep: about 25 minutes.
+
+**1.** Which of these need `unsafe`: `let p = 0x1000_0000 as *mut u8;`, `p.add(5)`, `*p = 1`? Do two `&mut` borrows of one element compile inside `unsafe { }`?
+
+**2.** A driver polls `while *LSR & 0x20 == 0 {}` and hangs, though the device is ready. Why?
+
+**3.** Under `#![no_std]`, which survive: `Option`, `Vec`, `println!`, `core::ptr::write_volatile`? Which error says the panic handler is missing?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build: `21r` on your laptop, a device reached through a raw pointer while the tests stand a byte array in for the chip; then `30k`, the first kernel crate, which passes once it builds for `riscv64gc-unknown-none-elf`. No QEMU on Friday.
+- Check that the target is installed (Setup: Check your environment). The three questions are the prep's own Check yourself; answers are on the prep page.
+- **Q:** "Do I need QEMU working for Friday?" Not for Friday: `21r` runs under `cargo test` and `30k` only builds. `31k` boots.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+Week 7: boot, the free list, and Sv39. Read its Essentials before Tuesday.
+
+Notes:
+- The Week 7 page is not published yet, so there is no link here. Add one when it exists.
+- **Q:** "Is Week 7 on Midterm 1?" Yes: the boot chain, the free list and Sv39 translation by hand are all in scope. Midterm 1 is Thursday, October 15.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

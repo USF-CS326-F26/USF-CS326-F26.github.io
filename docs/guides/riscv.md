@@ -81,20 +81,20 @@ understand the calling convention.
 | Stack | Grows **down**; `sp` must be 16-byte aligned at every call |
 | System calls | Number in `a7`, arguments in `a0`–`a2`, result back in `a0` |
 
-`extern "C"` on the Rust side means exactly this convention. From
-`20a_asm_bridge`:
+`extern "C"` on the Rust side means exactly this convention. A function that
+computes `x * k - b`:
 
 ```rust
 extern "C" {
-    pub fn add3(a: u64, b: u64, c: u64) -> u64;
+    pub fn mul_sub(x: u64, k: u64, b: u64) -> u64;
 }
 ```
 
 ```asm
-.globl add3
-add3:
-    add  a0, a0, a1
-    add  a0, a0, a2
+.globl mul_sub
+mul_sub:                     # a0 = x, a1 = k, a2 = b
+    mul  a0, a0, a1          # a0 = x * k
+    sub  a0, a0, a2          # a0 = x * k - b, the return value
     ret
 ```
 
@@ -189,25 +189,27 @@ as you like, and references say which *direction* to look.
 - `1b` — the nearest `1:` **b**ackward. Loops.
 - `2f` — the nearest `2:` **f**orward. Skipping ahead.
 
-From the `bytecopy` solution in `20a_asm_bridge`:
+A `strlen` over a NUL-terminated string:
 
 ```asm
-bytecopy:
-    beqz a2, 2f              # n == 0: nothing to do, skip the loop
+strlen:                      # a0 = pointer to the first byte
+    mv   t1, a0              # remember where the string starts
 1:
-    lb   t0, 0(a1)
-    sb   t0, 0(a0)
+    lbu  t0, 0(a0)           # load one byte, zero-extended
+    beqz t0, 2f              # NUL: forward to the exit
     addi a0, a0, 1
-    addi a1, a1, 1
-    addi a2, a2, -1
-    bnez a2, 1b              # loop while bytes remain
+    j    1b                  # back to the top
 2:
+    sub  a0, a0, t1          # length = end - start
     ret
 ```
 
-Read `2f` as "forward to the exit" and `1b` as "back to the top". The zero
-check comes *first* on purpose: a loop that copies before testing copies one
-byte when asked to copy none, which is the classic `memcpy` bug.
+Read `2f` as "forward to the exit" and `1b` as "back to the top". The test
+comes *before* the step on purpose: an empty string has its NUL in the very
+first byte, and a loop that stepped before testing would walk straight past
+it. `lbu` rather than `lb` because a byte of `0x80` or more loaded with `lb` is
+sign-extended into a negative 64-bit value; the NUL test would not care, but
+any arithmetic on the byte would.
 
 You will also see ordinary named labels in rv6 — the user programs in `exec.rs`
 use `cat_loop`, `echo_nl`, and so on, because they are long enough that numbers
