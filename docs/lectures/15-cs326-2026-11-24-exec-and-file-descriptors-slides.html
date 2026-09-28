@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 15 · exec and File Descriptors - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="15-cs326-2026-11-24-exec-and-file-descriptors/">&larr; Week 15 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 15 · exec and File Descriptors
+
+## Programs by name, and files by number
+
+CS 326 Operating Systems · Tuesday, November 24
+
+**Thu Dec 3** `49k_exec`, `50k_file_descriptors`
+
+[The Week 15 page](15-cs326-2026-11-24-exec-and-file-descriptors/): Thanksgiving falls between today and Dec 3, so read **Essentials** now and again before the session.
+
+Notes:
+**Minute plan** (105 minutes; the session is Thu Dec 3, nine days and Thanksgiving away)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week: Thanksgiving, and the Final | title, this-week |
+| 5–45 | Part I · Thursday Dec 3 · `49k` (9 core, ending with the one thing) | thu-49k … 49k-one-thing |
+| 45–75 | Part II · Thursday Dec 3 · `50k` (8 core, ending with the one thing) | thu-50k … 50k-one-thing |
+| 75–90 | For the exam: the two-table design (3 exam slides, On the Final) | exam-two-tables, exam-shared-offset, exam-refcount |
+| 90–93 | Summary | summary |
+| 93–98 | Before Dec 3 (the prep's questions only; the Dec 1 lecture walks the prep), then Next week | before-dec-3, next-week |
+| 98–105 | Buffer: questions, or ↓ Problem 4 (under exam-shared-offset) at the board | |
+
+Part I has slack by design: if you reach 49k-argv by minute 30, work ↓ Problem 1 (the argv block) there at the board, about 5 minutes.
+
+**Fast path** (the minimum lecture, 16 ids; longer than usual because the Final's scope names program loading, argv, the trapframe start and descriptors, not only the two tables): this-week, thu-49k, 49k-two-calls, 49k-load, 49k-layout, 49k-argv, 49k-start, thu-50k, 50k-fd, 50k-table, 50k-offset, 50k-open, exam-two-tables, exam-shared-offset, exam-refcount, before-dec-3.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack, the five problems included: never press down. The page has all of it.
+2. next-week: say it aloud on before-dec-3.
+3. summary: skip it; before-dec-3 recaps by question.
+4. 49k-flat: say on 49k-two-calls, "the image runs at 0, so it names every address as a distance from the `pc`".
+5. 50k-uniform: say on 50k-open, "the kernel settles console or file inside each call, so no program ever has to".
+6. 49k-one-thing and 50k-one-thing: one sentence each, on 49k-start ("a register nobody stored arrives as 0") and on 50k-offset ("an offset stuck at 0 never reaches the end").
+7. 49k-fail: one sentence on 49k-start: "a failed launch leaves no trace; from Dec 4, build the new world before destroying the old".
+8. 50k-cursor: leave the code up and read its last comment; 30 seconds.
+9. Compress only, never skip (Final scope): thu-49k and thu-50k in 30 seconds each: the door recap in one breath, and "an fd is a small integer that means something only through this process's table".
+10. Compress only, never skip (Final scope): 49k-two-calls in 30 seconds: "`fork` copies, `exec` replaces; same pid".
+11. before-dec-3: last to go. At minimum say "reread Essentials before Dec 3; the Dec 1 lecture walks the prep".
+
+Never cut: exam-two-tables, exam-shared-offset and exam-refcount (On the Final). The fast-path slides thu-49k, 49k-load, 49k-layout, 49k-argv, 49k-start, thu-50k, 50k-fd, 50k-table, 50k-offset and 50k-open carry the Final's program-loading and descriptor scope: compress them, never skip them.
+
+**Practice Set 3 anchors** (out Fri Dec 4; Parts A and B): P1 → 49k-start, 49k-fail · P2 → 49k-argv; ↓ Problem 1 drills it · P3 → 49k-layout; ↓ Problem 2 drills the faults · P4 → exam-two-tables, exam-refcount; ↓ Problem 4 · P5 → exam-shared-offset · P6 → 50k-offset, 50k-one-thing, and 50k-fd (the mode check).
+
+- The Final is Tue Dec 8, in this room, in the Tuesday slot. Practice Set 3 comes out after the sessions, on Dec 4.
+- **Q:** "Is Going deeper on the Final?" No. Essentials and the page's For the exam section are; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Dec 3 | `49k_exec` | `exec`: a program by name, with its arguments | a program starts from the registers you stored |
+| Thu Dec 3 | `50k_file_descriptors` | `open`, `read`, `write` and `close` for user programs | the offset is a descriptor's state |
+
+<div class="highlight-box">Thanksgiving: no sessions Nov 26–27, so reread Essentials before Dec 3. Everything today except the ↓ slides is on the Final, Tue Dec 8.</div>
+
+Notes:
+- Start from where this goes: in `53k` the `cat` and `wc` you wrote in Module 1 run on rv6 as ordinary user programs. The kernel must start each one by name, pass it the rest of the command line, and let it open files.
+- By Thursday night, Dec 3: `run cat notes.txt` at the `rv6$` prompt prints a file that an unprivileged program opened and read for itself.
+- **Q:** "Why is this lecture nine days before its session?" Thanksgiving takes Nov 26 and 27, and the Dec 1 lecture needs all its time for Friday Dec 4's exercises. So today teaches Thursday, and Dec 1 walks Thursday's prep.
+
+---
+
+<!-- .slide: id="thu-49k" -->
+
+# Part I · Thursday Dec 3
+
+## `49k_exec`: where `48k` left you
+
+In `52k` a user-mode shell starts each command by name; `49k` builds that start.
+
+`48k` ran only the program it was built around, and left a door:
+
+- a call number in `a7`, arguments in `a0`–`a2`, then `ecall`
+- the trampoline saves 31 user registers in the **trapframe**
+- the kernel answers in `a0`, touching user memory only through `copyin` and `copyout`
+
+Notes:
+- Part I runs 40 minutes: this title, seven concept slides, and the one thing.
+- The door is the recap, and everything today goes through it. `exec` writes the arguments out through `copyout`; `open`'s path comes in one byte at a time, until its NUL.
+- **Q:** "Why can't the kernel just follow the user's pointer?" It is a user virtual address, and a system call runs on the kernel's page table. `copyin` and `copyout` translate it through the user's table and refuse any page without U.
+
+---
+
+<!-- .slide: id="49k-two-calls" -->
+
+## A program is two calls
+
+| Call | What it does | When |
+|---|---|---|
+| `fork` | copies the running process | Dec 4, `51k` |
+| `exec` | keeps the process but replaces its program: new memory, new code, same pid | Thursday, `49k` |
+
+On Thursday the kernel shell's `run` calls `exec`, and the program gets a brand-new process. From Dec 4, a running program calls `exec` to replace itself.
+
+Notes:
+- Read `exec` as "same process, new program": the PCB and the pid stay, and everything the old program had in memory goes.
+- In `49k` nothing is replaced yet: the process is new, so a failure has nothing to protect. That changes on Dec 4 (49k-fail).
+- **Q:** "Why two calls, not one that makes a process running a new program?" Dec 1 answers it for the Final. In short: between the two calls the child can rearrange its own descriptors, and today's lowest-free-slot rule (50k-table) is how.
+
+---
+
+<!-- .slide: id="49k-flat" -->
+
+## Programs by name: flat binaries
+
+A **program table** pairs each name with one program's bytes. Each is a **flat binary**: its byte 0 is its first instruction.
+
+The bytes are read at one address in the kernel and run at another, user address 0, so they are **position-independent**: each address is computed from the `pc`. `la a1, msg` becomes:
+
+```asm
+1:  auipc a1, %pcrel_hi(msg)       # a1 = this pc + the distance's upper bits
+    addi  a1, a1, %pcrel_lo(1b)    # a1 += the low 12 bits: a1 = &msg
+```
+
+Notes:
+- Read `auipc` as "add an upper immediate to the `pc`". The distance to `msg` is fixed when the code is assembled, and copying the image moves both ends of it.
+- `progs` at the `rv6$` prompt lists the table. **ELF**, what real systems load, begins with a header for the loader.
+- ↓ below: ELF, briefly (optional).
+- **Q:** "Why not just use absolute addresses?" The assembler places these programs inside the kernel image, so any absolute address it computed would be a kernel address. A real executable is linked for its load address, and its ELF header says where that is.
+
+--
+
+<!-- .slide: id="deeper-elf" class="deeper" -->
+
+## ELF, briefly
+
+- An ELF file opens with a header, then a table of **program headers**: one for each region the program wants in memory.
+- xv6's `exec` walks that table (the xv6 book, chapter 3, "Code: exec").
+- On Linux, `readelf -l /bin/ls` prints the table for a real program.
+- The extra-credit `54k_elf_loader`, released Dec 4, teaches rv6 to read ELF.
+
+---
+
+<!-- .slide: id="49k-load" -->
+
+## Loading more than a page
+
+Any image loads like `48k`'s single page, once per page: allocate, zero, copy the next 4,096 bytes or what is left, and map it R X U at the next virtual address. A 10,000-byte image:
+
+```text
+image bytes   0..4095         4096..8191       8192..9999
+physical      page A, full    page B, full     page C: 1,808 bytes, then 2,288 zeros
+virtual       0x0000          0x1000           0x2000          (all R X U)
+```
+
+Zeroing matters: the allocator hands out pages as their last owner left them.
+
+Notes:
+- The loader is given on Thursday: you read it, not write it. The arithmetic is yours: 10,000 = 2 × 4,096 + 1,808, so three pages, and the last one's tail is 4,096 − 1,808 = 2,288 bytes.
+- Week 7's free list never zeroes a page (32k-building): a page fresh from it may hold another process's bytes, or the kernel's. The Dec 3 prep's third question is this slide.
+- ↓ below: why the loader ends with `fence.i` (optional).
+- **Q:** "What if the image is exactly 8,192 bytes?" Two full pages and no tail: the loop stops after the second page, and no third page is allocated.
+
+--
+
+<!-- .slide: id="deeper-fence-i" class="deeper" -->
+
+## Why the loader ends with `fence.i`
+
+- The given loader, `load_segment()` (`vm.rs`), has just written instructions with ordinary stores.
+- RISC-V does not promise that instruction fetch sees those stores until the hart runs a `fence.i`.
+- Without it, the hart may fetch what the page held before the copy.
+- x86 keeps instruction fetch coherent with stores in hardware, so an x86 loader has no such line.
+
+---
+
+<!-- .slide: id="49k-layout" -->
+
+## The user address space
+
+| Virtual address | What lives there | Flags |
+|---|---|---|
+| `0x3F_FFFF_F000` | the trampoline | R X, no U |
+| `0x3F_FFFF_E000` | this process's trapframe | R W, no U |
+| `0x0001_0000` | one stack page, filled down from `0x1_1000` | R W U |
+| below `0x1_0000` | unmapped, down to the image's last page | none |
+| `0x0000_0000` | the image, 1 to 16 pages | R X U |
+
+The stack sits where a 17th image page would go: unmapped pages separate a smaller image from its stack. The image has no W.
+
+Notes:
+- Read the table bottom up, as the program sees it. Only the image and the stack carry U; the top two pages serve the trap path, as on week 7's exam-maxva slide.
+- No W on the image means a store into the code faults. Writable data lives on the stack.
+- ↓ below: Problem 2 (where does it fault?).
+- **Q:** "Why a fixed stack address, not one right above the image?" Then the stack's place would depend on the image's size. Fixed, it is one constant for every program, and the unmapped gap turns running off the image into a fault instead of a write into the stack.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: where does it fault?
+
+Suppose the program table held a 12,500-byte program. For each access it makes, say whether it succeeds. If it faults, give the exception code in `scause` and the reason.
+
+1. It loads a byte from `0x30D0`.
+2. It loads a byte from `0x3100`.
+3. It loads a byte from `0x4000`.
+4. It stores a byte to `0x0100`.
+5. It jumps to `0x1_0000`.
+6. It loads 8 bytes from `0x3F_FFFF_E000`.
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+`12,500 = 3 × 4,096 + 212`: four pages, `0x0000`–`0x3FFF`, the last holding 212 image bytes, then zeros. Each fault ends the run: `run: the program faulted`.
+
+1. **Succeeds.** `0x30D0 - 0x3000 = 0xD0 = 208`, below 212: an image byte.
+2. **Succeeds, and reads 0.** `0x100 = 256` lands in the zeroed tail of a mapped page.
+3. **Load page fault, 13.** `0x4000` is in the unmapped gap, pages 4 through 15.
+4. **Store page fault, 15.** The image is R X U, with no W.
+5. **Instruction page fault, 12.** The stack page is R W U, with no X.
+6. **Load page fault, 13.** The trapframe is mapped, but without U: user mode may touch only U pages.
+
+---
+
+<!-- .slide: id="49k-argv" -->
+
+## argc and argv, on the new stack
+
+`a0` holds **argc**, the count (the name counts); `a1` holds **argv**, an array of string pointers. Each string goes below the last from the top, `0x1_1000`, rounded down to 8; then argc + 1 pointers ending in NULL, rounded down to 16. `run echo pie is good`:
+
+```text
+0x1_0FF8   "echo\0"     (3 bytes above it unused)
+0x1_0FF0   "pie\0"
+0x1_0FE8   "is\0"
+0x1_0FE0   "good\0"
+0x1_0FD8   (8 bytes unused: the 16-byte rounding)
+0x1_0FD0   argv[4] = 0          the NULL that ends the list
+0x1_0FC8   argv[3] = 0x1_0FE0
+0x1_0FC0   argv[2] = 0x1_0FE8
+0x1_0FB8   argv[1] = 0x1_0FF0
+0x1_0FB0   argv[0] = 0x1_0FF8   <- sp = a1 = 0x1_0FB0, and a0 = 4
+```
+
+Notes:
+- The strings go first because the array holds their addresses, all of them user virtual addresses, written through `copyout`. C arrays carry no length, hence the NULL, and 16 is the calling convention's rule for `sp` (week 6).
+- The layout is given code on Thursday; the Final asks you to draw it. PS3 Problem 2 is this shape with `echo hi`.
+- ↓ below: what a real `exec` puts on the stack, then Problem 1 (build the argv block).
+- **Q:** "What is `argv[0]`?" The program's own name. The name counts, so `run echo pie is good` has argc 4, and a program that walks its arguments starts at `argv[1]`.
+
+--
+
+<!-- .slide: id="deeper-real-stack" class="deeper" -->
+
+## What a real `exec` puts on the stack
+
+rv6 stops at argv. Linux builds more, and puts argc itself on the stack, not in a register. From `sp` upward:
+
+- argc, then the argv pointers and a NULL
+- **envp**, pointers to the environment strings, and another NULL
+- the **auxiliary vector**: key and value pairs for the C library's start-up code, such as the program headers, the entry point, the vDSO, and `AT_RANDOM`, sixteen random bytes that seed stack canaries
+- the strings, highest, as in rv6
+
+`argv[0]` is a convention the kernel never checks. BusyBox reads it to decide which tool to be, and `login` starts your shell with an `argv[0]` that begins with `-`.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: build the argv block
+
+A user types `run args hello-there 7`. Each string, NUL included, goes below the last, its address rounded down to a multiple of 8. The argc + 1 pointers go below the strings, rounded down to 16. The stack page's top is `0x1_1000`.
+
+1. What is argc, and what exit status does `run` report for `args`?
+2. At what address does each string start?
+3. What are `a1` and `sp` at the first instruction, and what does `argv[1]` hold?
+4. How many bytes of the page does the rounding leave unused?
+5. What happens with one 64-character argument? With 16 arguments after `args`?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+**1.** argc = 3: `args`, `hello-there` and `7`. `args` exits with its argc, so `run` reports status 3.
+
+**2.** Each string, from the top down:
+
+```text
+"args\0"          5 bytes   0x1_1000 - 5  = 0x1_0FFB  -> 0x1_0FF8
+"hello-there\0"  12 bytes   0x1_0FF8 - 12 = 0x1_0FEC  -> 0x1_0FE8
+"7\0"             2 bytes   0x1_0FE8 - 2  = 0x1_0FE6  -> 0x1_0FE0
+```
+
+**3.** 4 pointers, 32 bytes: `0x1_0FE0 - 0x20 = 0x1_0FC0`, already a multiple of 16. So `a1 = sp = 0x1_0FC0`, and `argv[1]`, at `0x1_0FC8`, holds `0x1_0FE8`.
+
+**4.** 13 bytes: 3 above `"args"`, 4 above `"hello-there"`, 6 above `"7"`, and none for the array.
+
+**5.** A 64-character word needs 65 bytes with its NUL, over the limit of 64; sixteen arguments make argc 17, over the limit of 16. Either way the launch fails: `run: could not start the program`.
+
+---
+
+<!-- .slide: id="49k-start" -->
+
+## Starting it: four saved values
+
+A process that never ran has nothing to resume, so the kernel writes its first registers into the trapframe. For `run echo pie is good` the program wakes at instruction 0 with `sp` = `a1` = `0x1_0FB0` and `a0` = 4.
+
+The kernel never jumps into user code: `48k`'s return path loads all 31 registers, and `sret` lands at instruction 0.
+
+Notes:
+- This is week 9's forged context one level up: there, `ra` and `sp` made a first switch land in a function; here, the trapframe makes the first `sret` land at instruction 0.
+- The other 28 registers arrive as zeros: the trampoline restores 31, the kernel stored three of them (the saved pc is not one of the 31), and the trapframe page starts zeroed. Hold that thought for the one thing, two slides on.
+- **Q:** "Why is `sp` equal to `a1`?" The array is the last thing pushed, so `sp` ends on it. A program could find argv from `sp` alone; Linux does, with argc at `sp` (↓ under 49k-argv).
+
+---
+
+<!-- .slide: id="49k-fail" -->
+
+## A failed launch leaves no trace
+
+Building can fail: no such program, no free page, more than 16 words counting the name, or a word over 63 characters.
+
+- **Thursday:** the process is brand new; given code releases what the build claimed.
+- **From Dec 4:** `exec` replaces a *running* program and returns -1 when it fails, so the principle becomes an order: build the new world before destroying the old.
+
+Notes:
+- At the prompt, `run nosuch` prints `run: no such program: nosuch` and suggests `progs`; an over-long argument prints `run: could not start the program`. Either way nothing is left behind, not even a page.
+- On Dec 4, destroying first fails the worst way: a failed lookup would leave a process with no memory and nothing to return -1 to. PS3 Problem 1 asks for the order.
+- ↓ below: Linux's point of no return (optional).
+- **Q:** "Does a failed launch use up a pid?" Yes. The process, pid included, is claimed before the build starts, and week 9's rule holds: slots are recycled, pids never are.
+
+--
+
+<!-- .slide: id="deeper-no-return" class="deeper" -->
+
+## Linux's point of no return
+
+- A real `exec` replaces a running program, so a failure has two cases. Before the old memory is released, `exec` can still return an error to its caller. After, there is no caller left.
+- Linux names that line: `begin_new_exec()` in `fs/exec.c` (called `flush_old_exec()` before Linux 5.8) sets a "point of no return" flag.
+- A failure after it kills the process with `SIGSEGV`.
+- So everything that can fail, from opening the file to reading its headers and copying the arguments, happens first.
+
+---
+
+<!-- .slide: id="49k-one-thing" -->
+
+## The one thing to get right · `49k`
+
+`[fail] argc came through as 0, expected 3`, though the program ran and exited. Why?
+
+Its code and stack were mapped; it lacked a register. A program's first registers come from its trapframe, and the trapframe starts as zeros.
+
+<div class="highlight-box">A value nobody stored arrives as 0.</div>
+
+Notes:
+- The harness runs `args` with two arguments, and `args` exits with its argc, so the exit status is the check: 3 expected, 0 seen.
+- Mapped memory and the starting registers are separate jobs: the first lets the program run at all, the second lets it run with its arguments. This failure means the first job is done.
+- **Q:** "Why 0 and not garbage?" The trapframe page is zeroed when the process is claimed, so every register nobody set starts at 0. A 0 in `a0` looks like a program run with no arguments, not a crash.
+
+---
+
+<!-- .slide: id="thu-50k" -->
+
+# Part II · Thursday Dec 3
+
+## `50k_file_descriptors`: a descriptor is a small integer
+
+In `53k` your Module 1 `cat` opens a file by name and reads it to the end.
+
+A program cannot reach an inode or the kernel's open-file entries. `open` hands back a **file descriptor** (fd), a small integer that means something only through this process's table: the same 3 in two processes can name two different files.
+
+Notes:
+- Part II runs 30 minutes: this title, six concept slides, and the one thing. The three exam slides follow.
+- `50k` adds the four calls `cat` makes: `open`, `read`, `write` and `close`. The integer indexes a table only the kernel touches.
+- **Q:** "Why an integer and not a pointer to the kernel's entry?" A pointer would name kernel memory the program cannot use and might forge. An index means something only through this process's table, and the kernel checks it on every call.
+
+---
+
+<!-- .slide: id="50k-fd" -->
+
+## A descriptor is a capability
+
+Holding it is the right to use it. Guessing forges nothing: the kernel rechecks every use.
+
+- the number is in range, and the slot is open
+- the entry's mode allows the call
+- the buffer is in user memory
+
+rv6 opens 0, 1 and 2 on the console in each new process: standard input, output and error, by Unix agreement only.
+
+Notes:
+- The buffer check is week 7's: the kernel refuses a user pointer to a page without U. The kernel treats none of 0, 1 and 2 specially: fd 1 is just where each process finds the console.
+- ↓ below: capabilities and ambient authority, then Problem 5 (try to forge authority).
+- **Q:** "Can a child use its parent's fd 3?" Only by inheriting it: from Dec 4, `fork` copies the table, so the child starts with the same descriptors. A number alone grants nothing.
+
+--
+
+<!-- .slide: id="deeper-capability" class="deeper" -->
+
+## Capabilities and ambient authority
+
+- A descriptor is authority you hold. A path is authority the kernel works out again each time, from your identity and the file's permissions.
+- A program that checks a path and then opens it can be fooled when the name changes in between: a **time-of-check-to-time-of-use** (TOCTOU) race. A descriptor keeps naming the file it was opened on.
+- Newer interfaces lean on descriptors. `openat` resolves a path relative to a directory descriptor; FreeBSD's Capsicum lets a process give up path lookups and keep only its descriptors; Linux's `pidfd` names a process by descriptor, not by a pid that can be reused.
+- A Unix-domain socket can carry a descriptor with `SCM_RIGHTS`, and the kernel installs a new descriptor on the far side.
+
+--
+
+<!-- .slide: id="problem-5" class="deeper" -->
+
+## Problem 5: try to forge authority
+
+A process has fds 0–2 on the console and fd 3 open read-only on a 50-byte file. Give each call's result, and the check that decides it.
+
+1. `read(16, buf, 8)`
+2. `read(9, buf, 8)`
+3. `write(0, "hi", 2)`
+4. `write(1, 0x8000_0000, 16)`
+5. `read(3, 0x3F_FFFF_E000, 16)`
+6. `close(3)`, then `close(3)` again
+
+--
+
+<!-- .slide: id="problem-5-solution" class="deeper" -->
+
+## Problem 5 · solution
+
+1. **-1.** The table's slots are 0–15, so the range check refuses 16 before any lookup.
+2. **-1.** Slot 9 is in range, but free: nothing was ever opened there.
+3. **2, and `hi` prints.** fd 0 is the console, opened readable and writable. The convention says 0 is for input; the kernel enforces only the entry's mode.
+4. **-1.** The descriptor is fine; the buffer is not. `0x8000_0000` is kernel RAM and is not mapped in the user's page table, so `copyin` refuses it.
+5. **-1.** The trapframe is mapped, but without U. `copyout` will not touch a page that the user could not touch itself.
+6. **0, then -1.** The first `close` frees slot 3; the second finds it free.
+
+---
+
+<!-- .slide: id="50k-table" -->
+
+## The per-process file table
+
+Each PCB gains a table of 16 entries, and fd *n* is entry *n*. After one file is opened for reading and read 40 bytes:
+
+```text
+fd   what      inode   offset   read   write
+0    console   -       -        yes    yes
+1    console   -       -        yes    yes
+2    console   -       -        yes    yes
+3    file      5       40       yes    no
+4-15 free
+```
+
+A new descriptor takes the lowest free slot, and that is a promise: close 0, then open a file, and the file is your standard input.
+
+Notes:
+- An entry records what is open, which inode, the offset, and whether reads and writes are allowed. The next two slides are about the offset.
+- The lowest-free-slot promise lets a program choose which number a new file gets: close that number first, as the slide does with 0. Dec 1 builds on it.
+- **Q:** "Is this table in the kernel's memory or the program's?" The kernel's: it lives in the PCB, which no user page maps. The program holds only the number.
+
+---
+
+<!-- .slide: id="50k-offset" -->
+
+## The offset makes a descriptor stateful
+
+An open-file entry's **offset** counts the bytes read or written through it. A call that moves n bytes starts there and adds n; `read` returns n, so at the end it returns 0. One 30-byte file, opened twice, as `a` and `b`:
+
+```text
+call               returns   a's offset   b's offset
+read(a, buf, 20)   20        20           0
+read(b, buf, 8)    8         20           8
+read(a, buf, 20)   10        30           8     a short read: 10 left
+read(a, buf, 20)   0         30           8     a is at the end; b is not
+```
+
+`cat` loops until `read` returns 0; a short read is not the end.
+
+Notes:
+- The offset lives in the table entry, not in the program. The program says only "read fd 3"; the kernel knows where.
+- Each `open` made its own entry, so `b` still has 22 bytes to go. The prep's mental model is a one-descriptor trace; this one adds the second descriptor the exam slides build on. ↓ Problem 3, under 50k-open, adds flags and a write.
+- **Q:** "Can `read` return less than I asked, before the end?" Yes, at any time: a kernel may move fewer bytes than asked. Only 0 means the end, which is why `cat` loops instead of trusting one call.
+
+---
+
+<!-- .slide: id="50k-cursor" -->
+
+## A descriptor is a place, not a file
+
+A Rust iterator is the same kind of stateful handle:
+
+```rust
+let mut letters = "pie".chars();
+letters.next();   // Some('p')
+letters.next();   // Some('i')
+letters.next();   // Some('e')
+letters.next();   // None: used up
+```
+
+Read `letters` as a place in the string, not the string: each call answers from where the last one stopped, and `None` plays the part of `read`'s 0.
+
+Notes:
+- A second `"pie".chars()` starts at `p` again, as a second `open` of one file starts at byte 0 (the two-descriptor trace on 50k-offset).
+- Where the analogy stops: the iterator's place lives in the program; a descriptor's offset lives in the kernel's table, and the program holds only the number.
+- **Q:** "Could two descriptors share one place?" Not in rv6. On Unix, yes: that is the exam slides' shared offset.
+
+---
+
+<!-- .slide: id="50k-open" -->
+
+## `open` and its flags
+
+`open(path, flags)` is the one file call that takes a name. It finds or creates the file, fills an entry with offset 0, and returns the descriptor. The **flags** are yes-or-no bits in one integer, combined with `|`:
+
+| Flag | Value | Means |
+|---|---|---|
+| `O_RDONLY` | `0x000` | read only |
+| `O_WRONLY` | `0x001` | write only |
+| `O_RDWR` | `0x002` | read and write |
+| `O_CREATE` | `0x200` | create it if missing |
+| `O_TRUNC` | `0x400` | empty the file first |
+
+So `O_CREATE | O_RDWR` is `0x202`.
+
+Notes:
+- `O_RDONLY` is the odd one: it is 0, a bit you cannot test, so a file opened with neither write bit set is read-only. Test the others with `&`, as in week 7's bit primer.
+- A path crosses the wall with no length attached: `"notes"` is six bytes in user memory, the last a NUL, and the kernel finds the end only by reaching it, one byte at a time.
+- ↓ below: `O_TRUNC` and `O_APPEND`, then Problem 3 (decode the flags, then predict).
+- **Q:** "Why not copy a fixed 64 bytes of path and look for the zero?" The string can end just before an unmapped page. A fixed-size copy would run into that page and fail on a valid name; stopping at the NUL never reads past the string.
+
+--
+
+<!-- .slide: id="deeper-flags" class="deeper" -->
+
+## `O_TRUNC` and `O_APPEND`
+
+- A shell runs `cmd > out` by opening `out` with `O_TRUNC` before the command starts. So `sort notes > notes` empties `notes` before `sort` reads a byte of it.
+- `>>` opens with `O_APPEND`, which user code cannot fake. Asking for the size and then writing there takes two steps, so two processes appending to one log can both see size 100 and both write at 100.
+- With `O_APPEND` the kernel moves the offset to the end and writes in one step.
+- rv6 has neither `O_APPEND` nor a way to move an offset. A file opened without `O_TRUNC` is written from byte 0, over what is there, and keeps its old size if you write less.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: decode the flags, then predict
+
+`notes` holds 50 bytes. A process with only fds 0–2 open runs these calls in order. Give each return value, and the file's size at the end.
+
+```text
+a = open("notes", 0x402)
+read(a, buf, 10)
+write(a, "hello", 5)
+read(a, buf, 10)
+b = open("notes", 0x000)
+read(b, buf, 10)
+write(b, "x", 1)
+```
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+`0x402 = O_TRUNC | O_RDWR`: read and write, and empty the file first.
+
+| Call | Returns | Why |
+|---|---|---|
+| `open(..., 0x402)` | 3 | the lowest free slot; `notes` is now 0 bytes |
+| `read(a, ...)` | 0 | the offset, 0, is already at the end |
+| `write(a, ...)` | 5 | `notes` is now `hello`; `a`'s offset is 5 |
+| `read(a, ...)` | 0 | the write moved the same offset to the end |
+| `open(..., 0x000)` | 4 | a separate entry, with its own offset 0 |
+| `read(b, ...)` | 5 | `hello`: 10 asked, 5 left |
+| `write(b, ...)` | -1 | `b` is read-only |
+
+The file ends at 5 bytes. rv6 has no call to move an offset back, so `a` can never read what it wrote; a second descriptor can.
+
+---
+
+<!-- .slide: id="50k-uniform" -->
+
+## One read and write path
+
+User-mode `cat` makes the same two calls for every chunk: `read` on fd 3, `write` on fd 1.
+
+- fd 3 lands in the filesystem, at the offset
+- fd 1 lands on the serial port
+
+`cat` cannot tell which is which; the kernel settles it inside each call, from the entry. That is Unix's **everything is a file**.
+
+Notes:
+- One small interface over very different things, like `07r`'s `Out` trait: the caller holds the interface, and what sits behind it varies.
+- `run cat notes.txt` on Thursday night is the demo: the same two calls, one landing on a file and one on the console.
+- **Q:** "Where does the choice of console or file live, then?" In the kernel, once inside `read` and once inside `write`. Every program gets the same two calls, so no program branches.
+
+---
+
+<!-- .slide: id="50k-one-thing" -->
+
+## The one thing to get right · `50k`
+
+`[fail] cat never finished`: a timeout, not wrong bytes. Why?
+
+`cat` stops when `read` returns 0 at the end, or -1 on an error. If the offset stays at 0, every call starts again at byte 0, and the file is never used up.
+
+<div class="highlight-box">An offset stuck at 0 never reaches the end, so <code>read</code> never returns 0.</div>
+
+Notes:
+- The symptom is time, not bytes: the loop cannot end. An iterator whose place never moved would answer `p` forever (50k-cursor).
+- **Q:** "Why doesn't `cat` notice the bytes repeat?" It cannot know: a file may repeat itself. Only a 0 from `read` means the end, so `cat` keeps going.
+
+---
+
+<!-- .slide: id="exam-two-tables" class="exam" -->
+
+## Two tables, not one
+
+Unix splits what rv6 keeps in one entry: a per-process **descriptor table** of pointers into one system-wide **open-file table**. An open-file entry holds the offset, the access mode and a reference count, and points at the inode. After an `open`, a `fork`, and a `dup(3)` in the child:
+
+```text
+parent  fd 3 --+
+child   fd 3 --+--> open file: offset 120, write-only, count 3 --> inode 7
+child   fd 4 --+
+```
+
+rv6 keeps the whole entry in each process: no middle table.
+
+Notes:
+- On the Final, Tue Dec 8; not needed on Thursday. PS3 Problem 4 is this diagram, traced through `open`, `dup`, `fork` and `close`.
+- Three levels: the descriptor (per process), the open file (shared: offset, mode, count), and the inode (the file itself). Two separate `open`s of one file share only the inode.
+- **Q:** "Why does Unix need the middle table at all?" So that two descriptors can share one offset: the next slide. rv6's single table cannot share, because each slot holds its own copy of the entry.
+
+---
+
+<!-- .slide: id="exam-shared-offset" class="exam" -->
+
+## One offset, shared
+
+`dup(fd)` copies a pointer; `fork` copies the whole descriptor table, pointer by pointer. Either way, two descriptors share one offset.
+
+- So `(echo a; echo b) > f` leaves two lines.
+- Two separate `open`s make two entries and two offsets, on any system.
+- rv6's `fork` copies each entry, offset included: a child can overwrite the parent's bytes.
+
+Notes:
+- On the Final, Tue Dec 8. PS3 Problem 5 asks why the offset lives in the middle table, and what rv6's copy-per-process design does instead.
+- ↓ below: Problem 4 (two designs, one fork).
+- **Q:** "So is the offset per process or per descriptor?" Neither: it belongs to the open file, shared by every descriptor that `dup` or `fork` made from one `open`.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: two designs, one fork
+
+On the finished rv6, with `fork` from `51k`, a process creates `log` and opens it as fd 3 for writing. It writes 10 bytes and forks. The child writes 6 bytes to fd 3 and exits. The parent waits for it, then writes 4 bytes to fd 3.
+
+1. On rv6, which bytes does each write cover, and how long is `log`?
+2. With Unix's shared open-file table?
+3. Under Unix, what is the entry's reference count after the open, after the fork, after the child exits, and after the parent closes fd 3?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+**1.** rv6's `fork` copies each entry, offset included. The parent writes bytes 0–9, leaving its offset at 10. The child's copy also starts at 10, so it writes 10–15, and `log` grows to 16 bytes. The parent's offset is still 10: its 4 bytes land on 10–13, over the child's first four. `log` stays 16 bytes, and 4 of the child's 6 are gone.
+
+**2.** One shared offset: the parent writes 0–9, the child 10–15, then the parent 16–19. `log` is 20 bytes, and nothing is lost.
+
+**3.** 1, then 2: the child's fd 3 points at the same entry. The child's exit closes its descriptors, leaving 1, and the parent's close makes it 0, which frees the entry.
+
+---
+
+<!-- .slide: id="exam-refcount" class="exam" -->
+
+## Reference counts
+
+An entry's count says how many descriptors, in any process, point at it.
+
+| Call | The count |
+|---|---|
+| `open` | set to 1 |
+| `dup` | plus one |
+| `fork` | plus one for each open descriptor |
+| `close` | minus one; at 0 the entry and its offset are freed |
+
+So one process's `close` never cuts off another. rv6 shares nothing and needs no count: its `close` just empties the slot.
+
+Notes:
+- On the Final, Tue Dec 8. An exit closes every descriptor the process holds, one decrement each; ↓ Problem 4, part 3, counts through a fork and an exit.
+- ↓ below: a name removed while a file is open (optional).
+- **Q:** "Why a count and not a yes-or-no flag?" Any number of descriptors, in any number of processes, can point at one entry. Only a count can say when the last one has closed.
+
+--
+
+<!-- .slide: id="deeper-unlink" class="deeper" -->
+
+## A name removed while a file is open
+
+- On Linux, `rm` removes a name, not a file. If a process still has the file open, its data lives on without a name until the last descriptor closes.
+- That is why deleting a huge log a running server holds open frees no disk space, and `lsof +L1` lists such files.
+- rv6's entry holds a bare inode number, and `unlink()` (`fs.rs`) frees the inode at once for the next file to reuse. A descriptor that outlived its name would quietly read some other file's bytes.
+- rv6 escapes by accident: only the kernel shell's `rm` and `rmdir` unlink, and neither can run while a user program is running. A kernel with an `unlink` system call needs a count of open references on each inode.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- `exec`: same process, new program
+- Images load page by page: allocate, zero, copy, map R X U
+- argv: strings high, a NULL-ended array below, `sp` 16-aligned
+- Four trapframe values start it; the rest arrive as 0
+- An fd indexes a per-process table: lowest free slot, every use rechecked
+- The offset is the state; 0 from `read` is the end
+- On the Final: two tables, a shared offset, reference counts
+
+Notes:
+- One sentence per bullet, in the order of the page. The last bullet is the exam part; the rest is Thursday's work and the Final's program-loading and descriptor scope.
+- **Q:** "What should I do before Dec 3?" Reread Essentials, then the prep page, which the Dec 1 lecture walks. The page's Problems 1 and 3 are the best rehearsal.
+
+---
+
+<!-- .slide: id="before-dec-3" -->
+
+## [Before Dec 3](../prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors/): check yourself
+
+You build `exec` for programs by name, with arguments, then file descriptors for user programs. Prep: about 30 minutes, after rereading Essentials; the Dec 1 lecture walks it.
+
+**1.** `run wc -l notes.txt`. What are `a0` and `a1` at the first instruction, and what is at `argv[3]`?
+
+**2.** A program never given fd 5 puts 5 in `a0` and calls `read`. What comes back, and why?
+
+**3.** A 5,000-byte program loads onto two pages. Why zero the second page before copying the last 904 bytes?
+
+Notes:
+- No prep walk today: Thanksgiving and nine days pass before Dec 3, so the Dec 1 lecture walks the prep page. Show the questions and leave them up; each lands on a slide from today (49k-argv, 50k-fd, 49k-load).
+- The three questions are the prep's own Check yourself; answers are on the prep page. Question 1 is on paper: `wc` joins the program table only in `53k`, so on Dec 3 `run wc` says no such program. `run echo a b` shows the same layout (argc 3).
+- **Q:** "Do I need `fork` for Thursday?" No. `fork` is Friday Dec 4's `51k`. On Thursday the kernel shell's `run` calls `exec` directly.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 15 · fork, wait, and the User Shell](15-cs326-2026-12-01-fork-wait-and-the-user-shell/) (Tuesday, Dec 1), for Friday Dec 4. Read its Essentials before Tuesday.
+
+Notes:
+- The Dec 1 lecture also walks the Dec 3 prep, since today could not. The Final is Tue Dec 8, in this room, in the Tuesday slot.
+- **Q:** "Are there sessions over Thanksgiving?" No: Thu Nov 26 and Fri Nov 27 have none. The next session is Thu Dec 3.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

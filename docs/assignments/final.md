@@ -34,7 +34,7 @@ appear as a building block. The new material — and the bulk of the exam — is
   ordinary unprivileged program
 
 **Pipes are not on the exam.** They are never lectured, so nothing on the exam
-depends on them. The pipes material in [L26](../lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review.md)
+depends on them. The pipes material in the [Week 16 reading](../lectures/16-cs326-2026-12-08-final-review-and-beyond.md#pipes)
 is optional reading, and `55k_pipes` remains design-only extra credit.
 
 ## The question you should expect

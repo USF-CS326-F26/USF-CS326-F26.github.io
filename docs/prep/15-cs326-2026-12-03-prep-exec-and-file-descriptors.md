@@ -1,28 +1,35 @@
 # Prep: exec and File Descriptors — 49k · 50k
 
-**Session:** Thu Dec 3, 1h45 · **Exercises:** `49k_exec` · `50k_file_descriptors` · **Prep time:** ~45 min · **Lecture:** [`exec`, File Descriptors, and `fork`](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md)
+**Session:** Thu Dec 3, 1h45 · **Exercises:** `49k_exec` · `50k_file_descriptors` · **Prep time:** ~30 min · **Lecture:** [Week 15 · exec and File Descriptors](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md)
+
+**Back from Thanksgiving.** This session's lecture was Tue Nov 24, before Thanksgiving: reread [Week 15 · Essentials](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#essentials) before class. The Tue Dec 1 lecture also walks this page.
 
 ## What you will build
 
-Two focused pieces over given plumbing. For `exec`: find a program by name, build it a fresh address space, copy its image in page by page, give it a stack, lay `argv` out with the given helper, and set the four trapframe fields so it starts at instruction 0 with `a0 = argc` and `a1 = argv`. For descriptors: a per-process table of open files where the fd *is* the index, so `open` turns a name into a small integer, `read` moves bytes through that descriptor's cursor and advances it, and `close` frees the slot.
+Two focused pieces over given plumbing. For `exec`: a program named at the prompt starts in a fresh address space of its own, at instruction 0, with `a0 = argc` and `a1 = argv` pointing at its arguments on its stack. For descriptors: a per-process table of open files where the fd *is* the index, so `open` turns a name into a small integer, `read` moves bytes through that descriptor's cursor and advances it, and `close` frees the slot.
 
 ## Concepts you need
 
-- **`exec` replaces the caller; a failed `exec` leaves it running** — [L15 §2](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#why-replace-instead-of-create) · [L15 § Failure atomicity](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#failure-atomicity-build-first-destroy-second)
-- **`exec`'s four products; image at 0, stack fixed above, `PTE_U` on user pages, zero before a partial copy, `fence.i` after writing code** — [L15 § The world it builds](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#the-world-it-builds) · [rv6 Architecture § Address spaces](../guides/rv6-architecture.md#address-spaces)
-- **`argv`: strings first, NULL-terminated array of user addresses below, `sp` 16-byte aligned, written with `copyout`** — [L15 § argv on the stack](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#argv-on-the-stack)
-- **An fd is an unforgeable capability: a kernel-owned table index, revalidated on every call** — [L15 §3](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#the-fd-as-an-unforgeable-capability) · [rv6 Architecture § The system call table](../guides/rv6-architecture.md#the-system-call-table)
-- **The offset lives with the open file; `read` returns a count and advances it; 0 means end of file** — [L15 § Two tables](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#two-tables-and-where-the-offset-lives) · [L14 § cat](../lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md#cat-is-lookup-read-decode-print)
-- **0, 1, 2 are a convention; lowest free slot is a guarantee; the kernel, not the caller, branches on console versus inode** — [L15 § 0, 1, 2](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#0-1-2-a-convention-not-a-rule) · [L15 § Everything is a file](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#what-everything-is-a-file-buys)
+- **`exec` replaces the caller; a failed `exec` leaves it running** — [Week 15 · After 48k: the door, and the two calls](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-two-calls), [Starting it, and failing cleanly](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-start)
+- **Programs by name: a flat binary, position-independent, run at address 0** — [Week 15 · Programs by name: flat binaries](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-flat) · [rv6 Architecture: The program table](../guides/rv6-architecture.md#the-program-table)
+- **Image at 0, stack fixed above, `PTE_U` on user pages, zero before a partial copy** — [Week 15 · Loading more than a page, and where it lands](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-load) · [rv6 Architecture: Address spaces](../guides/rv6-architecture.md#address-spaces)
+- **`argv`: strings first, NULL-terminated array of user addresses below, `sp` 16-byte aligned, written with `copyout`** — [Week 15 · argc and argv, on the new stack](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-argv)
+- **An fd is an unforgeable capability: a kernel-owned table index, revalidated on every call** — [Week 15 · A descriptor is a small integer](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-fd), [The per-process file table](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-table) · [rv6 Architecture: The system call table](../guides/rv6-architecture.md#the-system-call-table)
+- **The offset lives with the open file; `read` returns a count and advances it; 0 means end of file** — [Week 15 · The offset makes a descriptor stateful](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-offset)
+- **`open` flags are bits in one integer; `O_RDONLY` is 0; a path ends at its NUL** — [Week 15 · `open` and its flags](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-open)
+- **0, 1, 2 are a convention; lowest free slot is a guarantee; the kernel, not the caller, branches on console versus inode** — [Week 15 · A descriptor is a small integer](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-fd), [The per-process file table](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-table), [One read and write path](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-uniform)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| L15 §2 `exec`: Building a World | 15 min |
-| L15 §3 File Descriptors | 15 min |
-| L14 §4, the `cat` subsection | 5 min |
-| rv6 Architecture: Address spaces; The system call table | 10 min |
+| [Week 15 · This week](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#this-week), then [Thursday · `49k` exec](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#thu-49k) through [Programs by name: flat binaries](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-flat) | 3 min |
+| [Week 15 · Loading more than a page, and where it lands](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-load), [argc and argv, on the new stack](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-argv) and [Starting it, and failing cleanly](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#49k-start) | 6 min |
+| [Week 15 · Thursday · `50k` File descriptors](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#thu-50k) through [The offset makes a descriptor stateful](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-offset) | 4 min |
+| [Week 15 · `open` and its flags](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-open) and [One read and write path](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#50k-uniform) | 3 min |
+| [Week 15 · For the exam](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#exam). Not needed today; on the Final | 2 min |
+| [rv6 Architecture: Address spaces](../guides/rv6-architecture.md#address-spaces), the user address space and its constants | 3 min |
+| [rv6 Architecture: The system call table](../guides/rv6-architecture.md#the-system-call-table) | 2 min |
 
 ## Mental model
 
@@ -51,4 +58,4 @@ The cursor is the only state the kernel keeps between calls; the returned count 
 
 ## If you finish early
 
-Work [Practice Problems](../lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md#practice-problems) 1, 2, and 6, then read xv6 book chapter 1 and chapter 3's "Code: exec" section. Then start Friday's prep page, [Prep: fork, Userland, and Ship](15-cs326-2026-12-04-prep-fork-userland-and-ship.md).
+Work [Week 15 · Problem 1: Build the argv block](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#problem-1), [Problem 4: Two designs, one fork](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#problem-4) and [Problem 5: Try to forge authority](../lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md#problem-5) on paper, then read xv6 book chapter 1 and chapter 3's "Code: exec" section. Then start Friday's prep page, [Prep: fork, Userland, and Ship](15-cs326-2026-12-04-prep-fork-userland-and-ship.md).

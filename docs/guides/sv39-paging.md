@@ -309,8 +309,9 @@ deterministic. `kalloc::init` frees pages from the end of the kernel image
 upward to `PHYSTOP`, pushing each onto the head of a free list
 (`kalloc.rs`), and `kalloc` pops the head (`kalloc.rs`). So the
 **first** allocation is the **highest** page in RAM, `0x87FF_F000`, and each
-subsequent one is 4096 lower. `kinit` calls `kalloc::init` and then `kvmmake`
-with nothing in between (`BANNER` in `main.rs`), so the tables land like this:
+subsequent one is 4096 lower. Assume the kernel page table is the first thing
+built after the free list, so its pages are the first ones handed out; the
+tables then land like this:
 
 | Alloc | Physical page | Role |
 |---|---|---|

@@ -1,6 +1,6 @@
 # Prep: The Console and the Kernel Shell — 45k · 46k
 
-**Session:** Thu Nov 12, 1h45 · **Exercises:** `45k_console`, `46k_shell` · **Prep time:** ~55 min · **Lecture:** [Device Interrupts, the PLIC, and the Console](../lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md) · [Shells, and the Reference Kernel](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md)
+**Session:** Thu Nov 12, 1h45 · **Exercises:** `45k_console`, `46k_shell` · **Prep time:** ~20 min · **Lecture:** [Week 12 · The Console, the Shell, and User Mode](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md)
 
 ## What you will build
 
@@ -8,20 +8,22 @@ A keypress makes the UART raise source 10 and the PLIC deliver a supervisor exte
 
 ## Concepts you need
 
-- **Claim, service, complete; two ways a console dies** — [Device Interrupts §2.3](../lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md#23-claim-service-complete) · [rv6 Architecture § Path 2](../guides/rv6-architecture.md#path-2-an-s-mode-device-interrupt)
-- **Top half, bottom half, the lock-free ring, `wfi`** — [Device Interrupts §4.1](../lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md#41-top-half-bottom-half), [§4.2](../lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md#42-the-ring-buffer), [§4.3](../lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md#43-blocking-and-why-wfi-is-not-a-busy-wait)
-- **A shell is a REPL, and here also the line discipline** — [Shells §2.1](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#21-four-steps-and-nothing-else), [§2.3](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#23-line-discipline-who-owns-the-backspace) · [Device Interrupts §5.2](../lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md#52-the-four-jobs)
-- **Tokens are borrowed views; `split_whitespace` allocates nothing** — [Shells §3.1](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#31-words-not-characters)
-- **Dispatch by `match`; output through the `Out` trait** — [Shells §4.1](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#41-why-a-table-not-a-chain-of-ifs), [§4.3](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#43-the-out-trait-where-the-output-goes) · [rv6 Architecture § Two shells](../guides/rv6-architecture.md#two-shells)
-- **Reading to extend, not to rebuild** — [Shells §1.3](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#13-from-building-to-extending), [§6.1](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#61-name-it-precisely)
+- **Claim, service, complete; two ways a console dies** — [Week 12 · Claim, service, complete](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#45k-claim) · [rv6 Architecture: Path 2, an S-mode device interrupt](../guides/rv6-architecture.md#path-2-an-s-mode-device-interrupt)
+- **Top half, bottom half, the lock-free ring, `wfi`** — [Week 12 · A ring between two worlds](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#45k-ring)
+- **A shell is a REPL, and here also the line discipline** — [Week 12 · A loop, and words](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#46k-repl)
+- **Tokens are borrowed views; `split_whitespace` allocates nothing** — [Week 12 · A loop, and words](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#46k-repl)
+- **Dispatch by `match`; output through the `Out` trait** — [Week 12 · One match, and `&mut dyn Out`](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#46k-dispatch) · [rv6 Architecture: Two shells](../guides/rv6-architecture.md#two-shells)
+- **Reading to extend, not to rebuild** — [Week 12 · Thursday · `46k` The kernel shell](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#thu-46k)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Device Interrupts §2.3, §3, §4, §6 (claim, service, complete; the ring; the whole path) | 25 min |
-| Shells §2–§4 (REPL, tokens, dispatch, `Out`) | 20 min |
-| Shells §1.3, §6.1 · rv6 Architecture: Path 2, Two shells | 10 min |
+| [Week 12 · This week](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#this-week), then [Thursday · `45k` The console](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#thu-45k) through [Claim, service, complete](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#45k-claim) | 4 min |
+| [Week 12 · A ring between two worlds](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#45k-ring), with its four-slot trace | 3 min |
+| [Week 12 · Thursday · `46k` The kernel shell](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#thu-46k), both sections and the [`47k` extra-credit box](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#ec-47k) | 3 min |
+| [Week 12 · For the exam: The PLIC's four registers](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#exam-plic). Not needed today; on Midterm 2 | 1 min |
+| [rv6 Architecture: Path 2, an S-mode device interrupt](../guides/rv6-architecture.md#path-2-an-s-mode-device-interrupt) and [Two shells](../guides/rv6-architecture.md#two-shells) | 4 min |
 
 ## Mental model
 
@@ -50,8 +52,8 @@ The handler writes only `BUF` and `TAIL`, the reader only `HEAD`; a stale read e
 
 ## Extra credit today
 
-`47k_file_commands` (+0.5): `touch`, `cat`, `echo TEXT > FILE`, `rm`, and `rmdir`. The redirect and `rmdir` are given as worked examples; the other three stitch together filesystem promises: name to inode number, bytes into a fixed buffer, `core::str::from_utf8`, unlink. See [Shells §1.3](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#13-from-building-to-extending) and [§3.4](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#34-why-echo-has-to-cheat).
+`47k_file_commands` (+0.5): `touch`, `cat`, `echo TEXT > FILE`, `rm`, and `rmdir`. The redirect and `rmdir` are given as worked examples; the other three stitch together filesystem promises, and each decides which of the filesystem's facts count as errors. See [Week 12 · Extra credit · `47k`](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#ec-47k) and [Why the call is `unlink`](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#deeper-unlink).
 
 ## If you finish early
 
-Work [Shells Practice Problem 5](../lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md#practice-problems), the deadlock in the kernel shell; it comes back on Midterm 2. Then read chapter 5 of the xv6 book, "Interrupts and device drivers," or start Friday's prep page, [Prep: User Mode](12-cs326-2026-11-13-prep-user-mode.md).
+Work [Week 12 · Problem 1: The PLIC for a second hart](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#problem-1) and [Problem 2: Predict the screen and the line](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#problem-2) on paper; the PLIC's registers come back on Midterm 2. Then read chapter 5 of the xv6 book, "Interrupts and device drivers," or start Friday's prep page, [Prep: User Mode](12-cs326-2026-11-13-prep-user-mode.md).

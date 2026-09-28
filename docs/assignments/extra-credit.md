@@ -52,7 +52,7 @@ memory-mapped registers, a status byte with flag masks, and a poll-then-transfer
 loop. You write `uart::getc` and `uart::putc` against `LSR.DR` and `LSR.THRE`
 with `read_volatile`/`write_volatile`, and the kernel reads its first keystroke.
 
-It is demonstrated in L17 rather than assigned because `45k_console` replaces
+It is introduced in [Week 11's lecture](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam-devices) rather than assigned because `45k_console` replaces
 it with an interrupt-driven version a week later, and `42k_boot_to_life`
 already carries the finished driver. It is a clean, satisfying exercise if you
 want more practice with MMIO before the console.
@@ -68,9 +68,8 @@ Exercise `46k_shell` gives rv6 a shell that moves around a namespace: `pwd`,
 `touch`, `cat`, `echo >`, `rm`, `rmdir` — each three or four lines over the
 filesystem API you wrote in `40k_filesystem`. The thinness is the lesson: a
 good API makes its clients boring. The lecture behind it is
-[L21](../lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md),
-on November 24; the exercise is released with `45k`/`46k` on November 12, so
-you may do it before or after the lecture. `48k_user_mode` carries the finished
+[Week 12's](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#ec-47k), on November 10; the exercise is released with
+`45k`/`46k` on November 12, two days later. `48k_user_mode` carries the finished
 commands, so nothing depends on your having written them.
 
 ---

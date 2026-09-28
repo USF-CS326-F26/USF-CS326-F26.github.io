@@ -249,8 +249,8 @@ sequence, and most wrong ones fail silently.
     4 MiB window is only mapped at `vm.rs`. Also after `trap::init`, or the
     first keystroke traps through an uninitialized `stvec`.
 
-13. **`trap::intr_on()` (`main.rs` → `trap.rs`): `sie.SSIE`, then
-    `sstatus.SIE`.**
+13. **`trap::intr_on()` (`main.rs` → `trap.rs`): open the interrupt
+    gates.**
     *Constraint:* dead last. Enabling interrupts is a promise that a handler and
     a vector exist; every earlier step is part of keeping that promise.
 
@@ -376,7 +376,7 @@ sequenceDiagram
     timervec->>HW: restore a1-a3, mret (start.rs)
     HW->>kernelvec: S-mode software interrupt, if sstatus.SIE and sie.SSIE
     kernelvec->>kerneltrap: save 16 caller-saved regs, call (trap.rs)
-    kerneltrap->>kerneltrap: scause low bits = 1: clear sip.SSIP, TICKS += 1 (trap.rs)
+    kerneltrap->>kerneltrap: scause low bits = 1, the forwarded tick (trap.rs)
     kerneltrap->>kernelvec: return
     kernelvec->>HW: restore regs, sret (trap.rs)
 ```
@@ -404,8 +404,7 @@ sequenceDiagram
     kernelvec->>kerneltrap: call kerneltrap (trap.rs)
     kerneltrap->>console: scause low bits = 9: console::intr() (trap.rs)
     console->>PLIC: claim() returns 10 (console.rs, plic.rs)
-    console->>UART: getc() while LSR.DR is set (console.rs)
-    console->>console: push each byte into BUF (console.rs)
+    console->>console: the received bytes go into BUF (console.rs)
     console->>PLIC: complete(10) (console.rs, plic.rs)
     kerneltrap->>kernelvec: return
     kernelvec->>HW: sret restores sstatus.SIE from SPIE
@@ -542,10 +541,10 @@ The full lifecycle of a user process:
    claims an `Unused` slot and gives it a pid, an empty page table, a zeroed
    trapframe page, a one-page kernel stack, and fds 0/1/2 on the console
    (`proc.rs`).
-2. `build_process` (`exec.rs`) builds the address space, points
-   `tf.epc` at `USER_CODE`, sets `tf.sp`, `tf.a0 = argc`, `tf.a1 = argv`
-   (`exec.rs`), and calls `usermode::ready` (`usermode.rs`), which
-   sets `context.ra = forkret` and `context.sp = kstack + PGSIZE`.
+2. `build_process` (`exec.rs`) builds the address space and fills in the
+   saved user registers a program starts from: where to begin, the stack, and
+   `argc`/`argv` where `main` expects them. `usermode::ready` (`usermode.rs`)
+   then sets `context.ra = forkret` and `context.sp = kstack + PGSIZE`.
 3. `usermode::run` (`usermode.rs`) enables `sie.SSIE` and enters the
    scheduler loop (`usermode.rs`), which snapshots every slot's state, asks
    `RoundRobin::pick_next` for an index (`sched.rs`), sets `CURPROC`, and
@@ -562,15 +561,17 @@ The full lifecycle of a user process:
    when the root process exits is swept up by `cleanup_except`
    (`usermode.rs`).
 
-`fork` (`syscall.rs`) is `allocproc` + `proc_pagetable` + `uvmcopy` + a
-trapframe copy with `a0` forced to 0. The copy is eager — every user page is
+`fork` (`syscall.rs`) makes the child a copy of its parent: the same user
+memory, the same saved registers, the same open files. One saved register
+differs, and that is why `fork` returns twice: the parent sees the child's pid
+and the child sees 0. The memory copy is eager — every user page is
 duplicated at `copy_level()` (`vm.rs`). There is no copy-on-write in rv6, which is worth
 saying out loud, because "fork is expensive" is a fact about this kernel and not
 about Unix in general.
 
-`exec_into` (`exec.rs`) is the mirror: build a *new* address space from the
-same trapframe page, install it, repoint the trapframe at the new program, and
-free the old page table. It works only because a syscall runs on the kernel page
+`exec_into` (`exec.rs`) is the mirror: the same process, on the same trapframe
+page, becomes a whole new program, and its old image is freed from inside the
+system call. That works only because a syscall runs on the kernel page
 table — the kernel is not executing out of the memory it is freeing
 (`exec.rs`). Build the new space *before* touching the old one and a
 failed exec leaves the caller running, which is exactly what `sh` depends on
@@ -646,12 +647,12 @@ The rules that matter:
    (`console.rs`) takes none, by design; the ring buffer is single-producer,
    single-consumer instead.
 4. **Drop the guard before copying to user memory.** `sys_open` drops it
-   explicitly at `syscall.rs` before calling `fdalloc`. `sys_read` relies on
-   a subtler Rust rule: `match FS.lock().read_at(..)` (`syscall.rs`) keeps
-   the temporary guard alive until the end of the whole `match` statement, and
-   the `copyout` at `syscall.rs` sits *after* it. If you move that `copyout`
-   inside the match arm, you are suddenly holding the filesystem lock while
-   walking a user page table. It will still work — until it does not.
+   explicitly at `syscall.rs` before calling `fdalloc`. A handler that reads
+   under the lock and then copies out must also respect a subtler Rust rule:
+   a temporary guard created in a `match` scrutinee stays alive until the end
+   of the whole `match` statement. A `copyout` written inside one of its arms
+   runs with the filesystem lock held while it walks a user page table. It
+   will still work — until it does not.
 
 The interrupt-enable state is really a second, invisible lock. `sstatus.SIE`
 is cleared by hardware on every trap entry and restored by `sret`, so kernel
@@ -693,13 +694,13 @@ hand from the `rv6$` prompt.
 | Keystrokes ignored entirely | `console.rs` (`enable_rx_interrupt`, `plic::init`, `sie.SEIE`), `plic.rs` |
 | Exactly one keystroke works | `console.rs` — `plic::complete` not called |
 | `ecall` repeats the same instruction forever | `usermode.rs` — the saved PC never steps past the `ecall` |
-| User program faults at its very first instruction | `exec.rs` (`epc = USER_CODE`), `vm.rs` (`PTE_R\|PTE_X\|PTE_U`, `fence.i`) |
+| User program faults at its very first instruction | `exec.rs` (the saved start address), `vm.rs` (the code page's permissions, `fence.i`) |
 | User program faults on its first store | `vm.rs` (stack page) or `exec.rs` (`tf.sp`) |
 | `argc`/`argv` are garbage in a user program | `exec.rs` (`push_argv`) and `exec.rs` |
 | `write(1, ..)` returns -1 | `proc.rs` (console fds) and `syscall.rs` (`writable`) |
 | `read` returns the same bytes over and over | `syscall.rs` — the offset is never advanced |
 | Reading a file returns -1 but `cat` works in the kernel shell | `FileSystem::read_at` vs `FileSystem::read` (`fs.rs`) — `read_at` is offset-based, `read` is not |
-| `fork`'s child restarts the program from the top | `syscall.rs` — trapframe copy, then `a0 = 0` |
+| `fork`'s child restarts the program from the top | `syscall.rs` — the child's saved registers |
 | `fork` returns the same value to both | `syscall.rs` and `usermode.rs` |
 | `wait` never returns | `syscall.rs` (parent + `Zombie` test), `proc.rs` (`has_children`) |
 | `exec` returns to the old program on success | `exec.rs` — page table and trapframe not repointed |

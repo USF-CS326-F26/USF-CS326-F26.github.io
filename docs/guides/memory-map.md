@@ -128,8 +128,8 @@ mode of a bad exercise 31k is a silent timeout rather than an error.
 
 **`PROVIDE(etext = .)`** names the end of the text section, page-aligned. `etext`
 is the boundary you would use to map code read-execute and everything above it
-read-write; rv6's `kvmmake` currently maps all of RAM `R|W|X` and does not
-reference it. `PROVIDE` only emits a symbol if something asks for one, so if you
+read-write. rv6's kernel map does not split RAM that way, so nothing references
+it. `PROVIDE` only emits a symbol if something asks for one, so if you
 run `nm` on the kernel today you will not find `etext` at all. That is not a
 bug — it appears the moment you write code that uses it.
 
@@ -197,15 +197,19 @@ physical memory
 ## The kernel's virtual address space
 
 `vm.rs` (`kvmmake`) builds it, and it is deliberately boring — an identity
-map plus one exception:
+map plus one exception. The rule that decides what goes in is short: anything
+the kernel touches after the `satp` write must already be mapped. That means
+the kernel's own code, data and stacks, every page it will ever allocate, and
+each device whose registers it still reads or writes. Permissions follow what
+the bytes are for, and a device register is data, never an instruction.
 
-| Virtual range | Maps to | Perms | Source |
-|---|---|---|---|
-| `0x1000_0000` (1 page) | itself | `R W` | `vm.rs` |
-| `0x0010_0000` (1 page) | itself | `R W` | `vm.rs` |
-| `0x0c00_0000` (4 MiB) | itself | `R W` | `vm.rs` |
-| `0x8000_0000` – `0x8800_0000` | itself | `R W X` | `vm.rs` |
-| `TRAMPOLINE` (1 page) | a fresh page holding a copy of `uservec`/`userret` | `R X` | `vm.rs` |
+```text
+kernel virtual                         physical
+TRAMPOLINE (top page)   ── copy of ──▶  uservec / userret, a fresh RAM page
+        ... unmapped ...
+RAM, 128 MiB            ══ itself ══    RAM at 0x8000_0000
+device pages            ══ itself ══    device pages below 0x8000_0000
+```
 
 Identity mapping means a physical address and a kernel virtual address are the
 same number, so kernel pointers keep working the instant `satp` is written. The

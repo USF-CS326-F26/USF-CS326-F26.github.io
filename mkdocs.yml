@@ -211,30 +211,19 @@ nav:
       - "Oct 6 · Slides": lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html
       - "Oct 13 · Week 9 · Processes, the Context Switch, and Scheduling": lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md
       - "Oct 13 · Slides": lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html
-      - "Oct 22 · Locks, Semaphores, and the Kernel Heap": lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md
-      - "Oct 22 · Slides": lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html
-      - "Oct 27 · Virtual Memory II: Turning the MMU On": lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on.md
-      - "Oct 27 · Slides": lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on-slides.html
-      - "Oct 29 · Filesystems, Devices, and the Boot Sequence": lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md
-      - "Oct 29 · Slides": lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html
-      - "Nov 3 · Traps, Privilege Modes, and Interrupts": lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts.md
-      - "Nov 3 · Slides": lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts-slides.html
-      - "Nov 5 · Device Interrupts, the PLIC, and the Console": lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console.md
-      - "Nov 5 · Slides": lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html
-      - "Nov 10 · User Mode I: The Wall, the Trampoline, and the Trapframe": lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe.md
-      - "Nov 10 · Slides": lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe-slides.html
-      - "Nov 12 · Shells, and the Reference Kernel": lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel.md
-      - "Nov 12 · Slides": lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel-slides.html
-      - "Nov 17 · User Mode II: System Calls": lectures/13-cs326-2026-11-17-user-mode-ii-system-calls.md
-      - "Nov 17 · Slides": lectures/13-cs326-2026-11-17-user-mode-ii-system-calls-slides.html
-      - "Nov 24 · File Commands over a Filesystem API": lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md
-      - "Nov 24 · Slides": lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api-slides.html
-      - "Dec 1 · `exec`, File Descriptors, and `fork`": lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork.md
-      - "Dec 1 · Slides": lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html
-      - "Dec 3 · exec as a System Call, and Userland": lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland.md
-      - "Dec 3 · Slides": lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html
-      - "Dec 8 · Pipes, the Payoff, and Revision": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review.md
-      - "Dec 8 · Slides": lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html
+      - "Oct 27 · Week 10 · Locks, Semaphores, and Turning the MMU On": lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md
+      - "Oct 27 · Slides": lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on-slides.html
+      - "Nov 3 · Week 11 · Files, Boot Order, and Traps": lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md
+      - "Nov 3 · Slides": lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps-slides.html
+      - "Nov 10 · Week 12 · The Console, the Shell, and User Mode": lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md
+      - "Nov 10 · Slides": lectures/12-cs326-2026-11-10-console-shell-and-user-mode-slides.html
+      - "Nov 17 · Week 13 · Midterm 2 Review": lectures/13-cs326-2026-11-17-midterm-2-review.md
+      - "Nov 17 · Slides": lectures/13-cs326-2026-11-17-midterm-2-review-slides.html
+      - "Nov 24 · Week 15 · exec and File Descriptors": lectures/15-cs326-2026-11-24-exec-and-file-descriptors.md
+      - "Nov 24 · Slides": lectures/15-cs326-2026-11-24-exec-and-file-descriptors-slides.html
+      - "Dec 1 · Week 15 · fork, wait, and the User Shell": lectures/15-cs326-2026-12-01-fork-wait-and-the-user-shell.md
+      - "Dec 1 · Slides": lectures/15-cs326-2026-12-01-fork-wait-and-the-user-shell-slides.html
+      - "Dec 8 · Week 16 · Final Review and Beyond": lectures/16-cs326-2026-12-08-final-review-and-beyond.md
   - In Class:
       - "In Class": inclass/index.md
       - "Week 02 · Rust: Types, Ownership, and Borrowing": inclass/week02-slides.html

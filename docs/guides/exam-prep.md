@@ -74,10 +74,13 @@ leaves `ulib` with `a7 = 16`, `a0 = 1`, `a1 = &buf`, `a2 = 5`, then `ecall`:
 | 31 `sd`s | `uservec` | every user register parked at a fixed offset: `a0` at 112, `a7` at 168 (`usermode.rs`) |
 | `ld sp, 8(a0)` / `ld t0, 16(a0)` / `ld t1, 0(a0)` | `uservec` | kernel stack top, `usertrap`'s address, the kernel's `satp` |
 | `csrw satp, t1` … `jr t0` | `uservec` | page table swapped mid-instruction-stream; only works because the trampoline is mapped at the same virtual address in both tables |
-| `scause == 8` | `usertrap` | `tf.epc = sepc + 4`, so the `ecall` is not re-executed |
-| `dispatch(tf.a7, tf.a0, tf.a1, tf.a2)` | `syscall.rs` | the syscall number and three arguments, read from the trapframe |
-| `tf.a0 = ret` | `usermode.rs` | the return value, planted in the `a0` the user will wake up holding |
+| cause 8: a system call | `usertrap` | the number and arguments are read from the trapframe, because the live registers now hold kernel values; the result travels back through the trapframe's `a0` slot |
 | `csrrw a0, sscratch, a0` … `sret` | `userret` | user `a0` restored; `pc` ← `sepc` |
+
+One value in that trace is a decision, not a copy. The hardware left `sepc`
+pointing *at* the `ecall`, so a kernel that resumed there unchanged would make
+the same call forever. Say why the saved pc has to move past the 4-byte
+instruction before `sret`, and you have the mark that most answers miss.
 
 Full credit is naming the register, giving its value, and saying what forces it.
 "`a0` is the trapframe" is half an answer; "`a0` is the trapframe, because
@@ -102,8 +105,8 @@ An Sv39 page table entry:
 - **PPN** = `0x2008_041B >> 10` = `0x8_0201`.
 - **Physical address** = PPN `<< 12` = `0x8020_1000`.
 - **Verdict**: a user *text* page — readable, executable, not writable,
-  reachable from user mode. Exactly what `load_segment` installs
-  (`vm.rs`: `PTE_R | PTE_X | PTE_U`).
+  reachable from user mode. Exactly the permissions a loaded program's code
+  pages carry: the program may run them but never rewrite them.
 
 Two things trip people up every year. First, a PTE holds a page *number*, not
 an address: the `>> 12` / `<< 10` pair in `Pte::new` (`vm.rs`) is the entire
@@ -114,8 +117,8 @@ next level, which is what makes the walk loop terminate correctly
 
 The same decoding applies to `satp`. `0x8000_0000_0008_0005`: mode field (bits
 63:60) = 8 = Sv39; the low 44 bits are the root table's PPN = `0x8_0005`, so
-the root page table sits at `0x8000_5000` (`make_satp`, `vm.rs`). Mode 0
-means paging off — which is what `start.rs` writes before `mret`.
+the root page table sits at `0x8000_5000` (shift the PPN back left by 12).
+Mode 0 means paging off — which is what `start.rs` writes before `mret`.
 
 And to `scause`, where the top bit separates interrupts from exceptions:
 
@@ -149,22 +152,31 @@ dropped carry costs a line, not the question.
 
 ## Shape 3 — order the steps
 
-> **Worked example.** Here are the six calls in `kinit` (`main.rs`),
-> scrambled. Put them in order and name the constraint that fixes each.
+> **Worked example.** Here are six steps `start()` (`start.rs`) takes in
+> machine mode before `kmain` runs, scrambled. Put them in order and name the
+> constraint that fixes each.
 
 | # | Step | What forces its position |
 |---|---|---|
-| 1 | `uart::init()` | printing must work before anything can fail; it is plain MMIO, needing no allocator and no MMU |
-| 2 | `kalloc::init()` | builds the free list from the linker's `end` symbol up to `PHYSTOP` (`kalloc.rs`); everything below allocates |
-| 3 | `vm::kvminithart(vm::kvmmake())` | `kvmmake` allocates every page-table page through `walk` (`vm.rs`), so it must follow `kalloc`; the `csrw satp` is followed immediately by `sfence.vma` (`vm.rs`), and the kernel identity-maps itself so the *next instruction fetch* still resolves |
-| 4 | `proc::init()` | clears the fixed process table; free to move, but must precede any process creation |
-| 5 | `trap::init()` | `stvec` must hold `kernelvec` before any trap is possible — and definitely before interrupts are enabled |
-| 6 | `fs::FS.lock().init()` | a fixed inode table (`fs.rs`); its only real constraint is "before anything opens a file" |
+| 1 | set `mstatus.MPP` to supervisor | `mret` reads `MPP` to choose the mode it drops into; it must be set before `mret`, and nothing else reads it |
+| 2 | write `kmain`'s address into `mepc` | `mret` jumps to whatever `mepc` holds; before `mret`, otherwise free |
+| 3 | write `0` to `satp` | the first supervisor-mode fetch must not be translated, because no page table exists yet; machine mode ignores `satp`, so only "before `mret`" matters |
+| 4 | delegate traps with `medeleg` and `mideleg` | without it, a trap taken in supervisor mode vectors to machine mode's `mtvec` instead of the kernel's `stvec`; traps in machine mode are never delegated, so any point before `mret` works |
+| 5 | open physical memory protection to all of physical memory | until a PMP entry allows it, supervisor mode may touch no memory at all, so the very first fetch at `kmain` would fault |
+| 6 | `mret` | the jump itself: everything supervisor mode relies on must already be true, so it comes last |
 
 Part of the answer is admitting which steps are genuinely interchangeable.
-Steps 4 and 6 could swap; steps 2 and 3 could not. Say so, and say why.
+Steps 1 to 5 could come in any order; step 6 could not. Say so, and say why.
+The `mcounteren` write and the timer set-up obey the same rule.
 
-The interesting constraints live just after `kinit`, in `kmain` (`main.rs`):
+When the steps *do* depend on each other, as the subsystem start-up in `kinit`
+does, draw the dependency graph before you write a single number: an arrow
+from each step to every step it needs. Any order that respects the arrows is
+correct, and two steps with no path between them are the ones you may swap.
+[rv6 Architecture](rv6-architecture.md#the-boot-sequence) walks the whole boot
+this way.
+
+The same reasoning settles one ordering later in `kmain` (`main.rs`):
 `console::init()` enables the UART's receive interrupt, programs the PLIC, and
 sets `sie.SEIE`; only then does `trap::intr_on()` set the global `sstatus.SIE`.
 Reverse those two and the first keystroke traps before the PLIC can say which

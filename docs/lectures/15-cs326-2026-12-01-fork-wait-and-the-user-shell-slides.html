@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 15 · fork, wait, and the User Shell - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="15-cs326-2026-12-01-fork-wait-and-the-user-shell/">&larr; Week 15 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 15 · fork and wait
+
+## exec, the User Shell, and Your Commands
+
+CS 326 Operating Systems · Tuesday, December 1
+
+**Thu Dec 3** `49k_exec`, `50k_file_descriptors` (taught Nov 24) · **Fri Dec 4** `51k_fork_wait`, `52k_userland`, `53k_ship_your_commands` · extra credit `54k_elf_loader`
+
+[The Week 15 page](15-cs326-2026-12-01-fork-wait-and-the-user-shell/): read **Essentials** before Friday. The final is Tuesday, Dec 8.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–10 | Recap of Nov 24: this week, then its exam part (two tables, one shared offset) | title, this-week, recap-two-tables, recap-shared-offset |
+| 10–32 | Friday · `51k` (6 core, including one exam slide) | fri-51k … exam-init |
+| 32–55 | Friday · `52k` (7 core, including three exam slides) | fri-52k … exam-sfence |
+| 55–70 | Friday · `53k` (3 core) | fri-53k, 53k-ship, 53k-one-thing |
+| 70–85 | The final's long question, one line per layer: `$ mycat notes.txt` from Enter to the next prompt | 53k-layers, exam-long |
+| 85–100 | Summary, Before Thursday (the Dec 3 prep, which Nov 24 could not walk), Before Friday (the Dec 4 prep), then the final's logistics | summary, before-thursday, before-friday, next-week |
+| 100–105 | Buffer: questions on the final, or one ↓ stack (Problem 3 under exam-two-calls) | |
+
+**Fast path** (the minimum lecture, 18 ids; longer than usual because nine slides carry Final material and the final is a week away): this-week, recap-two-tables, recap-shared-offset, fri-51k, 51k-child, 51k-zombie, 51k-scheduler, exam-init, fri-52k, 52k-shell, exam-two-calls, exam-shell, exam-sfence, fri-53k, 53k-ship, 53k-layers, exam-long, next-week.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack, the four problems included: never press down. The page has all of it.
+2. summary: skip it; the Before slides recap by question.
+3. The three one-thing slides: one sentence each on the slide before. 51k: "a copy that differs in nothing is not yet a child". 52k: "let go of nothing old until everything new exists". 53k: "no `format!`, `println!`, `Vec` or `String` on rv6".
+4. 52k-no-return: one sentence on fri-52k: "only a failed exec returns, with -1".
+5. Compress only, never skip (PS3 Problem 8, on the final): 51k-scheduler in one minute. Leave the forktest table up and read its three rows; say "cooperative: the parent runs until it waits, so `parent` prints first".
+6. Compress only, never skip: this-week in 30 seconds, and 53k-ship in one minute (read only the left column of its steps).
+7. before-thursday: show the link and say "reread the Nov 24 Essentials first"; its questions can open Thursday's session.
+8. before-friday: last to go. At minimum show the link and the two questions.
+
+Never cut: the eight exam slides, all on the final (Tue Dec 8): recap-two-tables, recap-shared-offset, exam-init, exam-two-calls, exam-shell, exam-sfence, 53k-layers and exam-long. Never cut Friday's core either (fri-51k, 51k-child, 51k-zombie, 51k-scheduler, fri-52k, 52k-shell, fri-53k, 53k-ship), nor next-week, which carries the final's logistics.
+
+**Practice Set 3 anchors** (it goes out Fri Dec 4): Part B P4 → recap-two-tables, recap-shared-offset · P5 → recap-shared-offset · Part C P7 → 51k-child · P8 → 51k-scheduler; ↓ Problem 1 drills more · P9 (a) → 51k-zombie, (b) and (c) → exam-init; ↓ Problem 2 drills (c) · Part D P10 → exam-two-calls; ↓ Problem 3 · Part E P12 (b) → exam-sfence; (a) and (c) → exam-sfence's box and the page's exam-retrieval, which point to the Week 7, Week 11 and Week 12 pages · Part F P13 → 53k-layers, exam-long. Part A and P6 → the Nov 24 page.
+
+- **Q:** "Why does today recap a lecture from a week ago?" Thanksgiving fell between Nov 24 and its session, so Thursday's prep walk and the two-table exam slides come today, two days before Thursday.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Dec 3 | `49k_exec` | programs by name | four registers start it |
+| Thu Dec 3 | `50k_file_descriptors` | open, read, write, close | an fd indexes your table |
+| Fri Dec 4 | `51k_fork_wait` | a process tree | the copy differs in one register |
+| Fri Dec 4 | `52k_userland` | `exec` as a system call | replace the program, keep the process |
+| Fri Dec 4 | `53k_ship_your_commands` | your September commands | one source, two backends |
+
+<div class="highlight-box">Thursday was taught Nov 24. The final: Tue Dec 8.</div>
+
+Notes:
+- Start from where this goes: the final always asks one long question, one command walked from a keypress to the next prompt. This week supplies its last layers.
+- By Friday night, `$ mycat notes.txt` runs the `cat` you wrote in September on your own kernel. Extra credit `54k_elf_loader` is released Friday too.
+- **Q:** "Why is Thursday not taught today?" It was, on Nov 24. Today recaps its exam part, and Before Thursday walks its prep page near the end.
+
+---
+
+<!-- .slide: id="recap-two-tables" class="exam" -->
+
+## Recap · two tables, not one
+
+Unix splits what rv6 keeps in one entry. After `open`, `fork`, and `dup(3)` in the child:
+
+```text
+parent  fd 3 --+
+child   fd 3 --+--> open file: offset 120, write-only, count 3 --> inode 7
+child   fd 4 --+
+```
+
+- Each process's **descriptor table** points into one system-wide **open-file table**
+- An open file holds offset, mode and a **reference count**: `open` makes 1, `dup` and `fork` add, `close` subtracts, 0 frees
+- rv6 keeps the whole entry per process: no middle table, no count
+
+Notes:
+- On the final, Tue Dec 8: the Nov 24 page's For the exam (exam-two-tables, exam-refcount), reused as the recap.
+- The count is why one process's `close` never cuts off another: the open file goes only when its last descriptor does.
+- **Q:** "Why does rv6 get away with one table?" It never shares an entry: `fork` copies each one by value, and there is no `dup`, so there is nothing to count.
+
+---
+
+<!-- .slide: id="recap-shared-offset" class="exam" -->
+
+## Recap · one offset, shared
+
+`dup` copies a pointer; `fork` copies the descriptor table, pointer by pointer. Either way, two descriptors share one offset:
+
+```text
+(echo a; echo b) > f     two children write f in turn: two lines
+open("f") twice          two open files, two offsets, on any system
+rv6, after a fork        the child's offset is a copy: its write can overwrite
+```
+
+<div class="info-box">Friday's <code>fork</code> copies the file table. In rv6 each offset comes along by value, so parent and child move separately.</div>
+
+Notes:
+- On the final (the Nov 24 page's exam-shared-offset). This is the bridge into `51k`: "the child's open files are copied" means something different for an offset in rv6 and in Unix.
+- ↓ Problem 3, under exam-two-calls, shows both behaviors in one redirect.
+- **Q:** "Which one does the final want?" Both. The shared offset is the Unix answer; rv6's copy is the simplification you should be able to name, with what it breaks.
+
+---
+
+<!-- .slide: id="fri-51k" -->
+
+## Friday · `51k_fork_wait`: one call, two returns
+
+`fork` creates a **child**, a copy of the calling **parent**. Both return from the same call, with the same memory; only the return value differs:
+
+```rust
+let pid = fork();
+match pid {
+    0 => run_as_child(),            // only the copy sees 0
+    p if p > 0 => wait_for(p),      // the parent holds the child's pid
+    _ => complain("no free slot"),  // -1: nothing was copied
+}
+```
+
+Zero is safe: no process has pid 0.
+
+Notes:
+- In `52k` your shell copies itself for every command, then waits for the copy. `51k` builds the copy, the ending, and the wait.
+- Read the `match` as one question answered twice: each process takes its own arm. The parent keeps the pid to tell which child `wait` hands back; -1 means no free slot or no memory, and nothing was made.
+- **Q:** "Which one runs first after a fork?" In rv6, the parent: nothing takes the CPU from it until it waits or exits. On Linux either may, and a correct program must not care.
+
+---
+
+<!-- .slide: id="51k-child" -->
+
+## What the child gets
+
+Copy what the program can see; make new what the kernel keeps about the process.
+
+| The child's… | Is | Because |
+|---|---|---|
+| user pages | copied, same addresses | writes stay private |
+| open files | copied | fd 1 still means the same |
+| saved registers | copied, except `a0` | it resumes where the parent will |
+| pid | new | a pid names one run |
+| kernel stack, trapframe page | new | each process traps on its own |
+| parent | the caller | its exit status needs an addressee |
+
+Notes:
+- PS3 Problem 7 is this table. The memory copy walks the parent's page table and gives the child a fresh page for every user page, same address, same permissions; only the trampoline is shared. Open files are copied by value, offset included; a Unix child shares each open file and its offset (recap-shared-offset), and the final asks for that difference.
+- The copied program counter puts the child just past the `ecall`, like the parent. The kernel plants 0 in the child's saved `a0`; the parent's `a0` gets the pid the ordinary way, since the trap handler stores every system call's return value in the caller's saved `a0` (PS3 P7's last question). ↓ below: copied or shared, then the cost of a copy (optional).
+- **Q:** "Why not share the pages, since they are identical?" Then a write by one would appear in the other. Unix does share them, read-only, and copies a page at its first write: copy-on-write, ↓ below.
+
+--
+
+<!-- .slide: id="deeper-copied-shared" class="deeper" -->
+
+## Copied or shared: rv6 and Unix
+
+- rv6 copies memory eagerly: `copy_level()` (`vm.rs`) duplicates every user page before the child runs.
+- Unix copies it logically: both processes map the same frames read-only, and a page is copied only when one of them writes it and faults. That is **copy-on-write**, and it makes `fork` then `exec` copy almost nothing.
+- Open files go the other way on Unix (51k-child): memory is copied because processes must stay isolated, and offsets are shared because a redirected stream must stay coherent.
+
+--
+
+<!-- .slide: id="deeper-cost" class="deeper" -->
+
+## The cost of a copy
+
+- Before copy-on-write, BSD tried `vfork` (1979), which copies nothing: the child borrows the parent's memory, parent suspended, until it calls `exec` or exits.
+- So a child that writes a variable writes the parent's.
+- Threads make `fork` worse. The child gets only the calling thread, but every lock in whatever state it was in, so a lock another thread held stays locked forever. POSIX therefore allows only async-signal-safe calls between `fork` and `exec` in a threaded program.
+
+---
+
+<!-- .slide: id="51k-zombie" -->
+
+## `exit`, the zombie, and `wait`
+
+`exit(status)` cannot free the slot: the status is for a parent who may not be listening. The process becomes a **zombie**, holding its pid and status until `wait` **reaps** it:
+
+| The caller has… | `wait` |
+|---|---|
+| a zombie child | copies out its status, frees the slot, returns its pid |
+| children, none finished | yields, then looks again |
+| no children at all | returns -1 at once |
+
+Notes:
+- Week 9 drew `Zombie` in the state diagram; this is the exercise that finally uses it.
+- The middle row is how rv6 blocks: the scheduler marked the parent `Running`; `wait` marks it `Runnable` again, yields, and rescans whenever it is picked. No process is ever `Sleeping`. ↓ below: the status word, and waiting without polling (optional).
+- **Q:** "What if the parent never calls `wait`?" The zombie holds its slot until the run ends. On Linux, `ps` shows it as `Z` until its parent exits and `init` reaps it.
+
+--
+
+<!-- .slide: id="deeper-status" class="deeper" -->
+
+## The status word
+
+- rv6 keeps an `isize` of exit status and copies four bytes of it to the parent.
+- Unix, Linux included, packs several answers into one `int`: bits 15–8 hold the low 8 bits of the exit status, and the low 7 bits hold the signal that killed the process, or 0.
+- `WEXITSTATUS` and `WTERMSIG` unpack them.
+- So on Linux `exit(256)` reaches the parent as 0 and `exit(-1)` as 255, which is why shell exit codes stay small.
+
+--
+
+<!-- .slide: id="deeper-sleep" class="deeper" -->
+
+## Waiting without polling
+
+- rv6's `wait` polls: a parent with a running child yields, rejoins the rotation, and rescans all 64 slots whenever it is picked. That is correct on one cooperative CPU, but a parent can spend many turns finding nothing.
+- xv6 sleeps instead: `wait` parks the parent on a channel, its own address, and `exit` calls `wakeup` on its parent.
+- Linux puts the parent on a wait queue and sends it `SIGCHLD`.
+- Either way, looking again becomes being told, and week 9's unused `Sleeping` state is where such a parent would wait.
+
+---
+
+<!-- .slide: id="51k-scheduler" -->
+
+## The scheduler finally has work
+
+After a `fork`, the running parent has a `Runnable` child: your `36k` round robin picks, and your `35k` switch switches. rv6 is **cooperative**: a process leaves the CPU only by yielding inside `wait` or by exiting.
+
+In `forktest` the child exits 7, and the parent exits with that plus 10. States as each turn ends:
+
+```text
+turn     what happens                             slot 0    slot 1    prints
+parent   forks, writes, wait finds no zombie      Runnable  Runnable  parent
+child    fork returned 0; writes; exit(7)         Runnable  Zombie    child
+parent   wait reaps slot 1, status 7; exit(17)    Zombie    Unused
+```
+
+Notes:
+- The loop asks your policy for a slot, switches in, and gets the CPU back only when that process lets go of it. During its own turn a process is `Running`; the table shows where each turn leaves it. The `44k` timer still ticks, but nothing takes the CPU away, so `parent` prints first. PS3 Problem 8 is this trace with two children.
+- A process that has never run starts at `forkret`, which takes the trap-return path into user mode. ↓ below: Problem 1 (predict the output).
+- **Q:** "Why does a new child start at `forkret` and not at the `ecall`?" Its kernel side has never run, so its first context is forged, as in week 9. `forkret` takes the ordinary trap-return path, and `sret` lands at the copied program counter, just past the `ecall`.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: Predict the output
+
+This program runs alone on rv6's cooperative scheduler. Each `write` puts one letter on fd 1:
+
+```text
+write "a"
+p = fork()
+if p == 0 { write "b"; q = fork(); if q == 0 { write "c"; exit(1) }; write "d"; exit(2) }
+write "e"
+wait(&s)
+write "f"
+exit(s)
+```
+
+1. What prints, and with what status does the first process exit?
+2. Which process is never reaped by its own parent, and who frees it?
+3. On Linux, with preemption, which letters race, and can any letter follow `f`?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+**1.** **`aebdcf`**, status 2. Call the processes P, A (P's child) and B (A's child), in slots 0, 1 and 2:
+
+```text
+turn   prints   what happens
+P      a, e     forks A; wait finds no zombie, yields
+A      b, d     forks B; exit(2): Zombie
+B      c        exit(1): Zombie, its parent A already a zombie
+P      f        wait reaps A (status 2); exit(2): the run is over
+```
+
+<span>Round robin goes from slot 0 to 1 to 2 and back to 0, and nothing runs until the one before it yields or exits.</span> <!-- .element: class="small" -->
+
+<span>**2.** B: its parent A exited without waiting. rv6 frees it with every other leftover when the first process finishes; on Unix, `init` would adopt and reap it.</span> <!-- .element: class="small" -->
+
+<span>**3.** `e` races with `b`, `c` and `d`, since the child may run first; `c` races with `d`. And `c` can print after `f`, even after P exits: nothing waits for B.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="51k-one-thing" -->
+
+## The one thing to get right · `51k`
+
+`[fail] only the parent ran`, and the output shows `parent` twice. Why?
+
+The child's registers were an exact copy, so its saved `a0` still held the parent's value from before the call, and it took the parent's branch.
+
+<div class="highlight-box">A copy that differs in nothing is not yet a child.</div>
+
+Notes:
+- Two `parent` lines means two processes took the parent's arm: the copy worked, and the one difference was missing.
+- **Q:** "Why can't the kernel just return 0 to the child?" The child never made the call: it has not run at all. The kernel can only arrange what the child finds when it first returns to user mode, and the return value lives in its saved `a0`.
+
+---
+
+<!-- .slide: id="exam-init" class="exam" -->
+
+## The process tree, `init`, and a stale parent
+
+- Processes form a **process tree** rooted at `init`, pid 1, which starts the shell. **Orphans** pass to `init`, whose `wait` loop reaps them.
+- rv6 has no `init`: the kernel frees leftovers when your `run` ends.
+- rv6 records the parent's slot, and slots recycle: the next occupant inherits a child it never forked.
+
+<div class="info-box">Record the parent's pid, or reparent at exit.</div>
+
+Notes:
+- On the final, Tue Dec 8 (the page's exam-init and exam-stale-parent): final.md names "the process tree and reparenting". An orphan is a child whose parent exits first; PS3 Problem 9 (b) and (c) are this slide, and its (a) is the zombie slide.
+- The stale pointer is week 9's slots-and-pids lesson again: a slot is a place and is reused, while a pid names one run. ↓ below: orphans on purpose, then Problem 2 (a child it never forked).
+- **Q:** "Does this ever bite in rv6?" Only when a parent is reaped while its child lives, as in ↓ Problem 2, where a later process in that slot reaps a grandchild it never forked.
+
+--
+
+<!-- .slide: id="deeper-orphans" class="deeper" -->
+
+## Orphans on purpose
+
+- A **daemon**, a service with no terminal, wants no parent waiting on it, and its classic launch orphans it deliberately.
+- The launcher forks; the child forks again and exits at once; the launcher reaps that child.
+- The grandchild is now an orphan, adopted by `init`, and nobody else's concern.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: A child it never forked
+
+Program P starts alone, as pid 1 in slot 0 of an empty table. A claim takes the lowest `Unused` slot:
+
+```text
+P: a = fork()
+   if a == 0 { if fork() == 0 { exit(3) }; exit(5) }        // A, and its child G
+   s1 = wait(&x);  s2 = wait(&y)
+   c = fork()
+   if c == 0 { if wait(&z) < 0 { exit(0) }; exit(z + 10) }  // C
+   wait(&w);  exit(w)
+```
+
+Give each process's slot and pid, what every `wait` returns, and P's exit status on rv6. Then say what Unix does differently.
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+```text
+process   slot   pid   parent pointer names
+A         1      2     slot 0 (P)
+G         2      3     slot 1 (A)
+C         1      4     slot 0 (P)      C reuses A's slot
+```
+
+<span>P forks A and yields in its first `wait`. A forks G and exits 5; G exits 3. P's first `wait` reaps A: `s1 = 2`, `x = 5`, and slot 1 is `Unused`. G's parent pointer still names slot 1, not P, and P has no other child, so `s2 = -1`.</span> <!-- .element: class="small" -->
+
+<span>P forks C into slot 1. C's `wait` finds G, a zombie whose parent pointer names slot 1, which is now C's: it reaps G, `z = 3`, and C exits 13. P reaps C and exits **13**.</span> <!-- .element: class="small" -->
+
+<span>**On Unix,** pid 1 is `init` itself, so let P be an ordinary process there. A's exit hands G to `init`, which reaps it. `s1` and `s2` come out the same, but C has no children, so its `wait` returns -1, C exits 0, and P exits **0**.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="fri-52k" -->
+
+## Friday · `52k_userland`: replace the program, keep the process
+
+After `fork` the child still runs the shell's code. **`exec`** replaces the program and keeps the process.
+
+| Survives `exec` | Replaced by `exec` |
+|---|---|
+| pid, parent, process slot | the page table, and every user page |
+| open files | code, data, stack, and argv |
+| kernel stack, trapframe page | the four starting registers |
+
+The old pages can go mid-call: `satp` holds the kernel's table until the trampoline's return path.
+
+Notes:
+- `49k` loaded a program into a fresh process; `52k` loads one into a process already running. The four registers are Nov 24's: program counter 0, `sp`, `a0` = argc, `a1` = argv.
+- The surviving open files are how a shell hands a program its input and output: exam-two-calls, in a few slides.
+- **Q:** "Isn't freeing the memory you are running in suicidal?" You are not running in it. From the trap until the trampoline's return path, `satp` names the kernel's table, so no instruction fetch touches the old pages; exam-sfence, in a few slides, is the same fact.
+
+---
+
+<!-- .slide: id="52k-no-return" -->
+
+## `exec` does not return on success
+
+Only a failed `exec` comes back, with -1, to a caller that is still itself. A successful one resumes somewhere else entirely:
+
+```text
+exec("mycat", argv) succeeds   next instruction: mycat's first, at address 0
+exec("mycta", argv) fails      next instruction: the one after the ecall, a0 = -1
+```
+
+Read every line after an `exec` as its failure path, where a shell's child prints `exec: not found`.
+
+Notes:
+- Both rows are the trap-return path doing its usual job: resume at the saved program counter, on the saved page table. A success changed both; a failure changed nothing.
+- **Q:** "Then how does the shell learn how the command went?" Not from `exec`: the shell never called it, its child did. The shell learns from `wait`, when that child, now `mycat`, exits.
+
+---
+
+<!-- .slide: id="52k-shell" -->
+
+## The shell leaves the kernel
+
+Since `46k` the shell has lived in the kernel. `sh` is a user program, started by the kernel shell's `run sh`, with the prompt `$ `:
+
+```text
+write "$ ", then read a line from fd 0 one byte per call, echoing each to fd 1
+split the line into words: argv
+if argv[0] is "exit": exit(0)
+fork; the child calls exec(argv[0], argv), printing "exec: not found" if it returns
+the parent waits, then loops
+```
+
+Every line but the split is system calls. `exit` is a **builtin**: its effect is on the shell.
+
+Notes:
+- The echo is why you see what you type: the kernel hands `sh` one byte per `read`, and `sh` writes it straight back on fd 1. Line assembly is `sh`'s job now.
+- The kernel shell is still there underneath: `exit` at `$ ` brings back `rv6$`.
+- **Q:** "Why is `exit` a builtin and not a program?" A program named `exit` would run in the child and end the child, and the shell would print the next prompt. Only the shell can end the shell.
+
+---
+
+<!-- .slide: id="52k-one-thing" -->
+
+## The one thing to get right · `52k`
+
+`[fail] execfail did not finish cleanly`. The program execs a name that does not exist and should go on to `exit(7)`. Why?
+
+The failed `exec` had already given back the old program's pages, so its -1 returned into memory that was gone.
+
+<div class="highlight-box">Let go of nothing old until everything new exists.</div>
+
+Notes:
+- This is Nov 24's rule, "a failed launch leaves no trace", with a harder customer: in `49k` a failure only had to free a half-built process; here the caller itself must carry on as if nothing happened.
+- **Q:** "What can make an `exec` fail?" No such program, no free page, or arguments rv6 cannot copy: more than seven words, or a name or word over 31 characters. Each must return -1 to a caller whose memory is exactly as it was.
+
+---
+
+<!-- .slide: id="exam-two-calls" class="exam" -->
+
+## Why `fork` and `exec` are two calls
+
+Between them, the child runs the shell's code on its own copy of the file table. For `mycat notes.txt 2>&1` on Unix:
+
+```text
+close(2)                 the child's fd 2 is free
+dup(1)                   returns 2, the lowest free fd: 2 now shares 1's open file
+exec("mycat", argv)      exec keeps the table: errors go where output goes
+```
+
+The window can also close fds, or set the directory or limits, with calls that already exist. One `spawn` would need every such action as a parameter, as `posix_spawn` does.
+
+Notes:
+- On the final, Tue Dec 8 (exam-two-calls); PS3 Problem 10 is this slide, and it asks for two things done in the window: redirection, and closing fds or setting the directory or limits. Name the window (from `fork` returning 0 to the `exec`) and the rule that makes it work: open files survive `exec`. `mycat` never learns anything changed; it writes fd 2 as always. Copy-on-write keeps the copy cheap.
+- ↓ below: one call instead of two, then Problem 3 (redirect in the window).
+- **Q:** "Isn't copying the whole shell just to throw it away slow?" It would be, which is why Unix copies lazily: with copy-on-write, `fork` then `exec` copies almost nothing. The split buys expressiveness, not speed.
+
+--
+
+<!-- .slide: id="deeper-spawn" class="deeper" -->
+
+## One call instead of two
+
+- Fold `fork` and `exec` into one `spawn`, and every adjustment made in the window becomes a parameter: descriptors, the working directory, credentials, signal settings, the process group, resource limits, and on Linux namespaces and cgroups.
+- The window needs none, because it is not an interface but a place to run code, so an adjustment invented later needs no new call.
+- `posix_spawn` (POSIX 2001) shows the cost. Beside the path and argv it takes a list of file actions (`addopen`, `adddup2`, `addclose`) and an attributes object: a small language for what the window would have done.
+- The strongest modern case against `fork` is Baumann and colleagues' "A `fork()` in the road" (HotOS 2019).
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: Redirect in the window
+
+`notes.txt` holds `the cat sat\n`. Your shell learns `<`: for `mycat < notes.txt`, its child points fd 0 at the file in the window.
+
+1. `mycat` is never told about the redirect. Why does it still read the file?
+2. A classmate moves the redirect before the `fork`. `mycat` still prints the file. What goes wrong afterward, on rv6 and on Unix?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+<span>**1.** Open files survive `exec`, so `mycat` starts with fd 0 already naming `notes.txt`. With no file argument it reads fd 0, whatever that is, and never learns anything changed. The shell's fd 0, in its own table, is still the console.</span> <!-- .element: class="small" -->
+
+<span>**2.** Moved before the `fork`, the redirect changes the shell itself. Its fd 0 is now `notes.txt`, so its next command line comes from the file, and the keyboard is gone. **On rv6** the shell's copy of the offset is still 0, so it reads `the cat sat` as a command and tries to run `the`. Then every read returns 0, which rv6's `sh` takes for a blank line, so it prints `$ ` forever. **On Unix** `mycat` moved the shared offset to the end, so the shell reads end of file and exits, as if you had pressed Ctrl-D. The window exists so that only the child changes.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="exam-shell" class="exam" -->
+
+## The shell is unprivileged
+
+`sh` runs in user mode on its own page table. It cannot lock the filesystem, allocate a page, or see the process table; its only door is `ecall`.
+
+So `cd` must be a builtin: a child that changes directory changes only itself.
+
+<div class="info-box">A shell is an ordinary program: anyone can write one, and every request it makes is checked.</div>
+
+Notes:
+- On the final, Tue Dec 8 (exam-shell): final.md's Userland bullet, "what it means for the shell to be an ordinary unprivileged program".
+- `sh` has no `cd`: rv6 has no directory system call yet, so only the kernel shell `rv6$` can change directory, and `open` still resolves every name in the root (↓ under exam-long). The builtin argument is Unix's, and it is the same as `exit`'s.
+- **Q:** "Then how does the shell do anything privileged?" It never does; it asks. Every keyboard read and every screen write is an `ecall`, and the kernel checks each one: the descriptor, the buffer, the mode.
+
+---
+
+<!-- .slide: id="exam-sfence" class="exam" -->
+
+## Why `exec` needs no `sfence.vma`
+
+`exec` installs a whole new page table and never executes `sfence.vma`. Not a stale-TLB bug:
+
+- `exec` changes only the process's record of its page table
+- the CPU still translates through the kernel's table
+- the new table reaches `satp` in the trampoline, between two `sfence.vma`s
+
+<div class="info-box">PS3 P12 (a), (c): Week 11's <code>scause</code>, Week 7's VA split, Week 12's trampoline.</div>
+
+Notes:
+- On the final, Tue Dec 8 (exam-sfence); PS3 Problem 12 (b). The box is the page's exam-retrieval: P12 (a) and (c) are retrieval from Weeks 7, 11 and 12. Week 10 set the rule: the TLB does not notice page-table writes, so every `satp` change is fenced.
+- No process reaches user mode except through the trampoline's return path, so a new table is always installed between fences.
+- **Q:** "Couldn't the TLB still hold the old program's translations?" Only until that return path: the fences there discard them before the first user instruction of the new program runs.
+
+---
+
+<!-- .slide: id="fri-53k" -->
+
+## Friday · `53k_ship_your_commands`: one source, two backends
+
+In September you called `ulib`, never `std`. Its two private **backends** are picked by the compile target, so your command's code has no `cfg`. `rustc` prints the switch:
+
+```text
+$ rustc --print cfg --target riscv64gc-unknown-none-elf
+target_os="none"
+$ rustc --print cfg
+target_os="macos"
+```
+
+On rv6 each system-call wrapper is one `ecall`, in `48k`'s convention:
+
+```rust
+fn getpid() -> isize {
+    let pid: isize;
+    unsafe { core::arch::asm!("ecall", in("a7") 11usize, lateout("a0") pid) };
+    pid
+}
+```
+
+Notes:
+- Read `target_os = "none"` as "no operating system underneath"; it follows from the target, so it cannot disagree with the build. Each listing is one line of many, and the second is from a Mac. The only `cfg` in a command file is one `cfg_attr` line that turns on `no_std` for the kernel target.
+- Read `in("a7") 11usize` as "the call number goes in `a7`", and `lateout("a0") pid` as "afterward, `a0` holds the answer". The numbers are your dispatch table's: `read` is 5, `write` 16.
+- **Q:** "Why write `ulib` in September, when `println!` was right there?" For Friday: the same source compiles against `std` on your laptop and against your own system calls on rv6, unedited.
+
+---
+
+<!-- .slide: id="53k-ship" -->
+
+## What `oslings ship` does
+
+rv6 cannot read ELF, so `oslings ship` makes each command something it can load:
+
+```text
+your September cat.rs           unchanged
+  built for riscv64gc-unknown-none-elf, in release mode
+an ELF file                      linked at address 0
+  loadable segments laid out by address; gaps become zeros
+a flat image                     copied to address 0, run from its first byte
+  embedded in the kernel with include_bytes!
+mycat                            a name exec can find
+```
+
+The `my` keeps rv6's own `echo` and `cat` demos from running instead. Each image is a few KiB, far inside the loader's 64 KiB.
+
+Notes:
+- Inside the kernel they are `myecho`, `mycat`, `mywc` and `mygrep`. No allocator, no formatting machinery and no runtime came along, which is why the images are so small.
+- Extra credit `54k_elf_loader` teaches rv6 to read the ELF file itself. ↓ below: what a flat image costs, and `54k`; then Problem 4 (size a shipped command).
+- **Q:** "Why must the entry point be address 0?" A flat image has no header saying where to start, so rv6 starts at its first byte, and `oslings ship` refuses an image whose entry is anywhere else (↓ below).
+
+--
+
+<!-- .slide: id="deeper-flat" class="deeper" -->
+
+## What a flat image costs, and `54k`
+
+- Two of `oslings ship`'s refusals exist only because its output is flat.
+- The image must start at 0 and its entry must be 0, since a flat image has nowhere to record either; `ulib`'s entry macro and the user linker script arrange both.
+- The loader maps every image page alike, `R X U`, so the only page a shipped command can store to is its stack page.
+- **Extra credit · `54k_elf_loader`:** `oslings ship` does rv6's loading ahead of time, and the flat image forgets what the ELF file knew. `54k` moves that job into the kernel, reading the file's own headers at `exec` time, and lifts both limits. Done outside class; not on the exam.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: Size a shipped command
+
+`oslings ship` produces a 9,500-byte image for a command you ship as `mytally`.
+
+1. How many pages hold the image, and how many zero bytes end the last one?
+2. List every page the running process maps, with its permissions.
+3. You add `static mut HITS: u32 = 0;`, increment it on every match, and print it at the end. The command now dies at its first match. Why, and what happens to the `$ ` shell that ran it?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+<span>**1.** Three pages, since 8,192 < 9,500 ≤ 12,288. The last holds 9,500 − 8,192 = 1,308 image bytes and 4,096 − 1,308 = 2,788 zeros, because each page is zeroed before the copy. The image uses 14.5% of the 64 KiB budget.</span> <!-- .element: class="small" -->
+
+<span>**2.** The pages it maps:</span> <!-- .element: class="small" -->
+
+| Virtual address | Contents | Flags |
+|---|---|---|
+| `0x0000`, `0x1000`, `0x2000` | the image | `R X U` |
+| `0x1_0000` | the stack page; argv at its top, below `0x1_1000` | `R W U` |
+| `0x3F_FFFF_E000` | the trapframe | `R W` |
+| `0x3F_FFFF_F000` | the trampoline | `R X` |
+
+<span>Pages 3 through 15 stay unmapped, so running off the image faults instead of reaching the stack.</span> <!-- .element: class="small" -->
+
+<span>**3.** `HITS` starts at zero, so it lives in `.bss`, which `oslings ship` folded into the image as zeros. Image pages have no `W`, so the first increment is a store page fault, `scause` 15. A fault ends the whole run in rv6: the scheduler frees every process but the root, the kernel shell then frees `sh`, and `rv6$` prints `run: the program faulted`.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="53k-one-thing" -->
+
+## The one thing to get right · `53k`
+
+A command that passed `cargo test` in September stops `oslings ship` with ``cannot find macro `format` in this scope``. Why?
+
+On your laptop the `std` prelude supplied it. On the kernel target the crate is `no_std`, with no allocator.
+
+<div class="highlight-box"><code>format!</code>, <code>println!</code>, <code>Vec</code> and <code>String</code> do not exist on rv6.</div>
+
+Notes:
+- The compiler error teaches: "cannot find" means the name was never in scope on this target, not a typo. The Dec 4 prep's second question asks this. Its answer gives the size reason: `core`'s `write!` does compile but drags in `core::fmt`, 12–18 KiB. This slide gives the earlier reason: `println!` is `std`'s, and on rv6 it does not exist.
+- **Q:** "Why does `format!` need an allocator?" It returns a `String`, which lives on the heap, and a shipped command has no heap: its only writable memory is one stack page.
+
+---
+
+<!-- .slide: id="53k-layers" class="exam" -->
+
+## The long question, one layer per line
+
+For `$ mycat notes.txt`, from Enter to the next prompt:
+
+```text
+UART, PLIC   Enter: IRQ 10 while sh waits in read; trap to stvec, scause 0x80…09
+console      the handler claims 10, moves the byte into the ring, completes
+sh           read(0) returns 1; sh echoes it on fd 1, sees Enter, splits words
+fork         ecall, a7 = 1: a copy of sh, saved a0 = 0; sh's wait yields
+scheduler    round robin picks the child: forkret, then sret into its copy of sh
+exec         ecall, a7 = 7: finds mycat's shipped image, builds a new page table
+user mode    sepc = 0, satp = the new table, SPP = 0; sret, a0 = 2, a1 = argv
+files        open returns 3; read(3), write(1) trap with scause 8, a7 = 5 and 16
+UART         the console fd hands each byte of write(1) to the UART driver
+exit, wait   exit(0) leaves a zombie; sh reaps it, writes "$ ", reads again
+```
+
+The past form, `rv6$ ls`, never leaves the kernel shell: no `fork`, `exec` or user mode.
+
+Notes:
+- On the final, Tue Dec 8: the long question (the page's 53k-layers). Walk the ten lines aloud, about a minute each, and name the exercise behind each: `43k`/`44k` and `45k`; `45k`; `52k`; `51k`; `36k` and `35k`; `49k`, `52k` and `53k`; `48k`; `50k`; `50k` (and `41k`'s driver, if you did the extra credit); `51k`.
+- final.md asks for the component that acts and the CSR or data structure involved at each step: the PLIC claim, the ring, the saved `a0`, the state array, the page table, `sepc` and `satp`, `a7`, the file table, the zombie's status.
+- **Q:** "Where does line assembly happen?" In `sh` itself: it reads one byte per call and echoes each, so the kernel's console only buffers bytes. (The past form's `rv6$ ls` assembles its line inside the kernel shell and runs `ls` there, which is why this deck walks `mycat`.)
+
+---
+
+<!-- .slide: id="exam-long" class="exam" -->
+
+## Tell it aloud
+
+At every line, name the component that acts and the register, CSR or table it uses. Then say what the alternative would have cost.
+
+Try it on `$ myecho hi`: which lines change, and which disappear?
+
+<div class="info-box"><code>myecho</code> opens and reads no file, so the <em>files</em> line shrinks to <code>write(1)</code> calls, <code>a7</code> = 16. Every other line stays, <code>a0</code> = 2 included.</div>
+
+Notes:
+- On the final, Tue Dec 8 (exam-long). PS3 Problem 13 is this walk for `$ echo hi`, at the depth the final rewards; do it on paper before its solutions go up Mon Dec 7.
+- "What the alternative would have cost", one example per layer: an interrupt instead of polling frees the CPU while `sh` waits; the zombie keeps a status that would otherwise be lost; copy-on-write would skip `fork`'s eager copy; a failed `exec` that destroyed first would kill its caller. ↓ below: what rv6 still lacks (optional).
+- **Q:** "How much detail does the final want?" One sentence per layer, each naming a real mechanism. Ten such sentences answer it.
+
+--
+
+<!-- .slide: id="deeper-missing" class="deeper" -->
+
+## What rv6 still lacks
+
+- `ls` at `rv6$` is still a kernel-shell command, and it cannot become a user program yet: rv6 offers no system call to read, make, or change into a directory.
+- That is the price of a userland: every power the kernel keeps must be handed out again, one system call at a time.
+- Also missing are `dup`, signals, copy-on-write, preemption, and a second hart.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- Unix has two tables; `dup` and `fork` share one offset
+- `fork` returns twice; the child differs in one saved register
+- `exit` leaves a zombie; `wait` reaps, yields, or returns -1
+- `exec` keeps the process and files, returning only on failure
+- `sh` is unprivileged; redirection lives between `fork` and `exec`
+- `ulib` picks a backend by target; `ship` makes a flat image
+
+Notes:
+- One sentence per bullet, in the order of the page. Every bullet is Friday's or the final's.
+- **Q:** "What should I study for the final from today?" The exam slides, then Practice Set 3 on paper; the page's four problems are the same material.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday, Dec 3](../prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors/): check yourself
+
+You build `exec` and file descriptors. Reread the [Nov 24 Essentials](15-cs326-2026-11-24-exec-and-file-descriptors/#essentials) first. Prep: about 30 minutes.
+
+**1.** `run wc -l notes.txt`. What are `a0` and `a1` at the first instruction, and what is at `argv[3]`?
+
+**2.** A program never given fd 5 puts 5 in `a0` and calls `read`. What comes back, and why?
+
+**3.** A 5,000-byte program loads onto two pages. Why zero the second page before copying the last 904 bytes?
+
+Notes:
+- Walk the prep page (about 30 minutes); the Nov 24 lecture could not, with Thanksgiving in between. What you build: `exec` finds a program by name, builds it a fresh address space and starts it with argc and argv; then descriptors give user programs `open`, `read`, `write` and `close`.
+- The three questions are the prep's own Check yourself; answers are on the prep page. In short: `a0` = 3, `a1` = `sp` (the 16-byte-aligned address of the pointer array), and `argv[3]` is NULL; -1, because authority is granted by `open` or inherited, never computed; and zeroing keeps a page's previous owner's bytes out of user mode.
+- **Q:** "Why is `a0` 3 and not 2?" The program's name is `argv[0]`, so `wc`, `-l` and `notes.txt` are three words.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday, Dec 4](../prep/15-cs326-2026-12-04-prep-fork-userland-and-ship/): check yourself
+
+You build `fork`, then `exec` as a system call, then ship your commands. Reread today's Essentials first. Prep: about 35 minutes.
+
+**1.** Two processes return from the same `fork` with identical memory. How does each know which it is?
+
+**2.** Your `echo` source has no `#[cfg]`, yet it runs on your laptop and on rv6. Where is the switch, and why is `println!` still forbidden?
+
+Notes:
+- Walk the prep page. What you build: a tree of processes (`fork`, `exit`, `wait`), then `exec` as a system call and the user shell `sh`, then `oslings ship` puts your September commands into the kernel as `myecho`, `mycat` and the rest.
+- The two questions are the prep's own Check yourself; answers are on the prep page. In short: only the saved `a0` differs, 0 in the child and the pid in the parent; the switch is inside `ulib`, chosen by `target_os`, and `println!` does not exist on the `no_std` target (53k-one-thing). Its Mental model is `ls > out.txt` done in the window; exam-two-calls makes the same point with `2>&1`.
+- **Q:** "Is `54k` due Friday?" It is extra credit, released Friday and done outside class, and it is not on the exam.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## The final: Tuesday, Dec 8, in this room
+
+- [The final](../assignments/final/): the regular Tuesday slot; closed book, the printed Cheatsheet, no devices
+- Cumulative, weighted toward `49k`–`53k`, with one long question
+- [Practice Set 3](../assignments/practice-set-03/): out Fri Dec 4, solutions Mon Dec 7; do it on paper first
+- The Week 16 reading, [Final Review and Beyond](16-cs326-2026-12-08-final-review-and-beyond/): optional, the long question rehearsed
+
+Notes:
+- There is no exam in finals week: Dec 8 is the last thing the course asks. The Week 16 page is reading, not a lecture.
+- **Q:** "Is Going deeper on the final?" No. The exam slides and each page's For the exam are; every ↓ slide is optional.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

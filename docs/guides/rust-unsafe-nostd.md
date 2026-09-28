@@ -6,8 +6,9 @@ talking to hardware at fixed physical addresses, building page tables out of
 raw memory, and handing registers to assembly. Everything on this page is the
 vocabulary you need for that — raw pointers, what `unsafe` actually means,
 volatile MMIO, `static mut`, `UnsafeCell`, `Send`/`Sync`, `#[repr(C)]`, and the
-`no_std` skeleton that makes a Rust binary bootable. Every example is real code
-from the rv6 reference kernel, cited by file and by the item it lives in. For the safe-Rust
+`no_std` skeleton that makes a Rust binary bootable. Nearly every example is real code
+from the rv6 reference kernel, cited by file and by the item it lives in; the one
+sketch says so. For the safe-Rust
 material that Module 1 covers, see [Rust for Systems](rust-for-systems.md).
 
 ## What `unsafe` does
@@ -126,16 +127,18 @@ mapped.
 
 A device register is not memory. Reading it can have side effects; its value
 can change with no store anywhere in your program. The optimizer does not know
-that. Given the ordinary load in a polling loop:
+that. Take a loop that waits on the CLINT's clock with an ordinary load (not
+rv6 code; a sketch of the bug):
 
 ```rust
-pub fn putc(c: u8) {
-    while !tx_ready() {}          // uart.rs
-    unsafe { reg_write(THR, c) }
+const MTIME: *const u64 = 0x0200_BFF8 as *const u64;   // the CLINT's clock
+
+unsafe fn spin_until(deadline: u64) {
+    while *MTIME < deadline {}          // a plain load: the bug
 }
 ```
 
-LLVM is entitled to reason: *nothing in this loop writes to `LSR`, so its value
+LLVM is entitled to reason: *nothing in this loop writes to `MTIME`, so its value
 cannot change, so hoist the load out and either spin forever or skip the loop
 entirely.* Both outcomes are legal and both are catastrophic. The same applies
 in reverse to writes: two stores to the same address with no intervening read
@@ -472,14 +475,14 @@ where the kernel image stops and free RAM begins.
 ```rust
 asm!("csrw satp, {}", in(reg) satp);          // vm.rs
 asm!("sfence.vma zero, zero");                // vm.rs
-asm!("fence.i");                              // vm.rs, 232
-asm!("csrs sie, {}", in(reg) 1usize << 9);    // console.rs
+asm!("fence.i");                              // vm.rs
+asm!("wfi");                                  // console.rs
 asm!("li t0, 0xf", "csrw pmpcfg0, t0", out("t0") _);  // start.rs
 ```
 
 Two idioms worth memorizing:
 
-- `out("t0") _` (`start.rs, 40, 43, 44, 47`) declares "this instruction
+- `out("t0") _` (throughout `start.rs`) declares "this instruction
   destroys `t0`" without wanting the value. Omit it and rustc may be keeping
   something live there.
 - `options(noreturn)` (`_entry()` (`entry.rs`), `start.rs`) promises control never

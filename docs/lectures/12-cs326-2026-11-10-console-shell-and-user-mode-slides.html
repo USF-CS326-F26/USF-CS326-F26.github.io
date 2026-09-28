@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 12 · The Console, the Shell, and User Mode - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="12-cs326-2026-11-10-console-shell-and-user-mode/">&larr; Week 12 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 12
+
+## The Console, the Shell, and User Mode
+
+CS 326 Operating Systems · Tuesday, November 10
+
+**Thu Nov 12** `45k_console`, `46k_shell`, extra credit `47k_file_commands` · **Fri Nov 13** `48k_user_mode`
+
+[The Week 12 page](12-cs326-2026-11-10-console-shell-and-user-mode/): **Essentials** is what Thursday and Friday assume.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week: Midterm 2 on Nov 19, Practice Set 2 out today | title, this-week |
+| 5–25 | Thursday · `45k` (5 core, ending with the PLIC exam slide) | thu-45k … exam-plic |
+| 25–40 | Thursday · `46k`, then the `47k` extra-credit box (4 core) | thu-46k … ec-47k |
+| 40–86 | Friday · `48k` (11 core, with the two exam slides after the trampoline) | fri-48k … 48k-round-trip |
+| 86–89 | Summary | summary |
+| 89–100 | Before Thursday, then Before Friday, then Next | before-thursday, before-friday, next-week |
+| 100–105 | Buffer: questions | |
+
+`48k` gets the most time on purpose: it is the heaviest exercise and the end of Midterm 2's scope. It has no slack: on pace, 48k-retry arrives at about minute 69. If you reach it by minute 64, work ↓ Problem 4 (a)–(c) (under it) at the board, about 5 minutes; otherwise point at it and move on.
+
+**Fast path** (the minimum lecture, 13 ids): this-week, 45k-claim, 45k-ring, exam-plic, thu-46k, 46k-dispatch, fri-48k, 48k-trapframe, 48k-trampoline, exam-top-pages, exam-sscratch, 48k-retry, 48k-round-trip. The Essentials slides off the fast path that Midterm 2 asks about (thu-45k, 45k-one-thing, 48k-address-space, 48k-abi, 48k-program) are never dropped: show each in its cut-order form, about 30 seconds each (for 45k-one-thing, that is its sentence on 45k-claim).
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. ec-47k: one sentence, said on 46k-one-thing: "extra credit, released Thursday: `touch`, `cat` and `rm` over the `40k` filesystem; the page's box has the idea".
+5. 46k-one-thing and 48k-one-thing: one sentence each on the slide before ("a blank line has no first word"; "a finished call must not run twice").
+6. 45k-one-thing: one sentence on 45k-claim: "the UART's line reports a state, not an event; complete while unread data remains, and the PLIC storms".
+7. 48k-program: leave the call table up and say "the buffer is a user address; the given `copyin` translates it and refuses a page without U".
+8. thu-45k: "the UART announces each byte, the PLIC routes it, and it arrives as `scause` 9".
+9. 48k-abi: leave the table up and say "`ecall` is `scause` 8; an unknown number returns -1".
+10. 48k-address-space: leave the map up and say "`PTE_U` is the wall".
+11. before-friday: point at the prep page; its questions can open Friday's session.
+12. before-thursday: last to go.
+
+Never cut: exam-plic, exam-top-pages, exam-sscratch (the For-the-exam slides).
+
+**Practice Set 2 anchors (Parts D and E):** P10 rows 1, 3 and 6 (`scause` 8, `0x8…09`, 2) → 48k-abi, thu-45k, fri-48k; its "advance `sepc`?" column → 48k-retry; rows 5 and 6's "what rv6 does" (it ends the program) → fri-48k, 48k-retry. Rows 2, 4 and 5's codes are week 11's · P11 (b) → 45k-claim, exam-plic; (a) is week 11's · P12 → week 11's `#exam-links`; ↓ deeper-unlink (under ec-47k) adds only why the call is named `unlink` · P13 (a) → 48k-address-space, exam-top-pages; (b) → 48k-trampoline, exam-top-pages; (c) → 48k-trapframe.
+
+- Practice Set 2 goes out today, on paper and ungraded; its solutions post Tue Nov 17. Do not work its problems on the slides: the ↓ problems use other numbers.
+- **Q:** "The PLIC setup is given. Is it still on the exam?" Yes. Midterm 2 asks for the four-register protocol with addresses; that is exam-plic.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Nov 12 | `45k_console` | interrupt-driven input | claim, service, complete |
+| Thu Nov 12 | `46k_shell` | the shell's evaluate step | one `match` on the first word |
+| Thu Nov 12 | `47k_file_commands`, extra credit | `touch`, `cat`, `rm` | the filesystem reports facts |
+| Fri Nov 13 | `48k_user_mode` | the first user program | only a trap crosses the wall |
+
+<div class="highlight-box">Midterm 2: Thu Nov 19, <code>34k</code> through <code>48k</code>. Practice Set 2 is out today.</div>
+
+Notes:
+- Start from where this goes: in `52k` the shell leaves the kernel and becomes an ordinary program. It reads your keys through the console, and every request it makes crosses a wall. This week builds all three.
+- By Friday night rv6 boots to `rv6$`, and `run` starts a user program that prints, asks for its pid, and exits with status 42.
+- **Q:** "Is `47k` on the midterm?" Not as an exercise: it is extra credit. Its filesystem ideas, names versus inodes and what `unlink` removes, are `40k` material and Practice Set 2 Problem 12.
+
+---
+
+<!-- .slide: id="thu-45k" -->
+
+## Thursday · `45k`: interrupts, not polling
+
+Until now, reading the UART meant **polling**: check its status bit, and if no byte waits, check again. With **interrupts**, the UART announces each byte.
+
+- Output stays polled: a byte leaves in microseconds
+- The **PLIC** routes device lines to harts; the UART is its **source** 10
+- It arrives by week 11's trap path: `scause` `0x8000_0000_0000_0009`
+
+Notes:
+- Read the `scause` top bit first: set means an interrupt, and cause 9 is a supervisor external interrupt. It sits beside `44k`'s forwarded tick, cause 1, in the same trap path.
+- A typist sends about ten bytes a second, and polling spends the gaps asking. Output stays polled for a second reason: a panic can strike with interrupts off, and it must still print. ↓ below: polling by the numbers (optional).
+- **Q:** "Why a PLIC at all? Why not wire the UART to the CPU?" A board has dozens of devices and a few harts. The PLIC decides which hart hears which device, and at what priority. Its four registers are an exam slide shortly.
+
+--
+
+<!-- .slide: id="deeper-polling" class="deeper" -->
+
+## Polling by the numbers
+
+A typist at 90 words a minute sends a byte every 130 ms. A loop whose status read takes 100 ns asks 1.3 million times per byte; an interrupt costs about a microsecond.
+
+Output turns this around: at 115,200 baud a byte leaves in 87 µs, and with a 16-byte FIFO the first status read nearly always succeeds.
+
+A 10 Gbit/s card can receive a frame every 67 ns, faster than one interrupt, so Linux's NAPI takes one interrupt, then polls until the ring drains.
+
+---
+
+<!-- .slide: id="45k-claim" -->
+
+## Claim, service, complete
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Pending: the UART raises its line
+    Pending --> Claimed: the handler reads the claim register
+    Claimed --> Idle: the handler writes the source number back
+</div>
+
+- **Claim**: ask the PLIC which source fired; 0 means none
+- **Service**: make the device stop asking
+- **Complete**: write the source number back, so the PLIC may deliver it again
+
+A `Claimed` source delivers nothing more.
+
+Notes:
+- Claim can return 0: a handler can run with nothing pending, so 0 means "nothing to service, nothing to complete".
+- Skip the completion, and the first key works while every later one vanishes, silently. Nothing panics: the PLIC simply never delivers source 10 again. Thursday's prep question 1 is this.
+- ↓ below: every gate between a key and your handler (optional), the checklist for "nothing happens when I type".
+- **Q:** "Why claim, if only the UART is enabled?" The handler cannot assume that: on a real board several sources share the one external interrupt. A claim also marks the source in progress, so no other hart takes it meanwhile.
+
+--
+
+<!-- .slide: id="deeper-gates" class="deeper" -->
+
+## Every gate between a key and your handler
+
+A key reaches the handler only through nine open gates, all given this week:
+
+```text
+1  UART          IER bit 0: interrupt when a byte arrives
+2  PLIC          source 10's priority above 0
+3  PLIC          source 10 enabled for context 1
+4  PLIC          context 1's threshold below that priority
+5  mideleg       bit 9, set in M-mode: external interrupts go to S-mode
+6  sie           SEIE, bit 9: this hart takes external interrupts
+7  sstatus       SIE: the global switch
+8  stvec         aimed at the kernel's trap vector
+9  page table    the PLIC's registers mapped, with the MMU on
+```
+
+Eight fail silently; an unmapped PLIC faults instead. If ticks count while keys do nothing, 7 and 8 are open: suspect the console's setup, which opens 1–4 and 6.
+
+---
+
+<!-- .slide: id="45k-one-thing" -->
+
+## The one thing to get right · `45k`
+
+The first key freezes the machine. Why?
+
+`[fail] the interrupt handler did not buffer the byte`
+
+The UART's line is **level-triggered**: it reports a state, "unread data", not an event. Complete while that state holds, and the PLIC delivers it again at once: an **interrupt storm**.
+
+<div class="highlight-box">Complete tells the PLIC you are done; only service makes the device stop asking.</div>
+
+Notes:
+- Two ways a console dies: skip the completion and it goes silent after one key; skip the service and it storms. Thursday's prep asks both, questions 1 and 2.
+- A storm pins the CPU inside the trap path: nothing else ever runs, so it looks like a hang, not a crash.
+- **Q:** "How do I tell a storm from a hang?" Stop QEMU in GDB a few times. A storm is always somewhere in the trap path with `scause` 9; a hang sits in one place.
+
+---
+
+<!-- .slide: id="45k-ring" -->
+
+## A ring between two worlds
+
+The handler, with interrupts off, only stores bytes in a **ring**: an array and two counters that only grow, taken modulo its length. rv6 has 256 slots; here, four:
+
+```text
+                          slots 0 1 2 3   HEAD  TAIL
+start                           . . . .    0     0
+handler pushes e, c             e c . .    0     2
+reader takes e                  e c . .    1     2
+handler pushes h, o, !          ! c h o    1     5    slot 4 % 4 = 0
+handler pushes ?                ! c h o    1     5    4 waiting: full, dropped
+reader takes c, h, o, !         ! c h o    5     5    HEAD == TAIL: empty
+```
+
+Read `TAIL - HEAD` as "bytes waiting". No lock: each side writes only its own counter.
+
+Notes:
+- The handler, the only **producer**, stores a byte and then advances `TAIL`; the reader, the only **consumer**, takes one and then advances `HEAD`. A stale read errs safely: the reader waits, or a byte is dropped. A full ring drops the newest byte, because a handler cannot wait.
+- A lock that leaves interrupts on, as rv6's does, would hang the kernel: the handler interrupts the reader that holds it, then spins forever. A reader with nothing to read runs `wfi`, halting until the next interrupt.
+- The xv6 book calls the reader the **top half** and the handler the **bottom half**. Linux uses the words for a different split: its top half is the handler, its bottom half the work the handler defers. The split is what matters.
+- **Q:** "Why not wrap the counters at 4?" Then `HEAD == TAIL` would mean both empty and full. Counters that only grow make `TAIL - HEAD` the count, which tells the two apart.
+
+---
+
+<!-- .slide: id="exam-plic" class="exam" -->
+
+## The PLIC's four registers
+
+Priority belongs to a source; enable, threshold and claim belong to a **context**, one hart in one mode. rv6 uses context 1: hart 0 in S-mode. `PLIC` is `0x0c00_0000`:
+
+```text
+priority, source 10    PLIC + 4 × 10      0x0c00_0028   1; 0 means never
+S-mode enable bits     PLIC + 0x2080      0x0c00_2080   bit 10: 0x400
+S-mode threshold       PLIC + 0x20_1000   0x0c20_1000   0: accept 1 and up
+claim / complete       PLIC + 0x20_1004   0x0c20_1004   read: claim; write: done
+```
+
+A source is delivered only if enabled and its priority is strictly above the threshold.
+
+Notes:
+- Midterm 2. Practice Set 2 Problem 11 (b) orders these steps for one keystroke and asks for each address; its "what if complete is skipped" is the silence from 45k-claim.
+- Setup writes the first three once, at boot. A handler touches only the fourth, twice: a read claims, and writing the same number back completes.
+- ↓ Problem 1: the same registers for a second hart.
+- **Q:** "Why is threshold 0 enough?" Delivery needs a priority strictly above the threshold, so threshold 0 accepts every priority from 1 up, and a priority of 0 never fires.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: the PLIC for a second hart
+
+On QEMU's `virt`, hart *i* owns PLIC context 2*i* in M-mode and 2*i* + 1 in S-mode. Context *c*'s enable words start at `PLIC + 0x2000 + 0x80 × c`, 32 sources a word; its threshold is at `PLIC + 0x20_0000 + 0x1000 × c`, with claim/complete 4 bytes above. `PLIC` is `0x0c00_0000`.
+
+- **(a)** Give hart 1's S-mode enable, threshold and claim/complete addresses.
+- **(b)** Which word and bit enable source 35 there, and where is its priority?
+- **(c)** Hart 1's threshold is 1 and source 35's priority is 1. Is it delivered?
+- **(d)** Does rv6's 4 MiB PLIC mapping cover all of these?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+**(a)** Hart 1 in S-mode is context 2 × 1 + 1 = 3:
+
+```text
+enable      0x0c00_2000 + 0x80 × 3     = 0x0c00_2180
+threshold   0x0c20_0000 + 0x1000 × 3   = 0x0c20_3000
+claim       0x0c20_3000 + 4            = 0x0c20_3004
+```
+
+Context 1 gives rv6's own `0x0c00_2080`, `0x0c20_1000` and `0x0c20_1004`.
+
+**(b)** Word 35 / 32 = 1, at `0x0c00_2184`; bit 35 % 32 = 3, value `0x8`. Priority belongs to the source: `0x0c00_0000 + 4 × 35` = `0x0c00_008C`.
+
+**(c)** No: delivery needs a priority strictly above the threshold. **(d)** Yes, it runs to `0x0c3F_FFFF`; only rv6's context-1 constants change.
+
+---
+
+<!-- .slide: id="thu-46k" -->
+
+## Thursday · `46k`: a loop, and words
+
+A shell is a **REPL**: read a line, evaluate it, print, loop. The given read loop draws the prompt, each key and each erase, and passes on the whole line at Enter: it is the **line discipline** too.
+
+Evaluating starts by cutting the line into words, without copying:
+
+```rust
+let mut line = String::from("tune  440");
+let last = line.split_whitespace().last().unwrap();       // "440"
+let at = last.as_ptr() as usize - line.as_ptr() as usize; // 6
+```
+
+Read `at` as "the word starts 6 bytes into the line".
+
+Notes:
+- The console returns raw bytes, so every character you see while typing, the shell echoed. ↓ below: who owns the backspace, and Problem 2 (optional).
+- A word is a view into the line, so while one is in use, `line.clear()` draws "cannot borrow `line` as mutable because it is also borrowed as immutable". Thursday's prep question 3 is this.
+- **Q:** "What does a line of only spaces give?" No words at all. Runs of spaces separate words and are never words themselves, so `mkdir   docs` means `mkdir docs`.
+
+--
+
+<!-- .slide: id="deeper-line-discipline" class="deeper" -->
+
+## Who owns the backspace
+
+Your terminal does not echo: it sends each byte and draws what comes back. Run `stty -echo` in a Unix shell, and typing shows nothing, yet commands still run.
+
+Unix keeps the line discipline in the kernel's tty layer, whose **canonical** ("cooked") mode echoes, erases, and returns from `read` at a newline; `vi` switches to **raw** mode and does it all itself.
+
+xv6 edits in its console interrupt handler. rv6's shell does the work, so Ctrl-C does nothing and an arrow leaves stray characters (↓ Problem 2).
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: predict the screen and the line
+
+At the `rv6$ ` prompt someone types these bytes, in hex where unprintable:
+
+```text
+c  d  SP  x  7F  d  c  1B  [  D  o  09  0D
+```
+
+`7F` is Backspace, `1B [ D` the Left arrow, `09` Tab, `0D` Enter. With the given read loop:
+
+- **(a)** Which bytes does the shell echo?
+- **(b)** What line reaches the evaluate step, and what words?
+- **(c)** The typist pressed Left to slip the `o` in between `d` and `c`. Why did that fail?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+**(a)** `c d SP x`, then `08 20 08` for the Backspace: back, blank, back. Then `d c`. `1B` is unprintable, so it is dropped unechoed, but `[` and `D` echo like letters; then `o`. Tab is dropped. Enter echoes `\n`. The screen shows `rv6$ cd dc[Do`.
+
+**(b)** `"cd dc[Do"`, two words: `cd` and `dc[Do`.
+
+**(c)** This line discipline has no cursor: it appends and erases at the end only. An arrow is a three-byte escape sequence, and a loop that knows nothing of escapes drops the `ESC` and keeps its printable followers.
+
+---
+
+<!-- .slide: id="46k-dispatch" -->
+
+## One `match`, and `&mut dyn Out`
+
+Choosing a handler by name is **dispatch**: one `match` on a `&str`. The same shape, for tempo names:
+
+```rust
+fn bpm(word: &str) -> Option<u32> {
+    match word {
+        "largo" => Some(50),
+        "presto" => Some(180),
+        _ => None,
+    }
+}
+```
+
+The four given handlers (`pwd`, `ls`, `cd`, `mkdir`) print through `&mut dyn Out`, `07r`'s trait object: the console under `cargo run`, a buffer under test.
+
+Notes:
+- Read `_` as "any other word". Without it, rustc refuses: "non-exhaustive patterns: `&_` not covered". A `match` on strings must say what every other word means.
+- The current directory is a heap `Vec` of (name, inode number) pairs: `38k`'s allocator is what lets the path grow as you `cd` deeper. ↓ below: built-in or program (optional).
+- **Q:** "Why a trait object and not a generic?" Either works. With `dyn`, each handler is compiled once and the test hands in a different sink at run time. The cost is one indirect call per write: nothing, next to a UART byte.
+
+--
+
+<!-- .slide: id="deeper-builtins" class="deeper" -->
+
+## Built-in or program
+
+A Unix shell runs most commands as programs: it forks, the child `exec`s the program, and the parent waits. rv6's kernel shell can do neither, so every command is a **built-in**.
+
+On Unix some must be: a child gets a *copy* of the current directory, so a `cd` program would change only its own. A command that changes the shell's own process state, like `cd` or `exit`, is a built-in.
+
+xv6's `sh.c` handles `cd` before it forks: "Chdir must be called by the parent, not the child."
+
+---
+
+<!-- .slide: id="46k-one-thing" -->
+
+## The one thing to get right · `46k`
+
+Every test passes. Then you press Enter at an empty prompt, and QEMU exits. Why?
+
+`OSLINGS:FAIL (panic)`
+
+A blank line has no first word, and a `None` unwrapped is a panic. In a kernel, a panic stops the whole machine: the shell, the console, everything.
+
+<div class="highlight-box">Every word the user types is optional, the first one included.</div>
+
+Notes:
+- The tests never send a blank line, so this hides until you use the shell for real. Before you submit, try Enter alone, spaces then Enter, and a word that is no command.
+- The kernel's one panic handler prints that line and powers QEMU off through the test device, in either build. In `52k`, when the shell is a user program, the same mistake kills one program instead.
+- **Q:** "Why not just catch the panic?" A `no_std` kernel has no unwinding: a panic handler never returns. The only cure is not to panic.
+
+---
+
+<!-- .slide: id="ec-47k" -->
+
+## Extra credit · `47k_file_commands`
+
+`touch`, `cat` and `rm`; `echo TEXT > FILE` and `rmdir` come finished, as models to read.
+
+- The `40k` filesystem reports facts: "no such name", "already exists"
+- Each command decides which facts are errors
+- Unix `rm` calls a missing name an error; `rm -f` calls the same fact success
+
+Notes:
+- Released Thursday, worth +0.5. Two minutes here: this slide is the whole of it in lecture, and the page has the box.
+- The filesystem said the same thing both times; only the command's policy differs. ↓ below: why the call is `unlink` (optional).
+- **Q:** "Why is there no `delete` call?" A name and a file are different things: a directory holds the name, an inode holds the file. ↓ deeper-unlink.
+
+--
+
+<!-- .slide: id="deeper-unlink" class="deeper" -->
+
+## Why the call is `unlink`
+
+*For `47k`.* A name lives in a directory and the file in its inode, so removing a name is not destroying a file.
+
+POSIX has no `delete`: `unlink` removes one entry, and the file goes only when no name and no open reference is left.
+
+What rv6 risks by keeping no link count is Midterm 2 material: [Week 11's For the exam](11-cs326-2026-11-03-filesystems-boot-order-and-traps/#exam-links).
+
+---
+
+<!-- .slide: id="fri-48k" -->
+
+## Friday · `48k`: why a wall
+
+| Mechanism | Restricts | Met in |
+|---|---|---|
+| Privilege levels | which instructions run | `43k` |
+| Page tables | which addresses exist | `33k`, `39k` |
+
+Neither alone suffices: without paging, a plain `ld` reads the kernel; without privilege, a program writes `satp`.
+
+- In **user mode** (U), a supervisor CSR or `sret` is illegal (`scause` 2); rv6 then ends the program
+- Down: clear `sstatus.SPP`, then `sret`. Up: only a trap
+
+Notes:
+- From `49k` on, rv6 runs code it did not write and cannot trust. The wall turns a bad program into one dead process, not a dead machine.
+- Nothing climbs back except a trap, through the `stvec` the kernel set: an `ecall`, an interrupt, or a fault. For an `ecall` the program chooses when; for every trap the kernel chooses where, because `stvec` is a supervisor CSR. The drop is `43k`'s trick one level lower, with `SPP` = 0.
+- **Q:** "Can a program find out it is in user mode?" Not by asking: reading any supervisor CSR is itself illegal. It can only notice what it may not do.
+
+---
+
+<!-- .slide: id="48k-address-space" -->
+
+## A private address space
+
+A process's own table goes into `satp` for the first time on Friday. Everything it maps:
+
+```text
+page at         holds                           PTE_U  reached by
+0x0000_0000     the program's code              set    the program
+0x0000_1000     its stack; sp starts at 0x2000  set    the program
+     ...        nothing mapped
+0x3F_FFFF_E000  the trapframe                   clear  the kernel, mid-trap
+0x3F_FFFF_F000  the trampoline                  clear  the kernel, both ways
+```
+
+`PTE_U` is the wall: the top pages lack it, mapped yet out of reach. W⊕X binds the program's pages too.
+
+Notes:
+- Read address 0 as just another page: the null pointer is a convention. The kernel's own memory is simply absent from this table.
+- The check also runs the other way: rv6's kernel may not touch a U page, so the given `copyin` translates instead of loading (48k-program).
+- **Q:** "Where does the stack go later?" `49k` moves it higher, to `0x1_0000`, to make room for bigger programs. Practice Set 2 Problem 13 draws that later layout; the idea is the same.
+
+---
+
+<!-- .slide: id="48k-trapframe" -->
+
+## The trapframe, and why not the user's stack
+
+An `ecall` changes the mode and the pc, but no general register. The kernel cannot push the program's registers: `sp` is the program's choice. Instead each process gets a **trapframe**, a slot for every register:
+
+```text
+  0   the kernel's satp                  notes the kernel leaves
+  8   this process's kernel stack top      for its way back in
+ 16   the Rust trap handler's address
+ 24   the program's pc, kept across the visit
+ 32   unused
+ 40   then the 31 registers: a0 at 112, a7 at 168
+```
+
+`#[repr(C)]` fixes the offsets the assembly uses.
+
+Notes:
+- The three notes are written on every trip out to U and read by `uservec` on the trip back in; slot 24 takes `sepc` at the trap and goes back into `sepc` before `sret`. Practice Set 2 Problem 13 (c) asks for exactly these fields and who writes each.
+- A `35k` context needs 14 registers, since a call fills it at a moment the code chose. A trap lands anywhere, so this keeps all 31.
+- **Q:** "Why a kernel stack per process, not one for the whole kernel?" From `51k`, many processes are paused inside the kernel at once, each mid-call. Each one's unfinished kernel work waits on its own stack until it runs again.
+
+---
+
+<!-- .slide: id="48k-trampoline" -->
+
+## The trampoline
+
+Entering the kernel means putting the kernel's table in `satp`. The pc does not change when `satp` does, so the next fetch goes through the table just installed. The fix: both tables map the switching code at one virtual address:
+
+<div class="mermaid">
+flowchart LR
+    K["kernel table"] --> T["one physical page: uservec, userret"]
+    A["process 1's table"] --> T
+    B["process 2's table"] --> T
+</div>
+
+Whichever table is live, the next fetch finds the same bytes.
+
+Notes:
+- Both halves are given. `stvec` points at `uservec` while user code runs; `uservec` runs on every way in, `userret` on every way out, the first exit included.
+- The page lacks U, so user code gets there only by a trap, and a trap raises the privilege level first. Friday's prep question 3 asks why. ↓ below: the trampoline, rediscovered (optional).
+- **Q:** "Why not turn paging off for the switch instead?" A `satp` of mode 0 makes the next fetch physical, and `0x3F_FFFF_F…` is no RAM at all: the same problem, worse.
+
+--
+
+<!-- .slide: id="deeper-kpti" class="deeper" -->
+
+## The trampoline, rediscovered
+
+For decades Linux mapped itself, supervisor-only, into every address space, so a system call changed privilege but not tables.
+
+In 2018 Meltdown showed that speculation could read such pages just because they were mapped.
+
+The fix, **KPTI**, unmaps the kernel from user tables and switches `CR3`, x86's `satp`, on every entry, from code mapped in both. Linux 4.15 called it the entry trampoline.
+
+---
+
+<!-- .slide: id="exam-top-pages" class="exam" -->
+
+## Two pages at the top
+
+| Page | Address | Flags | Mapped in |
+|---|---|---|---|
+| `TRAMPOLINE` | `0x3F_FFFF_F000` | R X | the kernel's table and every user table: one physical page |
+| `TRAPFRAME` | `0x3F_FFFF_E000` | R W | user tables only: a different page per process |
+
+Neither carries U. The fetch that fails without the trampoline is the one right after the `satp` write.
+
+Notes:
+- Midterm 2. Practice Set 2 Problem 13 (b) asks for "the exact instruction that would fail": the instruction after the `satp` write, whose fetch goes through the new table, in either direction.
+- The kernel's table has no trapframe entry: the kernel reaches each trapframe at its physical address. ↓ Problem 3: both addresses and the trampoline's PTE, by hand.
+- **Q:** "Why R X for one and R W for the other?" The trampoline is code and the trapframe is data: W⊕X holds up here too.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: the two top pages
+
+`TRAMPOLINE` is `MAXVA - PGSIZE`, with `MAXVA` = `1 << 38`; `TRAPFRAME` is one page below.
+
+- **(a)** Give both addresses and their VPN[2], VPN[1], VPN[0].
+- **(b)** Encode the trampoline's leaf PTE, R X V, for physical page `0x87FF_D000`.
+- **(c)** How many level-0 tables of one user table hold both entries, and how does the kernel's table differ?
+- **(d)** Why may neither leaf carry U?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+**(a)** `MAXVA >> 30` is 256, so the page just below has VPN[2] 255, and each lower index is all ones, 511:
+
+```text
+TRAMPOLINE   0x40_0000_0000 - 0x1000 = 0x3F_FFFF_F000    VPN 255, 511, 511
+TRAPFRAME    one page lower          = 0x3F_FFFF_E000    VPN 255, 511, 510
+```
+
+**(b)** R + X + V = 2 + 8 + 1 = `0xB`: `pa >> 12` is `0x8_7FFD`, `<< 10` is `0x21FF_F400`, `| 0xB` is `0x21FF_F40B`.
+
+**(c)** One: equal VPN[2] and VPN[1] lead to one level-0 table, entries 511 and 510 side by side. The kernel's table has the same entry 511 and no 510.
+
+**(d)** With U on the trapframe, a program could rewrite the kernel's notes, and its next trap would run S-mode code of its choosing. U would also break the kernel's own path: S-mode never executes a U page, and with `sstatus.SUM` clear it cannot load or store one, so `uservec` would fault at once.
+
+---
+
+<!-- .slide: id="exam-sscratch" class="exam" -->
+
+## `sscratch`: the first free register
+
+At a trap from U, `uservec` needs a register for the trapframe's address, and all 31 hold user values. So while user code runs, `sscratch` holds `TRAPFRAME`, and `uservec` opens with one swap:
+
+```asm
+csrrw a0, sscratch, a0    # a0 = TRAPFRAME; the user's a0 waits in sscratch
+```
+
+`userret` ends with the same swap before `sret`: the user's `a0` returns, and `sscratch` is re-armed.
+
+Notes:
+- Midterm 2. `csrrw` writes the CSR and returns its old value in one instruction, so neither value is lost at any moment.
+- Every trip to U re-arms it, the first included, because the first trip goes through `userret` too. Week 11 named `sscratch`; this is what it is for.
+- **Q:** "Why not keep the address in a register the program never uses?" The program may use every register, and the kernel promised to return every register it did not answer in. A CSR is the one place U cannot touch.
+
+---
+
+<!-- .slide: id="48k-abi" -->
+
+## The system-call ABI
+
+Printing means storing to UART registers, and no user table maps them, so a program asks with a **system call**:
+
+| Register | Before `ecall` | After |
+|---|---|---|
+| `a7` | the call's number | unchanged |
+| `a0`, `a1`, `a2` | the arguments | `a0` holds the result |
+
+`ecall` traps with `scause` 8. rv6 uses xv6's numbers: `exit` 2, `getpid` 11, `write` 16.
+
+Notes:
+- The number comes from code the kernel does not trust: no number may crash the kernel, and "no such call" answers -1.
+- Between the trap and the `sret`, the program's registers live only in its trapframe: `uservec` parked every one there, and `userret` reloads every one from there.
+- **Q:** "Why `a7` for the number, and not `a0`?" So the arguments sit where an ordinary call puts them, from `a0` up, and a wrapper function can pass them straight through. The number takes the last argument register.
+
+---
+
+<!-- .slide: id="48k-retry" -->
+
+## Done versus retry
+
+`sepc` holds the pc of the trapping instruction, and `sret` returns there:
+
+| Trap | Resume at that instruction? |
+|---|---|
+| page fault | yes, if the kernel can map the page (rv6 ends the program) |
+| interrupt | yes: that instruction never ran |
+| `ecall` | no: the call is done; resuming repeats it forever |
+
+So the kernel steps past a finished `ecall`: 4 bytes, as `ecall` has no compressed form.
+
+Notes:
+- The principle: step past a trap that did its work; resume at one that reported a condition. Friday's prep question 2 is this.
+- The kernel knows the trapping instruction was an `ecall`, and every `ecall` is 4 bytes. ↓ Problem 4: where a program resumes after four different traps.
+- **Q:** "Doesn't `sret` step past it by itself?" No: `sret` jumps to exactly `sepc`. The hardware cannot know whether the kernel finished the work or fixed a condition, so software decides.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: where does the program resume?
+
+A program of your own:
+
+```text
+0x40:  li    a7, 11        2 bytes, compressed
+0x42:  ecall               4 bytes
+0x46:  ld    t0, 0(a0)     4 bytes
+0x4a:  csrr  t1, sstatus   4 bytes
+```
+
+Give `scause`, `sepc` and the resume address when:
+
+- **(a)** the `ecall` completes a `getpid`
+- **(b)** the `ld` touches an unmapped page, which a demand-paging kernel then maps
+- **(c)** rv6's timer tick arrives just before the `ld`
+- **(d)** the `csrr` runs
+- **(e)** A kernel adds 4 to the saved pc after every trap. What changes?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+| | `scause` | `sepc` | Resumes at |
+|---|---|---|---|
+| (a) | `8`, ecall from U-mode | `0x42` | `0x46`: the call is done |
+| (b) | `13`, load page fault | `0x46` | `0x46`: the load runs again |
+| (c) | `0x8000_0000_0000_0001`, the forwarded tick | `0x46` | `0x46`: the `ld` never ran |
+| (d) | `2`, illegal instruction | `0x4a` | nowhere: rv6 ends the program |
+
+**(e)** (a) and (d) stay the same. (b) skips the load, so `t0` is stale and the program runs on with wrong data. (c) is worse: an unrelated interrupt deletes one of its instructions at a random moment.
+
+---
+
+<!-- .slide: id="48k-one-thing" -->
+
+## The one thing to get right · `48k`
+
+`hello from user mode` appears once. Then nothing: why?
+
+`[fail] the program ran, but its system calls were never answered`
+
+Each return landed on the same `ecall`, so the finished `write` ran again, and again, until the watchdog gave up. The repeats print nothing: `a0` now holds 21, not fd 1.
+
+<div class="highlight-box">A call that is done must not be made again.</div>
+
+Notes:
+- The test's watchdog gives up after a few seconds. Under `cargo run` there is no watchdog: the one line appears, and the `rv6$` prompt never comes back.
+- It is the page fault's opposite, where staying put is the point: the same `sepc`, two right answers.
+- **Q:** "Why does the program never reach `getpid`?" The instruction after the `ecall` never runs. Each return lands on the `ecall` again, with `a7` still 16.
+
+---
+
+<!-- .slide: id="48k-program" -->
+
+## The first program, and a user pointer
+
+`49k` brings the loader. Until then the first program is a dozen hand-written instructions, copied onto the code page:
+
+```text
+call     a7   arguments                    comes back
+write    16   1, the message at 0x24, 21   21, the bytes written
+getpid   11   none                         1, the first pid
+exit      2   the pid plus 41              never
+```
+
+`0x24` means something only in the program's table. The given `copyin` translates it by hand with `walkaddr`, and a page without U counts as no page.
+
+Notes:
+- The kernel never dereferences a user pointer. It translates, page by page, because a buffer can straddle two pages that sit anywhere in RAM.
+- Pass the trapframe's address as the buffer, and you get -1: nothing leaks. Friday's prep question 1 is this. ↓ below: why `copyin` refuses what the kernel could reach (optional).
+- **Q:** "What if the buffer starts in a good page and runs off its end?" The copy goes page by page, so the next page must be a U page too, or the call returns -1, though some bytes from the good page may already have printed.
+
+--
+
+<!-- .slide: id="deeper-deputy" class="deeper" -->
+
+## Why `copyin` refuses what the kernel could reach
+
+Pass `TRAPFRAME` as `write`'s buffer, and a naive translation succeeds, since the page is mapped in the user's table: the copy leaks the kernel's notes.
+
+A privileged program tricked into using its authority for a caller who lacks it is a **confused deputy** (Norm Hardy, 1988), and `walkaddr`'s U check is the cure.
+
+Hardware adds a second lock: while `sstatus.SUM` (bit 18) is clear, as rv6 leaves it, supervisor accesses to U pages fault. x86 calls this SMAP; ARM calls it PAN.
+
+---
+
+<!-- .slide: id="48k-round-trip" -->
+
+## One `getpid`, end to end
+
+At the first program's real addresses:
+
+<div class="mermaid">
+sequenceDiagram
+    participant P as program
+    participant H as hardware
+    participant T as trampoline
+    participant R as Rust handler
+    P->>H: ecall at 0x14, 11 in a7
+    H->>T: S-mode, scause 8, sepc 0x14, pc from stvec
+    T->>R: 31 registers parked, kernel table live
+    R->>T: the answer is 1, resume at 0x18
+    T->>P: user table live, registers reloaded, sret
+    Note over P: at 0x18, addi a0, a0, 41 makes a0 = 42
+</div>
+
+Status 42 is a receipt for both crossings: the kernel's 1 came in, and 1 + 41 went back out as `exit`'s argument.
+
+Notes:
+- This is Midterm 2's "trace the trap" shape. At each step, name who acts (the hardware, `uservec`, Rust, `userret`) and which CSR or structure holds the value.
+- `li a7, 11` is 2 bytes, compressed, and `ecall` is 4: hence `0x14` + 4 = `0x18`. The addresses change if the program changes; the shape does not.
+- **Q:** "Where is the 1 between the kernel and the program?" In RAM, in the trapframe's `a0` slot, from the moment the kernel writes it until `userret` loads it. Nothing crosses the wall in a register.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- The UART interrupts, the PLIC routes: claim, service, complete
+- Skip service, and a level-triggered line storms
+- The ring: each side owns one counter, so no lock
+- A shell: a line, its words, one `match`
+- The wall: privilege plus `PTE_U`
+- The trapframe parks 31 registers; the trampoline survives `satp`
+- `a7` in, `a0` out; step past a finished `ecall`
+- Midterm 2: PLIC registers, top pages, `sscratch`
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 2?" Practice Set 2 Parts D and E on paper, then the page's Problems 1 to 4. Redraw the PLIC handshake and the trap path from `ecall` to `sret` from memory: `midterm-2.md`'s study list names both.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/12-cs326-2026-11-12-prep-console-and-shell/): check yourself
+
+You make the kernel hear a key by interrupt, then write the shell's evaluate step, both in QEMU. Prep: about 20 minutes.
+
+**1.** Your handler buffers the byte but never writes the source number back to the PLIC. What do you see?
+
+**2.** The opposite: it completes without reading the UART. Why is that different?
+
+**3.** The tokenizer yields `&str` slices into the line buffer. What stops the REPL from clearing the line too early?
+
+Notes:
+- Walk the prep page (about 20 minutes). What you build: the UART's interrupt path into the ring, then the evaluate step of a kernel shell. Green is `OSLINGS:PASS`; then `cargo run` echoes your typing and boots to `rv6$`.
+- The three questions are the prep's own Check yourself (45k-claim, 45k-one-thing, thu-46k); answers are on the prep page. `47k` is released in the same session, for +0.5.
+- **Q:** "Can the test press a key for me?" It does: it simulates the keypress and checks that the byte reached the ring. `cargo run` is where you type for real.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/12-cs326-2026-11-13-prep-user-mode/): check yourself
+
+rv6 runs its first user program, and you finish the crossing both ways. Prep: about 25 minutes.
+
+**1.** A program passes `buf = 0x3F_FFFF_E000`, its own trapframe, to `write`. What happens, and which check stops it?
+
+**2.** The saved `epc` is left pointing at the `ecall`. What does the program do, and why is leaving `sepc` alone correct for a page fault?
+
+**3.** The trampoline sits inside the user's address space. Why is it mapped without `PTE_U`, and how does the CPU ever get there?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build: the first user program's trip through the wall and back. Green is `hello from user mode` and exit status 42 from pid 1. Then type `run` at `rv6$` a few times: each run is a new process, with a new pid.
+- The three questions are the prep's own Check yourself (48k-program, 48k-retry, 48k-trampoline); answers are on the prep page.
+- **Q:** "Is Friday's material on the midterm?" All of it. Midterm 2, six days later, ends at `48k`, and "trace the trap" is one of its question shapes.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+**Next:** Midterm 2 on Thu Nov 19; the Nov 17 lecture is the review.
+
+[Week 13 · Midterm 2 Review](13-cs326-2026-11-17-midterm-2-review/): read **The review** and work Practice Set 2 on paper before Tuesday; bring the problems you got wrong. No session on Fri Nov 20.
+
+Notes:
+- Midterm 2 is in class, closed book, with the printed Cheatsheet as the one reference. Practice Set 2's solutions post Nov 17.
+- **Q:** "Is Going deeper on Midterm 2?" No. Essentials and the page's For the exam section are; every ↓ slide is optional.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Prep: An In-Memory Filesystem — 40k
 
-**Session:** Thu Nov 5, 1h45 · **Exercises:** `40k_filesystem` · **Prep time:** ~40 min · **Lecture:** [Filesystems, Devices, and the Boot Sequence](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md)
+**Session:** Thu Nov 5, 1h45 · **Exercises:** `40k_filesystem` · **Prep time:** ~20 min · **Lecture:** [Week 11 · Files, Boot Order, and Traps](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md)
 
 ## What you will build
 
@@ -8,22 +8,22 @@ The heart of a Unix filesystem, in RAM, behind one spinlock: a fixed table of in
 
 ## Concepts you need
 
-- **A file is not its name: contents in the inode, names in directories** — [Filesystems and Devices §1](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#1-the-file-and-its-name)
-- **An inode number is an index; root is 1; the lowest free slot is reused** — [Filesystems and Devices § Key Concepts](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#key-concepts)
-- **A directory is an inode with structure: a linear scan, kind check first** — [Filesystems and Devices §2](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#2-directories-are-files-with-structure)
-- **Path resolution: one lookup per component; the failing step picks the error** — [§ Problem 3](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#problem-3-resolve-four-paths-by-hand)
-- **Errors as values: `Result`, `?`, matching one variant** — [Traits, Generics, and the ulib Facade §6.1](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#61-option-for-absence-result-for-failure), [§6.3](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#63-and-the-desugaring-you-should-know)
-- **One global lock around the filesystem** — [rv6 Architecture § Locks, and the ordering rules](../guides/rv6-architecture.md#locks-and-the-ordering-rules)
-- **What rv6 defers: persistence, bitmaps, buffer cache, log** — [Filesystems and Devices §4](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#4-what-rv6s-filesystem-trades-away)
+- **A file is not its name: contents in the inode, names in directories** — [Week 11 · A file is not its name](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-inodes)
+- **An inode number is an index; root is 1; the lowest free slot is reused** — [Week 11 · A file is not its name](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-inodes)
+- **A directory is an inode with structure: a linear scan, kind check first** — [Week 11 · A file is not its name](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-inodes), [Path resolution by hand](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-paths)
+- **Path resolution: one lookup per component; the failing step picks the error** — [Week 11 · Path resolution by hand](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-paths)
+- **Errors as values: `Result`, `?`, matching one variant** — [Week 11 · Errors as values, behind one lock](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-errors) · [Rust for Systems: `Result`, `?`, error enums](../guides/rust-for-systems.md#7-result-error-enums)
+- **One global lock around the filesystem** — [Week 11 · Errors as values, behind one lock](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#40k-errors) · [rv6 Architecture: Locks, and the ordering rules](../guides/rv6-architecture.md#locks-and-the-ordering-rules)
+- **What rv6 defers: persistence, bitmaps, buffer cache, log** — [Week 11 · What rv6's filesystem trades away](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#deeper-fs), in Going deeper (optional)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Filesystems and Devices §1–§4 | 25 min |
-| Traits, Generics, and the ulib Facade §6.1–§6.3 (`Result` and `?` refresher) | 5 min |
-| rv6 Architecture: Locks, and the ordering rules | 3 min |
-| Filesystems and Devices Practice Problem 3, on paper | 7 min |
+| [Week 11 · This week](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#this-week), then [Thursday · `40k` Files and directories](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#thu-40k), all three sections | 6 min |
+| [Week 11 · For the exam](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam): [Devices](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam-devices) and [Hard links and link counts](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam-links). Not needed today; on Midterm 2 | 2 min |
+| [Rust for Systems: `Result`, `?`, error enums](../guides/rust-for-systems.md#7-result-error-enums), through "The `?` operator" (a refresher) | 4 min |
+| [rv6 Architecture: Locks, and the ordering rules](../guides/rv6-architecture.md#locks-and-the-ordering-rules), the opening and the table | 1 min |
 
 ## Mental model
 
@@ -55,8 +55,8 @@ Inode 2 never changes when it gains or loses a name: names belong to the directo
 
 ## Extra credit today
 
-`41k_devices` (+0.5) turns the blind-write UART into a polled driver: read the NS16550A line-status register, spin on "room to transmit" before sending, and return `Option` when no byte is waiting. The test flips the chip's loopback bit, so what you send returns through your receive path. Read [Filesystems and Devices §5–§6](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#5-devices-the-register-file-is-the-interface) first.
+`41k_devices` (+0.5) turns the blind-write UART into a polled driver: read the NS16550A line-status register, spin on "room to transmit" before sending, and return `Option` when no byte is waiting. The test flips the chip's loopback bit, so what you send returns through your receive path. Read [Week 11 · For the exam: Devices](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam-devices) and [The UART up close](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#deeper-uart) first.
 
 ## If you finish early
 
-Work the lecture's [Practice Problems 1 and 2](../lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life.md#practice-problems) on paper, then read chapter 8, "File system," of the xv6 book, or start [Friday's prep page](11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts.md), where this kernel boots for real.
+Work [Week 11 · Problem 1: Resolve, create, rename](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#problem-1) on paper, then read chapter 8, "File system," of the xv6 book, or start [Friday's prep page](11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts.md), where this kernel boots for real.

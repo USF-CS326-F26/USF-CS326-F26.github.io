@@ -576,7 +576,7 @@ You are choosing the buffer size for a filter that will run both on your laptop 
 - [ulib and Commands](../guides/ulib-and-commands.md) — the complete `ulib` API, the portability rules, and the measured image budget.
 - [L06 Traits and the `ulib` Façade](03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md) — `Result`, `?`, and why the backend is chosen by target triple.
 - [L05 Collections, Slices, and Fixed Tables](03-cs326-2026-09-08-collections-slices-and-fixed-tables.md) — slices as fat pointers, and fixed arrays over `Vec`.
-- [L12 File Commands over a Filesystem API](14-cs326-2026-11-24-file-commands-over-a-filesystem-api.md) — the same commands, later, against the filesystem you write.
+- [Week 12 · The Console, the Shell, and User Mode](12-cs326-2026-11-10-console-shell-and-user-mode.md#ec-47k) — the same commands, later, against the filesystem you write.
 - [The Memory Map](../guides/memory-map.md) and [rv6 Architecture](../guides/rv6-architecture.md) — the 64 KiB image and the one stack page, in context.
 - [Rust for Systems](../guides/rust-for-systems.md), [Unsafe Rust and `no_std`](../guides/rust-unsafe-nostd.md), [Using OSlings](../guides/oslings-usage.md), [Cheatsheet](../guides/cheatsheet.md), [Key Concepts](../guides/key-concepts.md), [Exam Prep](../guides/exam-prep.md).
 - `read(2)` and `write(2)` on Linux — read the RETURN VALUE paragraphs in full; the short-transfer sentence is the whole lesson.

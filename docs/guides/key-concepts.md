@@ -33,7 +33,7 @@ to least privileged. Each has its own CSRs (`mstatus`/`sstatus`,
 touch. rv6 uses all three: M only during boot and in the timer vector, S for
 the kernel, U for programs.
 
-**Where:** `43k`, `48k` · L18, L22 · `start.rs` (`MSTATUS_MPP_SUPERVISOR`)
+**Where:** `43k`, `48k` · Week 11, Week 12 · `start.rs` (`MSTATUS_MPP_SUPERVISOR`)
 
 ### user mode
 
@@ -42,7 +42,7 @@ off paging, or reach kernel memory — the last of those is enforced by one bit
 in the page table, `PTE_U` (`vm.rs`). Take that bit away and the same load
 instruction that worked a moment ago becomes a page fault.
 
-**Where:** `48k` · L22, L23 · `vm.rs`, `usertrap()` in `usermode.rs` (`SPP = 0`)
+**Where:** `48k` · Week 12 · `vm.rs`, `usertrap()` in `usermode.rs` (`SPP = 0`)
 
 ### trap
 
@@ -52,7 +52,7 @@ address in `stvec`; the kernel handles it and returns with `sret`, which
 restores `pc` from `sepc`. Traps come in two flavors — exceptions and
 interrupts.
 
-**Where:** `43k` · L18 · `trap.rs` (`kerneltrap`), `usermode.rs`
+**Where:** `43k` · Week 11 · `trap.rs` (`kerneltrap`), `usermode.rs`
 
 ### exception
 
@@ -61,7 +61,7 @@ instruction, a touch of an unmapped page, or a deliberate `ecall`/`ebreak`. The
 defining property is that it is caused by, and reproducible from, the
 instruction at `sepc`.
 
-**Where:** `43k` (breakpoint), `48k` (`ecall`) · L18 · `trap.rs`
+**Where:** `43k` (breakpoint), `48k` (`ecall`) · Week 11 · `trap.rs`
 
 ### interrupt
 
@@ -70,7 +70,7 @@ code was running. The interrupted instruction did nothing wrong and resumes
 exactly as it was. Bit 63 of `scause` tells the two apart — 1 for interrupt,
 0 for exception.
 
-**Where:** `44k` (timer), `45k` (UART) · L18, L19 · `trap.rs`
+**Where:** `44k` (timer), `45k` (UART) · Week 11, Week 12 · `trap.rs`
 
 The causes rv6 actually handles:
 
@@ -90,18 +90,19 @@ three arguments in `a0`–`a2`, and the return value comes back in `a0`. Nine
 calls exist: `fork`, `exit`, `wait`, `read`, `exec`, `getpid`, `open`, `write`,
 `close`.
 
-**Where:** `48k`, `50k`–`52k` · L23 · `syscall.rs` (numbers),
+**Where:** `48k`, `50k`–`52k` · Week 12 · `syscall.rs` (numbers),
 `syscall.rs` (`dispatch`)
 
 ### `ecall`
 
 The instruction that makes a system call. It raises an exception —
 `scause == 8` from user mode — and that is the whole mechanism: no magic, just
-a deliberately triggered trap. `usertrap` adds 4 to the saved `epc` before
-returning, so the program resumes at the instruction *after* the `ecall`
-instead of executing it forever.
+a deliberately triggered trap. The one subtlety is where the program resumes.
+The saved `epc` points *at* the `ecall`, so a kernel that returned there
+unchanged would make the same call forever; it has to move past the 4-byte
+instruction first.
 
-**Where:** `48k` · L23 · `finish()` (`usermode.rs`)
+**Where:** `48k` · Week 12 · `finish()` (`usermode.rs`)
 
 ### trampoline
 
@@ -111,7 +112,7 @@ every user page table. It has to be, because it is executing at the moment
 `satp` changes: after `csrw satp`, the very next instruction fetch uses the new
 page table, and only a page mapped identically in both survives that.
 
-**Where:** `48k` · L22 · `usermode.rs`, copied to its own page in
+**Where:** `48k` · Week 12 · `usermode.rs`, copied to its own page in
 `kvmmake()` (`vm.rs`)
 
 ### trapframe
@@ -123,7 +124,7 @@ find the kernel again (`kernel_satp`, `kernel_sp`, `kernel_trap`, and `epc`).
 user code runs: the kernel needs somewhere to spill a register before it has
 any registers free.
 
-**Where:** `48k` · L22 · `Trapframe` (`usermode.rs`) (layout), `Proc` (`proc.rs`) (the field)
+**Where:** `48k` · Week 12 · `Trapframe` (`usermode.rs`) (layout), `Proc` (`proc.rs`) (the field)
 
 The whole round trip, for one system call:
 
@@ -131,10 +132,9 @@ The whole round trip, for one system call:
 flowchart TD
   A["user code: a7 = 16, ecall"] --> B["hardware: scause = 8,\nsepc = pc, jump to stvec"]
   B --> C["uservec (trampoline)\nsave 31 regs to trapframe\nswitch satp to kernel"]
-  C --> D["usertrap (usermode.rs)\nepc += 4"]
-  D --> E["syscall::dispatch(a7, a0, a1, a2)"]
-  E --> F["sys_write → the answer in a0"]
-  F --> G["usertrapret: stvec = uservec,\nsstatus.SPP = 0, sepc = epc"]
+  C --> D["usertrap (usermode.rs)\nscause 8: a system call"]
+  D --> E["sys_write runs on the saved a0–a2;\nits result replaces the saved a0"]
+  E --> G["usertrapret: stvec = uservec,\nsstatus.SPP = 0, sepc = epc"]
   G --> H["userret (trampoline)\nswitch satp to user\nrestore 31 regs, sret"]
   H --> A
 ```
@@ -183,8 +183,8 @@ assembly)
 
 ### scheduler
 
-The loop that picks a `Runnable` process, `swtch`-es into it, and gets control
-back when it yields or exits. rv6 separates **mechanism** (`swtch`) from
+The kernel loop that chooses a `Runnable` process and switches to it with
+`swtch`, running again only when that process gives the CPU back. rv6 separates **mechanism** (`swtch`) from
 **policy** (which process): the loop lives in `scheduler()` (`usermode.rs`), the choice in
 `sched.rs`, and you can replace one without touching the other.
 
@@ -209,7 +209,7 @@ tick branch clears the pending bit and returns (`usermode.rs`) rather than
 rescheduling. rv6 schedules cooperatively, inside `wait` and `exit`.
 
 **Where:** `44k` (the mechanism), `36k`/`51k` (the cooperative reality) ·
-Week 9, L18 · `usermode.rs` (`proc_yield`)
+Week 9, Week 11 · `usermode.rs` (`proc_yield`)
 
 ### quantum
 
@@ -219,7 +219,7 @@ by writing `mtime + INTERVAL` into `mtimecmp` with `INTERVAL = 1_000_000` ticks
 of the 10 MHz clock, about 0.1 s. Since rv6 does not reschedule on a tick, that
 sets the tick rate rather than a real quantum.
 
-**Where:** `44k` · Week 9, L18 · `start.rs`, `timerinit()` (`start.rs`)
+**Where:** `44k` · Week 9, Week 11 · `start.rs`, `timerinit()` (`start.rs`)
 
 ---
 
@@ -236,27 +236,28 @@ result depends on which one got there first. The classic shape is a
 read-modify-write: both read `false`, both write `true`, both believe they won.
 Nothing in the source looks wrong; the bug is in the interleaving.
 
-**Where:** `37k` · L15 · `37k_spinlocks/README.md`
+**Where:** `37k` · Week 10 · `37k_spinlocks/README.md`
 
 ### atomicity
 
 The property of an operation that no other observer can see it half-done. The
-one rv6 depends on is **compare-and-exchange**: "if this is still `false`, make
-it `true`," decided and applied by the hardware in one indivisible step.
-Exactly one caller can win the `false → true` transition, and that is all
-mutual exclusion actually needs.
+one rv6 depends on is **compare-and-exchange**: "if this word still holds the
+value I expect, replace it, and tell me whether I did," decided and applied by
+the hardware in one indivisible step. When several callers race to make the
+same change, exactly one of them wins, and one winner is all mutual exclusion
+actually needs.
 
-**Where:** `37k` · L15 · `SpinLock::lock()` (`spinlock.rs`)
+**Where:** `37k` · Week 10 · `SpinLock::lock()` (`spinlock.rs`)
 
 ### spinlock
 
-A lock whose waiters busy-wait — spin retrying the atomic — rather than
+A lock whose waiters busy-wait, burning the CPU in a loop, rather than
 sleeping. Cheap when contention is short, ruinous when it is long. rv6's
 `SpinLock<T>` wraps the data it protects in an `UnsafeCell`, so the only way to
 reach the data is to hold the lock; `unsafe impl Sync` is the promise that makes
 it shareable.
 
-**Where:** `37k` · L15 · `spinlock.rs`
+**Where:** `37k` · Week 10 · `spinlock.rs`
 
 ### RAII guard
 
@@ -266,7 +267,7 @@ you at the end of the scope. `SpinLock::lock` returns a `SpinLockGuard` that
 forget, and an early `return` cannot skip it. `drop(guard)` releases early, as
 the shell does before touching the filesystem again.
 
-**Where:** `37k` · L15 · `spinlock.rs`, used at `Shell::cmd_cd()` (`shell.rs`)
+**Where:** `37k` · Week 10 · `spinlock.rs`, used at `Shell::cmd_cd()` (`shell.rs`)
 
 ### deadlock
 
@@ -276,7 +277,7 @@ interrupt whose handler takes the same lock, and the CPU spins forever. Real
 kernels avoid it by disabling interrupts while a lock is held and never
 sleeping with one; rv6's lock deliberately does neither, and says so.
 
-**Where:** `37k` (the caveat), `51k` (the detector) · L15 ·
+**Where:** `37k` (the caveat), `51k` (the detector) · Week 10 ·
 `37k_spinlocks/README.md:110`, `scheduler()` (`usermode.rs`)
 
 ### semaphore
@@ -287,7 +288,7 @@ are none) and **post** (give one back). It generalizes the lock — one permit
 `SpinLock<i64>` with a non-blocking `try_wait`: there is no sleep queue, so a
 caller that finds zero permits decides for itself what to do.
 
-**Where:** `38k` · L15 · `Semaphore` (`semaphore.rs`)
+**Where:** `38k` · Week 10 · `Semaphore` (`semaphore.rs`)
 
 ---
 
@@ -313,7 +314,7 @@ Sv39 there are 39 usable bits; rv6 stops one bit short at `MAXVA = 1 << 38` so
 it never has to deal with sign-extended high addresses. After `39k`, "address"
 without a qualifier is ambiguous — always say which.
 
-**Where:** `33k`, `39k` · Week 7, L16 · `memlayout.rs`
+**Where:** `33k`, `39k` · Week 7, Week 10 · `memlayout.rs`
 
 ### address space
 
@@ -323,7 +324,7 @@ one per process (program image at 0, stack at `0x1_0000`, trapframe and
 trampoline at the top). Two processes can both use address `0x0` and mean
 different memory — that is the whole point.
 
-**Where:** `39k`, `48k`, `49k` · L16, L22 · `memlayout.rs` (the layout
+**Where:** `39k`, `48k`, `49k` · Week 10, Week 12 · `memlayout.rs` (the layout
 comment)
 
 ### page
@@ -366,11 +367,12 @@ leaves from branches.
 
 The hardware that does the translation, switched on by writing `satp`. rv6's
 `satp` value is mode `8` (Sv39) in the top four bits plus the root page table's
-physical page number: `SATP_SV39 | (root >> 12)`. The instant that write
+physical page number in the low 44: a root table at `0x8765_4000` has PPN
+`0x8_7654`, so `satp` = `0x8000_0000_0008_7654`. The instant that write
 retires, every address the CPU issues is virtual — including the one it is
 about to fetch the next instruction from.
 
-**Where:** `39k` · L16 · `vm.rs` (`kvminithart`)
+**Where:** `39k` · Week 10 · `vm.rs` (`kvminithart`)
 
 ### TLB
 
@@ -380,17 +382,16 @@ zero` flushes all of it, which is why it follows every `satp` write — in
 `kvminithart`, and on both sides of each `satp` switch in the trampoline. A
 mapping bug that "only happens the second time" is usually a missing fence.
 
-**Where:** `39k`, `48k` · L16 · `vm.rs`, `usermode.rs`
+**Where:** `39k`, `48k` · Week 10 · `vm.rs`, `usermode.rs`
 
 ### identity mapping
 
 A mapping where the virtual address equals the physical address. rv6's kernel
-page table is almost entirely this: the UART page, the test finisher page, 4 MiB
-of PLIC, and all of RAM from `KERNBASE` to `PHYSTOP`, each mapped to itself.
-That is what makes turning the MMU on survivable — `pc` and `sp` mean the same
+page table is almost entirely this: RAM and every device the kernel still
+talks to after the switch, each mapped to itself. That is what makes turning the MMU on survivable — `pc` and `sp` mean the same
 thing one instruction later. None of it carries `PTE_U`.
 
-**Where:** `39k` · L16 · `kvminithart()` (`vm.rs`)
+**Where:** `39k` · Week 10 · `kvminithart()` (`vm.rs`)
 
 ### allocator
 
@@ -420,7 +421,7 @@ a `#[global_allocator]`. rv6's serves every allocation from one whole 4 KiB page
 so a 16-byte `Arc` costs 4096 bytes and anything larger fails. The shell's
 `Vec<(String, usize)>` runs on it.
 
-**Where:** `38k` · L15 · `impl GlobalAlloc for KernelHeap` (`kheap.rs`), `ALLOCATOR` (`kheap.rs`)
+**Where:** `38k` · Week 10 · `impl GlobalAlloc for KernelHeap` (`kheap.rs`), `ALLOCATOR` (`kheap.rs`)
 
 ---
 
@@ -434,7 +435,7 @@ there transmits a byte. This is why the kernel page table has to map the device
 pages before the MMU comes on: otherwise the first `uart::puts` after the
 `satp` write faults.
 
-**Where:** `21r`, `31k`, `41k` · Week 6, L17 · `memlayout.rs`, `uart.rs`
+**Where:** `21r`, `31k`, `41k` · Week 6, Week 11 · `memlayout.rs`, `uart.rs`
 
 ### `volatile`
 
@@ -444,16 +445,17 @@ does not need it; device registers always do, because reading `LSR` twice can
 legitimately give two different answers. In Rust it is a property of the
 access, not the type: `core::ptr::read_volatile` / `write_volatile`.
 
-**Where:** `21r`, `41k` · Week 6, L17 · `reg_read()` (`uart.rs`)
+**Where:** `21r`, `41k` · Week 6, Week 11 · `reg_read()` (`uart.rs`)
 
 ### polling
 
-Asking a device repeatedly whether it is ready, in a loop. `uart::putc` spins
-on the `THRE` bit until the transmitter is empty and then writes the byte —
-three lines, no interrupt controller, no state. It wastes CPU while it waits,
+Asking a device repeatedly whether it is ready, in a loop. Picture a sensor
+with a `DONE` bit in its status register: the driver rereads that register
+until the bit appears, then reads the result register once. No interrupt
+controller, no state. It wastes CPU while it waits,
 which is fine for output during boot and unacceptable for keyboard input.
 
-**Where:** `41k` · L17 · `getc()` (`uart.rs`)
+**Where:** `41k` · Week 11 · `getc()` (`uart.rs`)
 
 ### device driver
 
@@ -462,7 +464,7 @@ interface the rest of the kernel can use. `uart.rs` is the whole of rv6's: six
 register offsets, two status bits, `init`/`putc`/`getc`. Everything above it
 says "print a byte" without knowing what an NS16550A is.
 
-**Where:** `41k` · L17 · `uart.rs`
+**Where:** `41k` · Week 11 · `uart.rs`
 
 ### UART
 
@@ -479,7 +481,7 @@ terminal. Its registers are one byte apart:
 | 4 | — | `MCR` — modem control | bit 4 = loopback, for the `41k` test |
 | 5 | `LSR` — line status | — | bit 0 `DR` = byte waiting, bit 5 `THRE` = ok to send |
 
-**Where:** `31k`, `41k`, `45k` · L17, L19 · `uart.rs`
+**Where:** `31k`, `41k`, `45k` · Week 11, Week 12 · `uart.rs`
 
 ### PLIC
 
@@ -489,7 +491,7 @@ the source a non-zero priority, enable it for this hart's supervisor context,
 set the threshold to accept it, and then on each interrupt `claim` it (which
 returns the source number) and `complete` it. The UART is source 10.
 
-**Where:** `45k` · L19 · `UART0_IRQ` and `init()` (`plic.rs`)
+**Where:** `45k` · Week 12 · `UART0_IRQ` and `init()` (`plic.rs`)
 
 ### CLINT
 
@@ -499,7 +501,7 @@ timer interrupt fires. It speaks *only* machine mode, which is why rv6 keeps a
 tiny M-mode handler, `timervec`, that reschedules the next tick and then
 forwards it to supervisor mode as a software interrupt.
 
-**Where:** `44k` · L18 · `CLINT_MTIME` and `timervec` (`start.rs`)
+**Where:** `44k` · Week 11 · `CLINT_MTIME` and `timervec` (`start.rs`)
 
 ---
 
@@ -513,16 +515,16 @@ bytes of data, and 16 directory slots, all in a fixed array of 64 living in
 RAM. The number of an inode — its index — is its identity; inode 1 is the root
 directory.
 
-**Where:** `40k` · L17, L21 · `Inode` and `ROOT` (`fs.rs`)
+**Where:** `40k` · Week 11, Week 12 · `Inode` and `ROOT` (`fs.rs`)
 
 ### directory
 
-An inode whose contents are a list of (name, inode number) pairs. That is the
-entire idea: names live in directories, not in files, and looking up a name
-means scanning a directory for a matching entry. rv6 allows 16 entries of at
+An inode that holds entries pairing a name with an inode number, instead of
+bytes. That is the entire idea: names live in directories, not in files, and
+looking up a name means searching one directory's entries. rv6 allows 16 entries of at
 most 14 characters each.
 
-**Where:** `40k`, `46k` · L17, L21 · `fs.rs` (`DirEnt`), `fs.rs`
+**Where:** `40k`, `46k` · Week 11, Week 12 · `fs.rs` (`DirEnt`), `fs.rs`
 (`dirlookup`)
 
 ### path resolution
@@ -534,7 +536,7 @@ hunt a bug: the shell keeps a current directory as a stack of `(name, inum)`
 components and resolves single names against it, while the `open` system call
 resolves in the root directory only — so user programs see a flat namespace.
 
-**Where:** `46k`, `50k` · L20, L21 · `shell.rs`, `capture` (`syscall.rs`)
+**Where:** `46k`, `50k` · Week 12 · `shell.rs`, `capture` (`syscall.rs`)
 
 ### file descriptor
 
@@ -543,7 +545,7 @@ its own table, nothing more, so fd 3 in one process and fd 3 in another are
 unrelated. Every process starts with 0, 1, and 2 open on the console, the
 convention that lets a program `write` to fd 1 without asking what it is.
 
-**Where:** `50k` · L24 · `NOFILE` (`file.rs`), `proc.rs` (`ofile`)
+**Where:** `50k` · Week 15 · `NOFILE` (`file.rs`), `proc.rs` (`ofile`)
 
 ### open file table
 
@@ -553,7 +555,7 @@ writable, and — the important one — the current **offset**. That offset is w
 makes an fd more than a one-shot read: it remembers where the last read stopped,
 so successive reads walk the file.
 
-**Where:** `50k` · L24 · `File` (`file.rs`), `syscall.rs` (`fdalloc`)
+**Where:** `50k` · Week 15 · `File` (`file.rs`), `syscall.rs` (`fdalloc`)
 
 ---
 
@@ -561,13 +563,14 @@ so successive reads walk the file.
 
 ### `fork`
 
-Create a near-exact copy of the calling process and return **twice**: the
-child's pid to the parent, `0` to the child. rv6 allocates a process, copies the
-parent's user pages with `uvmcopy`, copies the trapframe so the child resumes at
-the same instruction, then overwrites the child's `a0` with 0. The child
-inherits the open-file table and records its parent.
+Make a second process that duplicates the caller, and return **twice**: the
+child's pid to the parent, `0` to the child. The child gets its own copy of
+everything that says where the parent was (its memory, its saved user
+registers, its open files), so both resume at the same instruction. The only
+thing that tells them apart is the value `fork` returned, and that is a single
+register in the child's copy.
 
-**Where:** `51k` · L24 · `sys_fork()` (`syscall.rs`), `vm.rs` (`uvmcopy`)
+**Where:** `51k` · Week 15 · `sys_fork()` (`syscall.rs`)
 
 ### `exec`
 
@@ -577,18 +580,19 @@ the call was in the memory that was just freed. rv6 builds the whole new
 address space first and only then swaps it in, so a failed `exec` leaves the
 old program running and returns -1.
 
-**Where:** `49k` (as a kernel function), `52k` (as a system call) · L25 ·
+**Where:** `49k` (as a kernel function), `52k` (as a system call) · Week 15 ·
 `exec.rs` (`exec_into`)
 
 ### `wait`
 
-Block until one of this process's children has exited, then reap it: free its
-slot, and copy its exit status out to the parent if it asked for one. Returns
-the child's pid, or -1 if there were no children to wait for. rv6's blocks by
+Pause the caller until a child of its own has finished, then collect that
+child: release its table slot and hand its exit status to the parent, if the
+parent gave somewhere to put it. The result is the child's pid, or -1 when the
+caller has no children at all. rv6's blocks by
 calling `proc_yield` in a loop and rescanning the table each time it is
 scheduled again.
 
-**Where:** `51k` · L24 · `sys_wait()` (`syscall.rs`)
+**Where:** `51k` · Week 15 · `sys_wait()` (`syscall.rs`)
 
 ### zombie
 
@@ -598,7 +602,7 @@ the state to `Zombie`, and `swtch`-es away for good — the scheduler never
 switches back into one. `wait` is what finally frees it. Zombies are not a bug;
 a parent that never waits is.
 
-**Where:** `51k` · L24 · `usermode.rs`, `ProcState` (`proc.rs`)
+**Where:** `51k` · Week 15 · `usermode.rs`, `ProcState` (`proc.rs`)
 
 ### `init`
 
@@ -608,7 +612,7 @@ reap them. rv6 has no `init` — `kmain` calls the kernel-mode shell directly
 (`main.rs`), `run sh` starts the user-mode shell from there, and orphans are
 freed wholesale by `cleanup_except`.
 
-**Where:** conceptually `52k`; not implemented · L01, L25 · `main.rs`,
+**Where:** conceptually `52k`; not implemented · L01, Week 15 · `main.rs`,
 `usermode.rs`
 
 ### shell
@@ -620,7 +624,7 @@ kernel functions directly), and `sh` from `52k`, an unprivileged user program
 that reaches the kernel only through system calls. Getting from the first to the
 second is the arc of the course.
 
-**Where:** `46k`, `47k`, `52k` · L20, L25 · `run()` (`shell.rs`), `exec.rs`
+**Where:** `46k`, `47k`, `52k` · Week 12, Week 15 · `run()` (`shell.rs`), `exec.rs`
 
 ### pipe
 
@@ -631,7 +635,7 @@ full one waits for the reader, and a read on an empty pipe whose writers have
 all closed returns 0 — end of file. rv6 has no pipes in the core course; they
 are extra credit (pipes, design-only).
 
-**Where:** extra credit `55k` · L26 · not in the reference kernel
+**Where:** extra credit `55k` · Week 16 · not in the reference kernel
 
 ---
 

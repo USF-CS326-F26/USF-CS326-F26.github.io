@@ -114,9 +114,10 @@ program in `exec.rs` writes to the console like this:
     ecall
 ```
 
-and the kernel picks the pieces back out of the trapframe
-(`usertrap()` in `usermode.rs`): `dispatch((*tf).a7, (*tf).a0, (*tf).a1, (*tf).a2)`, with
-the result stored back into `(*tf).a0`.
+and the kernel finds the same four values waiting in the trapframe, where the
+trampoline saved every user register. The result travels back the same way:
+whatever the kernel leaves in the saved `a0` is what the program sees in `a0`
+after `sret`.
 
 ## Instruction quick reference
 
@@ -228,9 +229,10 @@ Two macros, both from `core::arch`:
   `out("t0") _` says "this clobbers `t0`, do not keep anything there".
 
 ```rust
-let scause: usize;
-asm!("csrr {}, scause", out(reg) scause);
-asm!("csrs sie, {}", in(reg) 1usize << 1);
+let mstatus: usize;
+asm!("csrr {0}, mstatus", out(reg) mstatus);          // start.rs: read a CSR
+asm!("csrw mstatus, {0}", in(reg) mstatus);           // start.rs: write it back
+asm!("la t0, kmain", "csrw mepc, t0", out("t0") _);   // start.rs: t0 is clobbered
 ```
 
 Use raw strings (`r#"…"#`) for multi-line blocks so the assembler sees
@@ -324,15 +326,17 @@ the single most common "my timer never fires" bug in `44k`.
 ## Decoding `scause`
 
 The top bit (bit 63) says which kind of trap it was: `1` = interrupt,
-`0` = exception. The remaining bits are the cause code. rv6 tests it exactly
-that way (`kerneltrap()` in `trap.rs`):
+`0` = exception. The remaining bits are the cause code. Decode it in that
+order, top bit first. Two values with the same low bits:
 
-```rust
-if (scause >> 63) == 1 {
-    match scause & 0xff { … }   // an interrupt
-} else {
-    if scause == 3 { … }        // an exception
-}
+```text
+scause = 0x8000_0000_0000_0009
+  bit 63    = 1   -> an interrupt
+  low bits  = 9   -> supervisor external interrupt (a device, via the PLIC)
+
+scause = 0x0000_0000_0000_0009
+  bit 63    = 0   -> an exception
+  low bits  = 9   -> environment call from S-mode
 ```
 
 **Interrupts** — bit 63 set:
@@ -365,7 +369,7 @@ if (scause >> 63) == 1 {
 Codes 1 and 9 mean completely different things depending on bit 63 — "supervisor
 software interrupt" versus "instruction access fault", "supervisor external
 interrupt" versus "ecall from S-mode". If you drop the top-bit test you get a
-handler that treats a page fault as a timer tick, and the symptom (a process
+handler that treats an instruction access fault as a timer tick, and the symptom (a process
 that silently spins) looks nothing like the cause. Test the top bit first,
 always.
 

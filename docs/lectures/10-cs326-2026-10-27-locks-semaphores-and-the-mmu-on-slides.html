@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 10 · Locks, Semaphores, and Turning the MMU On - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on/">&larr; Week 10 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 10 · Locks, Semaphores
+
+## and Turning the MMU On
+
+CS 326 Operating Systems · Tuesday, October 27
+
+**Thu Oct 29** `37k_spinlocks`, `38k_semaphores` · **Fri Oct 30** `39k_virtual_memory`
+
+[The Week 10 page](10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on/): **Essentials** is what Thursday and Friday assume.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–4 | This week | title, this-week |
+| 4–36 | Part I · Thursday · `37k` (8 core, ending with two exam slides) | thu-37k … exam-deadlock |
+| 36–60 | Part II · Thursday · `38k` (6 core, ending with two exam slides) | thu-38k … exam-bounded |
+| 60–88 | Part III · Friday · `39k` (6 core, opening with the `33k` recap on fri-39k and ending with the megapage exam slide) | fri-39k … exam-megapages |
+| 88–91 | Summary | summary |
+| 91–101 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 101–105 | Buffer: questions | |
+
+Part I is the densest: eight slides in 32 minutes. If you reach 39k-satp by minute 68, work ↓ Problem 4 (`satp` both ways) at the board before moving right.
+
+**Fast path** (the minimum lecture, 13 ids): this-week, thu-37k, 37k-cas, 37k-guard, exam-tas, exam-deadlock, thu-38k, exam-lost-wakeup, exam-bounded, fri-39k, 39k-satp, 39k-tlb, exam-megapages. The slides off the fast path (the Midterm 2 slides 37k-cell, 37k-interrupts, 38k-heap and 38k-arc, and 39k-verify, Friday's safety net) are never dropped: show each in its cut-order form, about 30 seconds each.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. before-friday: point at the prep page, and open Friday's session with its questions.
+5. 37k-one-thing, 38k-one-thing and 39k-one-thing: one sentence each on the slide before ("a try that waits spins forever on its own hart's lock"; "the count never goes below zero"; "`satp` holds a page number, not an address").
+6. Compress only (Midterm 2): 38k-arc: "`Arc::clone` adds a pointer and a count; `Arc` gives only `&T`, so shared data that changes needs a lock inside".
+7. Compress only (Friday's safety net): 39k-verify: "a wrong table fails in silence, so the test checks it before the switch".
+8. Compress only (Midterm 2): 37k-cell: "`UnsafeCell` gives a `*mut` through `&`; the lock makes one `&mut` true; `unsafe impl Sync` is the promise".
+9. Compress only (Midterm 2): 38k-heap: leave the table up and say "one page per allocation; more than a page panics".
+10. Compress only (Midterm 2): 37k-interrupts: leave the trace up and read the box; exam-deadlock repeats it.
+11. before-thursday: last to go.
+
+Never cut: exam-tas, exam-deadlock, exam-lost-wakeup, exam-bounded and exam-megapages (Midterm 2, Thu Nov 19).
+
+**Practice Set 2 anchors** (Parts B and C; the set goes out Nov 10): P4 (a) → thu-37k, exam-tas; (b) → 37k-cas, exam-tas · P5 (a), (b) → 37k-interrupts, exam-deadlock; (c) → exam-deadlock, 37k-interrupts · P6 (a) → thu-38k, exam-bounded; (b) → exam-bounded; (c) → exam-lost-wakeup · P7 → 39k-satp, 39k-one-thing · P8 → fri-39k and its recap note (the Week 7 deck's exam-satp slide works a walk) · P9 (a) → fri-39k; (b) → 39k-tlb; (c) → exam-megapages.
+
+- **Q:** "Is Going deeper on Midterm 2?" No. Essentials and the page's For the exam section are; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Oct 29 | `37k_spinlocks` | a spinlock and its guard | one indivisible step |
+| Thu Oct 29 | `38k_semaphores` | a counting semaphore on your lock (the heap is given) | permits never go below zero |
+| Fri Oct 30 | `39k_virtual_memory` | the kernel's own page table | the next fetch is translated |
+
+<div class="info-box">The kernel stops assuming nothing else is looking: on Thursday another hart or an interrupt, on Friday the hardware itself.</div>
+
+Notes:
+- Start from where this goes: in `40k` the whole filesystem sits behind one lock, and from `43k` on every address the kernel uses passes through a page table.
+- By Friday night the kernel has a lock, a semaphore two owners share through `Arc`, and a page table of its own in `satp`. `33k` came before Midterm 1 and the break, so Part III opens with a recap.
+- **Q:** "Is all of this on Midterm 2?" Yes: races, locks, semaphores, the heap's costs and turning the MMU on are all in its scope. The five exam slides add what Thursday and Friday do not exercise.
+
+---
+
+<!-- .slide: id="thu-37k" -->
+
+# Part I · Thursday
+
+## `37k_spinlocks`: a race, built by hand
+
+Your `32k` allocator pops a page by reading the head, then moving the head to that page's link. Two harts at once:
+
+```text
+      hart A               hart B               head
+1     reads head: 3000                          3000
+2                          reads head: 3000     3000
+3     head = its link                           2000
+4                          head = its link      2000
+      both return page 3000
+```
+
+Code that must not run in two flows at once is a **critical section**; **mutual exclusion** keeps it to one. Without it: a **race condition**.
+
+Notes:
+- Part I runs 32 minutes: this slide, four concept slides, the one thing, and two exam slides. In `46k`, `ls`, `cd` and `mkdir` each take the filesystem's lock; `37k` builds that lock.
+- Pages are named by their last four hex digits. Read each row as one step: nothing keeps B out of A's gap. One hart is no cure, since an interrupt can land in the same gap, and more code cannot close it: a check before the write is one more read.
+- ↓ below: Problem 1 (lost updates, counted).
+- **Q:** "rv6 runs one hart. Why build a lock now?" Interrupts arrive in `44k`, and real kernels run many harts. A lock built now keeps working then, and `40k` puts it to work at once.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: lost updates, counted
+
+Two harts share `static mut HITS: u64 = 0` with no lock, and each runs `HITS += 1` twice. Each increment compiles to `ld`, `addi`, `sd`.
+
+- **(a)** Which final values are possible?
+- **(b)** Give an interleaving for the smallest.
+- **(c)** Which fixes it: an `AtomicU64` read with `load` and written with `store`, `fetch_add(1, ..)`, or a lock around each increment?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+**(a)** 2, 3 or 4. Each lost update costs one.
+
+**(b)** A's stale last store erases both of B's increments:
+
+```text
+A: ld 0, addi, sd 1, ld 1, addi          HITS = 1, A holds 2
+B: ld 1, addi, sd 2, ld 2, addi, sd 3    HITS = 3
+A: sd 2                                  HITS = 2
+```
+
+**(c)** `fetch_add`, one `amoadd.d` with no gap inside, and the lock, which makes the three steps a critical section. An atomic `load` then an atomic `store` is two indivisible steps with a gap between them: the same race, with atomics.
+
+---
+
+<!-- .slide: id="37k-cas" -->
+
+## One indivisible step
+
+An **atomic** read-modify-write loads, decides and stores in one step nothing can split. **Compare-and-exchange** (CAS), on a one-shot flag:
+
+```rust
+use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+const NOBODY: usize = usize::MAX;
+static FIRST: AtomicUsize = AtomicUsize::new(NOBODY);
+
+match FIRST.compare_exchange(NOBODY, hart, Relaxed, Relaxed) {
+    Ok(_) => report("first"),            // we turned NOBODY into our id
+    Err(winner) => report_after(winner), // it already held another id
+}
+```
+
+Read it as "if `FIRST` still holds `NOBODY`, make it `hart`, in one step": exactly one hart sees `Ok`. Take a lock with **Acquire** and give it back with **Release**: the pair carries one holder's writes to the next.
+
+Notes:
+- A **spinlock** claims a flag with a CAS like this one, and its waiters retry until they win. `FIRST` guards no data, so `Relaxed` is enough here.
+- Compilers and CPUs both reorder memory accesses. Acquire: no later access moves above it. Release: no earlier access moves below it. Midterm 2 asks for the pair.
+- ↓ below: what a CAS compiles to, and ordering on one hart (optional).
+- **Q:** "What is `Err(winner)` for?" It returns what was there instead, so the loser learns who won without a second read, which could already be stale.
+
+--
+
+<!-- .slide: id="deeper-atomics" class="deeper" -->
+
+## What a CAS compiles to
+
+`riscv64gc` includes the A extension, with two kinds of atomic:
+
+- An **AMO**, such as `amoor.w`, reads a word, combines it with a register and writes it back in one instruction, returning the old value
+- **LR/SC** is a pair: `lr.d` loads and reserves an address, and `sc.d` stores only if nothing touched it since
+
+Compiled with `-O`, `FIRST`'s CAS becomes an `lr.d`, `bne`, `sc.d`, `bnez` retry loop. A CAS from `false` to `true` on an `AtomicBool` becomes one `amoor.w.aq`, `.aq` for Acquire: OR-ing in a bit already set changes nothing, so on a bool, CAS *is* test-and-set. RV64A has no byte-wide AMOs, so it works on the containing word.
+
+A word that went A → B → A looks untouched to a CAS: the **ABA problem**, and why lock-free lists carry version counters.
+
+--
+
+<!-- .slide: id="deeper-ordering" class="deeper" -->
+
+## Ordering on one hart
+
+- RISC-V lets one hart's stores reach other harts out of order. A single hart sees its own accesses in order, yet the compiler still moves loads and stores it sees no reason to keep, and an interrupt handler sees the result.
+- A `Release` store compiles to `fence rw, w`, then the store.
+- A losing CAS changed nothing, so its failure ordering owes the data nothing.
+- An "is it held?" check is stale the instant it returns: a `load` of the flag, then a `store`, rebuilds the race out of an atomic.
+
+---
+
+<!-- .slide: id="37k-cell" -->
+
+## Shared, yet mutable: `UnsafeCell`, `Send`, `Sync`
+
+On a plain `static`, `TOTAL += 1` fails: "cannot assign to immutable static item". **`UnsafeCell<T>`**'s safe `get(&self)` returns a `*mut T` from a `&`: **interior mutability**. A lock beside it keeps writers to one.
+
+```rust
+pub struct Mailbox { slot: UnsafeCell<u64> }
+static INBOX: Mailbox = Mailbox { slot: UnsafeCell::new(0) };
+// error[E0277]: `UnsafeCell<u64>` cannot be shared between threads safely
+```
+
+A `static` must be **`Sync`**, safe to share; **`Send`** is safe to move. The promise: `unsafe impl Sync for Mailbox {}`.
+
+Notes:
+- The cell checks nothing, and the error on the slide is rustc refusing to share it. A generic lock signs only for `T: Send`: an `Rc` inside could be cloned out and carried to another hart, and `Rc`'s count is not atomic.
+- **Q:** "Why is `UnsafeCell` not `Sync` by default?" Shared bare, two harts could each turn `&` into `*mut` and write at once: a data race. Only the lock's author knows every access is serialized, so only they can sign.
+
+---
+
+<!-- .slide: id="37k-guard" -->
+
+## The guard unlocks for you
+
+Close a valve by hand and one early `return` leaves it open. **RAII** ties the close to a value whose `Drop` runs on every path out:
+
+```rust
+pub struct Open<'a> { valve: &'a Valve }
+impl Drop for Open<'_> {
+    fn drop(&mut self) { self.valve.close(); }
+}
+
+let _open = valve.open();    // the valve stays open while _open lives
+fill_tank();                 // close() runs at the brace, on every way out
+```
+
+A lock's **guard** is this shape: `Deref`/`DerefMut` make `*g` the data, and `Drop` unlocks.
+
+<div class="highlight-box"><code>let _ = valve.open();</code> binds nothing: the valve closes at the semicolon, before <code>fill_tank</code>, with no warning.</div>
+
+Notes:
+- Read `let _open` as "alive until the closing brace". The close lives in one place, `Drop`, not at every exit.
+- rv6 builds with `panic = "abort"`: a panic never unwinds, so no guard drops, and the handler exits QEMU. In `std`, unwinding would drop it.
+- ↓ below: Problem 2 (when does the guard drop?).
+- **Q:** "Does the compiler catch `let _` on a lock?" Only for the standard library's locks: the `let_underscore_lock` lint, an error by default. A guard type of your own gets no such help (Problem 2 (b)).
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: when does the guard drop?
+
+`std::sync::Mutex` has a guard like this week's. The mutex starts at 0.
+
+```rust
+fn tally(m: &Mutex<u32>) -> bool {
+    *m.lock().unwrap() += 1;          // B
+    let n = *m.lock().unwrap();       // C
+    let mut g = m.lock().unwrap();    // D
+    *g += n;                          // E
+    drop(g);                          // F
+    let _held = m.lock().unwrap();    // G
+    m.try_lock().is_ok()              // H
+}
+```
+
+- **(a)** When is the mutex released each time? What does `tally` return, and what does the mutex hold?
+- **(b)** Change G to `let _ = m.lock().unwrap();`. What happens, and what would happen with a guard of your own type?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+**(a)** B's guard is a temporary, dropped at B's semicolon. C copies the `u32` out, so its guard also drops at the semicolon, with `n` = 1. D's guard lives until F; E makes the value 2. G's lives to the end, so H finds the mutex held: `tally` returns `false`, and the mutex holds 2.
+
+**(b)** It does not compile. rustc's `let_underscore_lock` lint, an error by default, says "non-binding let on a synchronization lock". The lint knows only the standard library's locks: with your own guard type the line compiles silently, the guard drops at once, and H returns `true`.
+
+---
+
+<!-- .slide: id="37k-interrupts" -->
+
+## Interrupts off while you hold it
+
+On one hart, a spinning waiter and the holder cannot both run:
+
+```text
+kernel code   takes lock L and starts its critical section
+interrupt     the hart jumps to the handler, mid-section
+handler       tries L: held, so it spins
+              L's holder resumes only when the handler returns: never
+```
+
+<div class="info-box">A lock an interrupt handler also takes is held with interrupts off.</div>
+
+xv6's lock turns them off while any lock is held. rv6's does not, and survives because no handler takes one: `45k`'s console hands bytes over through a ring with no lock.
+
+Notes:
+- Midterm 2 asks why a kernel disables interrupts while holding a spinlock: this trace is the answer. Waiting longer cannot help; the deadlock is structural.
+- rv6's escape: `45k`'s console hands bytes over from its handler through a ring with no lock. Removing the need for a lock beats ordering one.
+- **Q:** "Why can the handler not just wait for the holder?" The holder is the code the handler interrupted, on the same hart. It runs again only after the handler returns, and the handler returns only after it gets the lock.
+
+---
+
+<!-- .slide: id="37k-one-thing" -->
+
+## The one thing to get right · `37k`
+
+The banner prints, then silence, then a QEMU timeout that suggests checking the stack. What happened?
+
+Rust printed the banner, so the stack is fine. The test holds the lock, then tries again, expecting a refusal.
+
+<div class="highlight-box">A try that waits spins forever on a lock its own hart holds.</div>
+
+Notes:
+- The timeout's stack hint is written for `31k`-style boot failures, and the banner rules that out. This is the deadlock of 37k-interrupts with no handler at all: the holder and the waiter are the same code.
+- **Q:** "Why test a held lock at all?" A try that says yes to a held lock breaks exclusion, and one that waits hangs on every "is it free?". Refusing is the only correct answer, so the test asks.
+
+---
+
+<!-- .slide: id="exam-tas" class="exam" -->
+
+## Test-and-set, CAS, and test-and-test-and-set
+
+| | Writes | Returns |
+|---|---|---|
+| **Test-and-set** | `true`, always | the old value |
+| **CAS** | the new value, only on a match | `Ok`, or what was there |
+
+- Spinning test-and-set writes every try: one cache line bounces between the spinners
+- **Test-and-test-and-set** spins on a plain load until the flag reads free, then tries the atomic, which can still lose
+- An atomic load, then an atomic store, is two steps with a gap: the race again
+
+Notes:
+- Midterm 2 (Thu Nov 19). Practice Set 2 Problem 4: (a) is the last bullet; (b) is the table and the first two bullets. CAS works beyond flags: "increment unless someone changed it" is a CAS loop, impossible with test-and-set.
+- On a bool the two coincide: a CAS from `false` to `true` compiles to one `amoor.w.aq` (↓ under 37k-cas).
+- **Q:** "Does rv6 need test-and-test-and-set?" Not on one hart: there is no second spinner to bounce a cache line to. It pays off once many harts spin on one lock.
+
+---
+
+<!-- .slide: id="exam-deadlock" class="exam" -->
+
+## Deadlock, and one lock order
+
+A deadlock needs all four: mutual exclusion, hold-and-wait, no preemption, and a circular wait.
+
+```text
+hart 0   takes A        wants B: spins
+hart 1   takes B        wants A: spins
+```
+
+- Opposite orders close the circle; **one global order** (A before B, everywhere) breaks it
+- On one hart, a lock and an interrupt handler close it; interrupts off break that
+
+Notes:
+- Midterm 2 (Thu Nov 19). Practice Set 2 Problem 5: (a) and (b) are 37k-interrupts; (c) is this slide. A cycle is impossible when every edge points the same way.
+- Break any one of the four conditions and no deadlock can form. Lock order breaks the circular wait, the cheapest of the four to break.
+- **Q:** "How does rv6 avoid the handler case without turning interrupts off?" Its console handler takes no lock: bytes cross a ring with one writer and one reader, which arrives in `45k`.
+
+---
+
+<!-- .slide: id="thu-38k" -->
+
+# Part II · Thursday
+
+## `38k_semaphores`: permits, P and V
+
+A **semaphore** counts **permits**: **wait** (P) takes one, **post** (V) returns one, and the count never goes below zero. Three DMA channels, five transfers:
+
+```text
+                  count
+start             3
+A waits           2      A takes a channel
+B waits           1
+A posts           2      A is done
+C, D wait         0
+E waits           0      refused: none left
+```
+
+Start at 1 and it is a lock, a **binary semaphore**. This week's wait never sleeps: at zero it refuses.
+
+Notes:
+- Part II runs 24 minutes: this slide, the heap, `Arc`, the one thing, and two exam slides. In `46k` the shell keeps its directory in a `Vec` and each line in a `String`, both on the heap `38k` turns on.
+- Starting at N meters N interchangeable things: a **counting semaphore**. The count lives behind your `37k` lock. It refuses because nothing else could run to post, so a sleeper would sleep forever (exam-lost-wakeup).
+- **Q:** "Is a binary semaphore just a lock?" Nearly. Anyone may post, while only the holder should unlock, and a guard ties the unlock to the holder.
+
+---
+
+<!-- .slide: id="38k-heap" -->
+
+## The heap arrives
+
+`extern crate alloc;` brings `Box`, `Vec` and `Arc` to `no_std`, but `alloc` owns no memory: without an allocator, rustc says "no global memory allocator found". Name one with `#[global_allocator]`. rv6's given `KernelHeap` (`kheap.rs`) answers every request with a whole page:
+
+| You write | Bytes requested | What you get |
+|---|---|---|
+| `Box::new(7u64)` | 8 | a page, 4,088 bytes idle |
+| `Arc::new(x)`, `x` 16 bytes | 32: two counts, then `x` | a page |
+| `Vec::<u8>::with_capacity(5000)` | 5,000 | null, then a panic |
+
+Notes:
+- Every allocation is a `kalloc` page, so the page allocator has to exist before the first `Box`. Midterm 2 asks what `#[global_allocator]` is and what `Box`, `Vec` and `Arc` cost: this table.
+- More than a page fails, and the message, "memory allocation of 5000 bytes failed", never shows: the test's panic handler prints only `OSLINGS:FAIL (panic)`.
+- ↓ below: what the heap costs as a `Vec` grows (optional).
+- **Q:** "Why two counts in an `Arc`?" Strong and weak. The value is dropped when the strong count reaches 0, and the block is freed when the weak count does. Only the strong count matters this week.
+
+--
+
+<!-- .slide: id="deeper-heap" class="deeper" -->
+
+## What the heap costs
+
+- Push ten `u64`s onto a `Vec`, and its capacity grows 4, 8, 16, taking three pages in turn. Each growth allocates the new block, copies, then frees the old, so two pages are live at that instant; the final block is 128 bytes of a page.
+- A real allocator is a project of its own: Linux carves objects out of buddy-allocated pages with SLUB, and xv6 has no kernel heap at all.
+- rv6's heap is also unsafe on two harts: `kalloc`'s free list has no lock, so two allocations could return the same page, the race of thu-37k. The cure is to put the free list in a `SpinLock`.
+
+---
+
+<!-- .slide: id="38k-arc" -->
+
+## `Arc`: one value, many owners
+
+**`Arc<T>`**, atomically reference-counted, shares one heap value until the last owner lets go:
+
+```rust
+let a = Arc::new(Gauge::new());          // one Gauge on the heap; count 1
+let panel = Panel { g: Arc::clone(&a) }; // count 2
+let log = Arc::clone(&a);                // count 3, still one Gauge
+drop(a);                                 // count 2: the first owner is not special
+let n = Arc::strong_count(&log);         // n == 2
+drop(panel); drop(log);                  // count 0: Gauge dropped, page freed
+```
+
+Read `Arc::clone(&a)` as "one more pointer, one more on the count": nothing is copied. `Arc` hands out only `&T`, so shared data that changes needs a lock inside.
+
+Notes:
+- `a.level += 1` fails with "cannot assign to data in an `Arc`": an `Arc` is for sharing, and changing shared data still takes a lock inside it.
+- The count uses an atomic add, so a clone on one hart and a drop on another cannot lose an update: Problem 1 again, solved with `fetch_add`.
+- **Q:** "Is `a.clone()` different from `Arc::clone(&a)`?" No, it is the same call. `Arc::clone(&a)` is the style that says only a pointer is copied.
+
+---
+
+<!-- .slide: id="38k-one-thing" -->
+
+## The one thing to get right · `38k`
+
+Two permits, two waits. Why does the third wait succeed too?
+
+`[fail] no permits should remain after taking both`
+
+The count went to −1: a permit that never existed was handed out.
+
+<div class="highlight-box">The count never goes below zero.</div>
+
+Notes:
+- A later post only brings the count back to 0. The semaphore has handed out three channels from a pool of two, and it will refuse the next honest wait.
+- **Q:** "Could a negative count ever mean something?" In some blocking designs it counts the sleepers waiting for a permit. Here nothing sleeps, so a negative count is always a bug.
+
+---
+
+<!-- .slide: id="exam-lost-wakeup" class="exam" -->
+
+## The lost wakeup
+
+A blocking wait that tests "count is 0", then sleeps, has a gap:
+
+```text
+waiter   tests: count is 0
+poster   count = 1; wakes the sleepers: nobody is asleep yet
+waiter   sleeps, beside a free permit
+```
+
+The cure: test under a lock, become `Sleeping` before releasing it, and retest in a `while`. rv6's `try_wait` refuses at zero and never sleeps: no gap.
+
+Notes:
+- Midterm 2 (Thu Nov 19). Practice Set 2 Problem 6 (c). `Sleeping` is the state `34k` defined and nothing used. xv6's `sleep` is handed the caller's lock and takes the process lock before releasing it; `wakeup` needs that process lock, so no wakeup fits between the test and the sleep.
+- This week's refusing wait is a deferral, not a solution: once something else can run to post, a wait must sleep, and the gap returns.
+- **Q:** "Why `while` and not `if`?" A wakeup says the count changed, not that a permit is yours. Another waiter may take it first, so a woken waiter tests again.
+
+---
+
+<!-- .slide: id="exam-bounded" class="exam" -->
+
+## Bounded buffers
+
+N slots: `empty` = N, `full` = 0, `mutex` = 1, and `empty + full` = N between operations.
+
+```text
+producer   P(empty)  P(mutex)  put   V(mutex)  V(full)
+consumer   P(full)   P(mutex)  take  V(mutex)  V(empty)
+```
+
+Take the counting semaphore first: a producer blocked on `empty` while holding `mutex` stalls every consumer.
+
+<div class="info-box"><code>empty</code> and <code>full</code> are one count read from two ends; <code>mutex</code> guards the indices.</div>
+
+Notes:
+- Midterm 2 (Thu Nov 19). Practice Set 2 Problem 6: (a) traces `empty` and `full`; (b) is the swapped order. Every slot is free or full, never both and never neither: that is the invariant.
+- The exam traces it one row per operation, with both counts after each.
+- ↓ below: Problem 3 (a buffer of two).
+- **Q:** "Why two semaphores, not one?" Two parties wait on two conditions: a producer for a free slot, a consumer for a full one. Each semaphore blocks one of them.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: a bounded buffer of two
+
+Use the bounded buffer with N = 2 and a blocking P.
+
+- **(a)** The producer offers three items; then one consumer runs once. Give `empty` and `full` after each step, and say where the third production waits.
+- **(b)** Start over, empty. A consumer's first two lines are swapped to `P(mutex); P(full)`, and it runs before any producer. Show the deadlock.
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+**(a)**
+
+| After | `empty` | `full` |
+|---|---|---|
+| production 1 | 1 | 1 |
+| production 2 | 0 | 2 |
+| production 3 | waits in `P(empty)`, holding nothing | 2 |
+| the consumption | 1, taken at once by production 3 | 1 |
+| production 3 finishes | 0 | 2 |
+
+The third producer waits before `mutex`, so the consumer can still get in, and its `V(empty)` is exactly what the producer needed.
+
+**(b)** The consumer takes `mutex`, then waits on `full` = 0 while holding it. The producer passes `P(empty)` and waits on `mutex`. Each needs what only the other can give: a circular wait. Consumers, too, take the counting semaphore first.
+
+---
+
+<!-- .slide: id="fri-39k" -->
+
+# Part III · Friday
+
+## `39k_virtual_memory`: the next fetch is translated
+
+In `33k` only software read your tree; now the MMU [walks](07-cs326-2026-10-06-boot-physical-pages-and-sv39/#33k-walk) it on every access.
+
+- The **bootstrap paradox**: the fetch after the switch is translated, with the same `pc` and `sp`
+- The way out: an **identity map**, `va == pa`
+- Map everything the kernel will fetch, load or store after the switch, devices included
+
+Notes:
+- Part III runs 28 minutes over six slides. The recap (`33k` was Oct 9, before Midterm 1 and the break): building a table takes only stores; using one is the hardware's job, and it enforces R, W and X at the first leaf. `satp` gives the root, VPN[2], VPN[1] and VPN[0] index three tables, and the leaf's page plus the copied offset is the answer. Practice Set 2 Problem 8 is that walk; the Week 7 deck's exam-satp slide works one.
+- Ask the room "what will the kernel touch after the switch?" before pointing at the last bullet. Whatever you leave out stops existing. Give each region a start and a length, not an end.
+- ↓ below: how xv6 and Linux do it (optional).
+- **Q:** "If `va == pa`, why turn translation on at all?" For the kernel nothing changes yet, and that is the point. From `48k` each program gets a table of its own, where `va` and `pa` differ.
+
+--
+
+<!-- .slide: id="deeper-others" class="deeper" -->
+
+## How xv6 and Linux do it
+
+- **xv6** splits its kernel map at `etext`, the end of `.text`: code R X, the rest R W. That is W^X for one extra mapping.
+- **Linux** runs at a high virtual address but is loaded wherever the bootloader chose, so the fetch after its switch cannot translate to itself. On RISC-V it points `stvec` at the high address of that next instruction first: the fetch faults, and the trap lands exactly there.
+- Linux also tags TLB entries with ASIDs, so a process switch need not flush, and asks other harts to flush by interrupt, since `sfence.vma` reaches only its own.
+
+---
+
+<!-- .slide: id="39k-satp" -->
+
+## `satp` by hand
+
+MODE in bits 63..60 (8 is Sv39, 0 is off), an address-space ID in 59..44 (0 in rv6), and in 43..0 the root's **page number**: its address without the low 12 bits. A root at `0x8052_1000`:
+
+```text
+root table at            0x0000_0000_8052_1000
+drop the low 12 bits     0x0000_0000_0008_0521   the PPN: three hex digits gone
+MODE 8 in bits 63..60    0x8000_0000_0000_0000
+both fields together     0x8000_0000_0008_0521   the value to install
+```
+
+Read it upward to decode. MODE 0 is legal and means "translate nothing".
+
+Notes:
+- Midterm 2 asks for the `satp` encoding, and Practice Set 2 Problem 7 is this slide both ways. Decode the kernel's own from week 7, `0x8000_0000_0008_7FFF`: MODE 8, root at `0x87FF_F000`, the allocator's first page.
+- MODE 0 is legal, so the hardware never complains about a missing mode: a wrong value fails quietly.
+- ↓ below: Problem 4 (`satp` both ways).
+- **Q:** "Why a page number and not the address?" The root is page-aligned, so its low 12 bits are always 0. Dropping them lets 44 bits name any page in a 56-bit physical space.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: `satp` both ways
+
+- **(a)** A root sits at `0x8043_7000`. What goes in `satp`?
+- **(b)** Decode `0x8000_0000_0008_7FC2`: is the root in RAM?
+- **(c)** Decode `0x0000_0000_0008_0437`: what happens once it is installed?
+- **(d)** Decode `0x8000_0000_8043_7000`: where does the hardware look for the root?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+**(a)** `0x8043_7000 >> 12` is `0x8_0437`; with 8 at bit 60, `0x8000_0000_0008_0437`.
+
+**(b)** MODE 8, Sv39. The low 44 bits are `0x8_7FC2`, so the root is at `0x87FC_2000`, inside `0x8000_0000..0x8800_0000`: yes.
+
+**(c)** MODE 0, Bare: QEMU translates nothing, so the kernel runs on and nothing says the table was never used. (The current privileged spec asks for zeros beside MODE 0 and leaves this pattern UNSPECIFIED.)
+
+**(d)** The low 44 bits hold `0x8043_7000`, an address where a page number belongs. Three zero digits appended put the root at `0x804_3700_0000`, about 8 TiB up, where there is nothing: the first translated access fails inside the walk.
+
+---
+
+<!-- .slide: id="39k-tlb" -->
+
+## Two instructions, and the TLB
+
+```asm
+csrw  satp, t0           # the satp value; the next fetch is translated
+sfence.vma zero, zero    # discard every cached translation
+```
+
+The **TLB** caches recent translations, sparing most accesses the three-read walk. It is not coherent with memory: rewrite a PTE and the cached copy can stay.
+
+```text
+load 0x8000_2F00    miss: walk, cache page 0x8000_2000 -> 0x8000_2000
+leaf now names page 0x8060_0000; load again: may hit, still 0x8000_2F00
+sfence.vma; load again: miss, walk, 0x8060_0F00
+```
+
+Fence after writing `satp` and after changing an entry the hardware may have used. A table built before it is installed needs none; a mid-stream switch (`48k`) fences on both sides.
+
+Notes:
+- Both instructions are given; you write neither. **`sfence.vma`** also orders earlier page-table stores before later walks. A table built before it is installed needs no fence: nothing has cached it yet.
+- Practice Set 2 Problem 9 (b): after `csrw satp`, required; after building the table with translation off, not required; around a table switch in mid-stream, as in `uservec` (week 12), required on both sides.
+- ↓ below: when you must flush (optional).
+- **Q:** "Why doesn't the hardware keep the TLB coherent itself?" It would have to check every store against every cached translation. Page tables change rarely, so the kernel says when, with one instruction.
+
+--
+
+<!-- .slide: id="deeper-flush" class="deeper" -->
+
+## When you must flush
+
+- RISC-V needs `sfence.vma` after writing `satp`, after changing an entry the hardware may have used, and even after making an invalid entry valid: a hart may remember that an address was unmapped.
+- rv6 never fences while building a table, correctly, by an invariant: a table is complete before it is installed.
+- Add lazy allocation or copy-on-write, and every edit needs a fence.
+- QEMU never remembers a failed walk, so a missing fence after adding a page passes every test here and can fail on a real board.
+
+---
+
+<!-- .slide: id="39k-verify" -->
+
+## Silence, and checking first
+
+A wrong table fails in silence: printing goes through the table that failed.
+
+Check on the ground, not in the air: the test inspects your table before the switch, so a mistake prints `[fail]`.
+
+<div class="info-box">When a failure is silent, check before the dangerous step.</div>
+
+<p class="small"><code>39k</code> runs in machine mode, which translation ignores. From <code>43k</code>, this table carries every access.</p>
+
+Notes:
+- Like a phone whose only way to report "no signal" is a text: the error report needs the translation that broke. Here a mistake prints a `[fail]` line before anything is switched on.
+- The machine-mode footnote: in `39k` the table carries nothing yet, so passing proves the table right. `43k` moves the kernel to supervisor mode, and from then on it trusts the table.
+- ↓ below: reading the silence in GDB (optional).
+- **Q:** "Then why install the table at all in `39k`?" To make the switch once, on its own, while every mistake still prints. `43k` inherits a table that has already been checked.
+
+--
+
+<!-- .slide: id="deeper-silence" class="deeper" -->
+
+## Reading the silence
+
+When the kernel goes quiet after the switch, attach GDB and read four registers:
+
+| Register | What it says |
+|---|---|
+| `satp` starting with 8 | the switch happened |
+| `scause` 12 | an instruction page fault: the table refused a fetch |
+| `stval` | the address that faulted |
+| `pc` stuck at 0 | the fault trapped to an unset vector and faulted again |
+
+The spec says a root that points at no memory gives an access fault, `scause` 1; QEMU 10 reports that case as 12 too, so check `satp` itself before blaming a mapping. [QEMU and GDB](../guides/qemu-gdb/#diagnostic-playbook) has the playbook.
+
+---
+
+<!-- .slide: id="39k-one-thing" -->
+
+## The one thing to get right · `39k`
+
+Every mapping checks out. Why does `satp` still fail?
+
+`[fail] make_satp: wrong root page number`
+
+The low 44 bits hold a page number, not an address. An address there names a root 4,096 times higher, about 8 TiB up, where live hardware could not even read it.
+
+<div class="highlight-box"><code>satp</code> names the root by its page number, never by its address.</div>
+
+Notes:
+- Without the check, from `43k` on, this is silence: `0x8000_0000_8052_1000` still fits the 44-bit field, so nothing complains until the first translated access fails inside the walk. In `39k` itself machine mode ignores `satp`, and the bad value would pass unnoticed. Practice Set 2 Problem 7 calls it the classic error.
+- **Q:** "Which fault does that give?" The spec says an access fault, `scause` 1, since the walk cannot read a PTE; QEMU 10 reports a page fault, 12, for this case too. Either way, read `satp` before blaming a mapping (↓ under 39k-verify).
+
+---
+
+<!-- .slide: id="exam-megapages" class="exam" -->
+
+## Megapages, and 66 pages
+
+Identity-map RAM, 128 MiB, in 4 KiB pages:
+
+```text
+RAM             0x8000_0000 .. 0x8800_0000
+leaves          0x0800_0000 >> 12            = 32,768
+level-0 tables  32,768 / 512                 = 64
+level-1 tables  all under root entry 2       = 1
+total           64 + 1 + the root            = 66 pages
+```
+
+A level-1 leaf maps a 2 MiB **megapage**, so 64 leaves in one level-1 table cover RAM: the root and that table, 2 pages.
+
+Notes:
+- Midterm 2 (Thu Nov 19). Practice Set 2 Problem 9 (c). 66 pages is 264 KiB of tables to say "every address is itself". rv6 skips megapages to keep the walk one shape.
+- Scattered pages cost more tables than contiguous ones: every distinct 2 MiB region needs its own level-0 table (↓ what a table costs).
+- ↓ below: what a table costs, then Problem 5 (count the tables).
+- **Q:** "Why not map the UART with a megapage too?" A 2 MiB leaf would also map every device register beside it. Problem 5 (b) asks the same of a device page.
+
+--
+
+<!-- .slide: id="deeper-kernel-map" class="deeper" -->
+
+## What a table costs
+
+- A table's size follows how scattered its pages are, not how many there are
+- Two 4 KiB pages in one 2 MiB region share a level-0 table; in different 2 MiB regions they need two; in different 1 GiB regions, two level-1 tables too
+- A few device pages spread across the low gigabyte can cost more tables than a contiguous megabyte of RAM
+- A hardened kernel splits RAM by permission, code R X and data R W: **W^X**, at the price of one more boundary per split, placed from a linker symbol
+
+--
+
+<!-- .slide: id="problem-5" class="deeper" -->
+
+## Problem 5: count the tables
+
+A small kernel identity-maps RAM from `0x8000_0000` to `0x8040_0000` in 4 KiB pages, plus one device page at `0x2000_0000`.
+
+- **(a)** How many page-table pages, root included?
+- **(b)** How many if RAM uses 2 MiB megapages, and why not the device page?
+- **(c)** How many for just the pages `0x801F_F000` and `0x8020_0000`?
+
+--
+
+<!-- .slide: id="problem-5-solution" class="deeper" -->
+
+## Problem 5 · solution
+
+**(a)** 6. RAM's 1,024 pages fill two level-0 tables below one level-1 table, under root entry 2. The device is under root entry 0, level-1 entry 256: one level-1 and one level-0 table. With the root, 1 + 3 + 2 = 6.
+
+**(b)** 4. RAM becomes two level-1 leaves, and its level-0 tables vanish. The device keeps a 4 KiB page, since a 2 MiB leaf would also map every device register beside it.
+
+**(c)** 4: the root, a level-1 table and two level-0 tables. The pages are adjacent but straddle a 2 MiB boundary, level-1 entries 0 and 1.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- CAS makes read-and-write one step; Acquire takes, Release gives back
+- `UnsafeCell` + `unsafe impl Sync`; `Drop` unlocks
+- A lock a handler takes: interrupts off
+- Permits never below zero; a page per allocation; `Arc` shares
+- After `satp`, the next fetch is translated: identity-map
+- `satp` holds a page number; `sfence.vma` drops stale entries
+- Midterm 2: TAS/CAS, deadlock, lost wakeup, bounded buffers, megapages
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this week for Midterm 2?" The page's Problems 1 to 5 now, then Practice Set 2 Parts B and C on paper when it goes out on Nov 10. Then redraw from memory what the kernel must still reach after the switch: its code, stack and statics, its page tables, and each device (fri-39k).
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores/): check yourself
+
+You build a spinlock and a semaphore on it; the kernel gets its heap. Prep: about 30 minutes.
+
+**1.** `if !busy { busy = true; }` guards a critical section on rv6's single hart, interrupts enabled. Why can it still fail?
+
+**2.** A struct holds an `UnsafeCell<T>`. Why does the compiler reject `static X: ThatStruct`, and what does `unsafe impl<T: Send> Sync for ThatStruct` claim?
+
+**3.** After `let b = Arc::clone(&a);`, how many copies of the value exist, and how can either mutate it?
+
+Notes:
+- Walk the prep page (about 30 minutes). What you build: a spinlock claimed by compare-and-exchange and reached only through a guard that unlocks in `Drop`; then a semaphore on that lock that refuses at zero, with a page-per-allocation heap that makes `Box`, `Vec` and `Arc` work. Green is `OSLINGS:PASS` for each.
+- The three questions are the prep's own Check yourself (thu-37k, 37k-cell, 38k-arc); answers are on the prep page.
+- **Q:** "Why two exercises in one session?" `38k` stands on `37k`: the semaphore's count lives behind your lock. Finish `37k` first.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/10-cs326-2026-10-30-prep-virtual-memory/): check yourself
+
+You identity-map the kernel and pack its `satp`. Prep: about 20 minutes.
+
+**1.** GDB shows `satp = 0x8000_0000_0008_7FFF`. Is paging on, and where is the root table?
+
+**2.** Your kernel survives the switch, prints `OSLINGS:PASS`, then QEMU never exits and the harness times out. Which region is missing?
+
+**3.** Right after the switch, `scause` reads 1, not 12. Do you suspect a mapping or `satp`?
+
+Notes:
+- Walk the prep page (about 20 minutes). What you build: the kernel's identity-mapped page table and the `satp` value that names it; green is `OSLINGS:PASS`.
+- The three questions are the prep's own Check yourself (39k-satp, fri-39k, 39k-one-thing); answers are on the prep page. Questions 2 and 3 picture a kernel already in supervisor mode, as from `43k`: in `39k` a missing region prints a `[fail]` line before the switch. On question 3 the spec's answer is `satp`, but QEMU 10 reports 12 for that case too (↓ under 39k-verify). On question 2, runner.rs looks for `OSLINGS:PASS` first, so that run is green after a 10-second wait; the symptom is the wait, not a red.
+- **Q:** "Do I need Thursday's locks on Friday?" No. `39k` stands on `33k`'s tree and `32k`'s allocator; the locks come back in `40k`.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 11 · Files, Boot Order, and Traps](11-cs326-2026-11-03-filesystems-boot-order-and-traps/), Tuesday, Nov 3: read its Essentials before Tuesday.
+
+Notes:
+- `40k` puts the whole filesystem behind one of this week's locks, and from `43k` the kernel runs in supervisor mode, where this week's table carries every access.
+- **Q:** "When is Midterm 2?" Thursday, Nov 19, in class. Practice Set 2 goes out Nov 10, and the Nov 17 lecture is the review.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

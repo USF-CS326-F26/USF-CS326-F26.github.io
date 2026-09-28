@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 13 · Midterm 2 Review - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="13-cs326-2026-11-17-midterm-2-review/">&larr; Week 13 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 13 · Midterm 2 Review
+
+## Five question shapes, one trap end to end
+
+CS 326 Operating Systems · Tuesday, November 17
+
+**Thu Nov 19** Midterm 2, in class · **Fri Nov 20** no session
+
+[The Week 13 page](13-cs326-2026-11-17-midterm-2-review/): every worked answer from today, plus three more problems in the exam's shapes.
+
+Notes:
+**Minute plan** (105 minutes; no exercises this week, and Practice Set 2 says this lecture doubles as the review)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–10 | Scope and logistics | title, this-week, scope, not-on-exam, shapes |
+| 10–20 | Practice Set 2 questions (its solutions post today) | ps2-questions |
+| 20–34 | Shape 1 · trace the registers | shape-registers, shape-registers-trace |
+| 34–48 | Shape 2 · decode the bits | shape-bits, shape-bits-decode |
+| 48–62 | Shape 3 · order the steps | shape-order, shape-order-answer |
+| 62–76 | Shape 4 · find the race | shape-race, shape-race-fix |
+| 76–91 | Shape 5 · trace the trap | shape-trap, shape-trap-in, shape-trap-kernel, shape-trap-out, shape-trap-diagram |
+| 91–100 | The spine, summary, Before Thursday, next week | spine, summary, before-thursday, next-week |
+| 100–105 | Buffer: exam questions, or one ↓ problem | |
+
+Each shape runs the same way: about three minutes of students working the given on paper, then about eight at the board. A shape that finishes early spends what is left on its ↓ problem: Problem 2 under Shape 1, Problem 3 under Shape 2, Problem 1 under Shape 4.
+
+**Fast path** (the minimum lecture, 17 ids; longer than usual because the whole lecture is exam review): this-week, scope, ps2-questions, shape-registers, shape-registers-trace, shape-bits, shape-bits-decode, shape-order, shape-order-answer, shape-race, shape-race-fix, shape-trap, shape-trap-in, shape-trap-kernel, shape-trap-out, shape-trap-diagram, before-thursday.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ stack (Problems 1–3 and Further reading): never press down. The page has all of it.
+2. next-week: say it aloud on before-thursday.
+3. summary: skip it; before-thursday recaps by problem.
+4. spine: 30 seconds: "type `run`, and almost every exercise since `34k` takes a turn". The page has the diagram.
+5. shapes: read the five names aloud; each shape's own slide states its question.
+6. not-on-exam: one sentence on scope: "`exec`, file descriptors, `fork` and `wait` are the final's; pipes are on no exam."
+
+Never cut: the thirteen exam slides, shape-registers through shape-trap-diagram (all for Midterm 2, Thu Nov 19), plus this-week, scope and before-thursday. ps2-questions is time-boxed, not cut: stop at 10 minutes, or at 5 when behind. When behind, compress but never skip: one minute of attempt time instead of three on shape-registers, shape-bits and shape-order, and 30 seconds on shape-trap-diagram, which redraws the three slides before it.
+
+**Practice Set 2 anchors:** P1 → shape-registers-trace · P2 → week 9 page `#35k-context` · P3 → ↓ Problem 2 · P4 → shape-race · P5 → shape-race-fix · P6 → ↓ Problem 1 and week 10 `#exam-bounded` · P7, P8 → shape-bits-decode and ↓ Problem 3 · P9 → week 10 `#exam-megapages` · P10 → shape-bits-decode, shape-order-answer (no +4) and shape-trap-kernel (+4) · P11 → shape-order-answer and week 11 `#exam` · P12 → week 11 `#thu-40k` · P13 → shape-trap-in, ↓ Problem 3, and the layout note in before-thursday's notes.
+
+- **Q:** "Is Going deeper on the midterm?" It holds three more problems in the exam's shapes and nothing new. Do them after the bold Practice Set 2 problems.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | What happens | Bring |
+|---|---|---|
+| Tue Nov 17 | this review; Practice Set 2 solutions post | the problems you got wrong |
+| Thu Nov 19 | Midterm 2, in class, the full period | a pencil and the printed, annotated [Cheatsheet](../guides/cheatsheet/) |
+| Fri Nov 20 | no session | |
+
+<div class="highlight-box">Closed book. No devices, not even a calculator. Worth 15% of the grade. Scope: <code>34k</code>–<code>48k</code>.</div>
+
+Notes:
+- Start from where this goes: Thursday asks for the kernel you built from `34k` to `48k`, on paper, and the final leans on the same pieces when it walks one keystroke through `rv6$ ls`.
+- By Thursday you can answer all five question shapes on material you have not seen. Midterm 1 returns only as building blocks.
+- **Q:** "How do I do the hex without a calculator?" With a few tricks the page shows. Turning a PTE into a frame address is "times four, then zero the last three hex digits", as in Shape 2.
+
+---
+
+<!-- .slide: id="scope" -->
+
+## Scope, and where it lives
+
+| Week page | Exercises | On Midterm 2 |
+|---|---|---|
+| [Week 9](09-cs326-2026-10-13-processes-context-switch-and-scheduling/) | `35k`, `36k` | the switch, the double switch; round robin, the survey |
+| [Week 10](10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on/) | `37k`–`39k` | locks, deadlock and lock order, interrupts off; semaphores, the lost wakeup; the heap; the MMU on |
+| [Week 11](11-cs326-2026-11-03-filesystems-boot-order-and-traps/) | `40k`–`44k` | inodes and paths; devices; boot order; traps and their CSRs; the timer |
+| [Week 12](12-cs326-2026-11-10-console-shell-and-user-mode/) | `45k`–`48k` | the PLIC, the ring; the shell; the trampoline, the trapframe, `ecall` |
+
+Reread the section, not the page. Midterm 1 returns as building blocks: the Sv39 walk (week 7) and the caller/callee split (week 6).
+
+Notes:
+- The page's scope table links every line of the Midterm 2 scope to its section. The Midterm 2 page names five exercises to reread first: `35k`, `37k`, `39k`, `43k` and `48k`.
+- The sections: week 9 `#fri-35k`, `#36k-double-switch`, `#exam-terms`, `#exam-survey`; week 10 `#thu-37k`, `#exam-tas`, `#exam-deadlock`, `#38k-permits`, `#38k-heap`, `#exam-lost-wakeup`, `#exam-bounded`, `#fri-39k`; week 11 `#thu-40k`, `#exam-devices`, `#fri-42k`, `#fri-43k`, `#exam-handoff`, `#exam-stval`, `#fri-44k`; week 12 `#thu-45k`, `#exam-plic`, `#thu-46k`, `#fri-48k`, `#exam-top-pages`, `#exam-sscratch`.
+- **Q:** "Is `34k` on it?" Only as a building block. Midterm 1 already asked what a `Proc` holds, and the Midterm 2 page promises that nothing depends only on Midterm 1 material.
+
+---
+
+<!-- .slide: id="not-on-exam" -->
+
+## Not on this exam
+
+- `exec`, file descriptors, `fork` and `wait`: these belong to the final
+- Pipes: on no exam
+- Extra-credit exercises (`41k`, `47k`) are optional: the device and filesystem ideas in scope are on the week 11 page
+- Tool details: flags, `cargo`, QEMU command lines, exact Rust signatures ([what is not examinable](../guides/exam-prep/#what-is-not-examinable))
+
+Notes:
+- The first two lines are the Midterm 2 page's own "Not on this exam". The Nov 24 lecture opens the final's material with `exec` and file descriptors.
+- **Q:** "Is `47k`'s `rm` on it?" Its code is not. The idea behind it is: the name lives in the directory and the file in the inode, which is Practice Set 2 Problem 12 and the week 11 page.
+
+---
+
+<!-- .slide: id="shapes" -->
+
+## The five question shapes
+
+| Shape | You are given | A full answer gives |
+|---|---|---|
+| Trace the registers | a switch, frozen at chosen moments | each register's value, and where `ret` lands |
+| Decode the bits | raw hex | each field cut out, and what it means |
+| Order the steps | a scrambled sequence | the order, a reason for each place, and what could swap |
+| Find the race | two sequences and an invariant | an interleaving that breaks it, and the fix |
+| Trace the trap | an `ecall` or an interrupt | hardware and software at each step, with the CSR |
+
+<div class="info-box">Name the register or structure, give its value, and say what forces it.</div>
+
+Notes:
+- The first three are Midterm 1's shapes; find the race and trace the trap are new with this material. [Exam Prep](../guides/exam-prep/) works shapes 1–3 on rv6 itself. Today works all five on made-up programs and numbers, and Shape 5 on rv6's own trap path.
+- Practice Set 2 also labels short "Explain it" questions, such as Problem 2 and Problem 13(b).
+- **Q:** "Is the value alone enough?" It is half an answer. Exam Prep's example: "`a0` is the trapframe" is half; adding "because `sscratch` held `TRAPFRAME` and `csrrw` swaps them" makes it whole.
+
+---
+
+<!-- .slide: id="ps2-questions" -->
+
+## Questions on Practice Set 2?
+
+Its solutions post today. Bring what you got wrong.
+
+| Part | Topic | Problems | Where today |
+|---|---|---|---|
+| A | Context switching and scheduling | 1–3 | Shape 1, ↓ Problem 2 |
+| B | Concurrency and semaphores | 4–6 | Shape 4, ↓ Problem 1 |
+| C | Virtual memory and the MMU | 7–9 | Shape 2, ↓ Problem 3 |
+| D | Traps, timers, and devices | 10–11 | Shapes 2 and 3 |
+| E | Filesystem and user mode | 12–13 | Shape 5 (P13); P12 on the week 11 page |
+
+[Practice Set 2](../assignments/practice-set-02/)
+
+Notes:
+- Ten minutes, then move on. Ask for problem numbers first, tally them, and take the most-asked ones no shape covers: Problems 2, 9 and 12 live on the week 9, 10 and 11 pages.
+- Hold the rest for their shape: P1 for Shape 1; P4 and P5 for Shape 4; P7, P8 and P10 for Shape 2; P11 for Shape 3; P13 for Shape 5.
+- **Q:** "Is the exam like the practice set?" Yes. Its labels (Trace it, Decode it, Order it, Explain it) are the exam's, and the Midterm 2 page adds find the race and trace the trap as named shapes.
+
+---
+
+<!-- .slide: id="shape-registers" class="exam" -->
+
+## Shape 1: trace the registers
+
+Week 9's `Pause` and `trade`: `sp` at 0, `s1` at 8, `ra` at 16.
+
+| Context | `sp` | `s1` | `ra` |
+|---|---|---|---|
+| A, running | `0x8031_0FA0` | 7 | |
+| H, the hub, saved | `0x8020_0F40` | 3 | `0x8000_1A20` |
+| B, saved | `0x8032_0F70` | 11 | `0x8000_4418` |
+
+A's yield function calls `trade(&A, &H)`. The hub picks B, sets `s1 = 4`, and calls `trade(&H, &B)`; B last yielded through the same function. Give `ra`, `sp` and `s1` after each save and load, and where each `ret` lands.
+
+Notes:
+- On Midterm 2. Give two or three minutes on paper first. One fact carries every switch question: the `ret` goes wherever the loads said.
+- This is Practice Set 2 Problem 1's shape with three registers instead of fourteen.
+- **Q:** "What is in `ra` when A calls `trade`?" A's return address into its yield function. B's saved `ra` holds the same address, because B yielded through the same call.
+
+---
+
+<!-- .slide: id="shape-registers-trace" class="exam" -->
+
+## Shape 1 · the trace
+
+```text
+moment                    ra            sp            s1   saved
+A calls trade(&A, &H)     0x8000_4418   0x8031_0FA0   7
+after the saves           (no register changes)            A: 0x8031_0FA0, 7, 0x8000_4418
+after the loads           0x8000_1A20   0x8020_0F40   3
+ret: into the hub, on its stack. The hub picks B and sets s1 = 4.
+H calls trade(&H, &B)     0x8000_1A20   0x8020_0F40   4    H: 0x8020_0F40, 4, 0x8000_1A20
+after the loads           0x8000_4418   0x8032_0F70   11
+ret: into the yield function again, now on B's stack
+```
+
+A and B resume at one address. Only `sp` and the `s` registers tell them apart.
+
+<div class="highlight-box">The slip: "the <code>ret</code> returns to the code that just called <code>trade</code>". It returns to the <code>ra</code> just loaded, which belongs to the <em>other</em> context.</div>
+
+Notes:
+- On Midterm 2. The saves change no register, the loads replace all three, and `ret` goes where the loads said. The hub calls `trade` from one call site, so its `ra` repeats every lap.
+- Practice Set 2 Problem 1 is this trace with rv6's fourteen registers. Its "redo it if" is a `ret` that returned into `proc_yield`: that happens only on the second switch.
+- ↓ below: Problem 2 (the survey, by the numbers).
+- **Q:** "Where did A's `t` and `a` registers go?" Onto A's own stack before the call, if A still needed them. The saved `sp` points at that stack, so they come back with it.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: the survey, by the numbers
+
+Jobs A, B, C and D arrive at 0, 1, 2 and 3, needing 5, 3, 1 and 2 ticks. A job arriving as a quantum ends queues ahead of the job just preempted.
+
+- (a) For FCFS, non-preemptive SJF, and round robin with a quantum of 2, give the schedule and the average turnaround and response.
+- (b) Which policy beats all three on turnaround, and what does it risk?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+| Policy | Schedule | Turnaround | Response |
+|---|---|---|---|
+| FCFS | A 0–5, B 5–8, C 8–9, D 9–11 | (5 + 7 + 7 + 8) / 4 = 6.75 | (0 + 4 + 6 + 6) / 4 = 4 |
+| SJF | A 0–5, C 5–6, D 6–8, B 8–11 | (5 + 10 + 4 + 5) / 4 = 6 | (0 + 7 + 3 + 3) / 4 = 3.25 |
+| RR, 2 | A 0–2, B 2–4, C 4–5, A 5–7, D 7–9, B 9–10, A 10–11 | (11 + 9 + 3 + 6) / 4 = 7.25 | (0 + 1 + 2 + 4) / 4 = 1.75 |
+
+At time 0 SJF has only A, which then runs to the end. Round robin wins response and loses turnaround, with seven dispatches to four.
+
+<span>**Shortest remaining time first** preempts for a shorter arrival: A 0–1, B 1–2, C 2–3, B 3–5, D 5–7, A 7–11, ties to the earlier arrival. Its turnaround is (11 + 4 + 1 + 4) / 4 = 5. It risks starvation: a stream of short jobs keeps A waiting without bound.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="shape-bits" class="exam" -->
+
+## Shape 2: decode the bits
+
+A user program dies; the kernel reports the trap and the process's own table:
+
+```text
+scause      0x0000_0000_0000_000F
+stval       0x0000_0000_0000_0040
+user satp   0x8000_0000_0008_7342
+leaf PTE for virtual page 0:   0x21CD_141B
+```
+
+Cut out the fields, then say what they mean. What did the program do, at which physical address, and why was it refused?
+
+Notes:
+- On Midterm 2. Two or three minutes on paper. Work in order: the top bit of `scause`, then its code; `satp`'s two fields; the PTE's low ten bits, then its PPN.
+- Practice Set 2 Problems 7, 8 and 10 are this shape: a `satp`, a full walk, and six `scause` values.
+- **Q:** "How do I tell a store fault from a load fault?" By the code alone: 12 is an instruction page fault, 13 a load page fault, 15 a store page fault.
+
+---
+
+<!-- .slide: id="shape-bits-decode" class="exam" -->
+
+## Shape 2 · decoded
+
+```text
+scause  top bit 0: an exception.  Code 0xF = 15: a store page fault
+stval   the faulting address: 0x40, page 0, offset 0x040
+satp    MODE = bits 63:60 = 8: Sv39.  PPN = low 44 bits = 0x8_7342
+        root table at 0x8_7342 << 12 = 0x8734_2000
+PTE     low 10 bits = 0x41B & 0x3FF = 0x01B = 0b00_0001_1011: V R X U, no W
+        PPN = 0x21CD_141B >> 10 = 0x8_7345      (x4 = 0x8734_506C; zero the 06C)
+        frame 0x8734_5000, so the store aimed at 0x8734_5040
+```
+
+The program stored into its own code page. `U` is set, so the page is the program's; the missing bit is `W`. The fault leaves `sepc` at the store, and rv6 ends the process.
+
+<div class="highlight-box">The slip: taking the frame as <code>pte >> 12</code>. The PPN starts at bit 10, so that shift divides the frame number by four.</div>
+
+Notes:
+- On Midterm 2. By hand, "shift right 10, then left 12" is "times four, then zero the last three hex digits". `satp` needs only `<< 12`: append three zeros.
+- A fault a kernel can repair, such as a store to a copy-on-write page, reruns with no +4. A store into code is not repairable, so rv6, like any kernel, ends the process.
+- ↓ below: Problem 3 (what one address space costs).
+- **Q:** "Why is page 0 mapped at all, if the store faulted?" It is mapped, as code: `V`, `R`, `X` and `U` are set. The fault is about the missing `W`, not a missing page. An unmapped page would fault with `V` clear.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: what one address space costs
+
+A `48k` process maps four pages: code at 0, its stack at `0x1000`, `TRAPFRAME` and `TRAMPOLINE`.
+
+- (a) Give each one's VPN[2], VPN[1] and VPN[0].
+- (b) How many page-table pages does the table need?
+- (c) Counting its kernel stack, how many pages does the process own?
+- (d) Which entries carry `PTE_U`?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+```text
+                          VPN[2]   VPN[1]   VPN[0]
+code        0x0000_0000     0        0        0
+stack       0x0000_1000     0        0        1
+TRAPFRAME   0x3F_FFFF_E000  255      511      510
+TRAMPOLINE  0x3F_FFFF_F000  255      511      511
+```
+
+- (a) For `TRAPFRAME`, `>> 30` gives `0xFF`, and the next two nine-bit fields are `0x1FF` and `0x1FE`.
+- (b) Five: the root, then a middle and a leaf table under `root[0]`, and another pair under `root[255]`.
+- (c) Nine pages, 36 KiB: five of tables, plus code, stack, trapframe and kernel stack. The trampoline's one frame is shared by every table, so no process owns it.
+- (d) Only the code and stack leaves. The trapframe and trampoline leaves lack `U`, and interior entries never carry it: on a non-leaf entry the bit is reserved and must be zero.
+
+---
+
+<!-- .slide: id="shape-order" class="exam" -->
+
+## Shape 3: order the steps
+
+One timer tick, scrambled:
+
+```text
+(a) the S-mode handler clears the pending software-interrupt bit
+(b) mtime reaches mtimecmp0
+(c) the M-mode vector moves mtimecmp0 one interval later
+(d) mret returns to the interrupted code, in S- or U-mode
+(e) sret resumes at sepc
+(f) the CPU traps into S-mode with scause = 0x8000_0000_0000_0001
+(g) the M-mode vector sets sip.SSIP
+(h) the CPU traps into M-mode at mtvec
+```
+
+Give the order, the reason for each position, and which steps could swap.
+
+Notes:
+- On Midterm 2. Three minutes on paper. The hinge: machine mode takes the tick, and supervisor mode hears about it as a software interrupt.
+- Practice Set 2 Problem 11 is this shape, on the M→S handoff and the PLIC handshake.
+- **Q:** "Why does the tick go to M-mode at all?" The CLINT raises a machine-mode interrupt, and that one cannot be delegated. So it lands at `mtvec`, and the M-mode vector forwards it.
+
+---
+
+<!-- .slide: id="shape-order-answer" class="exam" -->
+
+## Shape 3 · the order, with reasons
+
+| # | Step | Why there |
+|---|---|---|
+| 1 | (b) | the CLINT raises an M-mode interrupt |
+| 2 | (h) | it cannot be delegated: `mtvec`, from S or U, whatever `SIE` says |
+| 3 | (c) | before `mret`, or it traps straight back |
+| 4 | (g) | before `mret`: the forwarding |
+| 5 | (d) | the only way down, to `mepc` |
+| 6 | (f) | once `sie.SSIE` (and, in S-mode, `SIE`) allow |
+| 7 | (a) | before `sret`: while `sip.SSIP` reads 1, it is taken again at once |
+| 8 | (e) | no +4: that instruction never ran |
+
+Steps (c) and (g) can swap: each only needs to precede `mret`.
+
+<div class="highlight-box">The slip: a bare list of letters. Each position needs its reason.</div>
+
+Notes:
+- On Midterm 2. Read each "before" as the reason: a pending bit left set traps again at once, in either mode.
+- Row 8 is Practice Set 2 Problem 10's rule for interrupts: `sepc` points at an instruction that has not run yet, so +4 would skip real work.
+- **Q:** "Why check `sstatus.SIE` only in S-mode?" In U-mode, supervisor interrupts are always enabled, whatever `SIE` says; `sie.SSIE` is still the per-source gate.
+
+---
+
+<!-- .slide: id="shape-race" class="exam" -->
+
+## Shape 4: find the race
+
+Accounts X and Y must always sum to 100. A transfer is two stores; an audit is two loads:
+
+```text
+transfer:  X = X - 10;  Y = Y + 10
+audit:     total = X + Y
+```
+
+From 50 and 50, two harts break it without ever writing the same word at once:
+
+```text
+hart A: transfer        hart B: audit            X    Y
+X = 50 - 10                                      40   50
+                        reads X = 40, Y = 50     40   50
+Y = 50 + 10                                      40   60
+the audit reports 90: money vanished, for a moment
+```
+
+<div class="highlight-box">The slip: an interleaving that breaks nothing. Name the invariant first, then find the schedule that breaks it.</div>
+
+Notes:
+- On Midterm 2. Ask for an interleaving before walking the second block; the invariant line is the hint. A race lives in a window: between a read and the write that depends on it, or, as here, between two writes that must look like one.
+- Read the invariant as "whenever anyone looks, X + Y = 100". Nothing here is a lost update: every store lands. The audit just looked at the wrong moment.
+- **Q:** "Isn't a race two writes to the same word?" That is one kind: Practice Set 2 Problem 4. Here no word is written twice at once, and the invariant still breaks.
+
+---
+
+<!-- .slide: id="shape-race-fix" class="exam" -->
+
+## Shape 4 · what makes it safe
+
+- One lock around both stores *and* both loads: lock only the transfer, and the audit still looks between them
+- No one-word atomic helps: the invariant spans two words
+- One hart races too, if a timer handler audits between the stores; add a spinlock, and that handler spins forever on a lock only the interrupted transfer can release
+
+<div class="info-box">A lock a handler takes is held only with interrupts off.</div>
+
+Notes:
+- On Midterm 2. An atomic fixes a one-word update; a lock fixes the rest. Practice Set 2 Problem 4 is the one-word version, where one compare-and-swap is enough; Problem 5 is the one-hart deadlock, plus lock ordering.
+- ↓ below: Problem 1 (the wakeup that got away).
+- **Q:** "Would turning interrupts off alone fix the two-hart race?" No. It stops only this hart's handler; the other hart runs on. That is why a kernel both takes the lock and turns interrupts off.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: the wakeup that got away
+
+A clerk waits for mail, and a carrier delivers it:
+
+```text
+clerk:    if the box is empty: sleep on the box
+          take a letter
+carrier:  put a letter in the box
+          wake everyone asleep on the box
+```
+
+- (a) Give an interleaving in which the clerk sleeps forever beside a letter.
+- (b) What makes it safe?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+```text
+clerk                      carrier                    box
+sees: empty                                           empty
+                           puts a letter              1 letter
+                           wakes the sleepers: none   1 letter
+sleeps on the box                                     1 letter, forever
+```
+
+<span>**(a)** The wakeup went out before anyone slept, and nothing sends another: the **lost wakeup**. **(b)** Make "check, then sleep" one step as far as the carrier can tell. Both sides take the box's lock, and the clerk releases it only as part of falling asleep, so the put-and-wake cannot land in between. xv6's `sleep` takes the lock as an argument for exactly this reason. On waking, the clerk rechecks the box in a `while`: another clerk may have emptied it.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="shape-trap" class="exam" -->
+
+## Shape 5: trace the trap
+
+`write(1, "hi", 2)` from a program of your own. Its `ecall` sits at `0x10`, and `"hi"` at `0x30` on its code page, which the user's table maps to frame `0x8765_3000`.
+
+Before the `ecall`: `a7 = 16`, `a0 = 1`, `a1 = 0x30`, `a2 = 2`.
+
+Name the CSR or structure at each of six stops:
+
+`ecall` → `uservec` → `usertrap` → the call → `usertrapret` → `userret` and `sret`
+
+Notes:
+- On Midterm 2, and the centerpiece of today: the Midterm 2 page defines this shape as an `ecall` or a timer interrupt, walked step by step. Rehearse this one path until it runs without notes.
+- Three minutes on paper: for each stop, what the hardware or software changes, and which CSR it touches.
+- **Q:** "Which stops are hardware?" The `ecall` itself and the final `sret`. Everything between is software: the trampoline's assembly and the kernel's own trap code.
+
+---
+
+<!-- .slide: id="shape-trap-in" class="exam" -->
+
+## Shape 5 · the way in
+
+| Stop | What changes |
+|---|---|
+| 1. `ecall` (hardware) | `sepc` ← `0x10`, `scause` ← 8, `SPP` ← 0, `SIE` ← 0; mode S; `pc` ← `stvec` = `uservec`; `satp` is still the user's |
+| 2. `uservec` | swap `a0` ↔ `sscratch`: `a0` = `TRAPFRAME`; save 31 registers (`a0` at 112, `a7` at 168); load kernel `sp`, handler, kernel `satp`; write `satp` between two `sfence.vma` |
+
+<div class="highlight-box">The slip: forgetting that <code>uservec</code> starts on the user's table. The fetch after the <code>satp</code> write still finds the trampoline only because both tables map it at one address.</div>
+
+Notes:
+- On Midterm 2. The `ecall` also sets `SPIE` ← `SIE`. `SPP` = 0 records "the trap came from U-mode", so `sret` knows where to go back. `TRAPFRAME` is `0x3F_FFFF_E000`, and the swap parks the user's 1 in `sscratch`. `sscratch` has held `TRAPFRAME` since the last return to user mode, which is what makes the swap work.
+- Practice Set 2 Problem 13(b) is the slip: the instruction that fails is the fetch after the `satp` write.
+- **Q:** "Why not save the registers on the user's stack?" The user's `sp` may point anywhere, even at nothing. The trapframe is a page the kernel owns, mapped without `PTE_U`.
+
+---
+
+<!-- .slide: id="shape-trap-kernel" class="exam" -->
+
+## Shape 5 · in the kernel
+
+| Stop | What changes |
+|---|---|
+| 3. `usertrap` | `stvec` ← the kernel's vector; reads `scause` = 8: an `ecall` from U-mode, a system call; `sepc`, still `0x10`, kept in the trapframe |
+| 4. the call | `write` (16) on descriptor 1, 2 bytes at `0x30`, as the program set it up; `copyin` walks the *user's* table, `PTE_U` required: `0x8765_3030`; two bytes out; the result is 2 |
+
+The call is finished, so the program must resume at `0x14`, past the `ecall`, with 2 in `a0`. An interrupt or a fault resumes at the instruction itself.
+
+Notes:
+- On Midterm 2. `stvec` moves first because a trap taken inside the kernel must not land in `uservec`. The request's number and arguments are the syscall ABI's `a7` and `a0`–`a2`, as the program set them before the `ecall` (week 12 `#48k-abi`).
+- Done vs retry is Practice Set 2 Problem 10's `+4?` column: yes for `ecall`, no for an interrupt (Shape 3) or a fault the kernel could repair (Shape 2).
+- **Q:** "Why does `copyin` walk the table in software, when the MMU is right there?" `satp` now holds the kernel's table, and `0x30` means something only in the user's. The walk is also where the `PTE_U` check happens.
+
+---
+
+<!-- .slide: id="shape-trap-out" class="exam" -->
+
+## Shape 5 · the way out
+
+| Stop | What changes |
+|---|---|
+| 5. `usertrapret` | `stvec` ← `uservec`; notes for next time (kernel `satp`, stack top, handler); `SPP` ← 0, `SPIE` ← 1; `sepc` ← `0x14`; jump to `userret` at its trampoline address |
+| 6. `userret`, `sret` | user `satp`; reload registers; last swap: `a0` = 2, `sscratch` = `TRAPFRAME`. `sret`: `pc` ← `0x14`, mode U, `SIE` ← `SPIE` |
+
+The program resumes at `0x14` with 2 in `a0`: two bytes written.
+
+Notes:
+- On Midterm 2. The notes are what stop 2 loads: the kernel's `satp`, its stack top, and the handler's address. `SPIE` = 1 makes `sret` leave `SIE` = 1; in U-mode that bit gates nothing (shape-order-answer), so a supervisor interrupt reaches the program whenever `sie` enables it.
+- `userret` runs at the trampoline's address, like `uservec`, for the same reason: it switches `satp` under its own feet.
+- **Q:** "Why end with a swap?" Two values need one register. `a0` must end as the result, and `TRAPFRAME` must be kept for the next trap; the swap does both at once.
+
+---
+
+<!-- .slide: id="shape-trap-diagram" class="exam" -->
+
+## Shape 5 · the whole trip
+
+<div class="mermaid">
+sequenceDiagram
+    participant U as program, U-mode
+    participant T as trampoline
+    participant K as kernel, S-mode
+    U->>T: ecall: sepc = 0x10, scause = 8, SPP = 0
+    Note over T: uservec: swap a0, save 31, kernel satp
+    T->>K: jump to usertrap
+    Note over K: scause = 8: write, two bytes out
+    K->>T: usertrapret sets stvec, SPP, SPIE, sepc, then jumps to userret
+    Note over T: user satp, reload, a0 = 2
+    T->>U: sret: pc = 0x14, U-mode
+</div>
+
+Redraw it from memory: the Midterm 2 page asks for the trap path from `ecall` to `sret`.
+
+Notes:
+- On Midterm 2. When behind, 30 seconds: it redraws the three slides before it.
+- Practice Set 2 Problem 10's first row is this trap: `scause` 8, and the program resumes past the `ecall`.
+- **Q:** "What changes for a timer tick from U-mode?" The same trampoline and trapframe, but the cause is Shape 3's: `scause` = `0x8000_0000_0000_0001`, the handler clears the pending bit, and the saved PC does not move.
+
+---
+
+<!-- .slide: id="spine" -->
+
+## One spine, `34k` to `48k`
+
+Type `run` at a `48k` prompt, and almost every exercise takes a turn:
+
+| | What happens | Exercise |
+|---|---|---|
+| 1 | keystrokes: IRQ, claim, ring, complete | `45k` |
+| 2 | the shell matches `run` | `46k` |
+| 3 | a slot: pid, `Runnable`, a page table | `34k` |
+| 4 | user pages with `PTE_U`; the top two without | `39k`, `48k` |
+| 5 | a forged context: `ra`, `sp` | `35k` |
+| 6 | down: `stvec`, `SPP`, `sepc`, `satp`, `sret` | `48k` |
+| 7 | U-mode, with timer ticks | `44k` |
+| 8 | each `ecall`: in, `usertrap`, back to 7 | `43k`, `48k` |
+| 9 | `exit`: back to the shell, `rv6$` | `35k` |
+
+Underneath: boot order (`42k`), the MMU (`39k`), the heap (`38k`), the filesystem's spinlock (`37k`, `40k`), round robin (`36k`, idle while one program runs).
+
+Notes:
+- The Midterm 2 page's "redraw from memory" list: the double switch (Shape 1), the kernel address space once `satp` is set (week 10 `#39k-paradox`, and the Memory Map guide), the trap path (Shape 5), and the PLIC handshake (row 1 here; week 12 `#45k-claim`).
+- **Q:** "Does `run` use `fork` and `exec`?" Not in `48k`: the kernel builds the process itself. `exec` and `fork` arrive in `49k` and `51k`, and they belong to the final.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- A full answer: the structure, its value, and what forces it
+- Registers: `ret` goes where the loads said
+- Bits: cut the fields; the PPN starts at bit 10
+- Order: a reason for every position
+- Race: name the invariant; one lock over every reader and writer
+- Trap: `uservec` starts on the user's table; +4 only because the call is done
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- ↓ below: further reading (optional).
+- **Q:** "What should I study tonight?" The bold Practice Set 2 problems on paper, then the page's three Going-deeper problems. The next slide lists the six.
+
+--
+
+<!-- .slide: id="deeper-reading" class="deeper" -->
+
+## Further reading
+
+- [Midterm 2](../assignments/midterm-2/): the scope, the format, and how to prepare
+- [Exam Prep](../guides/exam-prep/): shapes 1–3 worked on rv6 itself
+- [Cheatsheet](../guides/cheatsheet/): print it now, and practice with it
+- [rv6 Architecture: the three trap paths](../guides/rv6-architecture/#the-three-trap-paths) and [the boot sequence](../guides/rv6-architecture/#the-boot-sequence)
+- [Sv39 Paging: five worked translations](../guides/sv39-paging/#five-worked-translations)
+- [The xv6 book](https://pdos.csail.mit.edu/6.828/2023/xv6/book-riscv-rev3.pdf), chapters 3 to 8: page tables, traps, interrupts and devices, locking, scheduling, and the file system
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../assignments/practice-set-02/): redo six on paper
+
+You redo six Practice Set 2 problems on paper, with a timer, before rereading the solutions. Time: about 75 minutes, twenty of them for Problem 8.
+
+| Problem | Shape | Redo it if |
+|---|---|---|
+| 1 A yield | trace | your `ret` returned into `proc_yield` |
+| 4 The lock that is not a lock | race | the interleaving took more than four lines |
+| 6 Semaphores | trace | your trace broke `empty + full == N` |
+| 8 A full Sv39 walk | decode | anything went wrong; allow twenty minutes |
+| 10 What just happened? | decode | you added 4 for an interrupt |
+| 13 The trampoline | explain | you cannot name the instruction that fails |
+
+Notes:
+- Walk the list, then stop: the solutions are on the Practice Set 2 page from today, and the page's table gives a "redo it if" for the other seven. No session on Friday, Nov 20: print the Cheatsheet tonight, annotate it, and practice with it.
+- Problem 13 and the Cheatsheet use the `49k` layout, with the stack page at `0x1_0000`; in `48k` it sits at `0x1000`, and `sp` starts at `0x2000`. Either way: code at 0, a stack page above it, the trapframe and trampoline on top.
+- **Q:** "Which one first?" Problem 8: the set calls it the hard one, so allow twenty minutes. Then Problem 13, whose (b) is today's Shape 5 slip.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+Tue Nov 24: [Week 15 · exec and File Descriptors](15-cs326-2026-11-24-exec-and-file-descriptors/), for Thursday, Dec 3; Thanksgiving falls between. Read its Essentials before Tuesday.
+
+Notes:
+- No sessions on Nov 26 or 27: Thanksgiving. The Nov 24 lecture opens the final's material with `exec` and file descriptors.
+- **Q:** "Is today's material on the final?" As building blocks. The final is cumulative but weighted toward `49k`–`53k`, and anything from both midterms may appear inside a bigger question.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 11 · Files, Boot Order, and Traps - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="11-cs326-2026-11-03-filesystems-boot-order-and-traps/">&larr; Week 11 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 11 · Files, Boot Order, and Traps
+
+## A filesystem, a real boot, and the trap path
+
+CS 326 Operating Systems · Tuesday, November 3
+
+**Thu Nov 5** `40k_filesystem`, extra credit `41k_devices` · **Fri Nov 6** `42k_boot_to_life`, `43k_traps`, `44k_interrupts`
+
+[The Week 11 page](11-cs326-2026-11-03-filesystems-boot-order-and-traps/): **Essentials** is what Thursday and Friday assume.
+
+Notes:
+**Minute plan** (105 minutes; five exercises, one lecture, so Friday gets most of it)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week | title, this-week |
+| 5–27 | Thursday · `40k` (4 core), then two exam slides; `41k` extra credit rides on exam-devices | thu-40k … exam-devices |
+| 27–37 | Friday · `42k` (3 core) | fri-42k … 42k-one-thing |
+| 37–62 | Friday · `43k` (5 core), then two exam slides | fri-43k … exam-stval |
+| 62–82 | Friday · `44k` (4 core, ending with Friday's symptom table) | fri-44k … 44k-one-thing |
+| 82–85 | Summary | summary |
+| 85–97 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 97–105 | Buffer: questions, or ↓ Problem 3 (under 44k-gates) at the board | |
+
+Five exercises means no Part title slides: each exercise's id sits on its first concept slide (thu-40k, fri-42k, fri-43k, fri-44k).
+
+**Fast path** (the minimum lecture, 14 ids; longer than usual because nearly all of it is Midterm 2 scope): this-week, thu-40k, 40k-paths, exam-links, exam-devices, fri-42k, fri-43k, 43k-path, 43k-sepc, exam-handoff, exam-stval, fri-44k, 44k-scause, 44k-gates.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. 40k-one-thing, 42k-one-thing and 43k-one-thing: one sentence each on the last slide you show before it ("the length marks where a name ends"; "passing `42k` does not prove the order"; "an `ebreak` is done: step past it").
+5. 43k-csrs: leave the table up and say "`csrs` sets, `csrc` clears, `csrw` replaces the whole register".
+6. 42k-builds: one sentence: "`oslings` builds the harness and powers off; `cargo run` idles; Ctrl-A, then X".
+7. 40k-errors: one sentence: "every call returns a `Result`, and one error can be good news".
+8. before-friday: point at the prep page; its questions can open Friday's session.
+9. 44k-one-thing: leave the table up; it is Friday's diagnostic card.
+10. before-thursday: last to go.
+
+Never cut: exam-links, exam-devices, exam-handoff, exam-stval (Midterm 2). Compress, never skip (Midterm 2 scope): thu-40k, 40k-paths, fri-42k, fri-43k, 43k-path, 43k-sepc, fri-44k, 44k-scause, 44k-gates.
+
+**Practice Set 2 anchors** (it goes out Tue Nov 10): P10 → 44k-scause, 43k-sepc · P11 (a) → exam-handoff; (b) is the PLIC, next week · P12 (a) → 40k-paths; (b) → thu-40k, the lowest free inode, and exam-links, rv6 frees at once; (c) → exam-links · P13 is next week.
+
+- Midterm 2 is Thu Nov 19. Every exercise this week is in its scope except `41k`, whose device facts live on exam-devices anyway.
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Nov 5 | `40k_filesystem` | inodes and directories | a file is not its name |
+| Thu Nov 5 | `41k_devices` (extra credit) | a polled UART driver | ask before each transfer |
+| Fri Nov 6 | `42k_boot_to_life` | a kernel that boots and idles | boot is a graph |
+| Fri Nov 6 | `43k_traps` | a trap path | `sepc`: re-run or step past |
+| Fri Nov 6 | `44k_interrupts` | timer ticks | a pending bit stays set |
+
+<div class="highlight-box">Friday gets most of today. Midterm 2: Thu Nov 19.</div>
+
+Notes:
+- Start from where this goes: in `45k` a keystroke interrupts your kernel, in `46k` a shell runs `mkdir` and `ls`, and in `48k` a user program's `ecall` traps in. All three rest on this week.
+- By Friday night `cargo run` boots rv6 for real, and a timer interrupts it ten times a second.
+- **Q:** "Do I have to do `41k`?" No: it is extra credit, released Thursday. Its device facts are on Midterm 2 either way, on the exam-devices slide.
+
+---
+
+<!-- .slide: id="thu-40k" -->
+
+## Thursday · `40k`: a file is not its name
+
+An **inode** records one file or directory: kind, size and contents, never a name. A **directory** is an inode whose contents are **entries**, (name, inode number) pairs. Inode 1 is the root, `/`.
+
+```text
+inode 1  Dir    "home" -> 2    "motd" -> 3
+inode 2  Dir    "ada"  -> 4
+inode 3  File   size 12
+inode 4  Dir    "plan" -> 6
+inode 6  File   size 40        inode 5 and 7..63: Free
+```
+
+A rename rewrites one entry. A new file takes the lowest free number, here 5.
+
+Notes:
+- In `46k` the shell's `mkdir`, `ls` and `cd` run on one small API, and `40k` builds its core. rv6 keeps it in RAM: 64 inode slots, 0 never used, 16 entries per directory, 14-byte names, 128-byte files.
+- Read `"home" -> 2` as "inode 1 holds the name `home`, pointing at inode 2". Inode 2 never learns its name, which is why a rename touches only the directory.
+- ↓ below: what rv6's filesystem trades away (optional).
+- **Q:** "If I create `/home/ada/new`, does it get a number near 4?" No: 5, the lowest free slot in the whole table, wherever the file lands. Inode numbers record which slots were free, not where a file lives.
+
+--
+
+<!-- .slide: id="deeper-fs" class="deeper" -->
+
+## What rv6's filesystem trades away
+
+rv6's files vanish at power-off. A disk filesystem adds a **superblock** that says where everything is, inodes packed into blocks, **free bitmaps** in place of a scan for `Free`, a **buffer cache** holding at most one copy of each block, and a **write-ahead log**.
+
+A create touches the inode, the parent directory and a bitmap, and power can fail between any two. So the kernel writes the group to a log, then a commit record, and only then in place. A crash before the commit discards the group; after it, replay is safe. The log makes a group **atomic**; **durable** is `fsync`'s job.
+
+The 14-byte name is a fossil: a V7 Unix entry was a 2-byte inode number and a 14-byte name. 4.2BSD moved to variable-length names of up to 255 bytes.
+
+---
+
+<!-- .slide: id="40k-paths" -->
+
+## Path resolution by hand
+
+One lookup per name, from the root; each answer is the next directory to search.
+
+```text
+/home/ada/plan   1 -home-> 2 -ada-> 4 -plan-> 6   found: inode 6
+/home/bob/plan   1 -home-> 2 -bob-> ?             NotFound
+/motd/plan       1 -motd-> 3, a File -plan-> ?    NotADirectory
+cat /home/ada    resolves to 4, then reads a Dir  IsADirectory
+```
+
+Whichever step fails decides the error. `NotFound`: a real directory lacks the name. `NotADirectory`: a step asked a file for an entry, a different fact.
+
+Notes:
+- Read each row left to right. The last row resolves fine, then fails in the operation on what it found: a third fact, from a different call.
+- Midterm 2 lists path resolution, and Practice Set 2 Problem 12 (a) is this with another tree. It asks you to name the call at each step: one `dirlookup`, the xv6 name. ↓ Problem 1 drills it.
+- **Q:** "Why two errors for one failed path?" They report different facts: the name is missing, or you asked a file for an entry. A shell prints a different message for each, so the filesystem must not merge them.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: resolve, create, rename
+
+```text
+inode 1  Dir    "bin" -> 2   "etc" -> 3   "readme" -> 6
+inode 2  Dir    "ls"  -> 4
+inode 3  Dir    (no entries)
+inode 4  File   size 96
+inode 6  File   size 18
+```
+
+Every other inode is `Free`.
+
+- **(a)** Resolve `/bin/ls`, `/etc/ls` and `/readme/ls`. What does reading `/etc` return?
+- **(b)** `/etc/hosts` is created, then `/bin/cat`. Which inode numbers do they get?
+- **(c)** `/readme` is renamed to `/etc/readme`. What changes?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+**(a)**
+
+```text
+/bin/ls      1 -bin-> 2 -ls-> 4              found: inode 4
+/etc/ls      1 -etc-> 3, which has no "ls"   NotFound
+/readme/ls   1 -readme-> 6, a File           NotADirectory
+read /etc    resolves to 3, a Dir            IsADirectory
+```
+
+**(b)** `hosts` gets **5**, the lowest free number, though it lands in inode 3. `cat` gets **7**. Inode numbers record which slots were free, not where a file lives.
+
+**(c)** Inode 1 loses its `readme` entry, and inode 3 gains one pointing at 6. Inode 6 is untouched: same number, same 18 bytes. The rename costs the same for any file size.
+
+---
+
+<!-- .slide: id="40k-errors" -->
+
+## Errors as values, behind one lock
+
+`no_std` has no exceptions: every operation returns a `Result` whose error is an `enum`, one variant per failure. The same design, for a clock time such as `7:30`:
+
+```rust
+enum TimeError { NoColon, NotANumber }
+
+fn minutes(s: &str) -> Result<u32, TimeError> {
+    let (h, m) = s.split_once(':').ok_or(TimeError::NoColon)?;
+    let h: u32 = h.parse().map_err(|_| TimeError::NotANumber)?;
+    let m: u32 = m.parse().map_err(|_| TimeError::NotANumber)?;
+    Ok(h * 60 + m)                                // "7:30" -> Ok(450)
+}
+```
+
+One `SpinLock` from `37k` guards the whole filesystem. Its guard derefs to `&mut`, so no operation needs `unsafe`.
+
+Notes:
+- Read `.ok_or(TimeError::NoColon)?` as "turn `None` into this error, and if there is one, return it from `minutes` now". `map_err` does the same for an `Err` of another type. Callers must open the `Result`.
+- One error can be good news: when signing up a member, "no such member" means the name is free. Match that variant, and pass the rest up.
+- **Q:** "Why not panic when a file is missing?" A missing file is an ordinary event: `cat nosuch` must print a message and give the prompt back. A panic in the kernel stops the whole machine.
+
+---
+
+<!-- .slide: id="40k-one-thing" -->
+
+## The one thing to get right · `40k`
+
+`/hello` was just created. Why can a lookup still fail?
+
+`[fail] lookup of /hello returned the wrong inode`
+
+A stored name is a 14-byte field with a length beside it: `plan` is four letters and ten zero bytes outside the name.
+
+<div class="highlight-box">The length marks where a name ends. Read past it, and nothing shorter than 14 bytes matches.</div>
+
+Notes:
+- Draw `plan` on the board as a strip of 14 boxes: four letters, ten zeros, and a 4 written beside it.
+- **Q:** "Why store a length, if the array is zero-padded?" A 14-byte name fills the array with no zero after it, so the padding alone cannot say where every name ends.
+
+---
+
+<!-- .slide: id="exam-links" class="exam" -->
+
+## Hard links and link counts
+
+Two entries holding one inode number are two equal names: a **hard link**.
+
+- A Unix inode keeps a **link count**. `unlink` removes a name; the inode is freed at zero.
+- rv6's `unlink` frees it at once: safe only because rv6 cannot make a second name.
+- Add links alone, and the other name may point at a reused inode.
+
+Notes:
+- Midterm 2: "inodes vs directories, why the name lives in the directory". Practice Set 2 Problem 12 (c) asks exactly this. In Unix the count reaching zero is not quite enough: the inode goes only once no process has it open either.
+- Draw it on the board: `/a` and `/b` both hold 7. In rv6, remove `/a`: inode 7 is `Free`, and the next create can take 7, so `/b` names someone else's file.
+- **Q:** "Why wait for processes that have it open?" A program may still be reading the file. Unix lets it finish, and frees the inode when the last one lets go.
+
+---
+
+<!-- .slide: id="exam-devices" class="exam" -->
+
+## Devices: registers, flags, polling
+
+A driver works a device through **registers** at fixed addresses. A status register packs **flags**, tested with a mask. The UART's line status, at `0x1000_0005`:
+
+```text
+bit 0   a byte is waiting
+bit 5   room to send          0x21: both
+```
+
+**Polling** spins on a flag before each transfer. Every access is volatile, or the compiler hoists the poll and drops repeated stores.
+
+Extra credit `41k_devices`, out Thursday, builds this driver.
+
+Notes:
+- Midterm 2: "Devices: registers, status flags, polling, volatile". Offset 0 is two registers: a load receives, a store transmits.
+- `41k` (extra credit) stops `31k`'s console from writing blind: a polled driver reads the status flags before every transfer. ↓ below: the UART up close.
+- **Q:** "Why did `31k`'s blind writes ever work?" QEMU's UART takes bytes instantly. A real one at 115,200 baud needs 86.8 µs per byte (↓).
+
+--
+
+<!-- .slide: id="deeper-uart" class="deeper" -->
+
+## The UART up close
+
+QEMU emulates an NS16550A, with one-byte registers at `0x1000_0000` plus an offset:
+
+```text
+off   read                    write
+0     RBR  received byte      THR  byte to send
+1     IER  interrupt enable   IER
+2     IIR  interrupt id       FCR  FIFO control
+3     LCR  line control       LCR
+4     MCR  modem control      MCR  (bit 4: loopback)
+5     LSR  line status        -
+```
+
+With bit 7 of LCR set, offsets 0 and 1 become the baud-rate divisor, so register order matters. At 115,200 baud a byte with start and stop bits is 10 bits: 10 / 115,200 s = 86.8 µs. A 1 GHz core runs tens of thousands of instructions meanwhile, so a driver that does not ask first loses most of its banner.
+
+---
+
+<!-- .slide: id="fri-42k" -->
+
+## Friday · `42k`: boot is a dependency graph
+
+An arrow from A to B means "B needs A first". Any order that respects every arrow works. A web service starting:
+
+<div class="mermaid">
+flowchart LR
+    L["logger"] -.->|"policy"| C["config"]
+    C -->|"the database address"| P["connection pool"]
+    C -->|"the cache size"| K["cache"]
+    P --> H["listener: requests arrive"]
+    K --> H
+</div>
+
+Dotted is policy: config never calls the logger, which goes first so later failures get reported. The listener goes last: once it opens, work arrives.
+
+Notes:
+- From `45k` on you type into rv6 and it answers, which needs a kernel that boots and stays up. `42k` assembles your parts into one boot.
+- rv6's graph has both kinds of edge. The one with teeth runs from the page allocator to the kernel page table: every table page is allocated, so an empty allocator yields a null root. From `43k`, switching the MMU on with it faults in silence; `42k` runs in machine mode, which ignores `satp` (42k-one-thing).
+- Midterm 2 lists "boot order as a dependency graph". ↓ below: Linux at scale, and Problem 4, a boot to order.
+- **Q:** "Is there one right order?" No. Any order that respects every arrow boots; the graph fixes only the pairs an arrow joins.
+
+--
+
+<!-- .slide: id="deeper-linux" class="deeper" -->
+
+## Boot at Linux scale
+
+- Linux boots through `start_kernel()` in `init/main.c`: dozens of calls in a hand-kept order.
+- `printk` fills a ring buffer from the start, replayed once a console registers. `earlycon`, a blind-write UART much like `31k`'s, covers the gap.
+- Drivers declare a level instead, such as `core_initcall` or `device_initcall`, and the levels run in order: a declared partial order.
+- A driver whose dependency is missing returns `-EPROBE_DEFER` and is retried later.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: order a boot
+
+A weather station has six parts.
+
+- The log writes to flash. The sensor stamps each reading with the clock.
+- The radio sends readings and logs each command sent back, and commands arrive the moment it is on.
+- Flash and clock need nothing. A status LED needs nothing; the designers want it first, to blink an error code if anything later fails.
+
+**(a)** Draw the graph and give two valid orders. **(b)** Which edges are policy? **(c)** The radio moves to second place. What fails, and when?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+<div class="mermaid">
+flowchart LR
+    LED["status LED"] -.->|"policy"| F["flash"]
+    LED -.->|"policy"| CL["clock"]
+    F --> G["log"]
+    CL --> S["sensor"]
+    G --> R["radio"]
+    S --> R
+</div>
+
+**(a)** LED, flash, log, clock, sensor, radio works; so does LED, clock, flash, sensor, log, radio.
+
+**(b)** The two dotted edges out of the LED. Nothing calls the LED; they put it first so every later failure can be reported. Every other edge is a call that fails without its target.
+
+**(c)** The radio is on before the log exists, so logging the first command goes through an uninitialized log. It fails only when a command arrives: fine on the bench, broken in the field. The part that lets outside work in goes last.
+
+---
+
+<!-- .slide: id="42k-builds" -->
+
+## Two builds of one kernel
+
+`oslings` builds with `--features harness`: boot, self-check, `OSLINGS:PASS` or a `[fail]` line, power off. Plain `cargo run`, from `rv6/`, prints the banner and idles; quit QEMU with Ctrl-A, then X.
+
+```rust
+#[cfg(feature = "selftest")]
+{ run_checks(); power_off(); }        // cargo run --features selftest
+#[cfg(not(feature = "selftest"))]
+loop { wait_for_event(); }            // plain cargo run
+```
+
+Read `#[cfg(...)]` as "compile what follows only when this holds".
+
+Notes:
+- The switch is a **Cargo feature**, declared under `[features]` in `Cargo.toml`. The analog calls its feature `selftest`; rv6's is `harness`.
+- The other block is never type-checked, so its errors hide until you build the other way. Try both on Friday.
+- And `42k` still runs in machine mode, which ignores `satp`: the next slide.
+- **Q:** "Which build is graded?" The harness build, from `oslings run`. `cargo run` is for watching your kernel boot; from `45k` on you type into it.
+
+---
+
+<!-- .slide: id="42k-one-thing" -->
+
+## The one thing to get right · `42k`
+
+Can a wrong boot order pass `42k`?
+
+Yes. Machine mode never translates, so a table built from an empty allocator does no harm, and the self-check, seeing Sv39 in `satp`, says `[ok]`.
+
+The same order in supervisor mode, as from `43k`, prints nothing at all.
+
+<div class="highlight-box">Passing <code>42k</code> does not prove the order. Check it against the graph.</div>
+
+Notes:
+- The self-check reads the mode field of `satp`, which is written either way. Only a supervisor-mode fetch walks the table, and that starts on Friday's second exercise.
+- ↓ below: armed but inert, measured on QEMU 10.2 (optional).
+- **Q:** "How would I notice before `43k`?" Reason from the graph: every table page comes from the allocator, so the allocator must already hold pages. The green light cannot tell you.
+
+--
+
+<!-- .slide: id="deeper-inert" class="deeper" -->
+
+## Armed but inert
+
+Build `42k` with the page table made before the allocator:
+
+- Its first allocation returns null, and `satp` becomes `0x8000_0000_0000_0000`: mode 8, with the root at physical page 0.
+- Machine mode translates nothing, so the self-check reads mode 8 and passes.
+- In supervisor mode the fetch after the `satp` write walks a "table" at address 0, faults, and jumps to `stvec`, still 0, forever.
+
+Tested on QEMU 10.2: `[ok]` in machine mode, not one byte in supervisor mode.
+
+---
+
+<!-- .slide: id="fri-43k" -->
+
+## Friday · `43k`: three modes, three words
+
+| Mode | Who runs there | May use |
+|---|---|---|
+| M, machine | reset code, the timer's helper | everything, `m*` registers too |
+| S, supervisor | the rv6 kernel | `s*` registers, `satp`, `sret`; never `m*` |
+| U, user | programs, from `48k` | ordinary instructions only |
+
+Down is a return, `mret` or `sret`; up is always a **trap**. An **exception** is synchronous: this instruction caused it (`ebreak`, `ecall`, a page fault). An **interrupt** is asynchronous, such as the timer. Both reach one handler.
+
+Notes:
+- In `48k` every system call arrives as a trap, and in `45k` every keystroke. `43k` builds their path and survives a first trap, a breakpoint.
+- On a trap the hardware stops the instruction stream and jumps to a handler the upper mode chose earlier. From `43k` on, given machine-mode code `mret`s into S before any of your Rust runs.
+- **Q:** "Why not keep the kernel in machine mode?" Machine mode ignores `satp`, so the kernel's page table never translates, and S-mode has the trap registers built for a kernel. M keeps only the jobs S cannot do, such as the timer.
+
+---
+
+<!-- .slide: id="43k-path" -->
+
+## The supervisor trap path
+
+On a trap into S-mode, the hardware sets a few registers and jumps:
+
+```text
+scause   why: bit 63 = interrupt, the low bits = the cause code
+sepc     where: the address of the interrupted instruction
+stval    a detail for some causes, such as a fault's bad address
+sstatus  SPIE = SIE, SIE = 0, SPP = the mode it came from
+pc       stvec
+```
+
+No general register is saved, so `stvec` names a given assembly **trap vector**: it wraps one Rust call in a save and a restore, then runs `sret`, which sets `pc` = `sepc`, the mode = `SPP`, `SIE` = `SPIE`.
+
+```rust
+#[no_mangle]
+pub extern "C" fn on_alarm() { /* ... */ }   // assembly: call on_alarm
+```
+
+Notes:
+- Read `SIE = 0` as "interrupts off": no handler starts with a second trap on its heels. All 31 general registers still hold the interrupted code's values.
+- The handler needs a fixed name and the C convention, week 6's bridge: without `#[no_mangle]`, `call` fails to link.
+- ↓ below: trap-path fine print (optional).
+- **Q:** "Why does the hardware save nothing?" It keeps a trap cheap and leaves the choice to software. The vector saves only what a call may clobber, since the Rust handler preserves the rest itself (↓).
+
+--
+
+<!-- .slide: id="deeper-trap" class="deeper" -->
+
+## Trap-path fine print
+
+- RISC-V traps are **precise**: when the handler starts, every instruction before `sepc` has finished and none after it has had any effect. x86 sorts exceptions into faults, traps and aborts; on RISC-V the handler decides.
+- `stvec`'s low two bits are a mode: `00` sends every trap to one address, `01` sends interrupt *i* to base + 4 × *i*. rv6 uses the first and aligns its vector to 16 bytes.
+- The vector saves only the 16 caller-saved registers, because the Rust handler follows the C convention, which preserves `s0`–`s11`.
+- A kernel trap borrows the current stack; a user trap cannot, which is `48k`'s problem.
+
+---
+
+<!-- .slide: id="43k-sepc" -->
+
+## Re-run or step past
+
+`sret` resumes at `sepc`, the instruction that trapped. For an exception, the handler decides:
+
+- A page fault the kernel repaired should run again: `sepc` stays
+- An `ebreak` or `ecall` has done its job: resume at the next instruction, 4 bytes on
+
+```text
+0x8000_4A10   ebreak    the trap: sepc = 0x8000_4A10
+0x8000_4A14   ...       where a handled breakpoint resumes
+```
+
+An interrupt failed nothing: `sepc` names an instruction not yet run, so return to it.
+
+Notes:
+- Say it as a rule: done, or retry. The 4 is the length of the standard encodings.
+- Practice Set 2 Problem 10 asks, for each cause, whether the handler steps past; ↓ Problem 2 under 44k-scause drills it.
+- **Q:** "Does an interrupt ever need `sepc` changed?" No. The interrupted instruction has not run, so returning to it runs it as if nothing happened.
+
+---
+
+<!-- .slide: id="43k-csrs" -->
+
+## Reading and writing CSRs
+
+Trap registers are **control and status registers** (CSRs), reached only through `csr` instructions in `asm!`:
+
+| Instruction | Effect |
+|---|---|
+| `csrr rd, csr` | copy the CSR into `rd` |
+| `csrw csr, rs` | replace the whole CSR with `rs` |
+| `csrs csr, rs` | set the bits that are 1 in `rs` |
+| `csrc csr, rs` | clear the bits that are 1 in `rs` |
+| `csrrw rd, csr, rs` | swap, in one step |
+
+```rust
+let now: usize;
+unsafe { asm!("csrr {}, time", out(reg) now); }   // the 10 MHz clock
+```
+
+Notes:
+- The example reads `time`, which S-mode may read once `start.rs` sets `mcounteren` (exam-handoff; `44k` on). Read `out(reg) now` as "any register, copied into `now`"; a write names its source the same way, `in(reg) x`.
+- CSRs pack unrelated fields, so a `csrw` meant for one bit clears the rest.
+- **Q:** "Why can't I read a CSR like memory?" CSRs are not in the address space. Each has its own 12-bit number, and only the `csr` instructions name one.
+
+---
+
+<!-- .slide: id="43k-one-thing" -->
+
+## The one thing to get right · `43k`
+
+The banner prints, then nothing until `oslings` reports a QEMU timeout. What happened?
+
+The kernel is busy, not stuck: it resumes at `0x8000_4A10`, which only traps again, with no crash and no message.
+
+<div class="highlight-box">An <code>ebreak</code> has done its job: the handler resumes past it.</div>
+
+Notes:
+- Each pass is a trap, a handler run and an `sret`, with nothing printed, so it looks exactly like a hang.
+- Contrast silence before the banner: a fault with no vector installed yet. Friday's symptom table (44k-one-thing) has both.
+- **Q:** "How do I see it in GDB?" Break in your handler and continue: it stops again at once, with the same `sepc` every time.
+
+---
+
+<!-- .slide: id="exam-handoff" class="exam" -->
+
+## The M→S handoff: six jobs, eight writes
+
+Before `mret`, `44k`'s given `start.rs` writes:
+
+| CSR | Job |
+|---|---|
+| `mstatus.MPP` = `01` | `mret` lands in S |
+| `mepc` = `kmain` | where `mret` jumps |
+| `satp` = 0 | paging off for now |
+| `medeleg`, `mideleg` = `0xffff` | traps go to S |
+| `pmpaddr0`, `pmpcfg0` | one PMP range over all memory, or S may touch nothing |
+| `mcounteren` | S may read `time` |
+
+Notes:
+- Midterm 2: "the M→S handoff and its six CSRs", meaning these six jobs. Practice Set 2 Problem 11 (a) asks for each job and what breaks without it.
+- Two jobs are pairs, which is why six jobs take eight writes. `43k`'s copy does the first five jobs in seven writes; `44k` adds `mcounteren`, because its self-check reads `time`, then starts the timer before `mret`. Drill it by deleting one row at a time and asking what the kernel sees.
+- **Q:** "Do I edit `start.rs`?" No. It is given and runs on every boot from `43k` on, before any of your Rust. Read it once.
+
+---
+
+<!-- .slide: id="exam-stval" class="exam" -->
+
+## `stval` and `sscratch`
+
+- `stval` holds a trap's detail, such as a page fault's address. rv6 never reads it.
+- The hardware never uses `sscratch`. Before entering user mode, the kernel parks the trapframe's address there, so a user trap's first instruction can swap it in (`48k`).
+
+Notes:
+- Midterm 2 lists `stvec`, `sepc`, `scause`, `sstatus` and `stval`; `sscratch` returns next week with the trampoline.
+- The swap is the `csrrw` row of the CSR table: one instruction trades a register for the CSR.
+- **Q:** "Why not keep the trapframe's address in a general register?" User code owns all 31 registers, so the kernel cannot reserve one. U-mode cannot read `sscratch`.
+
+---
+
+<!-- .slide: id="fri-44k" -->
+
+## Friday · `44k`: why a timer, and its detour
+
+A process that never yields keeps the CPU. A timer interrupt is an event it does not control, which makes **preemption** possible. The CLINT raises a *machine* interrupt, which cannot be delegated:
+
+```text
+mtime reaches mtimecmp   a machine timer interrupt, taken in M-mode
+the M-mode handler       moves mtimecmp one interval later
+                         marks a supervisor software interrupt pending
+                         mret
+the kernel, in S-mode    a supervisor software interrupt: code 1
+```
+
+Notes:
+- Your `36k` scheduler switches only when a process yields. rv6 counts its ticks but stays cooperative. In `45k` a keypress arrives through this same path.
+- Read your tick as a *software* interrupt carrying a timer's meaning. The M-mode handler is the one `mtvec` names; without delegation (exam-handoff) every trap would land there. The interval is 1,000,000 counts of the 10 MHz `mtime`: ten ticks a second.
+- ↓ below: the CLINT up close (optional).
+- **Q:** "Why can't the kernel take the timer interrupt itself?" Its enable bit is in a machine-only CSR, and machine interrupts cannot be delegated to S. Chips with Sstc remove the detour (↓).
+
+--
+
+<!-- .slide: id="deeper-clint" class="deeper" -->
+
+## The CLINT up close
+
+- The machine timer interrupt is level-triggered: pending while `mtime` ≥ `mtimecmp`, so only moving `mtimecmp` lowers it.
+- The given handler adds the interval to the old deadline, not to the current time, so one late tick does not delay the rest.
+- Its first instruction, `csrrw a0, mscratch, a0`, trades `a0` for a pointer to a save area.
+- On QEMU 10.2, after `0xffff` goes into `mideleg`, it reads back `0x3666`: bits 3, 7 and 11, the machine interrupts, stay 0.
+- Chips with the Sstc extension give supervisor mode its own `stimecmp` and remove the detour.
+
+---
+
+<!-- .slide: id="44k-scause" -->
+
+## Decode `scause` top bit first
+
+| Code | Interrupt (bit 63 = 1) | Exception (bit 63 = 0) |
+|---|---|---|
+| 1 | supervisor software: the tick | instruction access fault |
+| 2 | — | illegal instruction |
+| 3 | — | breakpoint (`ebreak`) |
+| 5 | supervisor timer: unused | load access fault |
+| 8 | — | `ecall` from U-mode |
+| 9 | supervisor external: `45k` | `ecall` from S-mode |
+| 12, 13, 15 | — | instruction, load, store page fault |
+
+```text
+0x8000_0000_0000_0001   bit 63 = 1: interrupt 1, the tick; sepc stays
+0x0000_0000_0000_0001   bit 63 = 0: exception 1, a refused fetch
+```
+
+One code, two meanings. A handler that checks only the code treats the fault as a tick, and the fault repeats forever.
+
+Notes:
+- Bit 63 says interrupt (1) or exception (0); the low bits give the code. The codes overlap, so the top bit comes first.
+- Midterm 2's "decode the bits" shape: Practice Set 2 Problem 10 is six of these. The Cheatsheet, the one exam reference, has every code; these rows cover Problem 10. ↓ Problem 2 is five more.
+- **Q:** "Why does the fault repeat forever?" The handler returns to `sepc`, the refused fetch, which faults again, and each time the handler files it as a tick.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: decode five causes
+
+For each `scause`, give the kind and the cause. Should a handler resume at `sepc`, resume past that instruction, or not resume it at all?
+
+```text
+(a) 0x8000_0000_0000_0005     (d) 0x0000_0000_0000_000C
+(b) 0x0000_0000_0000_0005     (e) 0x8000_0000_0000_0001
+(c) 0x0000_0000_0000_0009
+```
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+| | Kind | Cause | `sepc` |
+|---|---|---|---|
+| (a) | interrupt | 5, supervisor timer | resume at it: nothing failed |
+| (b) | exception | 5, load access fault | not at all, unless something changed: the load fails again |
+| (c) | exception | 9, `ecall` from S-mode | resume past it, or the call repeats |
+| (d) | exception | 12, instruction page fault | re-run once the page is mapped; otherwise kill the program |
+| (e) | interrupt | 1, supervisor software: rv6's tick | resume at it |
+
+(a) and (b) share code 5; only bit 63 separates them. rv6 never sees (a): the CLINT's interrupt belongs to machine mode, so it arrives as (e). rv6's kernel never executes `ecall`, so (c) would mean a bug.
+
+---
+
+<!-- .slide: id="44k-gates" -->
+
+## Three gates and a pending bit
+
+In the kernel, an interrupt is taken only while all three hold:
+
+| Condition | Where | Who changes it |
+|---|---|---|
+| it is pending | its bit in `sip` | the M-mode handler raises it; yours must lower it |
+| its source is enabled | its bit in `sie` | the kernel |
+| interrupts are on | `SIE`, in `sstatus` | the kernel; a trap clears it, `sret` restores it |
+
+Nothing on the trap path lowers a pending bit. Once `sret` puts `SIE` back, all three hold again, and the same interrupt is taken at once: an **interrupt storm**.
+
+Notes:
+- The kernel opens the two enable gates; after that, a trap closes `SIE` and `sret` reopens it by itself. The pending bit is the one that software must lower on every tick.
+- In U-mode the `SIE` gate does not apply: S-mode interrupts are always on there, which matters from `48k`.
+- ↓ Problem 3 traces one tick from pending to `sret`, and then the storm.
+- **Q:** "Why doesn't `sret` clear the pending bit?" The hardware cannot know the event was handled. Only software can say it saw the tick, so a pending bit waits for software.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: trace a tick
+
+The kernel runs in S-mode with `SIE` = 1, `SPIE` = 0, `SPP` = 1, and the tick's source enabled in `sie`. `sp` is `0x8001_3E60`, and `stvec` is `0x8000_0F00`. A tick becomes pending just before the instruction at `0x8000_2C3C` runs.
+
+- **(a)** Give `scause`, `sepc`, `SIE`, `SPIE`, `SPP` and `pc` right after the trap.
+- **(b)** The vector opens a 128-byte frame. What is `sp` in the handler?
+- **(c)** The handler lowers the pending bit and returns. Give `pc`, the mode and `SIE` after `sret`.
+- **(d)** The handler leaves the pending bit set instead. What happens?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+**(a)**
+
+```text
+scause  0x8000_0000_0000_0001   interrupt 1, the tick
+sepc    0x8000_2C3C             the instruction that has not run
+SPIE    1                       the old SIE
+SIE     0                       interrupts off in the handler
+SPP     1                       it came from S-mode
+pc      0x8000_0F00             stvec
+```
+
+**(b)** `0x8001_3E60 - 0x80` = **`0x8001_3DE0`**: a kernel trap keeps the interrupted code's stack.
+
+**(c)** `pc` = `0x8000_2C3C`, in S-mode because `SPP` was 1, with `SIE` = 1 from `SPIE`. That instruction runs as if nothing happened.
+
+**(d)** After `sret` the tick is pending, enabled and unmasked, so it is taken again before `0x8000_2C3C` runs: a storm. The code that counts ticks never runs again, and `oslings` reports a QEMU timeout after the banner.
+
+---
+
+<!-- .slide: id="44k-one-thing" -->
+
+## The one thing to get right · `44k`
+
+Leave the pending bit set. Too many ticks?
+
+No: a storm looks like a hang. The check never runs again, so no `[fail]` line appears; the run times out after the banner.
+
+| You see | It means |
+|---|---|
+| nothing, then a timeout | a fault before the banner, with no vector yet |
+| the banner, then a timeout | `43k`: the `ebreak` re-runs; `44k`: a storm |
+| `[fail] no timer ticks`, after 2 s | a gate is closed, or no tick is counted |
+| the banner, then idling | `cargo run`, working as intended |
+
+Notes:
+- The table is Friday's diagnostic card: read the symptom before you reach for GDB.
+- If `43k` passes and `44k` shows the banner, then a timeout, suspect the pending bit first.
+- The runner's timeout text says "check the stack setup"; once the banner has printed, ignore that and read this table.
+- **Q:** "The harness has an `interrupt storm` check. Why did mine just time out?" That check is ordinary code after the tick loop. A storm takes the interrupt again before any of that code runs, so nothing is ever compared (tested on QEMU 10.2: the banner, then silence).
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- A file is not its name
+- One lookup per name; the failing step picks the error
+- Boot is a graph; passing `42k` does not prove the order
+- Going up a mode is always a trap
+- `sepc`: re-run or step past
+- `scause`: top bit first
+- A pending bit stays set until software clears it
+- Midterm 2: links, devices, the handoff, `stval`, `sscratch`
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 2?" Redraw the trap path from `stvec` to `sret` from memory, then work the page's Problems 1 to 4. Practice Set 2 arrives next Tuesday.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/11-cs326-2026-11-05-prep-filesystem/): check yourself
+
+You finish the core of an in-RAM filesystem of inodes and directories, behind one spinlock. Prep: about 20 minutes.
+
+**1.** Why does an inode have no name field, and what does that buy?
+
+**2.** Root holds `sub` → 3 (a directory) and `log` → 4 (a file). Resolving `/sub/x` and `/log/x` both fail. Which variant does each produce?
+
+**3.** A helper returns `Result<usize, FsError>`. What does `?` do, and when is `match` better?
+
+Notes:
+- Walk the prep page (about 20 minutes). What you build: the heart of a Unix filesystem in RAM. Green is `OSLINGS:PASS`; a red run prints one `[fail]` line saying what went wrong.
+- The three questions are the prep's own Check yourself (thu-40k, 40k-paths, 40k-errors); answers are on the prep page. Extra credit `41k_devices` goes out the same day.
+- **Q:** "Do I need `41k` done to start Friday?" No. `42k` builds on `40k` and earlier; `41k` is extra credit on its own track.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/): check yourself
+
+You assemble rv6 into a kernel that boots and idles, then give it a trap path and timer ticks. Prep: about 30 minutes.
+
+**1.** Why must the page allocator come up before the MMU is switched on?
+
+**2.** A breakpoint handler returns without touching `sepc`. What happens, and why is an interrupt different?
+
+**3.** The timer ticks once, then the kernel hangs. Which gate is closed?
+
+Notes:
+- Walk the prep page (about 30 minutes). What you build: three few-line pieces, a boot, a trap path and a tick; the reading is the work.
+- The questions map to fri-42k, 43k-sepc and 44k-gates. For question 3: none. One tick arrived, so all three gates were open; the pending bit was left set, and the storm looks like a hang (44k-one-thing).
+- **Q:** "Three exercises in 90 minutes?" Yes, because each is a few lines. Read the Essentials for `43k` and `44k` twice; that is where the time goes.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 12 · The Console, the Shell, and User Mode](12-cs326-2026-11-10-console-shell-and-user-mode/): a keystroke takes Friday's trap path, a shell runs on Thursday's filesystem, and a user program traps in. Read its Essentials before Tuesday.
+
+Notes:
+- Practice Set 2 goes out next Tuesday, Nov 10, and Midterm 2 is Thu Nov 19.
+- **Q:** "Is next week on Midterm 2?" Yes: the scope runs through `48k`, next Friday's exercise.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -197,6 +197,11 @@ def sessions():
     WEEK9 = "/lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling"
     WEEK9_LECTURE = (("Lecture · given Oct 13", f"{WEEK9}/"),
                      ("Slides · given Oct 13", f"{WEEK9}-slides.html"))
+    # Week 15 has five exercises and one Tuesday, so its Thursday half is
+    # given the Tuesday before Thanksgiving, Nov 24; Dec 3 links back to it.
+    WEEK15A = "/lectures/15-cs326-2026-11-24-exec-and-file-descriptors"
+    WEEK15A_LECTURE = (("Lecture · given Nov 24", f"{WEEK15A}/"),
+                       ("Slides · given Nov 24", f"{WEEK15A}-slides.html"))
 
     # ---- Module 1 : Rust, commands, and the bridges to bare metal ---------
     add(1, 'tuesday', 'Aug 25', 'lecture', 'L01 Building an Operating System',
@@ -268,14 +273,14 @@ def sessions():
         exercises=['35k_context_switch', '36k_scheduling'],
         links=L(*WEEK9_LECTURE))
 
-    add(10, 'tuesday', 'Oct 27', 'lecture', 'L16 Virtual Memory II: Turning the MMU On')
+    add(10, 'tuesday', 'Oct 27', 'lecture', 'Locks, Semaphores, and Turning the MMU On')
     add(10, 'thursday', 'Oct 29', 'exercise', '37k spinlocks · 38k semaphores',
         exercises=['37k_spinlocks', '38k_semaphores'])
     add(10, 'friday', 'Oct 30', 'exercise', '39k virtual_memory',
         exercises=['39k_virtual_memory'],
         links=L(("QEMU and GDB", "/guides/qemu-gdb/")))
 
-    add(11, 'tuesday', 'Nov 3', 'lecture', 'L18 Traps, Privilege Modes, and Interrupts')
+    add(11, 'tuesday', 'Nov 3', 'lecture', 'Files, Boot Order, and Traps')
     add(11, 'thursday', 'Nov 5', 'exercise', '40k filesystem',
         exercises=['40k_filesystem'], extra=['41k_devices'],
         links=L(("Extra Credit", "/assignments/extra-credit/")))
@@ -283,7 +288,7 @@ def sessions():
         exercises=['42k_boot_to_life', '43k_traps', '44k_interrupts'],
         links=L(("Withdraw deadline", "/syllabus/")))
 
-    add(12, 'tuesday', 'Nov 10', 'lecture', 'L22 User Mode I: The Wall, Trampoline, Trapframe',
+    add(12, 'tuesday', 'Nov 10', 'lecture', 'The Console, the Shell, and User Mode',
         links=L(("rv6 Architecture", "/guides/rv6-architecture/"),
                 ("Practice Set 2", "/assignments/practice-set-02/")))
     add(12, 'thursday', 'Nov 12', 'exercise', '45k console · 46k shell',
@@ -291,20 +296,21 @@ def sessions():
         links=L(("Extra Credit", "/assignments/extra-credit/")))
     add(12, 'friday', 'Nov 13', 'exercise', '48k user_mode', exercises=['48k_user_mode'])
 
-    add(13, 'tuesday', 'Nov 17', 'lecture', 'L23 User Mode II: System Calls',
+    add(13, 'tuesday', 'Nov 17', 'lecture', 'Midterm 2 Review',
         links=L(("Exam Prep", "/guides/exam-prep/"),
                 ("Practice Set 2", "/assignments/practice-set-02/")))
     add(13, 'thursday', 'Nov 19', 'exam', 'MIDTERM 2 — 34k processes through 48k user mode',
         links=L(("Midterm 2", "/assignments/midterm-2/"), ("Exam Prep", "/guides/exam-prep/")))
     add(13, 'friday', 'Nov 20', 'holiday', 'No class — exam week')
 
-    add(14, 'tuesday', 'Nov 24', 'lecture', 'L21 File Commands over a Filesystem API')
+    add(14, 'tuesday', 'Nov 24', 'lecture', "Week 15's first lecture: exec and File Descriptors")
     add(14, 'thursday', 'Nov 26', 'holiday', 'Thanksgiving — no class')
     add(14, 'friday', 'Nov 27', 'holiday', 'Thanksgiving — no class')
 
-    add(15, 'tuesday', 'Dec 1', 'lecture', 'L24 exec, File Descriptors, fork and wait')
+    add(15, 'tuesday', 'Dec 1', 'lecture', 'fork, wait, and the User Shell')
     add(15, 'thursday', 'Dec 3', 'exercise', '49k exec · 50k file_descriptors',
-        exercises=['49k_exec', '50k_file_descriptors'])
+        exercises=['49k_exec', '50k_file_descriptors'],
+        links=L(*WEEK15A_LECTURE))
     add(15, 'friday', 'Dec 4', 'exercise',
         '51k fork_wait · 52k userland · 53k ship_your_commands',
         exercises=['51k_fork_wait', '52k_userland', '53k_ship_your_commands'],

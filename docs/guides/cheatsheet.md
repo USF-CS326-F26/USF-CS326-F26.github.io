@@ -140,8 +140,9 @@ at the next table. Any of R/W/X set makes it a leaf (`free_pt()` in `vm.rs`).
 +--------+------------+----------------+
 ```
 
-`SATP_SV39 = 8 << 60`; `make_satp(root) = SATP_SV39 | (root >> 12)`
-(`vm.rs`). Install with `csrw satp, x` then `sfence.vma zero, zero`
+MODE 8 is Sv39 (`SATP_SV39` in `vm.rs`). Worked: a root table at physical
+`0x8765_4000` has PPN `0x87654`, so `satp` = `0x8000_0000_0008_7654`.
+Install with `csrw satp, x` then `sfence.vma zero, zero`
 (`kvminithart()` in `vm.rs`). MODE 0 = paging off.
 
 ## Constants you must not misremember
@@ -201,8 +202,8 @@ to pass, `0x3333 | (code << 16)` to fail (`FINISHER_PASS` in `testdev.rs`).
 
 ## `scause` — why a trap happened
 
-Top bit: 1 = interrupt, 0 = exception; low bits say which. rv6 reads
-`scause >> 63` and `scause & 0xff` (`kerneltrap()` in `trap.rs`).
+Top bit: 1 = interrupt, 0 = exception; low bits say which. Worked:
+`0x8000_0000_0000_0001` is interrupt 1 (the forwarded tick); `0x3` is exception 3 (`ebreak`).
 
 **Interrupts** (`scause >> 63 == 1`):
 
@@ -250,9 +251,10 @@ bit 8 and sets bit 5 before `sret` (`usermode.rs`).
 | 5 | STIE / STIP | timer |
 | 9 | SEIE / SEIP | external (PLIC devices) |
 
-`intr_on()` = `csrs sie, 1<<1` plus `csrs sstatus, 1<<1` (`trap.rs`); the
-console adds `csrs sie, 1<<9` (`init()` in `console.rs`). Clear a pending software
-interrupt with `sip &= !2` (`kerneltrap()` in `trap.rs`) or the tick re-fires forever. Other
+An S-mode interrupt is taken only when three bits agree: `sstatus.SIE`, the
+source's bit in `sie`, and its pending bit in `sip`. `intr_on()` (`trap.rs`) opens the
+first two for the forwarded tick; the console sets `sie.SEIE` (`init()` in `console.rs`).
+A software interrupt stays pending until the handler clears its `sip` bit, or the tick re-fires forever. Other
 S-CSRs: `stvec` (trap vector), `sepc` (trap PC), `scause`, `sscratch` (where
 `uservec` parks the trapframe pointer), `satp`.
 
@@ -299,8 +301,8 @@ Base `0x1000_0000`. Every register is one byte at these offsets:
 | 5 | LSR | — | Line Status |
 
 **LSR** — poll before touching data: bit 0 `DR` (a byte waits in RBR), bit 5
-`THRE` (safe to write THR). `getc` waits for `LSR & 1`; `putc` spins until
-`LSR & 0x20`.
+`THRE` (safe to write THR). Worked: LSR = `0x61` has both set (a byte to read,
+room to send); `0x60` has only THRE (nothing to read yet).
 
 | Write | Value | Effect |
 |---|---|---|

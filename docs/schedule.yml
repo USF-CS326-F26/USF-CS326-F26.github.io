@@ -360,10 +360,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling/"
-        - text: "Reading · Week 10"
-          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap/"
-        - text: "Slides · Week 10"
-          url: "lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap-slides.html"
         - text: "Lecture · given Oct 13"
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
         - text: "Slides · given Oct 13"
@@ -375,12 +371,12 @@ weeks:
     tuesday:
       date: "Oct 27"
       type: "lecture"
-      topic: "L16 Virtual Memory II: Turning the MMU On"
+      topic: "Locks, Semaphores, and Turning the MMU On"
       links:
         - text: "Lecture"
-          url: "lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on/"
+          url: "lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on/"
         - text: "Slides"
-          url: "lectures/10-cs326-2026-10-27-virtual-memory-ii-turning-the-mmu-on-slides.html"
+          url: "lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on-slides.html"
 
     thursday:
       date: "Oct 29"
@@ -401,10 +397,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/10-cs326-2026-10-30-prep-virtual-memory/"
-        - text: "Reading · Week 11"
-          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life/"
-        - text: "Slides · Week 11"
-          url: "lectures/10-cs326-2026-10-29-filesystems-devices-and-boot-to-life-slides.html"
         - text: "QEMU and GDB"
           url: "guides/qemu-gdb/"
 
@@ -414,12 +406,12 @@ weeks:
     tuesday:
       date: "Nov 3"
       type: "lecture"
-      topic: "L18 Traps, Privilege Modes, and Interrupts"
+      topic: "Files, Boot Order, and Traps"
       links:
         - text: "Lecture"
-          url: "lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts/"
+          url: "lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps/"
         - text: "Slides"
-          url: "lectures/11-cs326-2026-11-03-traps-privilege-modes-and-interrupts-slides.html"
+          url: "lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps-slides.html"
 
     thursday:
       date: "Nov 5"
@@ -443,10 +435,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/"
-        - text: "Reading · Week 12"
-          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console/"
-        - text: "Slides · Week 12"
-          url: "lectures/11-cs326-2026-11-05-device-interrupts-the-plic-and-the-console-slides.html"
         - text: "Withdraw deadline"
           url: "syllabus/"
 
@@ -456,12 +444,12 @@ weeks:
     tuesday:
       date: "Nov 10"
       type: "lecture"
-      topic: "L22 User Mode I: The Wall, Trampoline, Trapframe"
+      topic: "The Console, the Shell, and User Mode"
       links:
         - text: "Lecture"
-          url: "lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe/"
+          url: "lectures/12-cs326-2026-11-10-console-shell-and-user-mode/"
         - text: "Slides"
-          url: "lectures/12-cs326-2026-11-10-user-mode-i-the-wall-trampoline-and-trapframe-slides.html"
+          url: "lectures/12-cs326-2026-11-10-console-shell-and-user-mode-slides.html"
         - text: "rv6 Architecture"
           url: "guides/rv6-architecture/"
         - text: "Practice Set 2"
@@ -477,10 +465,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/12-cs326-2026-11-12-prep-console-and-shell/"
-        - text: "Reading"
-          url: "lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel/"
-        - text: "Slides"
-          url: "lectures/12-cs326-2026-11-12-shells-and-the-reference-kernel-slides.html"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
 
@@ -500,12 +484,12 @@ weeks:
     tuesday:
       date: "Nov 17"
       type: "lecture"
-      topic: "L23 User Mode II: System Calls"
+      topic: "Midterm 2 Review"
       links:
         - text: "Lecture"
-          url: "lectures/13-cs326-2026-11-17-user-mode-ii-system-calls/"
+          url: "lectures/13-cs326-2026-11-17-midterm-2-review/"
         - text: "Slides"
-          url: "lectures/13-cs326-2026-11-17-user-mode-ii-system-calls-slides.html"
+          url: "lectures/13-cs326-2026-11-17-midterm-2-review-slides.html"
         - text: "Exam Prep"
           url: "guides/exam-prep/"
         - text: "Practice Set 2"
@@ -532,12 +516,12 @@ weeks:
     tuesday:
       date: "Nov 24"
       type: "lecture"
-      topic: "L21 File Commands over a Filesystem API"
+      topic: "Week 15's first lecture: exec and File Descriptors"
       links:
         - text: "Lecture"
-          url: "lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api/"
+          url: "lectures/15-cs326-2026-11-24-exec-and-file-descriptors/"
         - text: "Slides"
-          url: "lectures/14-cs326-2026-11-24-file-commands-over-a-filesystem-api-slides.html"
+          url: "lectures/15-cs326-2026-11-24-exec-and-file-descriptors-slides.html"
 
     thursday:
       date: "Nov 26"
@@ -555,12 +539,12 @@ weeks:
     tuesday:
       date: "Dec 1"
       type: "lecture"
-      topic: "L24 exec, File Descriptors, fork and wait"
+      topic: "fork, wait, and the User Shell"
       links:
         - text: "Lecture"
-          url: "lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork/"
+          url: "lectures/15-cs326-2026-12-01-fork-wait-and-the-user-shell/"
         - text: "Slides"
-          url: "lectures/15-cs326-2026-12-01-exec-file-descriptors-and-fork-slides.html"
+          url: "lectures/15-cs326-2026-12-01-fork-wait-and-the-user-shell-slides.html"
 
     thursday:
       date: "Dec 3"
@@ -571,10 +555,10 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors/"
-        - text: "Reading · Fri Dec 4"
-          url: "lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland/"
-        - text: "Slides · Fri Dec 4"
-          url: "lectures/15-cs326-2026-12-03-exec-as-a-syscall-and-userland-slides.html"
+        - text: "Lecture · given Nov 24"
+          url: "lectures/15-cs326-2026-11-24-exec-and-file-descriptors/"
+        - text: "Slides · given Nov 24"
+          url: "lectures/15-cs326-2026-11-24-exec-and-file-descriptors-slides.html"
 
     friday:
       date: "Dec 4"
@@ -600,9 +584,7 @@ weeks:
       topic: "FINAL EXAM — cumulative, weighted toward 49k–53k"
       links:
         - text: "Optional reading"
-          url: "lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review/"
-        - text: "Slides"
-          url: "lectures/16-cs326-2026-12-08-pipes-the-payoff-and-final-review-slides.html"
+          url: "lectures/16-cs326-2026-12-08-final-review-and-beyond/"
         - text: "Final Exam"
           url: "assignments/final/"
         - text: "Exam Prep"

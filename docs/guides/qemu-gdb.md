@@ -375,7 +375,7 @@ $3 = 0x10fe0
 ```
 
 `epc = 0` is `USER_CODE`, `sp = 0x10fe0` is just below `USER_STACK_TOP`
-(`memlayout.rs,75`). Then walk `$va = 0x10000` and confirm the level-0 entry
+(`memlayout.rs`). Then walk `$va = 0x10000` and confirm the level-0 entry
 reads `0x17`. If it reads `0x13` — V+R+U, no W — the program will die on its
 first push with `scause 15`, which is exactly the fault shown earlier.
 

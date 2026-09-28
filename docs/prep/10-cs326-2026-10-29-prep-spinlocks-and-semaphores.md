@@ -1,6 +1,6 @@
 # Prep: Spinlocks and Semaphores — 37k · 38k
 
-**Session:** Thu Oct 29, 1h45 · **Exercises:** `37k_spinlocks`, `38k_semaphores` · **Prep time:** ~55 min · **Lecture:** [Locks, Semaphores, and the Kernel Heap](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md)
+**Session:** Thu Oct 29, 1h45 · **Exercises:** `37k_spinlocks`, `38k_semaphores` · **Prep time:** ~30 min · **Lecture:** [Week 10 · Locks, Semaphores, and Turning the MMU On](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md)
 
 ## What you will build
 
@@ -8,22 +8,23 @@ Two layers of synchronization, bottom up. First a spinlock: an `AtomicBool` besi
 
 ## Concepts you need
 
-- **A race lives in the interleaving; more code cannot close the window** — [Locks and Semaphores §1](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#1-constructing-a-race-condition) · [Key Concepts § race condition](../guides/key-concepts.md#race-condition)
-- **Compare-and-exchange vs. test-and-set; `Acquire` on take, `Release` on release** — [Locks and Semaphores §2](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#2-atomicity-what-the-hardware-gives-you) · [Key Concepts § atomicity](../guides/key-concepts.md#atomicity)
-- **`UnsafeCell`, interior mutability, and the RAII guard** — [Locks and Semaphores §4](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#4-the-guard-turning-discipline-into-a-type) · [Rust for Systems § The guard pattern](../guides/rust-for-systems.md#the-guard-pattern)
-- **`Send`, `Sync`, and what `unsafe impl Sync` promises** — [Locks and Semaphores §4, Send and Sync](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#send-sync-and-a-promise-the-compiler-cannot-check) · [Unsafe Rust § Send and Sync](../guides/rust-unsafe-nostd.md#send-and-sync)
-- **Counting semaphores: permits, P and V, the lost wakeup** — [Locks and Semaphores §6](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#6-semaphores) · [Key Concepts § semaphore](../guides/key-concepts.md#semaphore)
-- **The heap arrives: `GlobalAlloc`, one page per allocation, `Arc`** — [Locks and Semaphores §7](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#7-the-kernel-heap-comes-online) · [Key Concepts § heap](../guides/key-concepts.md#heap)
+- **A race lives in the interleaving; more code cannot close the window** — [Week 10 · A race, built by hand](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-race) · [Key Concepts: race condition](../guides/key-concepts.md#race-condition)
+- **Compare-and-exchange vs. test-and-set; `Acquire` on take, `Release` on release** — [Week 10 · One indivisible step](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cas), [Test-and-set versus CAS](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-tas) · [Key Concepts: atomicity](../guides/key-concepts.md#atomicity)
+- **`UnsafeCell`, interior mutability, and the RAII guard** — [Week 10 · Shared, yet mutable: `UnsafeCell`, `Send` and `Sync`](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cell), [The guard unlocks for you](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-guard) · [Rust for Systems: The guard pattern](../guides/rust-for-systems.md#the-guard-pattern)
+- **`Send`, `Sync`, and what `unsafe impl Sync` promises** — [Week 10 · Shared, yet mutable: `UnsafeCell`, `Send` and `Sync`](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cell) · [Unsafe guide: `Send` and `Sync`](../guides/rust-unsafe-nostd.md#send-and-sync)
+- **Counting semaphores: permits, P and V, the lost wakeup** — [Week 10 · Permits: P and V](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#38k-permits), [The lost wakeup](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-lost-wakeup) · [Key Concepts: semaphore](../guides/key-concepts.md#semaphore)
+- **The heap arrives: `GlobalAlloc`, one page per allocation, `Arc`** — [Week 10 · The heap arrives](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#38k-heap), [`Arc`: one value, many owners](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#38k-arc) · [Key Concepts: heap](../guides/key-concepts.md#heap)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Locks and Semaphores §1–§2 (the race traced, CAS, the compiled lock) | 15 min |
-| Locks and Semaphores §3–§4 (ordering, `UnsafeCell`, the guard, `Send`/`Sync`) | 15 min |
-| Locks and Semaphores §6–§7 (semaphores, lost wakeup, the heap, `Arc`) | 15 min |
-| Unsafe Rust guide: `UnsafeCell`, `Send`/`Sync` | 5 min |
-| Key Concepts guide: Concurrency cluster, heap | 5 min |
+| [Week 10 · This week](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#this-week), then [Thursday · `37k` Spinlocks](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#thu-37k) through [One indivisible step](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cas) | 4 min |
+| [Week 10 · Shared, yet mutable: `UnsafeCell`, `Send` and `Sync`](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cell), [The guard unlocks for you](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-guard) and [Interrupts off while you hold it](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-interrupts) | 4 min |
+| [Week 10 · Thursday · `38k` Semaphores and the heap](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#thu-38k), all three sections | 4 min |
+| [Week 10 · For the exam](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam): [Test-and-set versus CAS](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-tas), [Deadlock](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-deadlock), [The lost wakeup](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-lost-wakeup) and [Bounded buffers](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-bounded). Not needed today; on Midterm 2 | 2 min |
+| [Unsafe guide: `UnsafeCell`](../guides/rust-unsafe-nostd.md#unsafecell) and [`Send` and `Sync`](../guides/rust-unsafe-nostd.md#send-and-sync) | 3 min |
+| [Key Concepts guide: Concurrency](../guides/key-concepts.md#concurrency), then [heap](../guides/key-concepts.md#heap) | 4 min |
 
 ## Mental model
 
@@ -52,4 +53,4 @@ Only one CAS can win the `false → true` transition, so B's read-modify-write c
 
 ## If you finish early
 
-Work [Practice Problems 3 and 4](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#practice-problems) and read [Locks and Semaphores §5](../lectures/09-cs326-2026-10-22-locks-semaphores-and-the-kernel-heap.md#5-deadlock-lock-order-and-interrupts) on single-hart deadlock, then chapter 6, "Locking," of the xv6 book, or start Friday's [Prep: Virtual Memory](10-cs326-2026-10-30-prep-virtual-memory.md).
+Work [Week 10 · Problem 2: When does the guard drop?](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#problem-2) and [Problem 3: A bounded buffer of two](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#problem-3) on paper and read [Week 10 · Deadlock](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-deadlock) on single-hart deadlock (Midterm 2 material), then chapter 6, "Locking," of the xv6 book, or start Friday's [Prep: Virtual Memory](10-cs326-2026-10-30-prep-virtual-memory.md).

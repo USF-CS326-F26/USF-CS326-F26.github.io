@@ -3,9 +3,10 @@
 This is the Rust reference for CS 326. It is written for the moment mid-exercise
 when you know what you want the machine to do but the compiler will not let you
 say it — and for the week before the midterm, when you need the Rust half of the
-material in one place. Every rule here is illustrated with a line from the rv6
-sources you are building, not with a toy example, because the toy examples are
-never the ones that bite. Module 1 (`00r`–`21r`) teaches these ideas one at a
+material in one place. Most rules here are illustrated with a line from the rv6
+sources you are building, because the toy examples are rarely the ones that
+bite. Where the rv6 line is one an exercise asks you to write, the page uses a
+small example of its own instead. Module 1 (`00r`–`21r`) teaches these ideas one at a
 time in the `warmup` crate; this page is where they live afterwards. For the
 `unsafe`, raw-pointer, and `no_std` half of the language, see
 [Unsafe Rust and no_std](rust-unsafe-nostd.md).
@@ -91,12 +92,12 @@ unsafe fn getfile(p: *mut Proc, fd: usize) -> Option<File> {   // syscall.rs
 }
 ```
 
-That copy is what lets `sys_read` mutate the stored offset a few lines later
-(`(*p).ofile[fd].off += n;`, syscall.rs) without the borrow checker
-objecting. If `File` were not `Copy`, `getfile` would have to return a borrow
-and `sys_read` would be stuck. The same trick appears in `fs.rs`, where
-`unlink` copies the `DirEnt` out of the array before mutating two different
-inodes through `&mut self`.
+Because the caller holds a copy and not a borrow, it stays free to touch
+`*p` again on the next line without the borrow checker objecting. If `File`
+were not `Copy`, `getfile` would have to return a borrow, and that borrow would
+lock the whole process out of reach until it ended. The same trick appears in
+`fs.rs`, where `unlink` copies the `DirEnt` out of the array before mutating
+two different inodes through `&mut self`.
 
 `Pte` (vm.rs), `Context` (swtch.rs), `ProcState` (proc.rs) and
 `DirEnt` (fs.rs) are all `Copy` for the same reason.
@@ -190,8 +191,8 @@ let inum = self.alloc(kind)?;                // fs.rs — free to take &mut self
 ```
 
 Had the loop written `let e = &mut self.inodes[dir].entries[i];` and kept `e`
-alive across line 141, that is `E0499` and there is no way around it except the
-rewrite above. **Store an index, not a reference**, is the single most useful
+alive across the `self.alloc()` call, that is `E0499` and there is no way
+around it except the rewrite above. **Store an index, not a reference**, is the single most useful
 habit for kernel code in Rust.
 
 ### Slices are borrows
@@ -504,43 +505,50 @@ A `match` must cover every variant. Add a variant to `ProcState` and the
 compiler lists every `match` that no longer covers everything. This is the
 feature that makes a kernel refactor survivable.
 
+Here is a match of your own, over a three-state traffic light:
+
 ```rust
-match self.inodes[inum].kind {              // fs.rs
-    InodeKind::Free => return Err(FsError::NotFound),
-    InodeKind::Dir  => return Err(FsError::IsADirectory),
-    InodeKind::File => {}                   // the case we actually want
+enum Light { Red, Yellow, Green }
+
+match light {
+    Light::Red    => brake(),
+    Light::Yellow => ease_off(),
+    Light::Green  => {}                     // nothing to do, and you said so
 }
 ```
 
-Note the empty arm: "this case is fine, fall through". That is idiomatic and it
-is not the same as omitting the arm.
+Note the empty arm: "this case needs nothing". That is idiomatic and it is not
+the same as omitting the arm. Delete the `Green` line and the compiler rejects
+the whole `match` with `E0004` (non-exhaustive patterns).
 
 Forms you will use:
 
 ```rust
-// a catch-all arm
-match cmd {                                 // shell.rs
-    "pwd" => self.cmd_pwd(out),
-    "ls"  => self.cmd_ls(out),
-    _ => { out.puts(cmd); out.puts(": command not found\n"); }
+// a catch-all arm, and a range pattern
+match score {
+    100     => println!("perfect"),
+    90..=99 => println!("an A"),
+    _       => println!("keep going"),
 }
 
 // a match guard: an extra condition on an arm
-match getfile(p, fd) {                      // syscall.rs
-    Some(f) if f.readable => f,
-    _ => return -1,
+match reading {
+    Some(t) if t > 100 => sound_alarm(t),
+    Some(t)            => record(t),
+    None               => {}
 }
 
 // `if let` — one arm you care about
 if let Some(b) = try_getc() { return b; }   // console.rs
 
 // `while let` — loop until it stops matching
-while let Some(b) = uart::getc() { push(b); }   // console.rs
+while let Some(top) = stack.pop() { total += top; }
 
-// match as an expression producing a value
-let inum = match fsg.dirlookup(dir, name.as_bytes()) {   // shell.rs
-    Ok(i) => i,
-    Err(_) => { out.puts("cat: no such file\n"); return; }
+// match as an expression producing a value, with `|` sharing an arm
+let days = match month {
+    "feb" => 28,
+    "apr" | "jun" | "sep" | "nov" => 30,
+    _ => 31,
 };
 ```
 
@@ -597,13 +605,15 @@ undefined, but it is still fatal. Prefer the slice operations that carry their
 own lengths:
 
 ```rust
-buf[..n].copy_from_slice(&node.data[..n]);              // fs.rs
-self.inodes[inum].data[off..off + data.len()].copy_from_slice(data);   // fs.rs
-&e.name[..e.len] == name                                 // fs.rs — compare two &[u8]
+let n = core::cmp::min(msg.len(), out.len());
+out[..n].copy_from_slice(&msg[..n]);          // both sides are n long
+log[at..at + n].copy_from_slice(&msg[..n]);   // a window that starts at `at`
+&line[..3] == b"GET"                          // compare two &[u8]
 ```
 
-`copy_from_slice` panics if the two slices differ in length, which is why the
-`n` above is computed with `core::cmp::min` first (fs.rs).
+`copy_from_slice` panics if the two slices differ in length, which is why `n`
+is computed with `core::cmp::min` first. The given `read()` (`fs.rs`) clamps
+its copy the same way.
 
 Two conversions you will use constantly at the syscall boundary:
 
@@ -648,12 +658,12 @@ The adapters rv6 actually uses:
 | Form | Yields | Example |
 |---|---|---|
 | `for i in 0..NPROC` | each index | proc.rs, the table scans |
-| `for e in &self.inodes[dir].entries` | `&DirEnt`, borrowed | fs.rs `dirlookup` |
+| `for x in &table` | `&T`, borrowed | walking a table without copying it |
 | `.iter().any(\|e\| e.used)` | `bool` | fs.rs `dir_is_empty` |
 | `.into_iter().find(...)` | `Option<Program>`, by value | exec.rs `lookup` |
 | `.iter().enumerate()` | `(index, &item)` | shell.rs `pwd` |
 | `.map(...)` / `.find(...)` | adapted iterator / `Option` | sched.rs |
-| `line.split_whitespace()` | `&str` words | shell.rs command parsing |
+| `line.split_whitespace()` | `&str` words | shell.rs `cmd_run` |
 | `.collect()` | a `Vec` (or any collection) | shell.rs |
 | `for b in s.bytes()` | `u8` | uart.rs `puts` |
 
@@ -750,7 +760,7 @@ match policy.pick_next(&states) { ... }    // usermode.rs
 ```rust
 // dynamic: `out` is a fat pointer (data pointer + vtable pointer);
 // the call goes through the vtable.
-pub fn exec(&mut self, line: &str, out: &mut dyn Out) { ... }   // shell.rs
+fn cmd_pwd(&self, out: &mut dyn Out) { ... }   // shell.rs
 ```
 
 `&mut dyn Out` is a **trait object**. The shell uses it because `Shell::exec`
@@ -770,29 +780,31 @@ every context switch and there is exactly one policy.
 ### `impl Trait` in argument position
 
 `impl Trait` as a parameter type is shorthand for an anonymous generic
-parameter — static dispatch, no `dyn`, no name for the type. rv6 uses it to take
-a closure:
+parameter — static dispatch, no `dyn`, no name for the type. Its everyday use is
+taking a closure:
 
 ```rust
-pub fn for_each_entry(&self, dir: usize, mut f: impl FnMut(&[u8], InodeKind)) {   // fs.rs
-    for e in &self.inodes[dir].entries {
-        if e.used {
-            let kind = self.inodes[e.inum].kind;
-            f(&e.name[..e.len], kind);
-        }
+fn for_each_even(xs: &[u32], mut f: impl FnMut(u32)) {
+    for &x in xs {
+        if x % 2 == 0 { f(x); }
     }
 }
+
+let mut sum = 0;
+for_each_even(&[3, 4, 7, 10], |x| sum += x);   // sum is now 14
 ```
 
-`FnMut` is the trait for closures that may mutate what they capture. The shell's
-`ls` passes a closure that writes through `out` (shell.rs), which is why it
-must be `FnMut` and not `Fn`.
+`FnMut` is the trait for closures that may mutate what they capture. The
+closure above adds to `sum`, which is why the parameter must be `FnMut` and not
+`Fn`. rv6's `for_each_entry()` (`fs.rs`) takes an `impl FnMut` for the same
+reason: the shell's `ls` passes a closure that writes through `out`
+(shell.rs).
 
 ### Standard traits rv6 implements
 
 | Trait | Implemented on | Effect |
 |---|---|---|
-| `Deref` / `DerefMut` | `SpinLockGuard` (spinlock.rs, 65) | `*guard` reaches the protected data |
+| `Deref` / `DerefMut` | `SpinLockGuard` (spinlock.rs) | `*guard` reaches the protected data |
 | `Drop` | `SpinLockGuard` (spinlock.rs) | unlock on scope exit |
 | `Sync` | `SpinLock<T>` (spinlock.rs) | may be a `static` |
 | `GlobalAlloc` | `KernelHeap` (kheap.rs) | turns on `Box`, `Vec`, `String` |
@@ -849,33 +861,39 @@ tell you where you stopped handling every case when you add a variant.
 the enclosing function immediately. It replaces the `if (ret < 0) goto fail;`
 ladder that runs through every C kernel.
 
+Here is a function of your own that turns a clock reading into minutes:
+
 ```rust
-pub unsafe fn proc_pagetable(p: *mut Proc) -> Result<(), ()> {   // proc.rs
-    let pt = (*p).pagetable;
-    vm::mappages(pt, TRAMPOLINE, PGSIZE, vm::trampoline_page(), PTE_R | PTE_X)?;
-    vm::mappages(pt, TRAPFRAME, PGSIZE, (*p).trapframe as usize, PTE_R | PTE_W)?;
-    Ok(())
+fn to_minutes(h: &str, m: &str) -> Result<u32, ParseIntError> {
+    let hours: u32 = h.parse()?;     // "x" here returns Err from to_minutes
+    let mins: u32 = m.parse()?;
+    Ok(hours * 60 + mins)
 }
 ```
 
+Read each `?` as "or leave now with this error". The happy path reads straight
+down, and no line after a failure runs.
+
 Two rules to remember: `?` only works in a function that itself returns `Result`
-(or `Option`), and the error types must match — or be convertible. When they do
-not match, `map_err` converts:
+(or `Option`), and the error types must match — or be convertible. Give
+`to_minutes` an error enum of its own and the types no longer match, so
+`map_err` converts:
 
 ```rust
-vm::mappages(pt, TRAMPOLINE, PGSIZE, vm::trampoline_page(), PTE_R | PTE_X)
-    .map_err(|_| ExecError::NoMem)?;                     // exec.rs
-vm::load_segment(pt, image).map_err(|_| ExecError::NoMem)?;     // exec.rs
-vm::map_user_stack(pt).map_err(|_| ExecError::NoMem)?;          // exec.rs
+enum ClockError { BadHour, BadMinute }
+
+let hours: u32 = h.parse().map_err(|_| ClockError::BadHour)?;
+let mins: u32 = m.parse().map_err(|_| ClockError::BadMinute)?;
 ```
 
-`Result<(), ()>` in, `Result<_, ExecError>` out, one closure per line.
+`ParseIntError` in, `ClockError` out, one closure per line. Each line picks its
+own variant, so the caller learns which half was wrong.
 
 `ok_or` does the same job for an `Option`, turning "there wasn't one" into a
 named error:
 
 ```rust
-let prog = lookup(name).ok_or(ExecError::NotFound)?;   // exec.rs
+let first = queue.first().ok_or(QueueError::Empty)?;
 let slot = slot.ok_or(FsError::DirFull)?;              // fs.rs
 ```
 
@@ -884,17 +902,17 @@ let slot = slot.ok_or(FsError::DirFull)?;              // fs.rs
 | Form | On | Does |
 |---|---|---|
 | `?` | `Result` / `Option` | unwrap or return early |
-| `.ok_or(e)?` | `Option` | `None` becomes `Err(e)` (exec.rs) |
+| `.ok_or(e)?` | `Option` | `None` becomes `Err(e)` (fs.rs) |
 | `.map_err(\|_\| e)?` | `Result` | replace the error type (exec.rs) |
 | `.is_err()` / `.is_ok()` | `Result` | test without unwrapping (vm.rs) |
 | `.unwrap_or(d)` | `Option` | a default instead of `None` (shell.rs) |
 | `let _ = expr;` | `Result` | deliberately ignore (shell.rs) |
 | `match` | either | handle each case differently |
 
-`let _ = fsg.unlink(dir, name.as_bytes());` (Shell::cmd_rm() (shell.rs)) is worth calling out:
-it says *I have already checked this cannot fail* and silences the unused-result
-warning. It is not the same as ignoring an error by accident, and reviewers read
-it that way.
+`let _ = expr;` is worth calling out. It discards a `Result` on purpose,
+silences the unused-result warning, and says *I have already checked this
+cannot fail*. It is not the same as ignoring an error by accident, and
+reviewers read it that way.
 
 ### Errors that must not propagate: the syscall boundary
 
@@ -922,22 +940,20 @@ match self.dirlookup(dir, name) {          // fs.rs
 }
 ```
 
-And `touch` in the shell treats one error as success, because that is what real
-`touch` does:
+And sometimes one error is really a success. A sign-up that finds the name
+already on the list has done its job, so one arm can cover both outcomes:
 
 ```rust
-match fsg.dircreate(dir, name.as_bytes(), InodeKind::File) {   // shell.rs
-    Ok(_) => {}
-    Err(FsError::AlreadyExists) => {}      // already there: fine
-    Err(_) => out.puts("touch: cannot create file\n"),
+match signup(&mut roster, "ada") {
+    Ok(_) | Err(SignupError::AlreadyListed) => {}   // either way, ada is listed
+    Err(e) => return Err(e),                         // anything else propagates
 }
 ```
 
 Neither is possible if the error is an `int`.
 
 > **Where you need this:** `40k` — `dirlookup`, `dircreate` and `FsError`
-> (`fs.rs`); `49k` — `exec`, `ExecError`, and the `map_err` chain in
-> `fill_addrspace` (`exec.rs`).
+> (`fs.rs`); `49k` — `exec` and `ExecError` (`exec.rs`).
 
 ---
 
@@ -1010,13 +1026,15 @@ that line and the code compiles, which is non-lexical lifetimes in action.
 
 In kernel code the fix is nearly always to stop holding references into a table.
 `fs.rs` is written this way throughout: `dircreate` records `slot: usize` rather
-than `&mut DirEnt` (`FileSystem::dircreate` in `fs.rs`), and `unlink` copies the entry out —
+than `&mut DirEnt` (`FileSystem::dircreate` in `fs.rs`), and `unlink` copies the
+entry out before it writes anything. The same move on a task table of your own:
 
 ```rust
-let e = self.inodes[dir].entries[i];        // fs.rs — a copy; DirEnt is Copy
-if e.used && e.len == name.len() && &e.name[..e.len] == name {
-    self.inodes[e.inum] = Inode::new();     // fs.rs — now free to write elsewhere
-    self.inodes[dir].entries[i].used = false;
+let t = self.tasks[i];                      // a copy; Task is Copy
+if t.done {
+    self.workers[t.owner].busy = false;     // write one table...
+    self.tasks[i] = Task::empty();          // ...then the other; no borrow is held
+}
 ```
 
 If you genuinely need two exclusive borrows into one array, `split_at_mut` is
