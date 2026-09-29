@@ -1268,6 +1268,9 @@ function outputBands(headers, lines) {
 (function () {
   "use strict";
   var CFG = window.POINTAT || {};
+  // A cross-target week (bare metal under QEMU) has nowhere to run in a
+  // browser: its page is the captured output only, with no editor at all.
+  if (CFG.runner === "none") return;
   var doc = document;
   var APP = window.__pointat || {};
   var slice = function (xs) { return Array.prototype.slice.call(xs); };

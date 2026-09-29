@@ -3,8 +3,9 @@
 The lecture page makes the argument. This is the part we **run**, on screen,
 while you run it too.
 
-Each week's in-class material is a deck plus a small Cargo project of programs
-that print addresses, sizes, and error messages. The programs are the point: an
+Each week's in-class material is a small Cargo project of programs that print
+addresses, sizes, and error messages. Weeks 2 to 4 also have a deck of their
+own; from week 5 on, the Tuesday deck is the one on the lecture page. The programs are the point: an
 argument about ownership is abstract until you watch `push` move a buffer and
 print a different address than it did a line earlier.
 
@@ -27,6 +28,11 @@ pages you can also edit a program and run it. Pressing
 which the classroom network allows; **Revert** puts the original back. Your
 exercise work still belongs in your own repository, where the test harness can
 see it.
+
+From week 6 on, the programs are bare-metal RISC-V and run under QEMU, which
+no browser can do. Those pages show the output captured under QEMU, with no
+editor; run the programs yourself with `cargo run`, the same QEMU line
+`oslings run` uses.
 
 Nothing here is graded, and none of it is a substitute for the lecture page or
 for the Prep page of the exercise session that follows — both are linked from
@@ -242,3 +248,122 @@ reading comprehension. The `10c` companion is host-only, on a local façade with
 
 **Next:** exercises `06r_collections` and `07r_traits` (Thursday), `08r_errors`
 and `10c_echo` (Friday).
+
+---
+
+## Week 05 · September 22 — Streams of Bytes: cat, wc, and grep
+
+[Code and output](week05-examples.html){ .md-button } [Lecture slides](../lectures/05-cs326-2026-09-22-cat-wc-and-grep-slides.html){ .md-button }
+
+Companion to the [Week 5 lecture](../lectures/05-cs326-2026-09-22-cat-wc-and-grep.md).
+Each program runs one example from the page: a descriptor table, a short
+read, a buffer that decides how often you trap, state carried across reads,
+and a line that straddles two of them. Eleven programs and six that must *not*
+compile. Every one takes no arguments and no input, so each also runs on the
+Playground from its Code and output page.
+
+### The eleven programs
+
+| Program | The one idea | The line to watch |
+|---|---|---|
+| `01_fd_numbers` | a descriptor is the lowest free slot | the `open` after `close(4)` returning 4, not 6 |
+| `02_short_reads` | a short read is normal; only 0 ends it | `buf[3..6]` still saying `"lo\n"` |
+| `03_buffer_size_counts_calls` | the buffer's size sets how many times you trap | 2,048 reads beside 1,048,576 |
+| `04_read_loop_tr` | listen to both counts, read's and write's | the bare `write` that lost 10 bytes |
+| `05_exit_status` | a later success does not erase a failure | `status = 1; // only ever set, never cleared` |
+| `06_bytes_chars_str` | `len` counts bytes, not characters | `"año".len() = 4` beside `.chars().count() = 3` |
+| `07_state_across_chunks` | state the caller keeps survives the end of a read | the two `<- wrong` rows |
+| `08_lines_in_a_fixed_buffer` | an unfinished line slides to the front | `read(fd, &mut buf[6..]) -> 10` |
+| `09_while_let` | call, match, and stop at the first miss | `Some("")` for a blank line |
+| `10_fenceposts` | the last start is `len - k`, and only `..=` reaches it | `(0..3).contains(&3) = false` for `log` in `syslog` |
+| `11_stop_early` | what a program does not read costs nothing | 1,024 bytes read out of 10,000,000,000 |
+
+### The six failures
+
+```sh
+./show-errors.sh
+./show-errors.sh e0499     # or jump to one
+```
+
+| File | Error | The fix |
+|---|---|---|
+| `e0499_line_held_across_next_line.rs` | a line held across the next `next_line` | finish with each line first, or copy out what you need |
+| `e0502_read_buf_while_lines_has_it.rs` | reading `buf[0]` while `lines` has the buffer | read through the line, or after the last use of `lines` |
+| `e0506_write_buf_while_lines_has_it.rs` | writing `buf[5]` while `lines` has the buffer | edit a copy, or write after the last use of `lines` |
+| `e0277_lines_is_not_an_iterator.rs` | `for line in lines` | `while let Some(line) = lines.next_line()` |
+| `e0308_byte_is_not_a_char.rs` | a `u8` compared with the char `'\t'` | `b'\t'`, a byte literal |
+| `e0599_chars_on_bytes.rs` | `.chars()` on a `&[u8]` | stay in bytes, or `from_utf8` first |
+
+### The worked example
+
+`week05/12c_wc_vec_example` is the obvious `wc`, in plain `std`: read
+everything, split it, count the pieces. It is the version rv6 cannot run, and
+its README says why the exercise streams instead:
+
+```sh
+cd week05/12c_wc_vec_example && cargo test && cargo run -- src/main.rs Cargo.toml
+```
+
+**Next:** exercises `11c_cat` (Thursday), `12c_wc` and `13c_grep` (Friday), and
+the extra-credit `14c_head`.
+
+---
+
+## Week 06 · September 29 — Below Rust: Assembly, unsafe, and no_std
+
+[Code and output](week06-examples.html){ .md-button } [Lecture slides](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std-slides.html){ .md-button }
+
+Companion to the [Week 6 lecture](../lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md).
+The first week off the host: every program is a bare-metal RISC-V binary that
+QEMU loads at `0x8000_0000` with no firmware and no OS, and it reaches the world
+only through device registers. Thirteen programs, grouped by the exercise they
+serve, and seven that must *not* compile.
+
+```sh
+cd inclass/week06/examples
+cargo run --bin 01_registers      # boots it under QEMU; Ctrl-A then x quits if it hangs
+```
+
+You need what `oslings doctor` already checks: the `riscv64gc-unknown-none-elf`
+target and QEMU. The Code and output page shows what each program printed under
+QEMU on the instructor's machine; it has no **Edit and run**.
+
+### The thirteen programs
+
+| Program | The one idea | The line to watch |
+|---|---|---|
+| `01_registers` | `sp` and `ra` are ordinary registers you can read | `ra = main + 0x…`: right after the `call` |
+| `02_calling_assembly` | `extern "C"` is the whole bridge, and the signature is a promise | `fn find_byte(s: *const u8, b: u8) -> *const u8` |
+| `03_lb_vs_lbu` | `lb` sign-extends, `lbu` zero-extends | `0xe9: lb … = -23   lbu … = 233` |
+| `04_repr_c` | `repr(C)` is what makes the assembly's offsets true | `span_end = 0x80000007` after a field was inserted |
+| `05_add_wraps` | the hardware `add` drops the carry; Rust's `+` checks | `… len 0x1) = 0x0` |
+| `06_prologue_and_s0` | a caller saves `ra`; a user of `s0` saves `s0` | `keeper(rude) -> s1 = 0x63` |
+| `07_a_ret_that_lands_elsewhere` | `ret` goes wherever `ra` says, on whatever stack `sp` says | `landing: nobody called me` |
+| `08_mmio_clock` | a device register is an address, read through a raw pointer | `MTIMECMP.add(3) = 0x2004018` |
+| `09_volatile_matters` | plain device accesses get merged, dropped, or hoisted | `the UART received: B` |
+| `10_unsafe_does_not_turn_off` | `unsafe` unlocks five operations and turns nothing off | `pub fn end_of(s: &Span) -> u64` |
+| `11_what_core_still_has` | `no_std` removes the OS, not the language | `write!` into a 48-byte buffer on the stack |
+| `12_who_calls_main` | `no_main`: the program names its own first instruction | `_entry 0x80000000` |
+| `13_the_panic_handler` | every `no_std` program says what a panic does, once | `fn panic(info: &PanicInfo) -> !` |
+
+### The seven failures
+
+They compile for the same bare-metal target, one at a time:
+
+```sh
+./show-errors.sh
+./show-errors.sh e0133     # or jump to one
+```
+
+| File | Error | The fix |
+|---|---|---|
+| `e0463_forgot_no_std.rs` | the target has no `std` to link | `#![no_std]`, with the `!` |
+| `e0601_forgot_no_main.rs` | rustc wants a `main` nobody will call | `#![no_main]`, not an empty `fn main` |
+| `panic_handler_required.rs` | a `no_std` program with nowhere for a panic to go | one `#[panic_handler]` returning `!` |
+| `e0152_two_panic_handlers.rs` | "exactly one" holds across the whole program | delete one |
+| `e0133_raw_deref_needs_unsafe.rs` | reading through a raw pointer outside `unsafe` | `unsafe { read_volatile(MTIME) }`, or an `unsafe fn` |
+| `e0308_unsafe_keeps_types.rs` | a `u64` register read into a `u32` | take the register's type, or say `as u32` |
+| `e0433_vec_needs_alloc.rs` | `Vec` is in `alloc`, not `core` | a fixed array and a count, until there is a heap |
+
+**Next:** exercises `20a_asm_bridge` (Thursday), `21r_unsafe_bridge` and
+`30k_kernel_basics` (Friday).

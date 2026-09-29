@@ -626,6 +626,10 @@ saves every callee-saved register.
 
 ## Further reading { #reading }
 
+- [Code and output](../inclass/week06-examples.html): thirteen bare-metal
+  programs that run this page's examples under QEMU (`find_byte`, `span_end`,
+  `resume`, `wait_until`, and a store the optimizer drops without `volatile`),
+  each beside what it printed, and seven files that must not compile.
 - [RISC-V guide](../guides/riscv.md#registers): registers,
   [the caller/callee split](../guides/riscv.md#the-callercallee-split), the
   [instruction quick reference](../guides/riscv.md#instruction-quick-reference)

@@ -2,10 +2,8 @@
 
 > **Thu Sep 24** `11c_cat` · **Fri Sep 25** `12c_wc`, `13c_grep`, extra credit `14c_head`
 >
-> Taught Tue Sep 22. That day presented the `no_std` material now in
-> Week 6, so read this page yourself before Midterm 1. **Essentials** is what
-> Thursday and Friday assume. **Going deeper** is optional and is not on the
-> exam.
+> Read this page yourself before Midterm 1. **Essentials** is what Thursday
+> and Friday assume. **Going deeper** is optional and is not on the exam.
 
 [Slides](05-cs326-2026-09-22-cat-wc-and-grep-slides.html){ .md-button }
 [Thursday prep](../prep/05-cs326-2026-09-24-prep-cat.md){ .md-button }
@@ -615,6 +613,11 @@ fn seats_between(first: usize, last: usize) -> usize {
 
 ## Further reading { #reading }
 
+- [Code and output](../inclass/week05-examples.html): eleven programs that run
+  this page's examples (the `hello`/`ok` short reads, 1 MiB through three
+  buffers, the `\r\n` counter fed in chunks, the 16-byte line buffer), each
+  beside what it printed, and six files that must not compile. Press `i` on
+  one to edit it and run it.
 - [ulib and the Command Set](../guides/ulib-and-commands.md#the-complete-api-surface):
   the API, [the test harness](../guides/ulib-and-commands.md#the-host-backend-and-the-test-harness)
   and [the budget](../guides/ulib-and-commands.md#the-budget-and-what-a-command-actually-costs).

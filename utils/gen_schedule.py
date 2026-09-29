@@ -188,13 +188,15 @@ def sessions():
         exercises=['08r_errors', '10c_echo'],
         links=L(("ulib and Commands", "/guides/ulib-and-commands/")))
 
-    add(5, 'tuesday', 'Sep 22', 'lecture', 'Streams of Bytes: cat, wc, and grep')
+    add(5, 'tuesday', 'Sep 22', 'lecture', 'Streams of Bytes: cat, wc, and grep',
+        links=L(("Code and output", "/inclass/week05-examples.html")))
     add(5, 'thursday', 'Sep 24', 'exercise', '11c cat', exercises=['11c_cat'])
     add(5, 'friday', 'Sep 25', 'exercise', '12c wc · 13c grep',
         exercises=['12c_wc', '13c_grep'], extra=['14c_head'],
         links=L(("Extra Credit", "/assignments/extra-credit/")))
 
-    add(6, 'tuesday', 'Sep 29', 'lecture', 'Below Rust: Assembly, unsafe, and no_std')
+    add(6, 'tuesday', 'Sep 29', 'lecture', 'Below Rust: Assembly, unsafe, and no_std',
+        links=L(("Code and output", "/inclass/week06-examples.html")))
     add(6, 'thursday', 'Oct 1', 'exercise', '20a asm_bridge — QEMU deadline',
         exercises=['20a_asm_bridge'],
         links=L(("RISC-V", "/guides/riscv/"), ("QEMU and GDB", "/guides/qemu-gdb/")))

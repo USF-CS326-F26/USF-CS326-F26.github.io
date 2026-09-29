@@ -183,6 +183,8 @@ weeks:
           url: "lectures/05-cs326-2026-09-22-cat-wc-and-grep/"
         - text: "Slides"
           url: "lectures/05-cs326-2026-09-22-cat-wc-and-grep-slides.html"
+        - text: "Code and output"
+          url: "inclass/week05-examples.html"
 
     thursday:
       date: "Sep 24"
@@ -219,6 +221,8 @@ weeks:
           url: "lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/"
         - text: "Slides"
           url: "lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std-slides.html"
+        - text: "Code and output"
+          url: "inclass/week06-examples.html"
 
     thursday:
       date: "Oct 1"
