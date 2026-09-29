@@ -5,7 +5,7 @@ GitHub, the Rust toolchain and the Rust documentation, and very little else.
 This page is the reference for it: how to sign in the first time, what the
 network can and cannot reach, what the class server records about you, and what
 to do when something does not work. You sign in **once per laptop** — after
-that you join and the network recognises you, with nothing to run and nothing to
+that you join and the network recognizes you, with nothing to run and nothing to
 type.
 
 Why the network exists at all is a separate question, answered on

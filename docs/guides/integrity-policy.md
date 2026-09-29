@@ -117,7 +117,7 @@ Copilot included.
 
 You sign in to that network once per laptop: join **cs326**, open
 <http://signin.cs326>, and sign in with your USF Google account. After that it
-recognises your laptop. [The Classroom Network](classroom-network.md) has the
+recognizes your laptop. [The Classroom Network](classroom-network.md) has the
 full list of what is reachable, what the class server records, and what to do
 when it does not work.
 

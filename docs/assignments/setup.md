@@ -29,7 +29,7 @@ and there is a troubleshooting table at the bottom of the
 ## 1. Sign in to the classroom network
 
 Exercise sessions run on their own Wi-Fi, **cs326**. You sign in once per
-laptop; after that it recognises you and there is nothing to do.
+laptop; after that it recognizes you and there is nothing to do.
 
 1. Join the **cs326** Wi-Fi. The password is given in class.
 2. Open **<http://signin.cs326>** in Safari, Chrome or Firefox — your own
