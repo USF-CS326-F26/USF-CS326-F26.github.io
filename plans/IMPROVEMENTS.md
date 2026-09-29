@@ -18,12 +18,10 @@ see "What F26 actually did" below.
 **Change.** Teach `Drop` in `03r_borrowing`, where the guard is already being
 built, and take it back out of `04r_structs_impl`.
 
-**Why.** `Drop` is introduced in the ownership lecture
-(`docs/lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md`, §3
-"Drop: Where `free()` Went") and it is load-bearing there — it is what makes the
+**Why.** `Drop` is load-bearing for ownership — it is what makes the
 three-part ownership rule true rather than asserted, it is the only honest
 definition of the `Copy` dividing line, and it is one of the three legs of the
-`SpinLockGuard` argument the lecture converges on in §6.1. But in F26 the
+`SpinLockGuard` argument. But in F26 the
 exercises did not touch it for another seven weeks, so it arrived at `37k` as
 recall rather than recognition.
 
@@ -115,9 +113,6 @@ The three sections now chain: a `MemRegion` produces a free list, the free list
 produces a `PageGuard`, and the guard produces the `Pte` that maps its page —
 so markers 9 and 10 are one call each into the student's own earlier code.
 
-**Loose end from that change.** The Sep 3 lecture
-(`02-…-structs-impl-and-const-fn.md`) does not mention `Drop`, and §9 "Where
-This Lands" was updated to name the guard but the body of the lecture was not.
-If `Drop` stays in `04r` next time, that lecture wants a short section on it; if
-it moves to `03r` as proposed above, the Sep 1 ownership lecture already covers
-it and nothing needs adding.
+**Where the lecture teaches it now.** The Week 3 lecture page teaches `Drop` and
+the guard alongside `04r` (`#04r-drop`). If `Drop` moves to `03r` as proposed
+above, move that section to the Week 2 page.
