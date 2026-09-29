@@ -1,6 +1,6 @@
 # Prep: Control Flow — 01r
 
-**Session:** Fri Aug 28, 1h30 · **Exercises:** `01r_control_flow` · **Prep time:** ~30 min · **Lecture:** [Rust I: Values, Types, and Control Flow](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md)
+**Session:** Fri Aug 28, 1h30 · **Exercises:** `01r_control_flow` · **Prep time:** ~25 min · **Lecture:** [Week 1 · Building an Operating System, and Your First Rust](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md)
 
 ## What you will build
 
@@ -8,21 +8,22 @@ Thursday's functions computed one thing and handed it back; Friday's have to *de
 
 ## Concepts you need
 
-- **Expressions vs statements** — a block's value is its last expression; a trailing semicolon makes it `()` — [Lecture §4](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#4-expressions-statements-and-the-semicolon-that-bites) · [Lecture Key Concepts](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#key-concepts)
-- **`if` as an expression** — no truthiness, braces required, every branch the same type — [Lecture §6](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#6-if-is-an-expression)
-- **Three loops and half-open ranges** — `a..b` excludes `b`; RAM is `KERNBASE..PHYSTOP` — [Lecture §7](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#7-three-ways-to-loop) · [Cheatsheet: Physical memory map](../guides/cheatsheet.md#physical-memory-map-qemu-virt)
-- **`break` with a value** — only `loop` can, because its every exit is a `break` — [Lecture §7](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#break-with-a-value)
-- **Integer overflow** — debug panics, release wraps; the same bug either way — [Lecture §8](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#8-integer-overflow) · [Lecture Problem 4](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#problem-4-debug-or-release)
-- **`wrapping_*`, `checked_*`, `saturating_*`** — say what you mean — [Lecture §8 Saying what you mean](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#saying-what-you-mean)
-- **`Option`, just enough** — `checked_add` returns `Option<usize>`; take it apart with `match` — [Lecture §8 Option](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#option-just-enough-of-it) · [Rust for Systems §4 `Option<T>`](../guides/rust-for-systems.md#optiont)
+- **Expressions vs statements: a block's value is its last expression; a trailing semicolon makes it `()`** — [Week 1 · Functions, and the semicolon that bites](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-tail), [Key terms](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#terms)
+- **`if` as an expression: no truthiness, braces required, every branch the same type** — [Week 1 · `if` is an expression](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-if)
+- **Three loops and half-open ranges: `a..b` excludes `b`; RAM is `KERNBASE..PHYSTOP`** — [Week 1 · Three loops, and half-open ranges](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-loops) · [Cheatsheet: Physical memory map](../guides/cheatsheet.md#physical-memory-map-qemu-virt)
+- **`break` with a value: only `loop` can, since a `while` or `for` can stop without one** — [Week 1 · Three loops, and half-open ranges](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-loops), [Problem 3: Why `loop`?](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-3)
+- **Integer overflow: debug panics, release wraps; the same bug either way** — [Week 1 · Overflow: debug panics, release wraps](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-overflow), [Problem 2: Debug or release?](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-2)
+- **`wrapping_*`, `checked_*`, `saturating_*`: say what you mean** — [Week 1 · Say what you mean](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-explicit), [Overflow in both builds](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam-overflow)
+- **`Option`, just enough: `Some` or `None`, taken apart with `match`** — [Week 1 · `Option`, in two arms](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-option) · [Rust for Systems guide: `Option<T>`](../guides/rust-for-systems.md#optiont)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Lecture §4, §6, §7 (expressions, `if`, the three loops) | 12 min |
-| Lecture §8 (overflow, the explicit methods, `Option`) | 10 min |
-| Lecture Practice Problem 4, on paper, before opening the solution | 5 min |
+| [Week 1 · Functions, and the semicolon that bites](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-tail), a reread from Thursday, then [Friday · `01r` Control flow and overflow](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#fri-01r) through [Three loops, and half-open ranges](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-loops) | 6 min |
+| [Week 1 · Overflow: debug panics, release wraps](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-overflow), [Say what you mean](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-explicit) and [`Option`, in two arms](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#01r-option) | 6 min |
+| [Week 1 · For the exam: Overflow in both builds](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam-overflow). Not needed today; on Midterm 1 | 1 min |
+| [Week 1 · Problem 2: Debug or release?](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-2), on paper, before opening the solution | 5 min |
 | [Cheatsheet: Constants you must not misremember](../guides/cheatsheet.md#constants-you-must-not-misremember) | 3 min |
 
 ## Mental model
@@ -45,7 +46,7 @@ let top = loop {
 
 1. `fn cap(x: u32) -> u32 { if x > 9 { 9 } else { x }; }` — what does the compiler say, and why? <details><summary>Answer</summary>`error[E0308]: mismatched types`, expected `u32`, found `()`. The semicolon discards the `if` expression's value, so the body is `()`. Delete it and the `if` becomes the tail expression.</details>
 2. The allocator's loop tests `p + PGSIZE <= stop`, not `p < stop`. What changes when `stop` is not page-aligned? <details><summary>Answer</summary>`p < stop` would hand out a final page that runs past `stop`. The allocator deals in whole pages, so the test asks "does the *whole* page fit?", the same half-open convention as `KERNBASE..PHYSTOP`.</details>
-3. `let m = usize::MAX; m + 1` — what happens under `oslings run`, and under `--release`? What would you write instead? <details><summary>Answer</summary>Debug: a panic, `attempt to add with overflow`. Release: silently `0`. `wrapping_add(1)` when wrapping is the intent (a counter, a ring index); `checked_add(1)` when the caller must handle `None`; `saturating_add(1)` when clamping is sane. Plain `+` is for arithmetic you can prove cannot overflow.</details>
+3. `let m = usize::MAX; m + 1` — what happens under `oslings run`, and under `--release`? What would you write instead? <details><summary>Answer</summary>As written, neither build runs: with `usize::MAX` in view, `rustc` rejects the line, "this arithmetic operation will overflow" ([Week 1 · Literals have types too](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#deeper-literals)). When `m` arrives at run time instead: debug, a panic, `attempt to add with overflow`; release, silently `0`. `wrapping_add(1)` when wrapping is the intent (a counter, a ring index); `checked_add(1)` when the caller must handle `None`; `saturating_add(1)` when clamping is sane. Plain `+` is for arithmetic you can prove cannot overflow.</details>
 
 ## What "done" looks like
 
@@ -53,4 +54,4 @@ let top = loop {
 
 ## If you finish early
 
-[Rustlings](https://github.com/rust-lang/rustlings): the `03_if` and `04_primitive_types` groups, then a peek ahead at `12_options`. [100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/): Chapter 2, "A Basic Calculator" (`if`/`else`, panics, `while` and `for`, overflow, the `wrapping`/`checked`/`saturating` methods).
+Work [Week 1 · Problem 3: Why `loop`?](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-3) and [Problem 5: An average that overflows](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-5) on paper. [Rustlings](https://github.com/rust-lang/rustlings): the `03_if` and `04_primitive_types` groups, then a peek ahead at `12_options`. [100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/): Chapter 2, "A Basic Calculator" (`if`/`else`, panics, `while` and `for`, overflow, the `wrapping`/`checked`/`saturating` methods).

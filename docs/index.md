@@ -116,8 +116,7 @@ hide:
     Each week's **Lecture** is linked on its Tuesday row and is about that
     week's Thursday and Friday exercises: read its **Essentials** before
     Tuesday. Week 9's lecture is given on Tue Oct 13, before fall break, and
-    its sessions link back to it. Weeks 1–5 still show their original second
-    lecture page as a **Reading** until those weeks are rebuilt.
+    its sessions link back to it.
 
     Did not finish? Complete it at a **make-up session** — office hours, on
     the **cs326** network — for three quarters of the exercise half, or

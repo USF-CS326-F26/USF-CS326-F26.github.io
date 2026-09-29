@@ -29,9 +29,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # --strict fails the build on any broken internal link. With 25+
-      # cross-linked lecture pages that is the only thing keeping the site
-      # honest, so do not remove it.
+      # --strict fails the build on any broken internal link or anchor. The
+      # weekly lecture pages, the prep pages and the guides all link into one
+      # another, and this is the only thing keeping those links honest, so do
+      # not remove it.
       - name: Build site
         run: mkdocs build --strict
 

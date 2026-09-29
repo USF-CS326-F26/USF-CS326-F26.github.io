@@ -1,6 +1,6 @@
 # Prep: Setup and Hello, Rust — 00r
 
-**Session:** Thu Aug 27, 1h45 · **Exercises:** `00r_hello_rust` · **Prep time:** ~30 min · **Lecture:** [Rust I: Values, Types, and Control Flow](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md)
+**Session:** Thu Aug 27, 1h45 · **Exercises:** `00r_hello_rust` · **Prep time:** ~30 min · **Lecture:** [Week 1 · Building an Operating System, and Your First Rust](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md)
 
 **Most of Thursday is setup.** Work the [Setup page](../assignments/setup.md) step by step: accept both GitHub invitations, clone your repo, toolchain, `oslings doctor` green, first `oslings submit`. Budget 45 minutes.
 
@@ -10,24 +10,27 @@ Your first Rust, and the number formats the kernel is written in. You will name 
 
 ## Concepts you need
 
-- **Bindings, `let mut`, and `const`** — [Rust I §1](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#1-bindings-and-immutability-as-a-decision) · [`const` versus `let`](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#const-versus-let)
-- **Integer widths: `u8`, `u64`, `usize` as an address** — [Rust I §2](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#2-scalar-types-and-why-width-is-hardware)
-- **Hex literals and the underscore** — [Rust I §3](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#3-hex-binary-and-the-underscore) · [the underscore is nothing](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#the-underscore-is-nothing)
-- **Tail expressions and the semicolon that bites** — [Rust I §4](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#4-expressions-statements-and-the-semicolon-that-bites) · [Rust I §5](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#5-functions)
-- **The three commands of every session** — [Building an Operating System §6](../lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is.md#6-how-the-course-runs) · [Git and Submission, `oslings submit`](../guides/git-and-submission.md#what-oslings-submit-commits)
+- **Bindings, `let mut`, and `const`** — [Week 1 · Bindings, `mut`, and `const`](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-bindings)
+- **Integer widths: `u8`, `u64`, `usize` as an address** — [Week 1 · Integers name their width](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-widths)
+- **Hex literals and the underscore** — [Week 1 · Hex, and the underscore](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-hex), [Hex by hand](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam-hex)
+- **Tail expressions and the semicolon that bites** — [Week 1 · Functions, and the semicolon that bites](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-tail)
+- **Reading a failed test: `left` and `right`** — [Week 1 · Red, then green](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#00r-tests) · [Using OSlings guide: The three test modes](../guides/oslings-usage.md#the-three-test-modes)
+- **The three commands of every session** — [Week 1 · How the Course Runs](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#course-runs) · [Git and Submission guide: What `oslings submit` commits](../guides/git-and-submission.md#what-oslings-submit-commits)
 
 ## Read before class
 
 | What | Time |
 |---|---|
 | [Setup](../assignments/setup.md) | 8 min |
-| [Rust I §§1–5](../lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md#1-bindings-and-immutability-as-a-decision) | 15 min |
-| [Dev Setup §1](../guides/dev-setup.md#1-install-rustup), [§3](../guides/dev-setup.md#3-accept-your-two-invitations), [§7](../guides/dev-setup.md#7-oslings-doctor) | 5 min |
-| [Using OSlings: test modes](../guides/oslings-usage.md#the-three-test-modes) | 2 min |
+| [Week 1 · This week](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#this-week), then [Thursday · `00r` Hello, Rust](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#thu-00r), all five sections | 8 min |
+| [Week 1 · How the Course Runs](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#course-runs): the classroom network, the three commands, and what earns credit | 3 min |
+| [Week 1 · For the exam](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam): [Octal, and four spellings of one number](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam-octal), [`as` truncates](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam-as) and [Hex by hand](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#exam-hex). Not needed today; on Midterm 1 | 2 min |
+| [Dev Setup guide: Install rustup](../guides/dev-setup.md#1-install-rustup), [Accept your two invitations](../guides/dev-setup.md#3-accept-your-two-invitations) and [`oslings doctor`](../guides/dev-setup.md#7-oslings-doctor) | 5 min |
+| [Using OSlings guide: The three test modes](../guides/oslings-usage.md#the-three-test-modes) | 2 min |
 
 **Have done before Thursday:**
 
-- `rustup` installed and `rustc --version` working ([Dev Setup §1](../guides/dev-setup.md#1-install-rustup)); large download.
+- `rustup` installed and `rustc --version` working ([Dev Setup guide: Install rustup](../guides/dev-setup.md#1-install-rustup)); large download.
 - A GitHub account, and know which one you are signed in as. Your `oslings-<username>` repository is created *for* you — you do not make one. Accepting the two invitations is Setup step 3, and you can do it at home.
 - A charged computer running macOS, Linux, or Windows with WSL2.
 
@@ -59,6 +62,7 @@ Today "done" also means the [Setup deliverables](../assignments/setup.md#deliver
 
 ## If you finish early
 
+- Work [Week 1 · Problem 1: What does the compiler say?](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-1) and [Problem 4: Hex by hand](../lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md#problem-4) on paper.
 - Rustlings (https://github.com/rust-lang/rustlings): `00_intro`, `01_variables`, `02_functions`.
 - 100 Exercises To Learn Rust (https://rust-exercises.com/100-exercises/): chapter 2, sections 2.1–2.4.
 - Start reading Friday's prep page, [Prep: Control Flow](01-cs326-2026-08-28-prep-control-flow.md).

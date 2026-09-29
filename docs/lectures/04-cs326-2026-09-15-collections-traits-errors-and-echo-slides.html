@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 4 · Collections, Traits, Errors, and Your First Command - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="04-cs326-2026-09-15-collections-traits-errors-and-echo/">&larr; Week 4 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 4
+
+## Collections, Traits, Errors, and Your First Command
+
+CS 326 Operating Systems · Tuesday, September 15
+
+**Thu Sep 17** `06r_collections`, `07r_traits` · **Fri Sep 18** `08r_errors`, `10c_echo`
+
+[The Week 4 page](04-cs326-2026-09-15-collections-traits-errors-and-echo/): **Essentials** is what Thursday and Friday assume.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–4 | This week; Midterm 1 note | title, this-week |
+| 4–18 | Thursday · `06r` (5 core) | thu-06r … 06r-fixed |
+| 18–42 | Thursday · `07r` (5 core, ending with the exam slide) | thu-07r … exam-copies |
+| 42–65 | Friday · `08r` (5 core, with the sentinel exam slide second) | fri-08r … 08r-one-thing |
+| 65–82 | Friday · `10c` (4 core) | fri-10c … 10c-seam |
+| 82–85 | Summary | summary |
+| 85–97 | Before Thursday, then Before Friday, then Next week | before-thursday, before-friday, next-week |
+| 97–105 | Buffer: questions, or one ↓ stack (Problem 2 under exam-copies) | |
+
+As taught: Sep 15 presented the in-class deck (`../inclass/week04-slides.html`), running its examples live. This deck keeps that deck's order and its split of time across the four exercises (about 12, 20, 19 and 14 of its 75 minutes; here 14, 24, 23 and 17, the same split ×1.2, leaving 8 minutes of buffer), with new analog code. This deck has no live runs, so spend any slack on the ↓ problem stacks.
+
+**Fast path** (the minimum lecture, 13 ids): this-week, 06r-one-thing, 06r-fixed, thu-07r, 07r-generics, 07r-dispatch, exam-copies, exam-sentinel, 08r-error-enum, 08r-question-mark, 08r-one-thing, 10c-one-thing, 10c-write-all. The Midterm 1 slides off the fast path (thu-06r, fri-08r) are never dropped: show each in its cut-order form, about 30 seconds each.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. 10c-seam: one sentence: "one file, two targets; `ulib` picks the backend, so your command never does; no heap, a 64 KiB image, bytes". The in-class plan also cut this first.
+5. 06r-closures: fold it into 06r-iterating: "`position` answers with an index or `None`, never −1".
+6. 07r-one-thing: one sentence on 07r-generics: "a generic body is checked once, for every type that could arrive; E0599 there is a missing bound".
+7. 06r-iterating: leave the code up and say "`iter` reads, `iter_mut` writes through `*`; a `&` parameter only reads (E0596)".
+8. fri-08r: leave the two enums up (Midterm 1) and say "absence is `Option`, failure is `Result`, and an ignored `Result` warns".
+9. thu-06r: leave the code up and say "a slice is an address and a length; every index is checked, and a kernel panic halts the machine".
+10. fri-10c: leave the argv line up and say "argv is bytes: `b"-r"`, not `"-r"`; exit status 0 is success".
+11. before-friday: point at the prep page; its questions can open Friday's session.
+12. before-thursday: last to go.
+
+Never cut: exam-copies and exam-sentinel (the For-the-exam slides), 06r-fixed (Practice Set 1 Problem 3 (c)), and the four traps the Sep 15 plan never cut: 06r-one-thing, 08r-error-enum (`.ok_or`), 08r-one-thing, 10c-one-thing.
+
+**Midterm 1 anchors:** "arrays, slices, `Vec`, and why kernels use fixed tables" → thu-06r, 06r-fixed · "traits, generics, monomorphization" → thu-07r, 07r-generics, 07r-dispatch, exam-copies · "`Result`, `?`, and error enums" → fri-08r, 08r-error-enum, 08r-question-mark · "why `write_all` exists" → 10c-write-all (the short-read half is week 5's).
+
+**Practice Set 1 anchors:** P3 (a) → exam-sentinel here (the C case) and week 3's exam-sentinel (its exact case, address 0) · P3 (c) → 06r-fixed · P3 (b), the `_` arm, is week 3's `match`; 08r-error-enum repeats why exhaustiveness pays. P1, P2 and P4 are weeks 1 and 2.
+
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Sep 17 | `06r_collections` | a table that never allocates | a `&` parameter only reads |
+| Thu Sep 17 | `07r_traits` | code written once, for any type | the bound is the contract |
+| Fri Sep 18 | `08r_errors` | an error path ending in one integer | absence is not failure |
+| Fri Sep 18 | `10c_echo` | your first command | bytes in, `write_all` out |
+
+<div class="highlight-box">Midterm 1 (Thu Oct 15) covers all four.</div>
+
+Notes:
+- Start from where this goes: in `36k` one scheduler loop runs any policy, in `40k` every filesystem call can fail and must say how, and in December your kernel runs commands you wrote in September.
+- Midterm 1 asks about arrays, slices, `Vec` and fixed tables; traits, generics and monomorphization; `Result`, `?` and error enums; and why `write_all` exists. By Friday night: a table that never allocates, code written once against a trait, an error path that ends in one integer, and `echo`.
+- **Q:** "Do these run in QEMU?" No: all four are `cargo test` on your laptop. `10c` is the first file that will also build for rv6, in December.
+
+---
+
+<!-- .slide: id="thu-06r" -->
+
+## Thursday · `06r`: arrays, slices, and `Vec`
+
+```rust
+const NHART: usize = 4;
+let ticks = [0u64; NHART];      // one counter per hart; nothing allocates
+fn busiest(ticks: &[u64]) -> u64 { … }
+busiest(&ticks);                // the whole array, as a slice
+busiest(&ticks[1..3]);          // harts 1 and 2 only
+```
+
+- **Array** `[T; N]`: one block of N values; N is in the type
+- **Slice** `&[T]`: an address and a length, borrowed in place; four harts or four hundred
+- **`Vec<T>`**: `Vec::new()`, `push`; owns a growable heap block and lends a slice too
+- Every index is checked: `ticks[9]` inside `busiest` panics
+
+Notes:
+- In `34k` the kernel keeps its processes in a table of 64 slots, and in `50k` each process keeps its open files in another. Thursday asks why each is an array. This part runs about 14 minutes.
+- Inside `busiest` the panic reads "index out of bounds: the len is 4 but the index is 9"; a constant `ticks[9]` on the array itself is caught at compile time, as "error: this operation will panic at runtime". In rv6 a panic stops the machine, so a number from user space is checked against `len()` before it touches a table. ↓ below: fat pointers by the byte, and what `ticks[i]` compiles to (optional).
+- **Q:** "Why does `busiest(&ticks)` compile when `ticks` is an array?" `&[u64; 4]` coerces to `&[u64]` at the call. The compiler supplies the length, 4, which it knows from the type.
+
+--
+
+<!-- .slide: id="deeper-fat" class="deeper" -->
+
+## Fat pointers, by the byte
+
+A pointer takes a second word when its target's type leaves something unknown:
+
+| Type | Bytes | What it holds |
+|---|---|---|
+| `&u64` | 8 | an address |
+| `&[u64; 4]` | 8 | an address; the 4 is in the type |
+| `&[u64]` | 16 | an address and a length |
+| `&mut dyn Clock` | 16 | an address and a vtable pointer |
+| `Vec<u64>` | 24 | a heap pointer, a length and a capacity |
+| `[u64; 4]` | 32 | the four values themselves |
+
+`[u64]` alone is **unsized**: it can exist only behind a pointer that knows its length.
+
+--
+
+<!-- .slide: id="deeper-bounds" class="deeper" -->
+
+## What `ticks[i]` compiles to
+
+`rustc -O` for `riscv64gc-unknown-none-elf`, given `fn tick_of(ticks: &[u64], i: usize) -> u64 { ticks[i] }`:
+
+```asm
+tick_of:                    # a0 = address, a1 = length, a2 = i
+    bgeu a2, a1, .LBB3_2    # i >= len, unsigned: go panic
+    slli a2, a2, 3          # i * 8
+    add  a0, a0, a2
+    ld   a0, 0(a0)
+    ret
+.LBB3_2:                    # ...then call core::panicking::panic_bounds_check
+```
+
+<span>The fat pointer arrives as two registers, `a0` and `a1`. The check is one compare and a branch that is almost never taken. It is unsigned, so an index computed from a negative number looks huge and fails too. For a `&[u64; 4]` the compare is against the constant 3, and a `for t in ticks.iter()` loop has no bounds check at all. C checks nothing: `ticks[9]` loads whatever lies 72 bytes in.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="06r-iterating" -->
+
+## Loops that read, loops that write
+
+```rust
+fn age(ticks: &mut [u64]) {
+    for t in ticks.iter_mut() {
+        *t /= 2;                // halve the counter t points at
+    }
+}
+```
+
+- `iter()`: a shared `&T` per element, enough to look
+- `iter_mut()`: an exclusive `&mut T`; `*` reaches the element
+- `.enumerate()`: a counter from 0 beside each element
+
+Predict: the parameter is `&[u64]` instead. What happens?
+
+E0596: "cannot borrow `*ticks` as mutable, as it is behind a `&` reference".
+
+Notes:
+- Read `*t /= 2` as "change the element, not the reference".
+- E0596 is about what the caller lent: a `&[u64]` can be read, never written, whatever loop runs over it.
+- **Q:** "Why `iter_mut` and not a loop over indices?" An index loop works too. `iter_mut` has no index to get wrong, and ↓ under thu-06r shows that a `for` over the iterator compiles with no bounds check at all.
+
+---
+
+<!-- .slide: id="06r-one-thing" -->
+
+## The one thing to get right · `06r`
+
+```rust
+fn carry(ticks: &mut [u64]) {
+    for t in ticks[1..].iter() {
+        ticks[0] += *t;          // hart 0 collects everyone's ticks
+    }
+}
+```
+
+Why does this not compile?
+
+``error[E0506]: cannot assign to `ticks[_]` because it is borrowed``. The iterator's borrow covers the whole table, slot 0 included, until the loop ends.
+
+<div class="highlight-box">While an iterator is alive, the table can only be reached through it.</div>
+
+Notes:
+- As taught, this was one of the four traps the Sep 15 plan never cut. The borrow belongs to the iterator, not to `t`: it covers every slot, even ones the loop never visits, until the loop ends.
+- rustc's own labels tell the story: "`ticks[_]` is borrowed here", "borrow later used here", "assigned to here but it was already borrowed". ↓ Problem 1 asks which of five loops compile.
+- **Q:** "Why is it E0502 on a `Vec` but E0506 here?" Indexing a `Vec` for writing calls a method that borrows it mutably; assigning into a slice element is a plain write. Both say the same thing: the loop's borrow is still alive.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: Which loops compile?
+
+Say whether each numbered line compiles, and give the error code of any that does not.
+
+```rust
+fn tally(ticks: &[u64], log: &mut Vec<u64>) {
+    for t in ticks.iter() { log.push(*t); }              // 1
+    for t in ticks.iter_mut() { *t = 0; }                // 2
+    for (i, t) in log.iter().enumerate() {
+        if *t > 9 { log[i] = 9; }                        // 3
+    }
+    for t in log.iter_mut() { *t += 1; }                 // 4
+    let big = ticks.iter().filter(|&&t| t > 5).count();  // 5
+}
+```
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+- **1 compiles.** `ticks` is only read, and `log` is a different value, borrowed mutably.
+- **2 fails: E0596.** `ticks` arrived as `&[u64]`, read-only, and `iter_mut` needs `&mut`. The fix is in the signature, not the loop.
+- **3 fails: E0502.** `log.iter()` holds a shared borrow for the whole loop, and `log[i] = 9` on a `Vec` needs a mutable one. On a slice the same line is E0506.
+- **4 compiles.** It writes through each element's own `&mut`, the way line 3 should have.
+- **5 compiles.** `filter` passes its closure a `&&u64`, and the pattern `&&t` peels off both references.
+
+---
+
+<!-- .slide: id="06r-closures" -->
+
+## Adapters and closures
+
+An iterator **adapter** takes a **closure**, an unnamed function written `|args| body` that may use the variables around it:
+
+```rust
+let limit = 100;
+let first = ticks.iter().position(|&t| t > limit);           // Option<usize>
+let hot = (0..NHART).filter(|&h| ticks[h] > limit).count();  // usize
+```
+
+- Read `|&h| ticks[h] > limit` as "a test on one index, reading `ticks` and `limit` from outside"
+- `position` answers with an index or `None`, never −1
+
+Notes:
+- `|&t|` is a pattern: `iter` hands the closure a `&u64`, and `&t` takes the `u64` out of it.
+- None of this allocates: each adapter pulls one item at a time (↓ adapters are lazy). `collect` is the one that builds a container, and it must be told which.
+- **Q:** "Why `Option<usize>` and not −1, like C?" A `usize` has no −1, and any value inside the range could be a real index. `None` lies outside every index; Friday's exam slide makes the general case.
+
+--
+
+<!-- .slide: id="deeper-lazy" class="deeper" -->
+
+## Adapters are lazy
+
+An adapter is a small struct wrapped around the iterator before it, and it does nothing until something pulls. On `ticks = [0, 20, 45, 3]`:
+
+```text
+ticks.iter().map(|&t| t * 2).position(|d| d > 50)
+
+pull 1   iter -> &0    map -> 0     position: 0 > 50?   no
+pull 2   iter -> &20   map -> 40    position: 40 > 50?  no
+pull 3   iter -> &45   map -> 90    position: 90 > 50?  yes: Some(2)
+         the fourth tick is never read
+```
+
+No list of doubled ticks ever exists, which is why adapters are legal in a kernel with no heap. `collect` must build a container, and must be told which, as in `collect::<Vec<u64>>()`.
+
+---
+
+<!-- .slide: id="06r-fixed" -->
+
+## Why the kernel's tables are arrays
+
+rv6's process table, `PROCS`, is a `static` array of 64 slots:
+
+1. **No heap yet.** Boot needs the table long before `38k` adds a heap.
+2. **The trap path must not allocate.** It could fail with nobody to tell.
+3. **A hard limit fails honestly.** The 65th `fork` gets an error on the spot.
+
+On a host, `Vec` is fine.
+
+Notes:
+- Midterm 1 scope: "why kernels use fixed tables". Practice Set 1 Problem 3 (c) asks for two of these reasons.
+- A `static` array needs no heap: the linker gives it a fixed place, in `.bss`. On the trap path an allocation could also wait on a lock the interrupted code holds. The third reason is about failure you can test: a growing `Vec` fails inside the allocator, at whichever call next needs memory. A host program has an allocator underneath, so none of this applies there.
+- **Q:** "Isn't 64 processes a silly limit?" It is small and honest: the 65th `fork` returns an error a test can check. Real kernels pick bigger numbers; the argument does not change.
+
+---
+
+<!-- .slide: id="thu-07r" -->
+
+## Thursday · `07r`: a trait is a promise
+
+```rust
+pub trait Clock {
+    fn now(&mut self) -> u64;                   // required: no body
+    fn since(&mut self, start: u64) -> u64 {    // default
+        self.now() - start
+    }
+}
+pub struct Stepper { pub t: u64, pub step: u64 }    // a clock for tests
+impl Clock for Stepper {
+    fn now(&mut self) -> u64 { self.t += self.step; self.t }
+}
+```
+
+- A **trait** is a contract; a **default** is filled in by the trait and may call the required ones
+- `impl Clock for Stepper`: it writes `now` and inherits `since`
+- Leave `now` out: E0046, "not all trait items implemented, missing: `now`"
+
+Notes:
+- In `36k` the scheduler runs whatever policy it is handed, and in `46k` a shell command prints without knowing where its bytes go. Both call a method on a value whose type they never learn. This part runs about 24 minutes.
+- Read `since` as "whatever `now` means for this type, minus `start`": every clock written later can call it without writing it. `&mut self` lets a clock change when read.
+- **Q:** "Can an `impl` override the default?" Yes: write `since` in the `impl` and yours wins. What an `impl` cannot do is skip a required method.
+
+---
+
+<!-- .slide: id="07r-generics" -->
+
+## Generic functions and their bounds
+
+```rust
+pub fn deadline<C: Clock>(clock: &mut C, budget: u64) -> u64 {
+    clock.now() + budget
+}
+```
+
+Left open, the type allows almost nothing: the body must compile for types not yet written. A **trait bound** narrows it.
+
+- Read `<C: Clock>` as "`C` is some type that keeps `Clock`'s promise"
+- `where C: Clock` and `clock: &mut impl Clock` say the same
+- Each parameter takes its own bound: `fn race<A: Clock, B: Clock>` mixes two clock types
+
+Notes:
+- The bound reads in both directions: a promise the body may use, and a requirement every caller must meet.
+- With one `C` for both arguments, both must be the same type; `race` needs two parameters to mix a `Frozen` and a `Stepper`.
+- **Q:** "Is `impl Clock` in argument position any different?" Same static dispatch. The one difference: a caller cannot name the type with `::<>`; `deadline::<Stepper>` is E0107 on the `impl Clock` spelling.
+
+---
+
+<!-- .slide: id="07r-one-thing" -->
+
+## The one thing to get right · `07r`
+
+A generic body calls `clock.now()`, and `C` has no bound. What does rustc say?
+
+``error[E0599]: no method named `now` found for mutable reference `&mut C` in the current scope``
+
+help: "items from traits can only be used if the type parameter is bounded by the trait"
+
+<div class="highlight-box">A generic body is checked once, for every type that could ever arrive.</div>
+
+Notes:
+- Read the help line: it names the fix, a bound on `C`. E0599 here is a missing bound, not a missing `use`.
+- Checking at the definition is what lets a library ship generic code to callers it has never seen.
+- **Q:** "Every type I pass has `now`. Why can't the compiler see that?" Callers written next year must be covered too, so only the bound counts. Generics are checked at the definition, not at each call.
+
+---
+
+<!-- .slide: id="07r-dispatch" -->
+
+## Static and dynamic dispatch
+
+```rust
+pub struct Frozen(pub u64);                          // a clock stopped at .0
+impl Clock for Frozen { fn now(&mut self) -> u64 { self.0 } }
+let (mut f, mut s) = (Frozen(100), Stepper { t: 0, step: 10 });
+let clock: &mut dyn Clock = if paused { &mut f } else { &mut s };
+```
+
+| | `<C: Clock>`, `impl Clock` | `&mut dyn Clock` |
+|---|---|---|
+| Method found | at compile time | at run time, in the vtable |
+| Copies of the code | one per type used (monomorphization) | one |
+| One variable, either type, picked at run time | no | yes |
+
+A **trait object** is a fat pointer: the value's address and its **vtable**.
+
+Notes:
+- rustc emits `deadline::<Stepper>` and `deadline::<Frozen>`, each calling its own `now` directly: **monomorphization**, static dispatch. It costs code size, not time.
+- Without the `dyn` annotation the two arms are different types: E0308, "`if` and `else` have incompatible types". rv6's shell passes one `&mut dyn Out` to every command. ↓ below: the vtable, up close.
+- **Q:** "Is `dyn` slow?" One extra load and an indirect jump per call, and nothing inlines across it. The real reason to pick it is choice at run time: one variable can hold whichever clock the program picked.
+
+--
+
+<!-- .slide: id="deeper-vtable" class="deeper" -->
+
+## The vtable, up close
+
+Calling `now` through a `&mut dyn Clock`, compiled for RISC-V:
+
+```asm
+deadline_dyn:               # a0 = data pointer, a1 = vtable, a2 = budget
+    ...                     # save ra and s0; s0 = budget
+    ld   a1, 24(a1)         # the vtable's slot for now
+    jalr a1                 # an indirect call: nothing to inline
+    add  a0, a0, s0
+```
+
+- A vtable holds the type's drop function, size and alignment at 0, 8 and 16, then one slot per method: `now` at 24, the default `since` at 32
+- Linux's `struct file_operations` is the same table built by hand in C
+- Add `fn now_as<T: From<u64>>(&mut self) -> T` and `&mut dyn Clock` fails: E0038, "the trait `Clock` is not dyn compatible". A generic method would need one slot per `T`
+
+---
+
+<!-- .slide: id="exam-copies" class="exam" -->
+
+## Count the copies
+
+**Monomorphization**: one copy per distinct list of type arguments **actually used**:
+
+- a hundred calls with `Stepper` share one
+- unused pairs cost nothing; `(Frozen, Stepper)` is not `(Stepper, Frozen)`
+- a `dyn` parameter adds none: `dyn Clock` is one type
+
+Predict: `race` is called with three of the four pairs of two clock types. How many copies?
+
+Three.
+
+Notes:
+- Midterm 1 (scope: "traits, generics, monomorphization"). Expect a generic function, its call sites, and "how many, and what changes with `dyn`?" With `dyn` the copies stop multiplying, and every call pays an indirect jump instead.
+- The technique: write each call's type arguments as one row, then count the distinct rows. ↓ Problem 2 has this shape; the prep's Check yourself question 2 is the one-parameter version.
+- **Q:** "Does a generic function nobody calls cost anything?" No: nothing is emitted until a call names its types. Unused generics add nothing to the binary.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: Count the copies
+
+With `Clock`, `Stepper` and `Frozen` as before:
+
+```rust
+fn deadline<C: Clock>(clock: &mut C, budget: u64) -> u64 { clock.now() + budget }
+fn race<A: Clock, B: Clock>(a: &mut A, b: &mut B) -> bool { a.now() < b.now() }
+fn deadline_dyn(clock: &mut dyn Clock, budget: u64) -> u64 { clock.now() + budget }
+```
+
+A program calls them with `s1` and `s2` as `Stepper`s and `f` as a `Frozen`:
+
+```rust
+deadline(&mut s1, 5);  deadline(&mut s2, 9);   deadline(&mut f, 1);
+race(&mut s1, &mut f); race(&mut f, &mut s1);  race(&mut s1, &mut s2);
+deadline_dyn(&mut s1, 5);  deadline_dyn(&mut f, 5);
+```
+
+**(a)** How many machine-code copies of each function exist? **(b)** `race`'s second parameter becomes `b: &mut dyn Clock`. How many copies of `race` now?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+**(a)**
+
+| Function | Copies | Which |
+|---|---|---|
+| `deadline` | 2 | `Stepper` and `Frozen`; `s1` and `s2` share a type, so they share a copy |
+| `race` | 3 | `(Stepper, Frozen)`, `(Frozen, Stepper)`, `(Stepper, Stepper)` |
+| `deadline_dyn` | 1 | it is not generic |
+
+The fourth pair, `(Frozen, Frozen)`, is never called, so it is never built.
+
+**(b)** Two, one per type of `a`. `b` is always `dyn Clock`, and each `b.now()` becomes an indirect call through the vtable.
+
+---
+
+<!-- .slide: id="fri-08r" -->
+
+## Friday · `08r`: absence is not failure
+
+An exception needs a handler to unwind to. Mid-trap there are no caller frames to unwind into, and a panic halts the machine. So failure is a value:
+
+```rust
+enum Option<T>    { Some(T), None }     // absence: nothing, and that's fine
+enum Result<T, E> { Ok(T),   Err(E) }   // failure: E says what went wrong
+```
+
+- The first hart over the limit? Perhaps none: `Option<usize>`
+- A packet too short to decode? That call failed: `Result`
+- Drop a `Result` unread and rustc warns: `#[must_use]`
+
+Notes:
+- In `40k` a filesystem call can fail eight ways, and each failure must reach the program that asked. Friday builds that path. This part runs about 23 minutes.
+- The warning says "unused `Result` that must be used". `let _ = …;` records that you dropped it on purpose; an unchecked C `-1` passes in silence.
+- **Q:** "When is `unwrap` allowed?" In tests, where a panic is one red test. In a kernel a panic stops the machine: return a `Result` for what the outside world did to you, and panic only for what you did to yourself.
+
+---
+
+<!-- .slide: id="exam-sentinel" class="exam" -->
+
+## A sentinel, or an `Option`
+
+A **sentinel** is an ordinary value meaning "no answer", like C's `-1` or null. It works only if no real answer can equal it.
+
+Predict: `getchar()`'s `int` is stored in a `char`. What breaks?
+
+Byte `0xFF` looks like `EOF`; where `char` is unsigned, as on RISC-V, `EOF` never arrives.
+
+`Option<u8>` puts "no byte" outside the bytes by construction.
+
+Notes:
+- Midterm 1. Practice Set 1 Problem 3 (a) asks why a sentinel can work and what an `Option` would buy; its case is address 0 for "not mapped", safe because RAM starts at `0x8000_0000` (week 3's exam-sentinel works it).
+- `getchar()` returns an `int` precisely so that `EOF`, −1, lies outside the bytes 0–255; the `char` throws that room away. With `Option<u8>`, the compiler makes every caller handle `None`. rv6 keeps a few sentinels from xv6, such as the null pointer `kalloc()` returns when memory runs out.
+- **Q:** "Then why does rv6 still use sentinels?" It follows xv6's C, which has no `Option`. Each sentinel is safe only while no real answer can equal it, and nothing makes a caller check.
+
+---
+
+<!-- .slide: id="08r-error-enum" -->
+
+## An error enum, and where absence becomes failure
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HdrError { TooShort, BadMagic }
+
+let magic = pkt.get(0..2).ok_or(HdrError::TooShort);
+```
+
+- A variant per reason; callers branch on the reason, not a number
+- `pkt.get(0..2)`: "the first two bytes, if there are two"
+- `.ok_or(e)`: here, a missing prefix means `TooShort`
+
+Return an `Option` where a `Result` is due: E0308, "expected `Result<u8, HdrError>`, found `Option<u8>`".
+
+Notes:
+- As taught, one of the four traps the Sep 15 plan never cut. `.ok_or(e)` keeps a present value as `Ok` and swaps `None` for `Err(e)`. `get` cannot know the caller needed two bytes; the `.ok_or` line is where that need is written down.
+- Add a variant and every `match` that ignores it fails with E0004, "non-exhaustive patterns". Callers consume one with patterns that reach inside, such as `Err(HdrError::TooShort) => …`. That is Practice Set 1 Problem 3 (b)'s point from week 3: a `_` arm opts out.
+- **Q:** "Why derive `PartialEq`?" So `==` works on an error, and a test can `assert_eq!` one. `Copy` is free because the variants carry no data.
+
+---
+
+<!-- .slide: id="08r-question-mark" -->
+
+## `?`, and where a `Result` becomes a number
+
+```rust
+pub fn version(pkt: &[u8]) -> Result<u8, HdrError> {
+    let magic = pkt.get(0..2).ok_or(HdrError::TooShort)?;
+    if magic != b"RV" { return Err(HdrError::BadMagic); }
+    let v = pkt.get(2).ok_or(HdrError::TooShort)?;
+    Ok(*v)
+}
+```
+
+- Read each `?` as "or leave now, carrying this error"; on `Ok(v)` it hands you `v`
+- Types stop at the trap: the user program reads one integer in `a0`, so the system-call function converts once, 0 and up for success, negative for failure
+
+Notes:
+- Longhand, each `?` is a `match` whose `Err` arm returns.
+- Linux answers minus an `errno` code, such as −22 for `EINVAL`; rv6 answers every failure with −1. ↓ below: `?` converts on the way out (`From`), optional.
+- **Q:** "Does `?` work on `Option`?" Yes, inside a function that returns `Option`: `None` returns `None`. It will not mix: `?` on an `Option` inside a function returning `Result` is E0277, and `.ok_or` is the bridge.
+
+--
+
+<!-- .slide: id="deeper-from" class="deeper" -->
+
+## `?` converts: `From` and layered errors
+
+`?`'s `Err` arm is really `return Err(From::from(e))`, so the error may change type on the way out:
+
+```rust
+pub struct BootError { pub stage: u8, pub cause: HdrError }
+impl From<HdrError> for BootError {
+    fn from(cause: HdrError) -> BootError { BootError { stage: 1, cause } }
+}
+```
+
+- A function returning `Result<u8, BootError>` may now write `version(pkt)?`
+- A short packet comes out as `Err(BootError { stage: 1, cause: HdrError::TooShort })`
+- Without the `impl`: E0277, "`?` couldn't convert the error to `BootError`"
+
+---
+
+<!-- .slide: id="08r-one-thing" -->
+
+## The one thing to get right · `08r`
+
+A `?` sits in a function that returns `i64`. What does rustc say?
+
+``error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` …``
+
+`?` is an early `return Err(e)`, and a bare integer has no `Err` side to carry it.
+
+<div class="highlight-box"><code>?</code> can only leave through a return type that has an <code>Err</code>.</div>
+
+Notes:
+- As taught, one of the four traps the Sep 15 plan never cut. Only the function at the system-call boundary returns a bare number; everything below it returns `Result` and uses `?`.
+- ↓ Problem 3 traces a boundary function by hand, with numbers.
+- **Q:** "Can `main` use `?`?" Only if `main` returns a `Result`; then an `Err` ends the program with a nonzero status. A system call cannot: the user program must get one integer.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: Trace the exits
+
+A boundary function returns `version`'s byte on success, −1 for `TooShort` and −2 for `BadMagic`.
+
+**(a)** What does it return for `b"RV\x07"`, `b"RV\x00"`, `b"RV"`, `b"R"`, `b""`, `b"XY\x07"`, `b"rv\x07"` and `b"XY"`?
+
+**(b)** Someone deletes the `?` at the end of `version`'s first line. Which line does rustc now reject, and why?
+
+**(c)** Why could the boundary function not use `?`?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+| Packet | `version` | Boundary |
+|---|---|---|
+| `b"RV\x07"` | `Ok(7)` | 7 |
+| `b"RV\x00"` | `Ok(0)` | 0 |
+| `b"RV"` | `Err(TooShort)`: the magic passes, byte 2 is missing | −1 |
+| `b"R"`, `b""` | `Err(TooShort)`: `get(0..2)` is `None` | −1 |
+| `b"XY\x07"`, `b"rv\x07"`, `b"XY"` | `Err(BadMagic)`: `b"rv"` is not `b"RV"` either | −2 |
+
+<span>The second row is why failure is negative: 0 is a real version. **(b)** The comparison `magic != b"RV"`, with E0308, "expected `Result<&[u8], HdrError>`, found `&[u8; 2]`". Without `?`, `magic` is still the whole `Result`, not the two bytes inside it; `?` is what takes them out. **(c)** `?` is an early `return Err(e)`, and a function returning `i64` has no `Err` to return: E0277.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="fri-10c" -->
+
+## Friday · `10c`: words in, bytes out, a number back
+
+```text
+$ sort -r names.txt
+argv[0] = "sort"    argv[1] = "-r"    argv[2] = "names.txt"    argc = 3
+```
+
+- `argv[0]` is `sort` itself; `-r` is `argv[1]`
+- A **command** answers with bytes on **standard output** (fd 1) and an **exit status** (0: it worked)
+- Arguments are bytes: each is a `&[u8]`
+- `b"-r"` is a `&[u8; 2]`, `"-r"` a `&str`: mixing them is E0308
+
+Notes:
+- In December `oslings ship` rebuilds your commands to run at your own rv6 shell's prompt. `10c_echo` is the first. This part runs about 17 minutes.
+- The shell keeps the exit status in `$?`. `exec` copies raw bytes and nobody checks them, so `Args::get` answers `Option<&[u8]>`: past the end is `None`. The E0308 reads "expected `&[u8]`, found `&str`".
+- **Q:** "Why not `&str`? Everything I type is text." A `&str` promises valid UTF-8, and keeping that promise means checking every byte. `exec` copied bytes and promised nothing, so bytes are the honest type.
+
+---
+
+<!-- .slide: id="10c-one-thing" -->
+
+## The one thing to get right · `10c`
+
+A test fails on two strings that look the same. Why?
+
+One has a blank before its newline.
+
+- **Separator**: only between items, like `:` in `PATH`
+- **Terminator**: after every item, like `\n` in a text file
+- An empty item keeps its place: `/bin::/usr/bin` has three entries
+
+<div class="highlight-box">Decide which one you are printing before you write the loop.</div>
+
+Notes:
+- As taught, one of the four traps the Sep 15 plan never cut. `assert_eq!` prints both strings in quotes: look for the space before the `\n`.
+- The prep's Check yourself question 2 is this slide, with an empty item in the middle.
+- **Q:** "Where else does this matter?" Anywhere a list is printed. A text file ends each line with a `\n` terminator, which is why `wc -l` reports one line fewer for a file with no final newline.
+
+---
+
+<!-- .slide: id="10c-write-all" -->
+
+## `write_all`, and the short write
+
+`write(fd, bytes)` is a request, and its answer is a count that may be smaller than what you offered:
+
+```text
+write_all(1, b"hello, os\n")    10 bytes; the device takes at most 4 per call
+  write -> Ok(4)   "hell"       6 left
+  write -> Ok(4)   "o, o"       2 left
+  write -> Ok(2)   "s\n"        0 left: write_all returns Ok(())
+```
+
+- `Ok(())` means all of it: there is no partial success
+- A `write` that returns 0 would spin that loop forever, so `write_all` makes it an error
+
+Notes:
+- Midterm 1 scope: "why `write_all` exists". A nearly full disk, or a signal that arrives mid-write, can take 4 of your 10 bytes and return `Ok(4)`, with no error and no warning. `write_all` asks again, re-pointing its slice past what went out.
+- The test harness takes every byte in one call, so a bare `write` passes every test and breaks on the first short write. ↓ Problem 4 works one by the numbers.
+- **Q:** "What if a `write` fails halfway?" `write_all` returns that `Err` at once. The bytes already written stay written, and the caller learns the whole message did not go out.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: Short writes by the numbers
+
+A device accepts at most 5 bytes per `write`, and a program sends `b"stat: ok\n"`, 9 bytes.
+
+**(a)** With one bare `write`, what does it return, and what arrives?
+
+**(b)** With `write_all`, how many `write` calls happen, and what does each return?
+
+**(c)** The device starts answering `Ok(0)`. What does `write_all` do?
+
+**(d)** Why would the program in (a) pass its tests on your laptop?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+**(a)** `Ok(5)`. `"stat:"` arrives and `" ok\n"` never does. Nothing reports the loss unless the program compares 5 with 9.
+
+**(b)** Two: `Ok(5)` for `"stat:"`, then `Ok(4)` for `" ok\n"`. Then `write_all` returns `Ok(())`.
+
+**(c)** It returns `Err(Error(-1))` at once, instead of asking forever for bytes the device will not take.
+
+**(d)** The harness's `write` takes every byte in one call, so a short write never happens there. A green test proves the logic, not the handling of the count.
+
+---
+
+<!-- .slide: id="10c-seam" -->
+
+## One file, two targets: the `ulib` seam
+
+Your command calls **`ulib`**, a **façade**: one small API, two implementations.
+
+- Built for your laptop: each call goes to the host
+- Built for rv6: each call is an `ecall`
+- The `#[cfg(target_os = "none")]` that picks lives in `ulib`, so your command never chooses
+
+The rv6 terms: no heap, an image of at most 64 KiB, bytes only.
+
+Notes:
+- "Built for rv6" means built for `riscv64gc-unknown-none-elf`. The ulib guide's portability table lists the substitutes: fixed arrays for `Vec`, `write_all` and `write_usize` for `write!`. As taught, the in-class plan cut this material first when short.
+- The tests drive your command through `ulib`'s host side and capture what it writes, which is why a bare `write` passes them. ↓ below: why `target_os`, and not a Cargo feature.
+- **Q:** "With no `main` on rv6, where does the program start?" `ulib::main!` writes the entry point for each target, and the ulib guide's `ulib::main!` section shows both. Your function is the same in both.
+
+--
+
+<!-- .slide: id="deeper-target-os" class="deeper" -->
+
+## Why `target_os`, and not a Cargo feature
+
+`ulib` could pick its backend with `#[cfg(feature = "rv6")]` and a `--features rv6` flag. That fails two ways:
+
+- Forget the flag when building for RISC-V, and the host backend compiles for a machine with no `std`: the errors name `std`, never the flag
+- Cargo unifies features across a build, so one crate that enables `rv6` enables it for every crate, host tests included
+
+`target_os` comes from the `--target` flag itself, so the backend cannot disagree with the machine. Features should add abilities, never choose between alternatives.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- A slice is an address and a length; `&` only reads
+- A live iterator is the only way into its table
+- Kernel tables are fixed arrays
+- A generic body is checked once, against its bounds
+- One copy per type list used; `dyn`: one copy, a vtable
+- `Option` is absence, `Result` failure; `.ok_or` decides, `?` carries
+- Bytes in, `write_all` out, one number back
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 1?" Practice Set 1 Problem 3 on paper, then the page's Problems 1 to 4. The For the exam section covers sentinels and counting copies.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/04-cs326-2026-09-17-prep-collections-and-traits/): check yourself
+
+You build a miniature process table, then an output sink and a scheduling policy behind traits, all under `cargo test`. Prep: about 20 minutes.
+
+**1.** A function takes `states: &[ProcState]`. Can its body call `states.iter_mut()`?
+
+**2.** `fn log<S: Sink>(s: &mut S, line: &str)` is called with three sink types. How many copies of `log` exist, and what changes with `&mut dyn Sink`?
+
+**3.** A system call hands the kernel an unchecked index. Why is `table[i]` the wrong first move?
+
+Notes:
+- Walk the prep page (about 20 minutes of prep). What you build: a miniature of rv6's process table, a fixed array of slots; then an output sink with one required method and a default, and a scheduling policy driven by a loop that never learns which policy it holds.
+- No `oslings doctor` this week: all four exercises run under `cargo test`. The three questions are the prep's own Check yourself (06r-iterating, exam-copies, thu-06r); answers are on the prep page.
+- **Q:** "Where do I start on Thursday?" Read the tests first. They are the contract, and each test's name is a sentence about what your code must do.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/04-cs326-2026-09-18-prep-errors-and-echo/): check yourself
+
+You build a chain of fallible steps that ends in one integer, then `echo`, your first command. Prep: about 20 minutes.
+
+**1.** A directory scan finds no entry for a name. `Option` or `Result`, and where is "missing means the call failed" decided?
+
+**2.** Printing items `x`, an empty item, and `y` with a space **separator**: how many spaces, and what would "a space after every item" give instead?
+
+**3.** Why `write_all` and never `write`, when the tests pass either way?
+
+Notes:
+- Walk the prep page (about 20 minutes). What you build: `08r`, fallible steps over a toy directory, glued with `?`, ending at a boundary that returns one integer; then `10c`, `echo` against the `ulib` façade, with arguments in as byte slices and bytes out through `write_all` on fd 1.
+- The three questions are the prep's own Check yourself (08r-error-enum, 10c-one-thing, 10c-write-all); answers are on the prep page.
+- **Q:** "Will my `echo` really run on rv6?" In December: `oslings ship` rebuilds the same file for rv6, and it runs at your own shell's prompt, if it kept the three rv6 terms on 10c-seam.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 5 · Streams of Bytes: `cat`, `wc`, and `grep`](05-cs326-2026-09-22-cat-wc-and-grep/): read its Essentials before Tuesday.
+
+Notes:
+- Week 5 builds three commands on this week's `&[u8]`, `write_all` and `Result`. Its short read is the mirror image of today's short write.
+- **Q:** "Is Week 5 on Midterm 1?" Yes: the short-read contract and streaming with fixed buffers and O(1) state are in scope. Midterm 1 is Thursday, October 15.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,20 +1,31 @@
 """Generate docs/schedule.yml for CS 326 Fall 2026.
 
 `sessions()` below is the source of truth for dates, types, topics, and the
-exercises each session releases. Links to the Prep page, the lecture page, and
-the slide deck for each session are attached automatically by matching the
-date against the filenames in docs/prep/ and docs/lectures/, so they cannot
-drift as pages are added or renamed. Meeting summaries in docs/summaries/ are
-attached the same way, as are the handwritten notes in docs/notes/; the Zoom
-recordings they go with are listed in RECORDINGS below, since no local file
-names those.
+exercises each session releases. Links are attached automatically by matching
+a row's date against the filenames, so they cannot drift as pages are added or
+renamed:
+
+  - an exercise row gets the Prep page dated that day (docs/prep/);
+  - a lecture row gets the lecture page dated that day as "Lecture", plus its
+    deck as "Slides" — every lecture page is dated the Tuesday it is presented;
+  - an exam row gets the page dated that day, if any, as "Optional reading"
+    (the Dec 8 final-review page, which is read, not lectured).
+
+Nothing else is attached by date. A lecture presented on a different day from
+the sessions it serves (week 9's on Oct 13, week 15's first half on Nov 24) is
+linked from those sessions by hand in `sessions()` ("Lecture · given Oct 13").
+Meeting summaries in docs/summaries/ are attached by date too, as are the
+handwritten notes in docs/notes/; the Zoom recordings they go with are listed
+in RECORDINGS below, since no local file names those.
+
+`utils/check_links.py` checks the result: one Lecture link per lecture row,
+every lecture page dated to a lecture or exam row, and more.
 
 Other generators import this module (`from gen_schedule import sessions`), so
 keep the table inside `sessions()` and the file writing inside `main()`.
 
 Run from the site repo root:  python3 utils/gen_schedule.py
 """
-import re
 from collections import Counter
 from pathlib import Path
 
@@ -55,80 +66,18 @@ def rel(url):
     return url if url.startswith("http") else url.lstrip("/")
 
 
-def reading_targets(S):
-    """{lecture page stem: (stamp, week, "Fri Dec 4")} for the first session that reads it.
+def lecture_links(date_str, label="Lecture"):
+    """[(label, url), ("Slides", url)] for the lecture page dated `date_str`.
 
-    A prep page's header names the lecture its session was built on, so
-    inverting those citations says which session each page is really for. That
-    is usually not the day it is released: L04 goes up on Thu Sep 3 in week 2
-    and is the reading for `04r`/`05r` in week 3 — and for two of them the gap
-    is a fortnight. Pages nothing cites (the course intro, the exam-week
-    revision pages) are left out and keep their plain label.
-    """
-    by_stamp = {stamp(s["date"]): (s["week"], f"{DAY_ABBR[s['day']]} {s['date']}")
-                for s in S}
-    out = {}
-    for md in sorted(PREP.glob("*.md")):
-        m = re.match(r"\d+-cs326-(\d{4}-\d{2}-\d{2})-prep-", md.stem)
-        if not m or m.group(1) not in by_stamp:
-            continue
-        st = m.group(1)
-        header = next((l for l in md.read_text().splitlines()
-                       if "**Lecture:**" in l), "")
-        for stem in re.findall(r"lectures/([\w-]+)\.md", header):
-            if stem not in out or st < out[stem][0]:
-                out[stem] = (st, *by_stamp[st])
-    return out
-
-
-def reading_placement(S, targets):
-    """{(week, day) of the row that shows a reading: [release dates it shows]}.
-
-    A reading released on Thursday for a later week is shown on that week's
-    Friday row instead, after Friday's Prep: it is the weekend's reading, and
-    Friday is the last session before the week it belongs to. One read the
-    same week it goes up — that day's own material, or the next day's — stays
-    on its release row, where a student meets it in time to do it.
-    """
-    fridays = {s["week"]: s for s in S
-               if s["day"] == "friday" and s["type"] == "exercise"}
-    out = {}
-    for s in S:
-        pages = sorted(LECTURES.glob(f"*-cs326-{stamp(s['date'])}-*.md"))
-        if not pages:
-            continue
-        read_in = [targets[p.stem][1] for p in pages if p.stem in targets]
-        row = s
-        if (s["type"] == "exercise" and s["day"] != "friday"
-                and read_in and min(read_in) > s["week"] and s["week"] in fridays):
-            row = fridays[s["week"]]
-        out.setdefault((row["week"], row["day"]), []).append(s["date"])
-    return out
-
-
-def lecture_links(date_str, label="Lecture", row_week=None, targets=None):
-    """[(text, url), ...] for the lecture page dated `date_str` and its deck.
-
-    On an exercise row the page is not that day's material — it is released
-    alongside the exercise and read for a later session. Pass the row's own
-    `row_week` and the `targets` map to have the label say which: another week
-    is named by number ("Reading · Week 3"), a later day of the same week by
-    date ("Reading · Fri Dec 4"). A page that is read the day it appears keeps
-    the plain label.
+    The deck is added only when a `-slides.html` sits beside the page (the
+    Dec 8 reading has none). `main()` calls this for lecture rows ("Lecture")
+    and exam rows ("Optional reading") only.
     """
     out = []
     for md in sorted(LECTURES.glob(f"*-cs326-{stamp(date_str)}-*.md")):
-        tag = ""
-        target = (targets or {}).get(md.stem)
-        if row_week and target:
-            tstamp, tweek, twhen = target
-            if tweek != row_week:
-                tag = f" · Week {tweek}"
-            elif tstamp != stamp(date_str):
-                tag = f" · {twhen}"
-        out.append((label + tag, f"lectures/{md.stem}/"))
+        out.append((label, f"lectures/{md.stem}/"))
         if (LECTURES / f"{md.stem}-slides.html").exists():
-            out.append(("Slides" + tag, f"lectures/{md.stem}-slides.html"))
+            out.append(("Slides", f"lectures/{md.stem}-slides.html"))
     return out
 
 
@@ -165,12 +114,15 @@ def sessions():
     """The confirmed Fall 2026 calendar, one dict per class meeting.
 
     type: lecture | exercise | exam | holiday
-      lecture   Tuesday: the full lecture, ending with a walk-through of
-                Thursday's Prep page
-      exercise  Thursday / Friday: an exercise session; the lecture page dated
-                that day is the reading, released alongside the exercise
+      lecture   Tuesday: the week's lecture, ending with a walk-through of the
+                Thursday and Friday Prep pages. The lecture page and deck dated
+                that day attach as "Lecture" and "Slides".
+      exercise  Thursday / Friday: an exercise session. Its Prep page attaches
+                by date; its lecture is the Tuesday row's, except where a
+                manual "Lecture · given <date>" link below says otherwise.
       exam      in-class exam: the two midterms (Thursday) and the final,
-                which is given in the last Tuesday slot, not in finals week
+                which is given in the last Tuesday slot, not in finals week.
+                A page dated that day attaches as "Optional reading".
       holiday   no meeting
     exercises: the long names released at the start of the session
     extra:     extra-credit exercises released the same day
@@ -204,7 +156,7 @@ def sessions():
                        ("Slides · given Nov 24", f"{WEEK15A}-slides.html"))
 
     # ---- Module 1 : Rust, commands, and the bridges to bare metal ---------
-    add(1, 'tuesday', 'Aug 25', 'lecture', 'L01 Building an Operating System',
+    add(1, 'tuesday', 'Aug 25', 'lecture', 'Building an Operating System, and Your First Rust',
         links=L(("Syllabus", "/syllabus/"), ("Setup", "/assignments/setup/"),
                 ("Dev Setup", "/guides/dev-setup/")))
     add(1, 'thursday', 'Aug 27', 'exercise', 'Setup session · 00r hello_rust',
@@ -215,19 +167,19 @@ def sessions():
         exercises=['01r_control_flow'],
         links=L(("Rust for Systems", "/guides/rust-for-systems/")))
 
-    add(2, 'tuesday', 'Sep 1', 'lecture', 'L03 Ownership, Borrowing, and Lifetimes',
+    add(2, 'tuesday', 'Sep 1', 'lecture', 'Ownership and Borrowing',
         links=L(("In-class slides", "/inclass/week02-slides.html"),
                 ("Code and output", "/inclass/week02-examples.html")))
     add(2, 'thursday', 'Sep 3', 'exercise', '02r ownership', exercises=['02r_ownership'])
     add(2, 'friday', 'Sep 4', 'exercise', '03r borrowing', exercises=['03r_borrowing'])
 
-    add(3, 'tuesday', 'Sep 8', 'lecture', 'L05 Collections, Traits, and Errors',
+    add(3, 'tuesday', 'Sep 8', 'lecture', 'Structs, impl, Enums, and match',
         links=L(("In-class slides", "/inclass/week03-slides.html"),
                 ("Code and output", "/inclass/week03-examples.html")))
     add(3, 'thursday', 'Sep 10', 'exercise', '04r structs_impl', exercises=['04r_structs_impl'])
     add(3, 'friday', 'Sep 11', 'exercise', '05r enums_match', exercises=['05r_enums_match'])
 
-    add(4, 'tuesday', 'Sep 15', 'lecture', 'L07 Buffers, Bytes, and Line-Oriented I/O',
+    add(4, 'tuesday', 'Sep 15', 'lecture', 'Collections, Traits, Errors, and Your First Command',
         links=L(("In-class slides", "/inclass/week04-slides.html"),
                 ("Code and output", "/inclass/week04-examples.html")))
     add(4, 'thursday', 'Sep 17', 'exercise', '06r collections · 07r traits',
@@ -236,8 +188,7 @@ def sessions():
         exercises=['08r_errors', '10c_echo'],
         links=L(("ulib and Commands", "/guides/ulib-and-commands/")))
 
-    add(5, 'tuesday', 'Sep 22', 'lecture', 'L09 Leaving std: no_std and Bare-Metal Rust',
-        links=L(("Unsafe Rust and no_std", "/guides/rust-unsafe-nostd/")))
+    add(5, 'tuesday', 'Sep 22', 'lecture', 'Streams of Bytes: cat, wc, and grep')
     add(5, 'thursday', 'Sep 24', 'exercise', '11c cat', exercises=['11c_cat'])
     add(5, 'friday', 'Sep 25', 'exercise', '12c wc · 13c grep',
         exercises=['12c_wc', '13c_grep'], extra=['14c_head'],
@@ -337,8 +288,6 @@ def q(text):
 
 def main():
     S = sessions()
-    targets = reading_targets(S)
-    shows = reading_placement(S, targets)
     out = ['# CS 326 Fall 2026 Schedule Data',
            '# Generated by utils/gen_schedule.py — edit sessions() there, not this file.',
            '# The table in docs/index.md renders these rows.',
@@ -348,35 +297,34 @@ def main():
            '# Weekly schedule data',
            '',
            'weeks:', '']
-    weeks, tagged = {}, 0
+    weeks = {}
     for s in S:
         weeks.setdefault(s['week'], []).append(s)
+    attached = set()  # lecture page stems that made it onto a row
 
     for w in sorted(weeks):
         out.append(f'# === WEEK {w} ===')
         out.append(f'  - week: {w}')
         for s in weeks[w]:
             # Auto-discovered links first: Prep, then the lecture page and its
-            # deck, then the manual links. The lecture page is the day's
-            # "Reading" on an exercise row; on an exam row it is revision
-            # material nobody lectured, so say so rather than calling it a
-            # lecture that never happened.
-            # A Tuesday lecture is delivered in the room that day, so it stays
-            # a plain "Lecture"; only the reading released on an exercise row
-            # is tagged with the week it is for. The reading a row shows is not
-            # always the one dated that day — see reading_placement().
-            reading = {"exercise": "Reading",
-                       "exam": "Optional reading"}.get(s["type"], "Lecture")
-            week = s["week"] if s["type"] == "exercise" else None
+            # deck, then the manual links. Each lecture page is dated the
+            # Tuesday it is presented, so it attaches to that row as the
+            # "Lecture". An exam row's page (the Dec 8 final review) is
+            # revision nobody lectures, so it is labeled "Optional reading".
+            # Exercise and holiday rows get no page by date; the sessions a
+            # lecture is given away from (Oct 22/23, Dec 3) link it by hand.
             auto = prep_links(s["date"])
-            for src in shows.get((s["week"], s["day"]), []):
-                auto += lecture_links(src, reading, week, targets)
+            label = {"lecture": "Lecture",
+                     "exam": "Optional reading"}.get(s["type"])
+            if label:
+                page = lecture_links(s["date"], label)
+                auto += page
+                attached.update(u.split("/")[1] for t, u in page if t == label)
             # Internal links are written relative to the site root (no leading
             # slash): docs/index.md sits at the root, so they resolve whether
             # the site is served at a domain root or under a repo subpath.
             links = [{"text": t, "url": rel(u)} for t, u in auto] + \
                     [{"text": l["text"], "url": rel(l["url"])} for l in s["links"]]
-            tagged += sum(1 for l in links if l["text"].startswith("Reading · "))
             out.append(f'    {s["day"]}:')
             out.append(f'      date: {q(s["date"])}')
             out.append(f'      type: {q(s["type"])}')
@@ -408,7 +356,11 @@ def main():
     print("weeks:", len(weeks))
     resources = [section_resources(s['date']) for s in S]
     have = lambda key: sum(1 for r in resources for res in r.values() if key in res)
-    print(f"readings tagged with the session they are for: {tagged}")
+    pages = sorted(md.stem for md in LECTURES.glob("*.md"))
+    stray = [p for p in pages if p not in attached]
+    print(f"lecture pages attached: {len(attached)} of {len(pages)}")
+    for p in stray:
+        print(f"  ! {p}.md is not dated to a lecture or exam row, so no row links it")
     print(f"section resources: {have('recording')} recordings, "
           f"{have('notes')} note sets, {have('summary')} summaries")
     n_ex = sum(len(s['exercises']) for s in S)

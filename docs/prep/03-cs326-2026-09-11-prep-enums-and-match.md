@@ -1,27 +1,28 @@
 # Prep: Enums and match — 05r
 
-**Session:** Friday Sep 11, 1h30 · **Exercises:** `05r_enums_match` · **Prep time:** ~30 min · **Lecture:** [Building Your Own Types: Structs, `impl`, `const fn`, and Enums](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md)
+**Session:** Friday Sep 11, 1h30 · **Exercises:** `05r_enums_match` · **Prep time:** ~25 min · **Lecture:** [Week 3 · Structs, `impl`, Enums, and `match`](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md)
 
 ## What you will build
 
-The state diagram in §7 of the lecture, turned into code. You are given a `ProcState` enum whose variants carry data (a sleeper remembers its channel), an `Event` enum, and a table of legal transitions. You write the `match` that walks a process along the arrows, answers `None` for any pair not in the table, and lets a wakeup reach only a sleeper on that exact channel. The tests drive one full lifecycle from `Unused` back to `Unused`, confirm a wrong-channel wakeup leaves a sleeper asleep, and confirm an impossible event changes nothing.
+A process's state diagram, turned into code. You are given a `ProcState` enum whose variants carry data (a sleeper remembers its channel), an `Event` enum, and a table of legal transitions. You write the `match` that walks a process along the arrows, answers `None` for any pair not in the table, and lets a wakeup reach only a sleeper on that exact channel. The tests drive one full lifecycle from `Unused` back to `Unused`, confirm a wrong-channel wakeup leaves a sleeper asleep, and confirm an impossible event changes nothing.
 
 ## Concepts you need
 
-- **Enums are sum types** — exactly one of a fixed set — [L04 §7](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#7-enums-exactly-one-of-these) · [Rust for Systems §4](../guides/rust-for-systems.md#enums-are-tagged-unions)
-- **Variants that carry data** — building them, binding fields back out — [L04 §7](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#variants-that-carry-data) · [Rust for Systems §4](../guides/rust-for-systems.md#variants-can-carry-data)
-- **`Option<T>`** — absence with its own type — [L04 §7](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#optiont-no-null) · [Rust for Systems §4](../guides/rust-for-systems.md#optiont)
-- **Exhaustive `match`** — arms, `|`, `{ .. }`, `E0004`, the `_` trap — [L04 §8](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#8-match-exhaustiveness-and-guards) · [Rust for Systems §4](../guides/rust-for-systems.md#match-is-exhaustive)
-- **Guards, tuple patterns, fall-through** — an `if` on an arm — [L04 §8](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#guards)
-- **`if let`** — a one-arm `match` — [L04 §8](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#guards) · [Rust for Systems §4](../guides/rust-for-systems.md#match-is-exhaustive)
+- **Enums are sum types** — exactly one of a fixed set — [Week 3 · An enum is one of a fixed set](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-enums) · [Rust for Systems: Enums are tagged unions](../guides/rust-for-systems.md#enums-are-tagged-unions)
+- **Variants that carry data** — building them, binding fields back out — [Week 3 · An enum is one of a fixed set](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-enums), [`match`, and the arms you cannot forget](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-match) · [Rust for Systems: Variants can carry data](../guides/rust-for-systems.md#variants-can-carry-data)
+- **`Option<T>`** — absence with its own type — [Week 3 · `Option`: an answer that may be missing](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-option), [A sentinel, or `Option`](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#exam-sentinel) · [Rust for Systems: `Option<T>`](../guides/rust-for-systems.md#optiont)
+- **Exhaustive `match`** — arms, `|`, `{ .. }`, `E0004`, the `_` trap — [Week 3 · `match`, and the arms you cannot forget](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-match), [What `_` costs](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#exam-wildcard) · [Rust for Systems: `match` is exhaustive](../guides/rust-for-systems.md#match-is-exhaustive)
+- **Guards, tuple patterns, fall-through** — an `if` on an arm — [Week 3 · Guards, and matching two values](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-guards)
+- **`if let`** — a one-arm `match` — [Week 3 · `Option`: an answer that may be missing](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#05r-option) · [Rust for Systems: `match` is exhaustive](../guides/rust-for-systems.md#match-is-exhaustive)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| [L04 §7–§8](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#7-enums-exactly-one-of-these) | 15 min |
-| [L04 Practice Problem 5](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md#problem-5-tracing-guards-and-fall-through) | 5 min |
-| [Rust for Systems §4](../guides/rust-for-systems.md#4-enums-option-exhaustive-match) | 10 min |
+| [Week 3 · Friday · `05r` Enums and `match`](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#fri-05r), all four sections | 7 min |
+| [Week 3 · Problem 5: Trace guards and fall-through](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#problem-5) | 5 min |
+| [Week 3 · For the exam: A sentinel, or `Option`](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#exam-sentinel) and [What `_` costs](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md#exam-wildcard). Not needed today; on Midterm 1 | 2 min |
+| [Rust for Systems: Enums, `Option`, exhaustive `match`](../guides/rust-for-systems.md#4-enums-option-exhaustive-match) | 6 min |
 
 ## Mental model
 
@@ -54,4 +55,4 @@ The tuple pattern tests two values at once. A guard is not an `if` inside the bo
 
 ## If you finish early
 
-Rustlings [`08_enums` and `12_options`](https://github.com/rust-lang/rustlings) drill today's patterns. In [100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/), chapter 5 covers enums, `match`, variants with data, `if let`, and `Option`. Or start Thursday's prep page on collections and traits.
+Rustlings [`08_enums` and `12_options`](https://github.com/rust-lang/rustlings) drill today's patterns. In [100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/), chapter 5 covers enums, `match`, variants with data, `if let`, and `Option`. Or start next Thursday's prep page, [Collections and traits](04-cs326-2026-09-17-prep-collections-and-traits.md).

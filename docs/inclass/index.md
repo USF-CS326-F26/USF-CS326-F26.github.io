@@ -38,7 +38,7 @@ the [schedule](../index.md).
 
 [Open the slides](week02-slides.html){ .md-button } [Code and output](week02-examples.html){ .md-button }
 
-Companion to [L03 Ownership, Borrowing, and Lifetimes](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md).
+Companion to the [Week 2 lecture](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md).
 Where the lecture derives the rules, this session runs them: ten programs, one
 idea each, and seven programs that must *not* compile.
 
@@ -92,8 +92,9 @@ session.
 
 [Open the slides](week03-slides.html){ .md-button } [Code and output](week03-examples.html){ .md-button }
 
-Companion to [L04 Structs, `impl`, and `const fn`](../lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md)
-and [L05 Arrays, Slices, and Fixed Tables](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md).
+Companion to the [Week 3 lecture](../lectures/03-cs326-2026-09-08-structs-enums-and-match.md);
+its last two programs, on slices and fixed tables, look ahead to the
+[Week 4 lecture](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md).
 Two exercises come due this week, so the first three parts of the session aim
 squarely at them: twelve programs, one idea each, and seven that must *not*
 compile.
@@ -164,8 +165,7 @@ exercise is mostly reading comprehension.
 
 [Open the slides](week04-slides.html){ .md-button } [Code and output](week04-examples.html){ .md-button }
 
-Companion to [L06 Traits, Generics, and the `ulib` Façade](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md)
-and [L07 Buffers, Bytes, and Line-Oriented I/O](../lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io.md).
+Companion to the [Week 4 lecture](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md).
 Four exercises come due this week, so each of the four parts of the session
 aims at one of them: fourteen programs, one idea each, and nine that must
 *not* compile.

@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 2 · Ownership and Borrowing - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="02-cs326-2026-09-01-ownership-and-borrowing/">&larr; Week 2 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 2 · Ownership and Borrowing
+
+## One owner, and loans the compiler checks
+
+CS 326 Operating Systems · Tuesday, September 1
+
+**Thu Sep 3** `02r_ownership` · **Fri Sep 4** `03r_borrowing`
+
+[The Week 2 page](02-cs326-2026-09-01-ownership-and-borrowing/) has all of this, plus four practice problems.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week; one page, two callers | title, this-week, thu-02r |
+| 5–35 | Part I · Thursday · `02r` (6 core plus ↓ deeper-handle, about 3 minutes; read E0382 aloud together on 02r-one-thing) | 02r-owner … exam-moves |
+| 35–75 | Part II · Friday · `03r` (the Part title and 11 core; predict each row of the error table before you say it) | fri-03r … exam-lifetimes |
+| 75–78 | Summary | summary |
+| 78–92 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 92–105 | Buffer: questions, or another ↓ stack | |
+
+**As taught.** On Sep 1 the in-class deck (`docs/inclass/week02-slides.html`) spent its first 50 minutes on types, which are now Week 1. The session summary (`docs/summaries/cs326-02-2026-09-01-summary.md`) ends at the ownership rule, with borrowing assigned as reading. This deck keeps that deck's order from the stack-and-heap picture on, with two moves: the rule and the drop at the brace now open Part I, ahead of the handle picture, and the E0382 read-aloud comes after `Copy`, on 02r-one-thing. It drops the types and gives borrowing and lifetimes a Part of their own. The in-class timing (10 minutes on the handle, 15 on moves and `Copy`, 3 reading E0382 aloud, 17 on borrowing, 5 on the error table) is scaled up to fill 105 minutes.
+
+**Fast path** (the minimum lecture, 12 ids): this-week, 02r-owner, 02r-moves, 02r-copy, 02r-one-thing, exam-moves, 03r-borrow, 03r-aliasing, 03r-last-use, 03r-lifetimes, exam-fix, exam-lifetimes. The Midterm 1 slides off the fast path (02r-calls, 03r-refuses, 03r-slices, 03r-struct) are never dropped: show each in its cut-order form, about 30 seconds each.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack except deeper-handle: never press down. The page has all of it.
+2. deeper-handle: the in-class README's one never-cut demo. Cut it only after every other ↓; then say its result on 02r-moves: the move keeps the buffer's address, and the `push` changes it.
+3. next-week: say it aloud on before-friday.
+4. summary: skip it; the Before slides recap by question.
+5. before-friday: point at the prep page, and open Friday's session with its questions.
+6. 03r-one-thing: one sentence on 03r-last-use, which shows the same E0502: "it lands on a harmless line; read the span that says 'later used here'".
+7. 03r-errors: leave the table up and ask the two questions; no row-by-row predictions.
+8. 03r-struct: 30 seconds: "a struct that holds a reference names a lifetime; `Setting<'a>` is good only while its text is".
+9. 02r-calls: 30 seconds: "a call moves too; to give a value back, return it". Point at the shadowing line and skip E0596.
+10. 03r-refuses: 30 seconds, code up: "`push` may move the buffer, and the reader would be left pointing at freed memory".
+11. 03r-slices: two sentences: a pointer and a length, no copy; `1..4` stops before 4.
+12. before-thursday: last to go.
+
+The Part title slides thu-02r and fri-03r take a minute each. Never cut: exam-moves, exam-fix, exam-lifetimes (the Midterm 1 slides).
+
+**Practice Set 1 anchors:** P1 → exam-moves, 02r-moves, 02r-copy · P2 → exam-fix, 03r-aliasing, 03r-last-use. P3 belongs to Weeks 3 and 4 (`Option`/`match` in 05r; `Result` and fixed tables in 08r/06r) and P4 to Week 1.
+
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Sep 3 | `02r_ownership` | a page allocator modeled with moves alone | one owner; a move kills the old name |
+| Fri Sep 4 | `03r_borrowing` | readers and a writer that borrow instead | many readers or one writer, never both |
+
+By Friday night you can say which lines the borrow checker will refuse, and why, before you compile.
+
+Notes:
+- Start from where this goes: in `32k` your kernel hands out 4096-byte pages, and one page out to two callers at once corrupts both silently. In `37k`, reading a lock's data without holding it stops compiling. Both rest on this week.
+- Midterm 1 (Oct 15) tests both days; Practice Set 1 Part A practices them.
+- **Q:** "Do these run in QEMU?" No. Both run on your laptop under `cargo test`, and `oslings watch` reruns them on save. QEMU first matters in week 6.
+
+---
+
+<!-- .slide: id="thu-02r" -->
+
+# Part I · Thursday
+
+## `02r_ownership`: one owner
+
+In `32k` the free list must never hold a page that someone is using. C's `free` is unchecked: release a block twice, or read it afterwards, and you are using bytes the allocator has handed to someone else.
+
+On Thursday the compiler enforces that rule, with moves alone.
+
+Notes:
+- Part I runs 30 minutes and ends with the exam slide on moves.
+- A garbage collector is a runtime service, and it runs on an operating system: the one thing a kernel cannot lean on.
+- ↓ below: who answers for memory in xv6, Linux and rv6, and the 70% figure (optional).
+- **Q:** "Why not reference counting?" It updates a counter on every copy and still needs a heap. Rust offers it as `Rc`, a choice you make, not a default. Ownership costs nothing at run time.
+
+--
+
+<!-- .slide: id="deeper-audit" class="deeper" -->
+
+## Who answers for memory
+
+| | xv6 (C) | Linux (C) | rv6 (Rust) |
+|---|---|---|---|
+| Who owns memory | a comment | a comment | the type system |
+| Use-after-free | possible anywhere | possible anywhere; KASAN catches some while running | only inside `unsafe` |
+| What to audit | everything | everything | the `unsafe` blocks |
+
+Microsoft and the Chromium project each report that about 70% of the serious security bugs they fix are memory-safety bugs.
+
+Rust does not delete the code that can have them. It shrinks that code, and marks it with a keyword you can search for.
+
+---
+
+<!-- .slide: id="02r-owner" -->
+
+## No `free()`, and no collector
+
+Each value has one **owner**, the binding that answers for it. When its scope ends, the value is **dropped** and its memory goes back:
+
+```rust
+{
+    let motd = String::from("welcome");   // motd owns 7 heap bytes
+    println!("{motd}");
+}                                          // motd is dropped here
+```
+
+Read the closing brace as the `free()` you never write: it runs exactly once.
+
+No collector either: a collector is a runtime service that needs an OS, and the kernel is the OS.
+
+Notes:
+- C frees by hand and checks nothing; a garbage collector needs a runtime; Rust settles release at compile time.
+- One owner at a time, never two. Everything in Part I follows from that sentence.
+- **Q:** "Can I release something early?" Yes: `drop(motd)` moves the value into a function that does nothing with it, so it is released at that function's closing brace. Week 3 shows how a drop can run your own code.
+
+---
+
+<!-- .slide: id="02r-moves" -->
+
+## A move copies the handle, not the buffer
+
+```text
+stack                                  heap
+queue: [ ptr | len 3 | cap 3 ] ──────▶ [ 4 | 8 | 15 ]
+```
+
+```rust
+let queue = vec![4, 8, 15];
+let backlog = queue;            // the handle is copied; queue is dead
+println!("{}", queue.len());
+```
+
+Two handles would drop one buffer twice, so assignment is a **move**. Does the `println!` compile?
+
+No: ``error[E0382]: borrow of moved value: `queue` ``. Three words were copied; the heap was never touched.
+
+Notes:
+- A `String` or a `Vec` is a 24-byte handle on the stack (pointer, length, capacity) and a buffer on the heap. Assignment copies the handle; the move is what stops two owners.
+- Read E0382 as "you already gave this away": a use-after-free, caught before the program ran.
+- ↓ below: the buffer's address, printed before and after a move and after a `push`. Press down here even when you skip the other stacks: the in-class README never cut this demo.
+- **Q:** "Is a move expensive?" No: three words, often optimized away. The buffer stays put, however big it is.
+
+--
+
+<!-- .slide: id="deeper-handle" class="deeper" -->
+
+## See the handle move
+
+```rust
+let a = vec![7u64; 4];                   // len 4, cap 4
+println!("a     buffer {:p}", a.as_ptr());
+let mut b = a;                           // a move
+println!("b     buffer {:p}", b.as_ptr());
+b.push(8);                               // full, so the buffer must grow
+println!("push  buffer {:p}  cap {}", b.as_ptr(), b.capacity());
+```
+
+```text
+a     buffer 0x1013c9d70
+b     buffer 0x1013c9d70
+push  buffer 0x1013c9dd0  cap 8
+```
+
+<span>The addresses change from run to run; the pattern does not. The move left the buffer where it was, and only the handle changed hands. The `push` allocated a larger buffer, copied four elements across, and freed the old one. A reference into the old buffer would now point at freed memory, which is exactly the loan E0502 refuses on Friday.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="02r-calls" -->
+
+## Moving through a call, and handing it back
+
+Passing a value moves it into the parameter. A callee hands a value back only by returning it, as `+` does:
+
+```rust
+let file = String::from("notes");
+let file = file + ".txt";       // the old file is consumed
+println!("{file}");             // notes.txt
+```
+
+- The second `let file` **shadows** the dead one
+- Two results: return a **tuple**, unpack it with `let (a, b) = …`
+- Changing a parameter takes `mut`, or E0596
+
+Notes:
+- `archive(log)` followed by `log.len()` is E0382 again, and rustc's note suggests you "borrow instead". That is Friday.
+- `let (sum, wrapped) = 250u8.overflowing_add(10);` binds 4 and `true`. Threading values back out through tuples gets old fast, and Friday removes most of it.
+- A parameter is a binding: `fn median(mut samples: Vec<u32>) -> u32` may call `samples.sort()`. Leave the `mut` off and it is ``cannot borrow `samples` as mutable``, with the fix shown.
+- **Q:** "Is shadowing the same as `mut`?" No. Shadowing makes a new binding, possibly of a new type, and the old name becomes unreachable. `mut` lets one binding change in place.
+
+---
+
+<!-- .slide: id="02r-copy" -->
+
+## `Copy` types stay put
+
+A `u32` has no heap buffer: its bits are the whole value, so a duplicate is a second, independent value. Such types are **`Copy`**:
+
+```rust
+let pid: u32 = 7;
+let cmd = String::from("sh");
+let task = (pid, cmd);          // pid is copied in; cmd is moved in
+println!("{pid}");
+println!("{cmd}");
+```
+
+Which `println!` fails? The second: E0382.
+
+Integers, `bool`, `char`, `&T`, and tuples and arrays of them are `Copy`.
+
+Notes:
+- Read `Copy` as "owns nothing that needs releasing". Size is not the test: `[u64; 512]` is `Copy`, all 4 KiB of it.
+- A type with cleanup cannot be `Copy`: the cleanup would run once per copy, a double free the type system refuses.
+- PS1 Problem 1, lines 4 and 5, turn on this slide. ↓ below: Problem 2, `Copy` or not.
+- **Q:** "Then why is `&T` `Copy` and `&mut T` not?" Two copies of a `&mut` would be two exclusive borrows of one value. That is Friday's rule.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: `Copy` or not
+
+Say whether each type is `Copy`, with a one-line reason:
+
+1. `u8`
+2. `(u32, bool)`
+3. `[u64; 512]`
+4. `String`
+5. `&str`
+6. `&mut u32`
+7. `(u32, String)`
+8. `Vec<u8>`
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+<div class="small">
+
+1. **Yes.** Plain bits, nothing to release.
+2. **Yes.** A tuple of `Copy` types.
+3. **Yes.** An array of a `Copy` type is `Copy` at any length. `let b = a;` then copies 4 KiB, which is why kernel code passes `&[u64]` instead.
+4. **No.** It owns a heap buffer; two copies would drop it twice.
+5. **Yes.** A shared reference. Any number may exist, and dropping one frees nothing.
+6. **No.** Two copies would be two exclusive borrows of one value. Passing a `&mut` to a function lends it for the call; it does not duplicate it.
+7. **No.** One field is not `Copy`, so the tuple is not: "the trait bound `String: Copy` is not satisfied in `(u32, String)`".
+8. **No.** For the same reason as `String`.
+
+</div>
+
+---
+
+<!-- .slide: id="02r-one-thing" -->
+
+## The one thing to get right · `02r`
+
+E0382 underlines line 4. Where is the mistake?
+
+```text
+error[E0382]: borrow of moved value: `queue`
+2 |     let queue = vec![4, 8, 15];
+  |         ----- move occurs because `queue` has type `Vec<i32>`, which does not implement the `Copy` trait
+3 |     let backlog = queue;
+  |                   ----- value moved here
+4 |     println!("{}", queue.len());
+  |                    ^^^^^ value borrowed here after move
+```
+
+On line 3: "value moved here" names where the value left. Line 2 says why: `Vec<i32>` is not `Copy`.
+
+<div class="highlight-box">The carets mark the use; the mistake is the move before it. Start at "value moved here", and ask who owns the value now.</div>
+
+Notes:
+- This is the read-it-aloud moment from the in-class plan: read the error top to bottom, together, before anyone proposes a fix.
+- The fix depends on the intent: use `backlog` instead, move later, or, from Friday on, lend instead of moving.
+- **Q:** "Why does it say 'borrow' when I only called `len`?" `len` borrows `queue` to read it, and a borrow needs the value to still exist. Reading needs an owner too.
+
+---
+
+<!-- .slide: id="exam-moves" class="exam" -->
+
+## What survives a move
+
+Given numbered lines, say which compile, and name each move.
+
+- Work top to bottom; keep a list of dead names
+- Assignment, a by-value call, or a place in a tuple kills a non-`Copy` name
+- A `Copy` name survives any number of copies
+- A later `x.len()` fails too: reading needs `x` to exist
+
+Practice: ↓ Problem 1.
+
+Notes:
+- On Midterm 1. Practice Set 1 Problem 1 is exactly this shape.
+- The dead-names list is the whole technique. The usual slip is accepting a later read "because it only reads".
+- **Q:** "If a line fails, does its move still count?" Judge each line as if the failing lines were deleted: a line that does not compile moves nothing. Problem 1 states that rule.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: what survives a move
+
+Judge each numbered line on its own, as if every failing line were deleted. Which lines fail, and why?
+
+```rust
+fn shout(s: String) -> String { s.to_uppercase() }
+
+let motd = String::from("hi");   // 1
+let n = motd.is_empty();         // 2
+let loud = shout(motd);          // 3
+let again = motd.len();          // 4
+let m = n;                       // 5
+let pair = (n, loud);            // 6
+let first = pair.0;              // 7
+println!("{loud}");              // 8
+let loud = shout(pair.1);        // 9
+println!("{}", pair.0);          // 10
+let whole = pair;                // 11
+```
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+| Line | Compiles? | Why |
+|---|---|---|
+| 1, 2 | yes | `motd` owns `"hi"`; `is_empty` borrows it, and `n` is a `bool` |
+| 3 | yes | `motd` moves into `s`; `loud` owns the new `String` |
+| 4 | **no** | ``E0382: borrow of moved value: `motd` ``, moved on line 3 |
+| 5 | yes | `bool` is `Copy` |
+| 6 | yes | `n` is copied in; `loud` moves in |
+| 7 | yes | `pair.0` is a `bool`, copied out |
+| 8 | **no** | `loud` moved into `pair` on line 6 |
+| 9 | yes | moves the `String` field out; the new `loud` shadows the dead one |
+| 10 | yes | only the `String` left; the `bool` field is still there |
+| 11 | **no** | ``E0382: use of partially moved value: `pair` `` |
+
+<span>A tuple's fields are owned one by one. Moving one field out is a **partial move**: the rest stay usable, but the tuple as a whole does not.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="fri-03r" -->
+
+# Part II · Friday
+
+## `03r_borrowing`: lending
+
+From `32k` on, kernel code looks at the same page many times. With moves alone, the first look would take the page away.
+
+On Friday you lend values instead, and the compiler checks every loan.
+
+Notes:
+- Part II runs 40 minutes and ends with the two exam slides.
+- As taught on Sep 1, the session summary ends at the ownership rule, and borrowing went to the slides and Friday's prep page. In the in-class deck this was Part IV (17 minutes, plus 5 on the error table). This Part is the full version, with lifetimes added.
+- **Q:** "Is a reference just a pointer?" At run time, yes: one address (a slice adds a length), no overhead. At compile time it also carries what it points at and for how long, and that is what the checker tracks.
+
+---
+
+<!-- .slide: id="03r-borrow" -->
+
+## Lending: `&` and `&mut`
+
+`&x` **borrows** `x`: the result is a **reference**, an address that reaches `x` while its owner keeps it. It owns nothing, so dropping it releases nothing.
+
+- `&T` is **shared**: read, and any number at once
+- `&mut T` is **exclusive**: read and write, and the only path while it lives
+
+```rust
+fn halve(level: &mut u32) {
+    *level /= 2;                // write through the loan
+}
+let mut level = 40;
+halve(&mut level);
+halve(&mut level);              // level is now 10
+```
+
+Notes:
+- Say "exclusive", not "mutable": the promise is that nobody else is looking.
+- `*level` is the `u32` that `level` points at. Leave off the `*` and it is E0368, ``cannot use `/=` on type `&mut u32` ``, and rustc suggests adding the `*`. Method calls borrow for you: `v.len()` lends `&v`, and `v.push(x)` lends `&mut v`.
+- How to pass: `T` when the callee keeps or consumes the value, `&T` when it only reads, `&mut T` when it changes the caller's value in place. The in-class deck gave this its own slide.
+- **Q:** "Why write `&mut` at the call as well?" So the caller sees the loan: anyone reading `halve(&mut level)` knows `level` may change. In C, `halve(&level)` looks the same whether or not `halve` writes.
+
+---
+
+<!-- .slide: id="03r-aliasing" -->
+
+## Aliasing XOR mutation
+
+<div class="info-box">Many readers through <code>&amp;</code>, or one writer through <code>&amp;mut</code>. Never both at once.</div>
+
+| You hold | Add a `&T`? | Add a `&mut T`? |
+|---|---|---|
+| nothing | yes | yes |
+| one or more `&T` | yes | no: E0502 |
+| one `&mut T` | no: E0502 | no: E0499 |
+
+Two references to one value **alias** it; changing it is **mutation**. Together, a writer can move the data out from under a reader.
+
+Indexes are not compared: `&v[i]` and `&mut v[j]` collide even when `i != j`; rustc writes `v[_]`.
+
+Notes:
+- Two writers: pass one account as both arguments of `fn transfer(from: &mut u32, to: &mut u32)` and rustc says ``error[E0499]: cannot borrow `savings` as mutable more than once at a time``.
+- PS1 Problem 2 is the middle row with two indexes: `&entries[src]`, then `&mut entries[dst]`. rustc prints `entries[_]`; the underscore means 'some index'. ↓ below: why a kernel cares most (optional).
+- **Q:** "Why does a `&mut` block even reading?" A reader could see a half-finished update, or hold a pointer into a buffer the writer is about to move. Exclusive means nobody else at all.
+
+--
+
+<!-- .slide: id="deeper-kernel" class="deeper" -->
+
+## Why a kernel cares most
+
+Aliasing plus mutation sits under three of the worst bug classes in systems code:
+
+- **Iterator invalidation**: a reader left pointing into a freed buffer, as on the next core slide
+- **Optimizer hazards**: C must assume two pointers of one type may overlap, hence C99's `restrict`, and a wrong `restrict` miscompiles in silence
+- **Concurrent corruption**: two CPUs updating one table at once
+
+A kernel is concurrent even on one CPU. An interrupt can run a handler between any two instructions, and your code never knows. In `45k` a handler adds typed bytes to a buffer that a reader drains; no borrow describes that, so it is a `static mut` behind `unsafe`, with the safety argument written by hand.
+
+---
+
+<!-- .slide: id="03r-refuses" -->
+
+## The bug it refuses
+
+```rust
+let mut tasks = vec![String::from("init"), String::from("sh")];
+for t in &tasks {               // a shared loan for the whole loop
+    if t == "sh" {
+        tasks.push(String::from("login"));   // needs &mut tasks
+    }
+}
+```
+
+``error[E0502]: cannot borrow `tasks` as mutable because it is also borrowed as immutable``
+
+Why refuse it? A `Vec` that outgrows its buffer may move to a new one and free the old. The loop would go on reading freed memory.
+
+Notes:
+- `push` may reallocate. Say it once, slowly: that one fact justifies E0502 completely. C++ calls this iterator invalidation, and compiles it.
+- ↓ deeper-handle, under 02r-moves, shows the buffer's address changing on a `push`.
+- **Q:** "What if the `Vec` has room to spare?" The checker cannot know capacity at compile time, so it refuses every overlap, not only the ones that reallocate.
+
+---
+
+<!-- .slide: id="03r-last-use" -->
+
+## A borrow ends at its last use
+
+```rust
+let mut name = String::from("init");
+let r = &name;                  // loan opens
+name.push_str("-v2");           // E0502: r is read again below
+println!("{r}");
+```
+
+Predict: which one-line move makes it compile?
+
+Swap the last two lines: the loan's last use now comes before the write. The checker refuses loans that **overlap**, not loans that follow each other.
+
+Notes:
+- Not "until the closing brace": that was Rust before 2018. The change is RFC 2094, non-lexical lifetimes, on the page's reading list.
+- PS1 Problem 2's fix is this slide: end the read before the write starts.
+- **Q:** "Does a loan end even though `r` is still in scope?" Yes. Scope decides when a value is dropped; the last use decides when a loan ends.
+
+---
+
+<!-- .slide: id="03r-slices" -->
+
+## Slices: a pointer and a length
+
+A **slice**, `&[T]`, views consecutive elements someone else owns: a start and a count, 16 bytes, nothing copied. `&str` is a view of text.
+
+```rust
+fn ends(xs: &[i32]) -> (i32, i32) { (xs[0], xs[xs.len() - 1]) }
+
+let temps = [18, 21, 25, 30, 27];
+ends(&temps);                   // (18, 27): the whole array
+ends(&temps[1..4]);             // (21, 30): elements 1, 2 and 3
+ends(&vec![5, 9]);              // (5, 9): a Vec, lent as a slice
+```
+
+Read `1..4` as "1 up to, but not including, 4".
+
+Notes:
+- C passes a pointer and a count as two arguments, free to disagree. A slice carries both, and every index is checked against its own length: index the three-element window `&temps[1..4]` at 3 and it panics with "index out of bounds: the len is 3 but the index is 3".
+- `&mut [T]` is the exclusive kind. `temps.first()` is `Some(&18)`, a reference into the array. ↓ below: two writers into one array, provably apart (optional).
+- **Q:** "What does `ends` do with an empty slice?" `xs[0]` panics: "index out of bounds: the len is 0 but the index is 0". Real code checks `is_empty()` first, or returns an `Option`.
+
+--
+
+<!-- .slide: id="deeper-split" class="deeper" -->
+
+## Two writers, provably apart
+
+The rule is about overlap, not about how many `&mut` a line mentions:
+
+```rust
+let mut lanes = [10, 20, 30, 40];
+let (left, right) = lanes.split_at_mut(2);   // [10, 20] and [30, 40]
+left[0] += right[1];                          // two &mut at once
+right[0] += left[1];
+println!("{lanes:?}");                        // [50, 20, 50, 40]
+```
+
+- `&mut lanes[0]` and `&mut lanes[2]` side by side is E0499: the checker does not compare index values, so any two might be equal
+- `split_at_mut` is safe to call because its body checks the split point once, then uses `unsafe` inside the standard library
+- That is week 6's pattern: a small unsafe core under a safe signature
+
+---
+
+<!-- .slide: id="03r-lifetimes" -->
+
+## Lifetimes name a relationship
+
+A returned reference must say which input it borrows from. With two inputs, rustc asks:
+
+```rust
+fn after(line: &str, prefix: &str) -> &str {
+    &line[prefix.len()..]       // assumes line starts with prefix
+}
+```
+
+``error[E0106]: missing lifetime specifier``. Tie the result to `line`:
+
+```rust
+fn after<'a>(line: &'a str, prefix: &str) -> &'a str
+```
+
+Read `'a` as "the result is good only while `line` is".
+
+Notes:
+- A **lifetime** is the stretch of code where a reference is still good. `'a` changes nothing at run time: it names the input the result depends on, and rustc holds each caller to that.
+- With one reference input the compiler assumes that one, so most signatures need no `'a` (↓ elision). `prefix` carries no `'a`, so a caller may drop it once the call returns.
+- When the result may come from either input, `'a` goes on both, and the result is good only while both are: the `g` row on exam-lifetimes. Friday's prep question 2 (`shorter`) is this case.
+- **Q:** "Why can't rustc read the body and see that it returns part of `line`?" Callers are checked against the signature alone, on purpose: then editing a body can never break a caller. The signature is the contract.
+
+--
+
+<!-- .slide: id="deeper-elision" class="deeper" -->
+
+## Elision, and one name where two belong
+
+Three **elision** rules supply most lifetimes: (1) each reference parameter gets its own; (2) with exactly one input lifetime, every output gets it; (3) in a method taking `&self` or `&mut self`, outputs get `self`'s.
+
+rustc's suggestion for `after` puts `'a` on both parameters. That compiles, but `after`'s result comes from `line` alone, so it claims more than is true:
+
+```rust
+let line = String::from("hz=100");
+let value;
+{
+    let key = String::from("hz=");
+    value = after(&line, &key);         // 'a on both parameters
+}
+println!("{value}");                    // key is gone
+```
+
+<span>That is ``error[E0597]: `key` does not live long enough``. With `'a` on `line` alone, the same code compiles and prints `100`. One name where two belong over-constrains, and rejects programs that were correct.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="03r-struct" -->
+
+## A struct that holds a reference
+
+```rust
+struct Setting<'a> {
+    key: &'a str,               // both point into text owned elsewhere
+    value: &'a str,
+}
+```
+
+Read `Setting<'a>` as "a `Setting` is good only while the text behind `key` and `value` is".
+
+- Write plain `&str` fields, with no `'a`, and each is E0106
+- Outlive the text, and it is ``error[E0597]: `text` does not live long enough``
+
+Notes:
+- The struct borrows; something else owns. It is the same loan as a `&str` variable, kept in a field.
+- A field can be a `&mut` too. Until the struct's last use it is the only path to the value, so even the owner may not read it: Friday's prep question 3. ↓ below: where this goes, a lock whose guard is a struct like this one (optional).
+- **Q:** "Why not store a `String` and skip the lifetime?" You can, and then the struct owns its own copy. A reference is for looking at text someone else keeps, with no allocation.
+
+--
+
+<!-- .slide: id="deeper-guard" class="deeper" -->
+
+## Where this goes: a lock you cannot misuse
+
+In `37k` the lock and its data are one value. Acquiring the lock produces a **guard**, a struct that borrows the lock the way `Setting<'a>` borrows its text.
+
+- The guard's methods lend out the data, and those loans cannot outlast the guard
+- Dropping the guard releases the lock; week 3 shows how a drop can run code
+
+After the release there is no guard left to borrow through, so a late read does not compile. In xv6's C, code can read a structure after `release()`, and nothing objects.
+
+---
+
+<!-- .slide: id="03r-errors" -->
+
+## The errors you will actually hit
+
+| Code | rustc says | Read it as |
+|---|---|---|
+| E0382 | borrow of moved value (or use of moved value) | Given away, then used |
+| E0596 | cannot borrow `x` as mutable, as it is not declared as mutable | A change without `mut` |
+| E0499 | cannot borrow `x` as mutable more than once at a time | Two writers at once |
+| E0502 | cannot borrow `x` as mutable because it is also borrowed as immutable | A write while a reader looks |
+| E0505 | cannot move out of `x` because it is borrowed | A move while lent out |
+| E0106 | missing lifetime specifier | Borrowed from what? |
+
+For each, ask two questions: who owns this, and who is looking at it now?
+
+Notes:
+- As in the in-class plan: before you say each row, ask the room for a two-line program that triggers it.
+- `rustc --explain E0505`, or any other code, prints the long explanation with examples. ↓ below: where the rules run out (optional).
+- **Q:** "What about E0507?" `let s = names[1];` on a `Vec<String>` is ``cannot move out of index of `Vec<String>` ``: indexing lends, and cannot hand the `String` over. Borrow it with `&names[1]`, or take it out with `remove`.
+
+--
+
+<!-- .slide: id="deeper-limits" class="deeper" -->
+
+## Where the rules run out
+
+In `32k` the free list lives inside the free pages: each free page's first bytes point at the next one. That is aliasing and mutation by design, over addresses the hardware handed out, with no Rust value in sight.
+
+Safe Rust cannot say it, so the allocator uses raw pointers and `unsafe` (week 6).
+
+<div class="info-box"><code>unsafe</code> does not switch off the borrow checker. It permits a few extra operations, and makes you, not the compiler, answer for them.</div>
+
+---
+
+<!-- .slide: id="03r-one-thing" -->
+
+## The one thing to get right · `03r`
+
+E0502 lands on a line that looks harmless. Where is the real conflict?
+
+```text
+error[E0502]: cannot borrow `name` as mutable because it is also borrowed as immutable
+3 |     let r = &name;
+  |             ----- immutable borrow occurs here
+4 |     name.push_str("-v2");
+  |     ^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+5 |     println!("{r}");
+  |                - immutable borrow later used here
+```
+
+At line 5, "later used here": the loan began earlier and is still alive.
+
+<div class="highlight-box">The cure is nearly always order: finish reading before you write.</div>
+
+Notes:
+- rustc gives E0502 three spans: where the loan starts, the write it collides with, and its later use. The third is the one people skip, and the one that explains the error.
+- **Q:** "Should I just add `.clone()`?" It compiles, but on a `String` or `Vec` it builds a second heap value when you only needed to read, and early in a kernel there is no allocator to build it with. On a `Copy` value it is the copy-out cure spelled longer. The next slide is the exam version.
+
+---
+
+<!-- .slide: id="exam-fix" class="exam" -->
+
+## Fix a borrow error without `clone()`
+
+Name the rule, quote the two conflicting borrows, and give the smallest edit:
+
+```rust
+let mut scores = [72, 95, 88];
+let best = &scores[1];          // a shared loan
+scores.sort();                  // a write while it lives: E0502
+println!("{best}");             // the loan's later use
+```
+
+- **Reorder:** print `best` before the `sort`, so the loan ends first
+- **Copy it out:** `let best = scores[1];` holds an `i32`, not a loan
+
+Practice: ↓ Problem 3.
+
+Notes:
+- On Midterm 1. Practice Set 1 Problem 2 is this shape, and its fix is the copy-out cure.
+- `clone()` compiles too, but on a `String` or `Vec` it builds a second heap value when you only needed to read; on a `Copy` value it is the copy-out cure spelled longer. Copying out works only for `Copy` values: on a `Vec<String>`, `let top = names[1];` is E0507 (Problem 3 (a)).
+- **Q:** "Is `unsafe` a fix?" No. `unsafe` does not switch the borrow checker off, and PS1 Problem 2 rules it out anyway.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: fix it without `clone()`
+
+Give the error code and the two uses that conflict, then the smallest fix that keeps the intent. `std::mem::swap` exchanges the values behind two `&mut`.
+
+```rust
+// (a) show the name at index 1, then sort
+let mut names = vec![String::from("sh"), String::from("init")];
+let top = &names[1];  names.sort();  println!("{top}");
+
+// (b) swap the first and last cells
+let mut grid = [1, 2, 3];
+let a = &mut grid[0];  let b = &mut grid[2];  std::mem::swap(a, b);
+
+// (c) show a report, then shelve it; shelve takes a String
+let report = String::from("all clear");
+let view = &report;  shelve(report);  println!("{view}");
+
+// (d)
+let mut job = (3, String::from("sh"));
+let n = job.0;  job = (n + 1, String::from("login"));  println!("{n}");
+```
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+<div class="small">
+
+**(a) E0502.** `top` is a shared loan into `names`, still used by the `println!`, and `sort` needs `&mut names` in between. Copying out does not work: a `String` is not `Copy`, and `let top = names[1];` is ``error[E0507]: cannot move out of index of `Vec<String>` ``. Print before sorting, so the loan ends first. Storing the index 1 compiles, but after the sort index 1 holds `"sh"`.
+
+**(b) E0499.** Two `&mut` into `grid` are alive at the swap; the checker does not compare 0 with 2. Use `grid.swap(0, 2);`, one exclusive borrow that does the two-index work itself, giving `[3, 2, 1]`. `split_at_mut` also works.
+
+**(c) E0505.** `shelve(report)` moves `report` while `view` still borrows it, and `view` is used afterwards. Move the `println!` above the call.
+
+**(d) Compiles, and prints 3.** `n` is a copy of the `i32` in `job.0`, not a reference, so no loan is alive when `job` is overwritten. This is the copy-out cure. Write `let n = &job.0;` instead and the assignment is ``error[E0506]: cannot assign to `job` because it is borrowed``.
+
+</div>
+
+---
+
+<!-- .slide: id="exam-lifetimes" class="exam" -->
+
+## Lifetimes by example
+
+Given a signature, say which input the result borrows from; then whether a call site is accepted.
+
+| Signature | The result may not outlive |
+|---|---|
+| `fn f<'a>(x: &'a str, y: &str) -> &'a str` | `x`; it may outlive `y` |
+| `fn g<'a>(x: &'a str, y: &'a str) -> &'a str` | whichever of `x` and `y` dies first |
+| `fn h(x: &str) -> &str` | `x`: one input, so no `'a` is needed |
+| `fn k(x: &str, y: &str) -> &str` | nothing yet: E0106, the signature must say |
+
+Practice: ↓ Problem 4.
+
+Notes:
+- On Midterm 1: "lifetimes by example" is its scope line. Work the call site from the table: find the input the result is tied to, and check that it is still alive at the result's last use.
+- A lifetime describes; it never extends. Returning a reference to a local is E0515, whatever you annotate.
+- **Q:** "Which should I write, `f` or `g`?" The one that is true. If the result comes from `x` alone, `g` claims more than is true and refuses callers whose `y` dies early (↓ elision, under 03r-lifetimes).
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: which lifetime?
+
+Does each compile as written? If not, give the fixed signature, or say why no annotation helps. `format!` builds a `String` the way `println!` prints one. `…` stands for a body that returns part of an input.
+
+```rust
+fn trim_nul(buf: &[u8]) -> &[u8] { … }             // (a)
+fn value_of(text: &str, key: &str) -> &str { … }    // (b) returns part of text
+struct Index { words: Vec<&str> }                   // (c)
+fn greeting(name: &str) -> &str {                   // (d)
+    let text = format!("hello, {name}");
+    &text
+}
+```
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+<div class="small">
+
+**(a) Compiles.** One input lifetime, so by elision rule 2 the result borrows from `buf`.
+
+**(b) E0106.** Tie the result to `text` alone: `fn value_of<'a>(text: &'a str, key: &str) -> &'a str`. Putting `'a` on `key` too compiles, but refuses a caller whose key dies before the result is used.
+
+**(c) E0106** on the `&str` inside the `Vec`. Write `struct Index<'a> { words: Vec<&'a str> }`: an `Index` is good only while the text its words point into is. The lifetime goes wherever a reference appears, even inside another type.
+
+**(d) The signature is fine** by rule 2, but the body is ``error[E0515]: cannot return reference to local variable `text` ``. `text` is dropped at the closing brace, and no annotation can make it live longer: a lifetime describes, it never extends. Return the `String` itself: `fn greeting(name: &str) -> String`.
+
+</div>
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- One owner; its closing brace is the `free()`
+- A move copies the handle and kills the old name
+- `Copy` types own nothing to release, so they stay put
+- `&` shared, `&mut` exclusive: many readers or one writer
+- A borrow ends at its last use; overlap is refused
+- `'a` names the input a result borrows from
+- On Midterm 1: moves, borrow fixes, lifetimes by example
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 1?" Practice Set 1 Part A, Problems 1 and 2, then the page's Problems 1 to 4.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/02-cs326-2026-09-03-prep-ownership/): check yourself
+
+You build a page allocator modeled by hand with a `Vec` and moves alone, under `cargo test`. Prep: about 25 minutes.
+
+**1.** After `let b = a;` where `a: String`, what happens at run time, and what at compile time?
+
+**2.** Which of these are `Copy`: `usize`, `bool`, `String`, `Vec<usize>`, `(usize, usize)`?
+
+**3.** A function takes a `Vec<usize>` by value and calls `.push` on it; the caller needs the list afterward. Without `&`, what must it do?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build: a page allocator modeled with a `Vec` of free page numbers and moves, with no `&` yet. Green is `oslings run` passing; then `oslings submit` before you leave.
+- The three questions are the prep's own Check yourself; the answers are on the prep page.
+- **Q:** "What if I do not finish on Thursday?" Submit anyway: the tests that pass earn their share. Finish at a make-up session (office hours, on the class network) for three quarters, or anywhere else for half, and submit again.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/02-cs326-2026-09-04-prep-borrowing/): check yourself
+
+You lend instead of moving: shared slices for readers, an exclusive one for a writer, and a result that needs a lifetime. Under `cargo test`. Prep: about 25 minutes.
+
+**1.** `let a = &mut page; let b = &mut page; use_both(a, b);` is rejected; with `&page` it is fine. Why?
+
+**2.** `fn shorter(a: &str, b: &str) -> &str` does not compile. What is missing, and what does adding `<'a>` to it promise?
+
+**3.** A struct holds a `&mut u64` to a variable `n`. While that struct value is alive, may the function that owns `n` read `n` directly?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build is the one line on the slide; point at the prep's "What you will build" paragraph rather than listing its pieces.
+- The three questions are the prep's own Check yourself; the answers are on the prep page.
+- **Q:** "Do I need Thursday's exercise finished first?" No: `03r` stands on its own. It does assume you can read E0382, because a borrow is the cure for it.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 3](03-cs326-2026-09-08-structs-enums-and-match/): structs, `impl`, enums and `match`. Read its Essentials before Tuesday.
+
+Notes:
+- Week 3 also gives `Drop` its full treatment: a drop that runs your own code, which is the idea under `37k`'s lock guard.
+- **Q:** "Is Week 3 on Midterm 1?" Yes: structs, `impl`, enums, `Option` and exhaustive `match` are all in scope. Midterm 1 is Thursday, October 15.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

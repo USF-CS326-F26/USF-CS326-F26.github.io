@@ -189,22 +189,16 @@ nav:
       - "Dec 3 · Prep: exec and File Descriptors — 49k · 50k": prep/15-cs326-2026-12-03-prep-exec-and-file-descriptors.md
       - "Dec 4 · Prep: fork, the User Shell, and Your Commands — 51k · 52k · 53k": prep/15-cs326-2026-12-04-prep-fork-userland-and-ship.md
   - Lectures:
-      - "Aug 25 · Building an Operating System": lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is.md
-      - "Aug 25 · Slides": lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is-slides.html
-      - "Aug 27 · Rust I: Values, Types, and Control Flow": lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow.md
-      - "Aug 27 · Slides": lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow-slides.html
-      - "Sep 1 · Ownership, Borrowing, and Lifetimes": lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md
-      - "Sep 1 · Slides": lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html
-      - "Sep 3 · Building Your Own Types: Structs, `impl`, `const fn`, and Enums": lectures/02-cs326-2026-09-03-structs-impl-and-const-fn.md
-      - "Sep 3 · Slides": lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html
-      - "Sep 8 · L05: Arrays, Slices, `Vec`, and Fixed Tables": lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md
-      - "Sep 8 · Slides": lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html
-      - "Sep 10 · Traits, Generics, and the `ulib` Façade": lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md
-      - "Sep 10 · Slides": lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html
-      - "Sep 15 · Buffers, Bytes, and Line-Oriented I/O": lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io.md
-      - "Sep 15 · Slides": lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html
-      - "Sep 22 · L09 Leaving `std`: `no_std` and Bare-Metal Rust": lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust.md
-      - "Sep 22 · Slides": lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust-slides.html
+      - "Aug 25 · Week 1 · Building an Operating System, and Your First Rust": lectures/01-cs326-2026-08-25-building-an-os-and-first-rust.md
+      - "Aug 25 · Slides": lectures/01-cs326-2026-08-25-building-an-os-and-first-rust-slides.html
+      - "Sep 1 · Week 2 · Ownership and Borrowing": lectures/02-cs326-2026-09-01-ownership-and-borrowing.md
+      - "Sep 1 · Slides": lectures/02-cs326-2026-09-01-ownership-and-borrowing-slides.html
+      - "Sep 8 · Week 3 · Structs, `impl`, Enums, and `match`": lectures/03-cs326-2026-09-08-structs-enums-and-match.md
+      - "Sep 8 · Slides": lectures/03-cs326-2026-09-08-structs-enums-and-match-slides.html
+      - "Sep 15 · Week 4 · Collections, Traits, Errors, and Your First Command": lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md
+      - "Sep 15 · Slides": lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo-slides.html
+      - "Sep 22 · Week 5 · Streams of Bytes: `cat`, `wc`, and `grep`": lectures/05-cs326-2026-09-22-cat-wc-and-grep.md
+      - "Sep 22 · Slides": lectures/05-cs326-2026-09-22-cat-wc-and-grep-slides.html
       - "Sep 29 · Week 6 · Below Rust: Assembly, `unsafe`, and `no_std`": lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std.md
       - "Sep 29 · Slides": lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std-slides.html
       - "Oct 6 · Week 7 · From Reset to Page Tables: Boot, the Free List, and Sv39": lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md

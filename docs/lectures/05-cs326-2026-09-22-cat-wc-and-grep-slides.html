@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 5 · Streams of Bytes: cat, wc, and grep - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="05-cs326-2026-09-22-cat-wc-and-grep/">&larr; Week 5 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 5 · Streams of Bytes
+
+## `cat`, `wc`, and `grep`
+
+CS 326 Operating Systems · Tuesday, September 22
+
+**Thu Sep 24** `11c_cat` · **Fri Sep 25** `12c_wc`, `13c_grep`, extra credit `14c_head`
+
+[The Week 5 page](05-cs326-2026-09-22-cat-wc-and-grep/): **Essentials** is what Thursday and Friday assume.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week | title, this-week |
+| 5–40 | Thursday · `11c` (5 core, then the two exam slides) | thu-11c … exam-write-all |
+| 40–60 | Friday · `12c` (3 core, then the exam slide) | fri-12c … exam-chunks |
+| 60–82 | Friday · `13c` (5 core), then `14c` extra credit | fri-13c … ec-14c |
+| 82–85 | Summary | summary |
+| 85–97 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 97–105 | Buffer: questions, or ↓ Problem 2 (under exam-chunks) at the board | |
+
+Four exercises, counting `14c`, means no Part title slides: each exercise's id sits on its first concept slide (thu-11c, fri-12c, fri-13c, ec-14c).
+
+**Fast path** (the minimum lecture, 12 ids): this-week, thu-11c, 11c-short-read, 11c-buffer, exam-count, exam-write-all, fri-12c, 12c-state, exam-chunks, fri-13c, 13c-search, 13c-status.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. ec-14c: one sentence on 13c-status: "extra credit `14c_head`: its cost is set by the count, not the file".
+5. before-friday: point at the prep page, and open Friday's session with its questions.
+6. 11c-one-thing, 12c-one-thing and 13c-one-thing: one sentence each, on 11c-status, 12c-state and 13c-search ("only 0 says the file is over"; "a word is an event"; "count both fenceposts").
+7. 13c-while-let: one sentence on fri-13c: "loop while the call answers `Some`".
+8. 11c-status: leave the transcript up and say "complaint on 2, keep going, and the 1 describes the whole run".
+9. fri-12c: leave the type table up and say "`len` counts bytes; the commands never touch `char`".
+10. before-thursday: last to go.
+
+Never cut: exam-count, exam-write-all, exam-chunks (the Midterm 1 slides). Compress, never skip (Midterm 1 scope): 11c-short-read, 11c-buffer, 12c-state.
+
+**Midterm 1 anchors:** "The short-read contract and why `write_all` exists" → 11c-short-read, exam-count, exam-write-all (↓ Problem 1) · "Streaming with fixed buffers and O(1) state" → 11c-buffer, 12c-state, exam-chunks (↓ Problems 2 and 3). No Practice Set 1 problem covers week 5.
+
+- As taught: Tue Sep 22 actually presented part of the old `no_std` lecture, which now lives in week 6. This deck is the rebuilt `11c`–`13c` lecture, for Midterm 1 review and for next year.
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Sep 24 | `11c_cat` | a copy through one fixed buffer | only 0 means end of file |
+| Fri Sep 25 | `12c_wc` | lines, words and bytes in one pass | a word is an event |
+| Fri Sep 25 | `13c_grep` | a fixed-string search, line by line | status 1 means "no", not "broken" |
+| Fri Sep 25 | `14c_head` (extra credit) | the first N lines | its cost is set by the count, not the file |
+
+<div class="highlight-box">No heap and no <code>format!</code>: every byte passes through one array you declare. Midterm 1 is Thu Oct 15.</div>
+
+Notes:
+- Start from where this goes: in `53k` you type `run mygrep` at your own rv6 shell, and the file you write this week runs on your kernel. Each `read` it makes traps into code you wrote. The file does not change in between.
+- By Friday night: three commands that handle a file of any size through one fixed buffer. Midterm 1 tests the short-read contract, why `write_all` exists, and streaming with fixed buffers and O(1) state.
+- **Q:** "Do I have to do `14c`?" No: it is extra credit, out Friday, and no later exercise needs it. If you finish it, `53k` puts your `head` on rv6 too.
+
+---
+
+<!-- .slide: id="thu-11c" -->
+
+## Thursday · `11c`: everything is a descriptor
+
+A **file descriptor** is a small integer indexing a per-process table in the kernel. A program reading descriptor 3 cannot tell what stands behind it.
+
+| fd | `ulib` name | Default, and what changes it |
+|---|---|---|
+| 0 | `STDIN` | the keyboard; `<` swaps in a file |
+| 1 | `STDOUT` | the screen; `>` swaps in a file |
+| 2 | `STDERR` | the screen, whatever `>` did |
+
+rv6 has 16 slots per process: every `open` spends one, and only `close` refunds it. Forgetting is a **leak**.
+
+Notes:
+- In `50k` you write the kernel's side of `read` and build this table; rv6 answers a file read with at most 128 bytes. Thursday writes the other side, and it must be right whatever `read` returns.
+- Complaints use descriptor 2 so they survive redirection: `wc gone.txt > counts` shows its message on the screen and leaves `counts` clean. With no file names, a command reads descriptor 0. `ulib::open` returns `Result<Fd, Error>`: a descriptor, or the news that there is none.
+- **Q:** "Why does a leak matter if the process exits anyway?" It matters before the exit. Three of the 16 slots are taken at start, so a command that opens files without closing them gets an error on its fourteenth `open`, however good the file. An `open` whose copy then fails has still spent its slot.
+
+---
+
+<!-- .slide: id="11c-short-read" -->
+
+## The short-read contract
+
+`read` is a request with a ceiling:
+
+```rust
+pub fn read(fd: Fd, buf: &mut [u8]) -> Result<usize, Error>
+```
+
+The `usize` is how many bytes it actually put in `buf`, from 0 to `buf.len()`. Fewer is a **short read**, and it is normal. Only `0` means end of input. `cat` with no arguments, on your laptop's terminal:
+
+```text
+you type hello, Enter   read -> 6   buf[..6] is "hello\n"
+you type ok, Enter      read -> 3   buf[..3] is "ok\n"; buf[3..6] still says "lo\n"
+you press Ctrl-D        read -> 0   end of input: three reads, two lines
+```
+
+Notes:
+- Why short: a file can run out partway through your request, and a terminal hands over only what has been typed. On rv6 a console read returns one keystroke, however big your buffer.
+- The second row is the whole contract: 3 is not the end signal, and the bytes past 3 belong to the line before. A correct reader asks again until it hears 0, and each time uses only the first `n` bytes.
+- ↓ below: where a `read` goes on rv6.
+- **Q:** "Why doesn't `read` just wait until the buffer is full?" Because more may never come, or not soon: an interactive `cat` would echo nothing until you had typed 512 keys. Returning what is ready lets the program act on it now.
+
+--
+
+<!-- .slide: id="deeper-read-path" class="deeper" -->
+
+## Where a `read` goes on rv6
+
+<div class="mermaid">
+flowchart LR
+    A["ulib::read(fd, buf)"] --> B["ecall, a7 = 5"]
+    B --> C["trap into the kernel (48k)"]
+    C --> D["descriptor table (50k)"]
+    D --> E["console: one byte (45k)"]
+    D --> F["file: at most 128 bytes (40k)"]
+    E --> G["the count, back in a0"]
+    F --> G
+</div>
+
+- rv6 stages a file read through a 128-byte kernel buffer, and its files hold at most 128 bytes, so a 512-byte request always comes back short.
+- The host fills 512 bytes when it can. One program works on the host, on an rv6 file and on the console, because it loops until 0.
+- Linux's `read(2)`: "It is not an error if this number is smaller than the number of bytes requested."
+
+---
+
+<!-- .slide: id="11c-buffer" -->
+
+## One fixed buffer
+
+With no heap on rv6, `Vec`, `String` and `format!` are out of reach. The read buffer is one array on the stack, the same for a 3 KB note or a 3 TB disk image.
+
+```text
+copying 1 MiB (1,048,576 bytes), not counting the final read of 0
+  1-byte buffer    1,048,576 reads
+512-byte buffer        2,048 reads   0.2% as many
+  4 KiB buffer           256 reads   and your whole stack
+```
+
+Every `read` is a trap with a fixed cost. The first factor of 512 removes nearly every trap; later growth saves far less.
+
+Notes:
+- An rv6 program gets one 4 KiB stack page, so a 1 KiB buffer is a quarter of it and 8 KiB does not fit. That is why `cat` and `wc` use 512 bytes and `grep` uses 1,024.
+- ↓ below: the four forces that set the number.
+- **Q:** "Would a bigger buffer make `cat` faster on rv6?" Not past 128 bytes for a file: rv6's kernel never returns more than that per read, so the count of traps stops falling. The console returns one byte whatever you ask for.
+
+--
+
+<!-- .slide: id="deeper-buffer-size" class="deeper" -->
+
+## Four forces on the size
+
+1. **The per-call cost** wants it large, with fast-shrinking returns: 512 to 64 KiB removes 2,032 of the last 2,048 calls, at 128 times the memory.
+2. **The device** wants it aligned to 512-byte sectors or 4 KiB blocks and pages.
+3. **The kernel's staging buffer** caps it: rv6 never returns more than 128 bytes per read.
+4. **Your memory** wants it small. An rv6 program's stack is one page:
+
+```text
+0x0001_1000   top of the stack (sp starts just below, under argv)
+0x0001_0000   the stack: one 4 KiB page for every local
+0x0000_0000   the program image: at most 16 pages (64 KiB)
+```
+
+<span>glibc's `BUFSIZ` is 8,192 and nobody minds, because a Linux stack grows on demand to 8 MB. On rv6, 8 KiB of locals runs `sp` off its page.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="11c-status" -->
+
+## One bad file, one exit status
+
+The `i32` your `run` returns is the **exit status**: 0 for success, anything else for failure. Give the real `cat` a missing file and a good one:
+
+```text
+$ cat gone.txt todo.txt
+cat: gone.txt: No such file or directory
+buy milk
+$ echo $?
+1
+```
+
+The complaint went to standard error, `todo.txt` printed anyway, and the 1 describes the whole run: a later success does not erase an earlier failure.
+
+Notes:
+- Point at each line of the transcript: which descriptor the complaint used, the file that still printed, and the final status.
+- This is the real `cat`'s behavior, and the shell reads the status: `if cat f; then …` tests it.
+- **Q:** "Why 1, and not the number of files that failed?" A status reaches the shell as one byte, 0 to 255, and callers only ask zero or not zero. `cat` answers 1 for any failure.
+
+---
+
+<!-- .slide: id="11c-one-thing" -->
+
+## The one thing to get right · `11c`
+
+Every small test passes. What goes wrong on a file larger than the buffer?
+
+It comes out cut short, or it ends with a stretch of bytes from the chunk before.
+
+<div class="highlight-box"><code>read</code>'s answer, not the buffer's size, says how many bytes are real, and only 0 says the file is over.</div>
+
+Notes:
+- Two symptoms, one cause. Stop after one read and the file is cut short. Pass along the whole array after a short read and the stale tail comes out too.
+- On your laptop the harness takes every write whole and never counts descriptors; rv6 grants neither favor. Green tests here do not clear a bare `write` or a missing `close`.
+- **Q:** "My small test files all pass. Which input would have caught it?" Any file larger than the buffer. With 512 bytes, a 600-byte file needs a second read, and that read comes back short, with 88.
+
+---
+
+<!-- .slide: id="exam-count" class="exam" -->
+
+## Counting the calls
+
+When `read` fills the buffer whenever it can, N bytes through a B-byte buffer take ⌈N/B⌉ reads that return data, then one that returns 0. Each data read gets one `write_all`.
+
+```text
+1,000 bytes through a 256-byte buffer
+read -> 256, 256, 256, 232, 0        five reads, four writes
+```
+
+A kernel that returns less per read changes the count, never the output. A program that reads once prints the first chunk and silently drops the rest.
+
+Notes:
+- Midterm 1: "The short-read contract and why `write_all` exists". This slide is the arithmetic form of the contract.
+- The zero read is the one people forget: nothing else says the file ended.
+- ↓ Problem 1: the same file under the host, a stingy kernel and the console.
+- **Q:** "And when N is an exact multiple of B?" Still one extra read: 1,024 bytes through 256 is four reads of 256, then a fifth that returns 0. Five reads, four writes.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: counting the calls
+
+A correct copy program moves a 2,000-byte file to standard output through a 512-byte buffer.
+
+1. On the host, where `read` fills the buffer whenever it can, what does each `read` return, and how many writes happen?
+2. Under a kernel that returns at most 128 bytes per read, how many `read` calls, and how many writes?
+3. The program copies standard input on rv6, and you type `ok` and press Enter. How many `read` calls return data?
+4. A classmate reads once into a 2 KiB (2,048-byte) buffer, "since the file fits". Which of the three settings print the right output?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+1. 512, 512, 512, 464, then 0: five reads and four writes.
+2. 2,000 is 15 × 128 + 80: 15 reads of 128, one of 80, then 0. That is 17 reads and 16 writes, and the same output.
+3. Three, one per byte: `o`, `k` and the byte Enter sends, a `\r` on QEMU's serial console. An rv6 console read returns one byte, whatever the buffer size.
+4. Only the host, and by luck. Under the 128-byte kernel it prints 128 bytes and drops 1,872 with no error. On the console it prints `o` and exits.
+
+---
+
+<!-- .slide: id="exam-write-all" class="exam" -->
+
+## Why `write_all` exists
+
+`write` returns how many bytes it took. A disk that fills mid-write takes what fits and reports the smaller count.
+
+```rust
+pub fn write_all(fd: Fd, buf: &[u8]) -> Result<(), Error>
+```
+
+- It calls `write` again on the part not yet taken, until nothing is left
+- A write that takes 0 bytes becomes an error, not a loop that spins forever
+- It returns no count: success means every byte
+
+Notes:
+- Midterm 1 names this: "why `write_all` exists". Expect "explain why" in two sentences: a count smaller than the request is not an error, so code that ignores it loses the tail of the buffer and nothing reports it.
+- A bare `write` passes every host test, because the harness takes every write whole. `write_all` is in `ulib`, from week 4 (`10c`).
+- **Q:** "If a short write is so rare, why bother?" Because when it does happen nothing reports it, and `write_all` costs nothing when the first `write` takes everything: it checks the count once and returns.
+
+---
+
+<!-- .slide: id="fri-12c" -->
+
+## Friday · `12c`: bytes, `char`, and UTF-8
+
+| Type | Size | Promises |
+|---|---|---|
+| `u8` | 1 byte | nothing: any of 256 values |
+| `char` | 4 bytes | one Unicode scalar value |
+| `&str` | 16 bytes (pointer, length) | the bytes are valid UTF-8 |
+| `&[u8]` | 16 bytes (pointer, length) | nothing |
+
+```rust
+assert_eq!('ñ'.len_utf8(), 2);          // one char, two bytes
+assert_eq!("año".len(), 4);             // len counts bytes
+let flag: &[u8; 2] = b"-n";             // a byte string, not a &str
+```
+
+To `wc`, a **line** is a `\n` byte, and a **word** is a run of non-whitespace bytes.
+
+Notes:
+- From `45k` on, rv6 gets your typing through device interrupts and keeps it in a small fixed ring. `12c_wc` practices that discipline on a file: lines, words and bytes, counted in one pass.
+- The commands use `&[u8]` throughout: a disk block or a keystroke has no encoding, and checking UTF-8 costs image space. A file holding `año` and a newline is 5 bytes, and a last line without a `\n` is not counted.
+- Bytes are safe on UTF-8 text: every byte of a multi-byte character is `0x80` or above, so a search for ASCII never lands inside one (↓ below).
+- **Q:** "Is a `wc` word an English word?" No: `don't`, `3.14` and `--help` are one word each. Any run of non-whitespace bytes is a word.
+
+--
+
+<!-- .slide: id="deeper-utf8" class="deeper" -->
+
+## UTF-8, and why bytes are safe
+
+Ken Thompson and Rob Pike designed UTF-8 in 1992, for Plan 9. The first byte says how long the character is, and every later byte has the form `10xxxxxx`:
+
+```text
+0xxxxxxx                              1 byte: ASCII, unchanged
+110xxxxx 10xxxxxx                     2 bytes: ñ is C3 B1
+1110xxxx 10xxxxxx 10xxxxxx            3 bytes
+11110xxx 10xxxxxx 10xxxxxx 10xxxxxx   4 bytes
+```
+
+- Only ASCII bytes have the top bit clear, so a byte-wise search for ASCII never hits inside a longer character
+- Validating UTF-8 takes a state machine of its own, and costs code in a 64 KiB image
+- `wc -m`, which counts characters, pays for decoding every byte
+
+---
+
+<!-- .slide: id="12c-state" -->
+
+## Streaming with O(1) state
+
+**Stream**: examine each byte once, while it sits in the buffer. Keep the same handful of variables for 50 bytes or 50 GB: **O(1) state**. Reads end wherever the kernel chose, so a `\r\n` pair can straddle two reads:
+
+```rust
+// Called once per chunk. The caller keeps `after_cr` between calls.
+fn feed(chunk: &[u8], after_cr: &mut bool, pairs: &mut usize) {
+    for &b in chunk {
+        if *after_cr && b == b'\n' { *pairs += 1; }
+        *after_cr = b == b'\r';
+    }
+}
+```
+
+Feed `one\r`, then `\ntwo\r\n`: `pairs` is 2, as for one feed of the whole.
+
+Notes:
+- Counting the easy way means holding the whole input and cutting it at whitespace; rv6 has no heap for either, and a file can outgrow all the memory a process gets (↓ the version rv6 cannot run).
+- Read `after_cr` as the one fact about the past that the next byte might need. Declare it inside `feed` instead and the first pair vanishes: the answer depends on where the reads fell.
+- State updated by each arriving byte is a **state machine**, and a correct one gives the same answer however its input is chunked.
+- **Q:** "Why not make the buffer big enough to hold the file?" You do not know the file's size, the stack is one page, and the console hands you one byte per read anyway.
+
+--
+
+<!-- .slide: id="deeper-vec-wc" class="deeper" -->
+
+## The version rv6 cannot run
+
+The in-class example [`week05/12c_wc_vec_example`](https://github.com/USF-CS326-F26/inclass/tree/main/week05/12c_wc_vec_example) writes the easy `wc` in plain `std`. The idea, in three lines of your own:
+
+```rust
+let text = std::fs::read_to_string("notes.txt")?;  // every byte, on the heap, checked as UTF-8
+let words = text.split_whitespace().count();       // pass 1
+let longest = text.lines().map(str::len).max();    // pass 2: the text is still there
+```
+
+- `read_to_string` keeps every chunk until end of file: memory grows with the file
+- A streaming `wc` costs 512 bytes for any input, and gets one pass
+- Take away the whole-file `String` and you are back to chunks, and to the boundary problem
+
+---
+
+<!-- .slide: id="12c-one-thing" -->
+
+## The one thing to get right · `12c`
+
+A file holding `hello world` gets a count of 10 words. What happened?
+
+One word per letter: the count went up on every byte that was not a separator.
+
+<div class="highlight-box">A word is not a kind of byte; it is an event, the change from separator to non-separator. One byte cannot show a change. Only what you remember about the byte before it can.</div>
+
+Notes:
+- Symptom first: a word count equal to the number of letters means each letter was counted on its own.
+- ↓ Problem 3: a routine whose event may never happen before the input ends.
+- **Q:** "Does the memory have to survive between reads?" Yes, for the same reason as `after_cr`: a word can start at the end of one chunk and go on in the next.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: does it need a flush?
+
+This streaming routine reports the length of the longest line:
+
+```rust
+fn feed(chunk: &[u8], cur: &mut usize, best: &mut usize) {
+    for &b in chunk {
+        match b {
+            b'\n' => { *best = (*best).max(*cur); *cur = 0; }
+            _ => *cur += 1,
+        }
+    }
+}
+```
+
+1. What does `best` hold after the input `ab\ncdef`, with no final newline? What is the right answer?
+2. What must happen at end of input, and why does the `\r\n` counter need nothing similar?
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+1. `best` is 2, from the one `\n`. `cdef` is still sitting in `cur`, as 4, when the input ends, so the right answer is 4.
+2. After the read that returns 0, take `best.max(cur)` once more: a flush. This routine acts when a line ends, and the last line may never end. The `\r\n` counter acts when a pair completes, so nothing is pending.
+
+---
+
+<!-- .slide: id="exam-chunks" class="exam" -->
+
+## State across a chunk boundary
+
+Given a routine, an input and a buffer size: the state after each chunk, and the final answer.
+
+- One row per chunk, carried into the next
+- A correct routine's answer ignores the chunking
+- If the answer changes, some state was reset between reads
+- A routine that acts when a line ends needs a **flush** after the read that returns 0
+
+Notes:
+- Midterm 1: "Streaming with fixed buffers and O(1) state". This is the question shape. Practice: ↓ Problem 2 is here; Problem 3 sits under 12c-one-thing.
+- The row table is the whole technique. Most wrong answers start a row from a fresh state instead of from the row above. A correct routine loses nothing it needs when a read ends.
+- **Q:** "Will we have to write the routine?" The Midterm 1 page says you read and trace, not write long programs. Expect to trace one, or to say which buffer sizes break a buggy one.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: carry it across
+
+The `\r\n` counter from 12c-state reads the 10 bytes `hi\r\n\r\r\nok\r` through a 3-byte buffer, starting with `after_cr = false` and `pairs = 0`.
+
+1. Give `after_cr` and `pairs` after each chunk, and the final count.
+2. A classmate declares `after_cr` inside `feed`, starting at `false` on every call. What does that version report here, and for which buffer sizes is it right?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+The chunks are `hi\r`, `\n\r\r`, `\nok` and `\r`:
+
+| After chunk | `after_cr` | `pairs` |
+|---|---|---|
+| `hi\r` | true | 0 |
+| `\n\r\r` | true | 1 |
+| `\nok` | false | 2 |
+| `\r` | true | 2 |
+
+The classmate's version reports 0: each `\n` arrives at the start of a chunk, with a fresh `false`. It is right for buffers of 4, 5, or 7 bytes and up, where no pair straddles a boundary, and wrong for 1, 2, 3 and 6. The kernel, not you, chooses where reads end.
+
+---
+
+<!-- .slide: id="fri-13c" -->
+
+## Friday · `13c`: lines without an allocator
+
+To `grep`, a line is everything between two `\n` bytes. Reads know nothing about lines, so a buffer may stop halfway through one; with no heap, you move the unfinished part to the front and read more behind it. `ulib::Lines` does that:
+
+```rust
+impl<'b> Lines<'b> {
+    pub fn new(fd: Fd, buf: &'b mut [u8]) -> Lines<'b> { … }
+    pub fn next_line(&mut self) -> Option<&[u8]> { … }
+}
+```
+
+Each line is a slice of your array with the `\n` removed, or `None` at end of file.
+
+Notes:
+- In `53k`, `grep` runs as a user program on rv6, where a panic prints one word. `13c_grep` gets its edge cases right under `cargo test`, reading lines through a buffer it declares.
+- Read `buf: &'b mut [u8]` as your array, on loan to `Lines` while `lines` is in use. Print `buf[0]` meanwhile: `E0502` (write to it: `E0506`). Hold a line across the next call: `E0499`, since that call may write over its bytes. C compiles all three and hands you bytes that changed under you.
+- An oversized line is cut to the buffer's length, its tail is thrown away, and `truncated()` turns true. `next_line` calls `read` only when nothing complete is left. ↓ below: inside `Lines`.
+- **Q:** "Why not hand back an owned copy of each line?" There is no heap to copy into. The slice points into your buffer and costs nothing.
+
+--
+
+<!-- .slide: id="deeper-lines" class="deeper" -->
+
+## Inside `Lines`
+
+`next_line` tries three cases in order:
+
+1. A buffered `\n`: return the bytes before it, with no `read` at all
+2. End of file: leftover bytes come back as the last line, which is why a final line with no newline still appears
+3. Otherwise it **compacts**; a tail that still fills the buffer comes back whole (the rest of the line is skipped), else it refills. A 16-byte buffer, after `abc` and `def` came back:
+
+```text
+before   [a b c \n d e f \n g h i j k l . .]   start 8, len 14
+compact  [g h i j k l . . . . . . . . . .]    start 0, len 6
+refill   read(fd, &mut buf[6..]) -> 10
+         [g h i j k l m n \n o p q r s t u]   len 16
+return   "ghijklmn"                           start 9
+```
+
+<span>C's `fgets` returns a long line's prefix with only a missing `\n` to warn you, then the rest as if it were a new line. `getline` grows its buffer with `realloc`, which needs a heap.</span> <!-- .element: class="small" -->
+
+---
+
+<!-- .slide: id="13c-while-let" -->
+
+## `while let`
+
+`Lines` is not an `Iterator`: each line borrows the buffer that the next call overwrites, and `Iterator` has no way to say that. So you drive it by hand:
+
+```rust
+let mut stack = vec![10, 20, 30];
+while let Some(top) = stack.pop() {
+    println!("{top}");              // 30, then 20, then 10
+}
+// pop() answered None, so the loop ended; stack is empty
+```
+
+Call `pop`; while the answer is `Some`, bind it to `top` and run the body. The first answer that does not match ends the loop.
+
+Notes:
+- Read `while let` as a loop and a `match` in one line: one pattern, and the loop ends on the first value that fails it.
+- `for` needs an `Iterator`, and an `Iterator`'s items cannot borrow from the iterator itself. A type like `Lines` is sometimes called a *lending* iterator.
+- **Q:** "Can I leave a `while let` early?" Yes: `break` and `return` work as in any loop. Without them, the loop ends at the first value that does not match.
+
+---
+
+<!-- .slide: id="13c-search" -->
+
+## Where a search breaks
+
+A line matches if the **needle** occurs in it as one contiguous run: `ear` is in `heart`, not `era`.
+
+- Starts are fenceposts: a 2-byte needle on a 5-byte line starts at 0, 1, 2 or 3
+- An empty needle is found in every line
+- A needle with more bytes than the line has no start; `2 - 5` on `usize` panics in debug
+
+```rust
+let a: Vec<u32> = (1..5).collect();     // [1, 2, 3, 4]: stops before 5
+let b: Vec<u32> = (1..=5).collect();    // [1, 2, 3, 4, 5]
+let gap = 2usize.checked_sub(5);        // None: checked, no panic
+```
+
+Notes:
+- Our `grep` matches a fixed string, not a regular expression. Search code calls the pattern the needle and the line the **haystack**.
+- The fencepost is the bug people ship; the two sizes are decisions you make before counting. Read `..=` as "up to and including".
+- A `checked_` operation returns an `Option` where plain arithmetic would panic. ↓ Problem 4: unsigned arithmetic and ranges.
+- **Q:** "Doesn't a release build just wrap?" It does, to a number near 2^64 (↓ Problem 4 works one out exactly), and the first index that uses it fails the bounds check. Either way the program stops; on rv6 it stops with one word.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: unsigned arithmetic and ranges
+
+```rust
+fn seats_between(first: usize, last: usize) -> usize {
+    last - first + 1                    // seats first through last
+}
+```
+
+1. What is `seats_between(3, 7)`?
+2. What does `seats_between(7, 3)` do in a debug build, and in a release build?
+3. A loop over `first..last` visits which seats for `(3, 7)`?
+4. Rewrite it to return `None` for the second call.
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+1. 5: seats 3, 4, 5, 6 and 7.
+2. Debug panics: `attempt to subtract with overflow`. Release wraps: 3 − 7 is 2^64 − 4, and adding 1 gives 18,446,744,073,709,551,613 seats, a count some later loop will believe.
+3. 3, 4, 5 and 6: `..` stops before 7. `first..=last` includes it, matching the `+ 1`.
+4. Let `checked_sub` catch it, and `checked_add` the one case left, `(0, usize::MAX)`:
+
+```rust
+fn seats_between(first: usize, last: usize) -> Option<usize> {
+    last.checked_sub(first).and_then(|gap| gap.checked_add(1))
+}
+```
+
+---
+
+<!-- .slide: id="13c-status" -->
+
+## An answer scripts can test
+
+| Status | Meaning |
+|---|---|
+| 0 | some line matched |
+| 1 | the search ran and nothing matched |
+| 2 | trouble: no pattern, or a file that `open` refused |
+
+```text
+$ grep -q ERROR build.log && echo "read the log"
+read the log
+$ grep zebra build.log; echo $?
+1
+```
+
+Status 1 is the answer "no", not a failure: that difference is what `&&` and `if` test.
+
+Notes:
+- Read `-q` as "print nothing; just answer". If `grep` exited 0 whether or not it found anything, every `if grep` would take the same branch.
+- It is the same `i32` your `run` returned in `cat`, with one more value in use.
+- **Q:** "One file will not open and another matches. Which status?" 2: the real `grep` reports the error over the match, unless `-q` found a match. A script that sees 0 can trust every file was searched.
+
+---
+
+<!-- .slide: id="13c-one-thing" -->
+
+## The one thing to get right · `13c`
+
+`grep log` prints `logfile` but not `syslog`. Why?
+
+Count the starts by hand: a 3-byte needle fits a 6-byte line at 0, 1, 2 and 3.
+
+<div class="highlight-box">The last start is exactly 6 − 3. A range that stops one start early never tries 3, the only place <code>log</code> sits in <code>syslog</code>.</div>
+
+Notes:
+- The symptom is one-sided: `logfile` and `my log file` both match, and only `syslog`-shaped lines go missing. That is why it survives casual testing.
+- **Q:** "Is this just an off-by-one?" Yes, the fencepost kind: 6 − 3 = 3, but there are four starts, because both 0 and 3 count.
+
+---
+
+<!-- .slide: id="ec-14c" -->
+
+## Extra credit · `14c_head`: what it does not read
+
+`head` prints the first 10 lines of its input, or as many as `-n COUNT` asks for.
+
+`Lines` fetches more input only when you ask it for a line, so the work `head` does is set by the count, not by the file's size.
+
+<div class="info-box"><code>head -n 1</code> on a 10 GB log should cost one buffer, not 10 GB.</div>
+
+Notes:
+- The idea: `head` is judged by what it does not read.
+- Out Friday, extra credit. No later exercise needs it; a finished `head` rides along to rv6 in `53k`.
+- **Q:** "Is `head` on Midterm 1?" Not as `head`: extra credit is never the only home of an exam topic. The idea under it, reading only when asked, rests on the short-read loop you already know.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- A descriptor is a number; 0, 1 and 2 start open
+- `read` may come back short; only 0 ends it
+- `write_all` repeats until all is taken
+- One fixed buffer; 512 bytes is plenty
+- `len` counts bytes, not characters
+- O(1) state: a correct stream ignores chunking
+- Fenceposts: a range of starts counts both ends
+- `grep`'s status answers: 0 yes, 1 no, 2 broken
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- **Q:** "How should I study this for Midterm 1?" The page's For the exam section and Problems 1 and 2, on paper. Then count the calls for a file size of your own choosing.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/05-cs326-2026-09-24-prep-cat/): check yourself
+
+You build a `cat` that copies files, or standard input, to standard output through one fixed buffer. Prep: about 25 minutes.
+
+**1.** `read` into a 512-byte buffer returns 300. Is the file finished?
+
+**2.** `cat missing.txt real.txt` — what goes to standard output, to standard error, and what exit status?
+
+**3.** Tests are green, but you used bare `write` and never closed anything. What happens in December?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build: `cat`, with every byte moving through `open`, `read`, `write_all` and `close`. The tests feed in-memory files and check standard output, standard error and the exit code.
+- No QEMU this week: `oslings run 11c_cat` is plain `cargo test`. The three questions are the prep's own Check yourself; answers are on the prep page.
+- **Q:** "Where does the file I write end up?" Here it runs under `cargo test`. In `53k` the same source is rebuilt without `std` and runs on your rv6.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/05-cs326-2026-09-25-prep-wc-and-grep/): check yourself
+
+You build `wc`, which counts in one pass, and `grep`, which prints matching lines and answers with its exit status. Prep: about 30 minutes.
+
+**1.** `wc` on a file holding the 4 bytes <code>a&nbsp;&nbsp;b</code> prints what, and why not 1 line?
+
+**2.** `grep` prints nothing and every file opened. Exit status, and why not 0?
+
+**3.** Searching for `x` in `abcx`, which start positions must you try? Now search for `abcdefgh` in `abc`.
+
+Notes:
+- Walk the prep page (about 30 minutes). What you build: two filters, each Thursday's read loop plus one idea. `wc` prints lines, words and bytes per file, with a `total` row for several; `grep` reads through `ulib::Lines` and prefixes hits with `name:` only for two or more files.
+- The three questions are the prep's own Check yourself; answers are on the prep page. Question 1 feeds `wc` a file here, where the prep uses a shell one-liner. Extra credit `14c_head` goes out the same day.
+- **Q:** "What do I need for next week?" QEMU: Thursday Oct 1 (`20a`) runs on it with no host fallback. Run `oslings doctor` this weekend.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+[Week 6 · Below Rust: Assembly, `unsafe`, and `no_std`](06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/): read its Essentials before Tuesday.
+
+Notes:
+- Thursday Oct 1 is the QEMU deadline: `oslings doctor` before then.
+- **Q:** "Is Week 6 on Midterm 1?" Yes: registers and the calling convention, `unsafe`, volatile and `no_std` are all in scope. Midterm 1 is Thursday, October 15.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

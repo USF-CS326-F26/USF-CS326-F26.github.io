@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 3 · Structs, impl, Enums, and match - CS 326</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/reveal.css">
+    <link rel="stylesheet" href="https://unpkg.com/reveal.js@5.0.4/dist/theme/white.css">
+
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/a11y-light.min.css">
+
+    <style>
+        :root {
+            --primary-color: #00543c;
+            --accent-color: #FDBB30;
+            --bg-color: #ffffff;
+        }
+
+        .reveal {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 28px;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            color: var(--primary-color);
+            text-transform: none;
+        }
+
+        .reveal h1 {
+            font-size: 2.2em;
+        }
+
+        .reveal h2 {
+            font-size: 1.6em;
+        }
+
+        .reveal a {
+            color: var(--primary-color);
+        }
+
+        .reveal a:hover {
+            color: var(--accent-color);
+        }
+
+        .reveal .slides section {
+            text-align: left;
+        }
+
+        .reveal pre {
+            width: 100%;
+            font-size: 0.5em;
+        }
+
+        .reveal code {
+            background: #f5f5f5;
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+        }
+
+        .reveal pre code {
+            background: none;
+            padding: 1em;
+            color: #333;
+        }
+
+        .reveal table {
+            margin: 0 auto;
+            font-size: 0.65em;
+        }
+
+        .reveal table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.4em 0.8em;
+        }
+
+        .reveal table th code {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+        }
+
+        .reveal table td {
+            padding: 0.3em 0.8em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .reveal .slide-number {
+            color: var(--primary-color);
+            font-size: 0.8em;
+            left: 15px;
+            right: auto;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            font-size: 0.7em;
+            z-index: 100;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.3em 0.6em;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .back-link a:hover {
+            background: var(--accent-color);
+            color: var(--primary-color);
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5em 1em;
+            margin: 0.5em 0;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .reveal .mermaid svg {
+            max-height: 560px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        ul, ol {
+            display: block;
+        }
+
+        li {
+            margin-bottom: 0.3em;
+        }
+
+        .two-column {
+            display: flex;
+            gap: 2em;
+        }
+
+        .two-column > div {
+            flex: 1;
+        }
+
+        .tree-diagram {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 1em;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        /* ---- Weekly-deck additions (see CONTRIBUTING.md, "Slide decks") ---- */
+
+        /* Going deeper: lives only in a vertical (down-arrow) stack under its
+           core slide. Right arrow / clicker skips it; down arrow dives in. */
+        .reveal .slides section.deeper::before {
+            content: "Going deeper \00B7  optional";
+            position: absolute;
+            top: -1.6em;
+            right: 0;
+            font-size: 0.45em;
+            font-weight: 700;
+            color: #555;
+            background: #eee;
+            padding: 0.15em 0.7em;
+            border-radius: 4px;
+        }
+
+
+        /* Make the down arrow obvious when a stack has depth below it. */
+        .reveal .controls .navigate-down.enabled {
+            color: var(--accent-color);
+        }
+
+        .reveal .small {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body>
+    <div class="back-link">
+        <a href="03-cs326-2026-09-08-structs-enums-and-match/">&larr; Week 3 page</a>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+            <!-- One markdown section. Horizontal slides: a line of three dashes.
+                 Vertical "Going deeper" slides: a blank line, two dashes, a blank line.
+                 Speaker notes: a line starting "Notes:" (public: the no-leak rule applies). -->
+            <section data-markdown
+                     data-separator-vertical="^\r?\n--\r?\n$"
+                     data-separator-notes="^\s*Notes?:">
+                <textarea data-template>
+<!-- .slide: id="title" -->
+
+# Week 3
+
+## Structs, `impl`, Enums, and `match`
+
+CS 326 Operating Systems · Tuesday, September 8
+
+**Thu Sep 10** `04r_structs_impl` · **Fri Sep 11** `05r_enums_match`
+
+[The Week 3 page](03-cs326-2026-09-08-structs-enums-and-match/): taught Tue Sep 8. **Essentials** is what Thursday and Friday assume, and Midterm 1 tests it.
+
+Notes:
+**Minute plan** (105 minutes)
+
+| Min | Segment | Slides |
+|---|---|---|
+| 0–5 | This week | title, this-week |
+| 5–50 | Part I · Thursday · `04r` (11 core, with the exam slide right after `#[repr(C)]`) | thu-04r … 04r-one-thing |
+| 50–80 | Part II · Friday · `05r` (9 core, with two exam slides) | fri-05r … exam-sentinel |
+| 80–83 | Summary | summary |
+| 83–97 | Before Thursday, then Before Friday | before-thursday, before-friday, next-week |
+| 97–105 | Buffer: questions, or one ↓ stack (Problem 5, under 05r-guards) | |
+
+**As taught:** on Sep 8 the [in-class deck](../inclass/week03-slides.html) planned this same order in 75 minutes, plus a fifth part on slices and fixed tables that now opens week 4. This deck keeps that order and 04r's 45 minutes, gives 05r 30 minutes (up from 19) for its two exam slides, uses new examples, and gives the rest of the freed time to the prep walks.
+
+**Fast path** (the minimum lecture, 13 ids): this-week, 04r-impl, 04r-selves, 04r-newtype, 04r-repr-c, exam-repr-c, 04r-drop, 04r-one-thing, 05r-match, 05r-exhaustive, exam-wildcard, 05r-guards, exam-sentinel. The slides off the fast path (04r-bits, 04r-const-fn, 05r-enums and 05r-option for Midterm 1, and 04r-guard, which 04r-one-thing builds on) are never dropped: show each in its cut-order form, about 30 seconds each.
+
+**Cut order** (cut from the top when behind):
+
+1. Every ↓ Going-deeper stack: never press down. The page has all of it.
+2. next-week: say it aloud on before-friday.
+3. summary: skip it; the Before slides recap by question.
+4. before-friday: point at the prep page, and open Friday's session with its questions.
+5. 05r-one-thing: one sentence on 05r-guards, "when a field's value decides, the decision is a match guard".
+6. 04r-guard: leave `login` up, say "every way out restores echo", and skip `Quiet<'_>`.
+7. 05r-enums: 30 seconds: leave `Slot` up and say "this case or that one, each with its own fields".
+8. 04r-const-fn: two sentences: `const` is a permission, not a restriction, and a `static` exists before any code runs (Thursday prep question 3 (a)).
+9. 05r-option: two sentences: absence has its own type, and `.unwrap()` halts a kernel. exam-sentinel carries the rest.
+10. 04r-bits: leave the operator table up and work only `green` on `0x6D07`. Week 7's bit primer repeats the operators.
+11. before-thursday: last to go.
+
+The Part title slides thu-04r and fri-05r take ten seconds each. Never cut: exam-repr-c, exam-wildcard, exam-sentinel (the Midterm 1 slides), and 05r-exhaustive and 05r-guards, the two ideas students carry into Friday.
+
+**Practice Set 1 anchors:** P3 (a) → exam-sentinel, 05r-option · P3 (b) → exam-wildcard, 05r-exhaustive · P3 (c), fixed tables, is week 4. The Midterm 1 page's "why `#[repr(C)]` is required on a struct that assembly indexes" → exam-repr-c.
+
+- **Q:** "Is Going deeper on the midterm?" No. The page's For the exam section lists what is; every ↓ slide is optional.
+
+---
+
+<!-- .slide: id="this-week" -->
+
+## This week
+
+| Day | Exercise | You build | The one idea |
+|---|---|---|---|
+| Thu Sep 10 | `04r_structs_impl` | types with methods, and a guard that gives a page back | the type enforces what C keeps in comments |
+| Fri Sep 11 | `05r_enums_match` | a state machine as one `match` | the compiler lists every case you left out |
+
+<div class="info-box">Midterm 1 (Thu Oct 15) covers all of this week. The ↓ slides are optional.</div>
+
+Notes:
+- Start from where this goes: later this term the kernel leans on types in three places. `33k` packs an address and its permission bits into one 64-bit word; `34k` keeps a record for each process; `35k` hands assembly a struct whose fields it finds by byte offset. To the machine all three are integers.
+- By Friday night the compiler checks rules that a C kernel keeps in comments.
+- **Q:** "Is all of this really on Midterm 1?" Yes. Its scope names structs, `impl`, methods, `const fn`, the newtype, `#[repr(C)]`, enums, `Option` and exhaustive `match`. Going deeper is not on it.
+
+---
+
+<!-- .slide: id="thu-04r" -->
+
+# Part I · Thursday
+
+## `04r_structs_impl`: structs, methods, and the guard
+
+By `34k` every process is one record the scheduler reads and the context switch saves registers into.
+
+So on Thursday you build types like it, give them methods, and write one that cleans up after itself.
+
+Notes:
+- Part I runs 45 minutes over 11 core slides, with the `#[repr(C)]` exam slide in the middle.
+- ↓ below: where rv6 draws the type line, and why four `usize` parameters in a row are a trap (optional).
+- **Q:** "Why not use `usize` for everything, the way C uses integers?" Then the compiler cannot tell an address from a size from a permission word. The ↓ slide shows a real rv6 signature where swapping two arguments still compiles.
+
+--
+
+<!-- .slide: id="deeper-type-line" class="deeper" -->
+
+## Where rv6 draws the type line
+
+`mappages()` (`vm.rs`) takes a virtual address, a size, a physical address and a permission word, and four of its five parameters are `usize`.
+
+- Swap the two addresses at a call site: the kernel compiles, boots and maps the wrong page.
+- Page-table entries get their own type, `Pte` (`vm.rs`), because entries and addresses are confused constantly and fatally.
+- Addresses, sizes and pids stay `usize`: wrapping every one would bury a teaching kernel in conversions. Linux draws the same line: `pte_t` and `pgprot_t` are one-member C structs, while `phys_addr_t` is a plain `typedef`, an alias.
+
+---
+
+<!-- .slide: id="04r-impl" -->
+
+## Structs and `impl`
+
+```rust
+pub struct Cpu { pub id: u8, busy: u64, idle: u64 }
+
+impl Cpu {
+    pub fn new(id: u8) -> Self { Cpu { id, busy: 0, idle: 0 } }
+    pub fn tick(&mut self, ran: bool) {
+        if ran { self.busy += 1 } else { self.idle += 1 }
+    }
+    pub fn load(&self) -> u64 { 100 * self.busy / (self.busy + self.idle).max(1) }
+}
+```
+
+- A **method** takes a form of `self` and is called with a dot: `cpu0.tick(true)`
+- An **associated function** takes none: `Cpu::new(0)`. `new` is a convention, not a keyword
+- No `pub`, no access: outside the module, a literal is ``error[E0451]: fields `busy` and `idle` of struct `Cpu` are private``
+
+Notes:
+- A **struct** gives named fields one type, so they are created, passed and returned together: here, the numbers behind `top`'s CPU line. Private fields mean only `Cpu`'s methods can change the counters.
+- `Self` means `Cpu`, and `Cpu { id, … }` is shorthand for `id: id`.
+- **Q:** "Why is `new` called with `::` and not with a dot?" There is no `Cpu` yet: `new` is what makes one, so it is reached through the type.
+
+---
+
+<!-- .slide: id="04r-selves" -->
+
+## The three selves, and `derive`
+
+| Receiver | The method gets | The caller afterwards |
+|---|---|---|
+| `&self` | a shared borrow: it may read | still owns the value |
+| `&mut self` | the only borrow: it may change fields | still owns it; needs `let mut` |
+| `self` | the value itself | has lost it, unless the type is `Copy` |
+
+```rust
+let total = cpu0.retire();  // retire(self) -> u64
+let now = cpu0.load();      // error[E0382]: borrow of moved value: `cpu0`
+```
+
+`#[derive(...)]` generates traits from the fields. **`Copy`**: assignment and a by-value `self` copy the bits and leave the original usable.
+
+Notes:
+- Pick the receiver by the job: read, change, or consume. It is week 2's ownership rules, applied to methods.
+- With `Debug`, `{:?}` can print the value, and so can a failing `assert_eq!`; `PartialEq` and `Eq` make `==` compare field by field; `Clone` supplies `.clone()`. Derive `Copy` only on small plain data, never on a type that owns something: the `Drop` slide says why.
+- ↓ Problem 1, under the bits slide, practices the receivers once `Rgb565` exists.
+- **Q:** "Does `Copy` make copying cheaper?" No. A move copies the same bits; `Copy` only lets the old name stay usable afterwards.
+
+---
+
+<!-- .slide: id="04r-newtype" -->
+
+## The newtype
+
+RGB565: 5 bits red, 6 green, 5 blue. BGR565 swaps red and blue.
+
+`type Rgb565 = u16;` is an **alias**: either format gets through, and red comes out blue. A **newtype** is a different type:
+
+```rust
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Rgb565(u16);
+```
+
+- A `Bgr565` passed to `fn paint(px: Rgb565)`: ``error[E0308]: mismatched types``
+- `#[repr(transparent)]`: to C code taking a `uint16_t`, it is exactly a bare `u16`
+
+Notes:
+- Nothing is added at run time: an `Rgb565` has the `u16`'s size, sits in the same register and uses the same instructions. The whole check happens at compile time.
+- `px.0` names the unnamed field by position. rustc's full message goes on: ``expected `Rgb565`, found `Bgr565` ``. In `33k` a page-table entry wears this same shape.
+- **Q:** "Why not just use a type alias?" An alias is interchangeable with `u16` in every expression, so the compiler has nothing to check. Only a struct makes a new type.
+
+---
+
+<!-- .slide: id="04r-bits" -->
+
+## Bits in a word
+
+```text
+x << n   bits move up n places             0x0028 << 5       = 0x0500
+x >> n   bits move down; the low n drop    0x6D07 >> 5       = 0x0368
+a | b    set in either: merges fields      0xF800 | 0x001F   = 0xF81F
+a & m    set in both: keeps what m names   0x6D07 & 0x001F   = 0x0007
+!m       every bit flipped                 0x6D07 & !0x001F  = 0x6D00
+```
+
+```rust
+impl Rgb565 {
+    pub const fn new(r: u16, g: u16, b: u16) -> Rgb565 { Rgb565((r << 11) | (g << 5) | b) }
+    pub const fn green(self) -> u16 { (self.0 >> 5) & 0x3F }
+}
+```
+
+A **mask** marks a field with ones: `(1 << n) - 1` is n ones, so `0x3F` is six bits. Read `green` as two cuts: the shift drops blue, the mask drops red.
+
+Predict: `0x6D07` is `new(13, 40, 7)`. What does `green` return without the mask? `0x368`, red still attached.
+
+Notes:
+- `0x6D07` is `01101 101000 00111`: red 13, green 40, blue 7. The shift by 5 leaves `0x368`, and `& 0x3F` keeps its low six bits, 40.
+- Rounding uses the same operators: `0xC8` plus `0xF` is `0xD7`, and clearing the low four bits leaves `0xD0`, the next multiple of 16. Week 7 does it with pages, and its Sv39 decoding runs on these same operators.
+- ↓ Problem 1 (which lines compile: the receivers and `Copy`) and Problem 2 (pack and unpack by hand).
+- **Q:** "Why take `u16` arguments when red fits in five bits?" Rust has no five-bit integer, and this constructor trusts its caller. ↓ Problem 2 (3) shows what a green of 64 does.
+
+--
+
+<!-- .slide: id="problem-1" class="deeper" -->
+
+## Problem 1: which lines compile?
+
+With `Cpu` plus `retire(self)`, and the `Rgb565` newtype, which numbered lines compile?
+
+```rust
+let cpu0 = Cpu::new(0);
+let px = Rgb565::new(1, 2, 3);
+cpu0.tick(true);            // 1
+let g1 = px.green();        // 2
+let g2 = px.green();        // 3
+let n = cpu0.retire();      // 4
+let m = cpu0.load();        // 5
+```
+
+Which line breaks if `Rgb565` loses `Copy`?
+
+--
+
+<!-- .slide: id="problem-1-solution" class="deeper" -->
+
+## Problem 1 · solution
+
+- **1 fails:** ``error[E0596]: cannot borrow `cpu0` as mutable, as it is not declared as mutable``: `&mut self` needs `let mut cpu0`.
+- **2 and 3 compile:** `Rgb565` is `Copy`, so each by-value call copies it.
+- **4 compiles**, moving `cpu0` into `retire`; **5 fails** with `E0382`.
+
+Without `Copy`, line 2 moves `px`, and line 3 is ``error[E0382]: use of moved value: `px` ``.
+
+--
+
+<!-- .slide: id="problem-2" class="deeper" -->
+
+## Problem 2: pack and unpack by hand
+
+With `Rgb565::new` and `green` as above, and no calculator:
+
+1. What word does `Rgb565::new(31, 32, 0)` hold?
+2. A pixel holds `0x07E0`. What are its red, green and blue?
+3. `Rgb565::new(0, 64, 0)` holds `0x0800`. What do `green` and red (the word shifted right by 11) report, and why?
+
+--
+
+<!-- .slide: id="problem-2-solution" class="deeper" -->
+
+## Problem 2 · solution
+
+1. `31 << 11` is `0xF800`, and `32 << 5` is `0x0400`. OR them: **`0xFC00`**.
+2. `0x07E0` is `0b00000_111111_00000`. Red, `0x07E0 >> 11`, is **0**. Green, `(0x07E0 >> 5) & 0x3F`, is **63**. Blue, `0x07E0 & 0x1F`, is **0**: full green.
+3. 64 is `0b100_0000`, seven bits, so `64 << 5` is `0x0800`: bit 11, red's lowest bit. `green` reads `0x40 & 0x3F` = **0**, and red reads **1**.
+
+Nothing checked the argument; a constructor that refused bad input would return `Option<Rgb565>`.
+
+---
+
+<!-- .slide: id="04r-const-fn" -->
+
+## `const fn`: settled before run time
+
+rustc can run a **`const fn`** while compiling. `new` is one:
+
+```rust
+const WHITE: Rgb565 = Rgb565::new(31, 63, 31);   // rustc computes 0xFFFF
+let px = Rgb565::new(r, g, b);                   // r, g, b known only at run time
+```
+
+- `const` is a permission: the same function still runs on run-time values
+- Without `const` on `new`: ``error[E0015]: cannot call non-const associated function `Rgb565::new` in constants``
+
+A `static` exists before any code runs, so nothing can fill one in.
+
+Notes:
+- `const` and `static` items and array lengths, including the `N` in `[x; N]`, need their value at compile time. That is why `34k`'s table of 64 process records is built by a `const fn` ([week 9](09-cs326-2026-10-13-processes-context-switch-and-scheduling/#34k-table)). Thursday prep question 3 (a) asks this.
+- ↓ what C does instead, and what a `const fn` may not do.
+- **Q:** "Does `WHITE` cost a function call at startup?" No. rustc ran `new` while compiling, so the image holds the finished `0xFFFF`.
+
+--
+
+<!-- .slide: id="deeper-const" class="deeper" -->
+
+## `const fn`, and what C does instead
+
+- A C static initializer allows only constant expressions, never a function call. So C kernels grow `xxx_init()` routines that fill in what the language could not, and each must run before anyone reads its table.
+- C++ added `constexpr` in 2011; Rust stabilized `const fn` in 2018, in Rust 1.31.
+- A `const fn` may use arithmetic, `if`, `match`, loops and other `const fn`s, but may not allocate or call a function that is not `const`.
+- An array repeat `[x; 64]` normally needs a `Copy` element. A `const { … }` block around the element lifts that rule, which is how week 9 builds its process table.
+
+---
+
+<!-- .slide: id="04r-repr-c" -->
+
+## `#[repr(C)]`: offsets you can count on
+
+By default Rust may reorder fields to save padding. `#[repr(C)]` trades that freedom for C's rule: each field follows the one before it, at the first offset its alignment allows.
+
+```rust
+pub struct Reading { sensor: u8, value: u32, seq: u16 }
+```
+
+| Layout | `sensor` at | `value` at | `seq` at | Size |
+|---|---|---|---|---|
+| default (today's `rustc`) | 6 | 0 | 4 | 8 |
+| `#[repr(C)]` | 0 | 4 | 8 | 12 |
+
+It earns its place when the bytes cross a boundary `rustc` does not control: a device, a disk image, or `35k`'s assembly.
+
+Notes:
+- Under `#[repr(C)]`, `sensor` takes one byte and three bytes of padding follow, so `value` lands on 4. The size rounds 10 up to 12, so every `value` in an array stays 4-aligned.
+- The default put the widest field first, which is why it is 4 bytes smaller. That order is what today's `rustc` chose, not a rule.
+- **Q:** "Should I put `#[repr(C)]` on every struct, to be safe?" No. When only Rust reads a struct, you give up the smaller layout and gain nothing.
+
+---
+
+<!-- .slide: id="exam-repr-c" class="exam" -->
+
+## Why assembly needs `#[repr(C)]`
+
+Assembly reaches a field as a fixed number, "base plus 16". Only `#[repr(C)]` promises that number.
+
+- Delete the attribute: Rust and assembly both still build
+- The first symptom comes later, elsewhere: a register loaded from the wrong field
+
+<div class="highlight-box">An all-<code>u64</code> struct usually keeps its order anyway: the bug waits for a new field or a new compiler.</div>
+
+Notes:
+- Midterm 1. Its page lists "why `#[repr(C)]` is required on a struct that assembly indexes" among the explain-why questions, and Thursday prep question 3 (b) asks it.
+- A full answer has three parts: the promise only `#[repr(C)]` makes (the default layout promises no order), the silent build, and the late, distant symptom.
+- **Q:** "If today's `rustc` keeps my order, is there really a bug?" Yes: nothing promises the order. A compiler upgrade, or one field changing type, moves it, and nothing warns you.
+
+---
+
+<!-- .slide: id="04r-drop" -->
+
+## `Drop`: the release moves into the type
+
+rustc calls `drop` itself, where the last owner goes away:
+
+```rust
+struct Noisy(&'static str);
+impl Drop for Noisy {
+    fn drop(&mut self) { println!("drop {}", self.0); }
+}
+```
+
+- Once per value, on every path out: the last brace, a `return` halfway down, a callee that took it by move
+- Never `Copy`: ``error[E0184]: the trait `Copy` cannot be implemented for this type; the type has a destructor``
+- `drop(x)` releases early: moving `x` into its empty body is the trick
+
+Notes:
+- Week 2's pages went back only if every caller remembered. C++ names this **RAII**; Rust's ownership rules add the guarantee that no value is dropped twice. You never call the `drop` method yourself; `drop(x)`, the free function, is a different thing.
+- Why never `Copy`: each copy would release as it died, week 2's double free made automatic. Thursday prep question 4 is this.
+- ↓ drop order, then Problem 3, which traces it.
+- **Q:** "Can I call `x.drop()` myself?" No: that is ``error[E0040]: explicit use of destructor method``. Call `drop(x)`, which moves `x` in, so the release still happens once.
+
+--
+
+<!-- .slide: id="deeper-drop-order" class="deeper" -->
+
+## Drop order, and who drops a moved value
+
+- Locals drop in reverse order of declaration, last in, first out. That is the nesting locks need: take A then B, release B then A.
+- A struct runs its own `drop` first, then drops its fields in declaration order.
+- A move changes who drops the value: pass a `Noisy` into a function and it drops at that function's closing brace, not yours.
+- `let _ = Noisy("c");` binds nothing, so the value drops at the semicolon.
+
+↓ Problem 3 traces all of these.
+
+--
+
+<!-- .slide: id="problem-3" class="deeper" -->
+
+## Problem 3: predict the drop order
+
+With `Noisy` and `fn take(n: Noisy) { println!("take {}", n.0); }`, what does `f()` print?
+
+```rust
+fn f() {
+    let _a = Noisy("a");
+    let b = Noisy("b");
+    let _ = Noisy("c");
+    {
+        let d = Noisy("d");
+        take(d);
+        let _e = Noisy("e");
+        println!("inner end");
+    }
+    drop(b);
+    println!("f end");
+}
+```
+
+--
+
+<!-- .slide: id="problem-3-solution" class="deeper" -->
+
+## Problem 3 · solution
+
+```text
+drop c
+take d
+drop d
+inner end
+drop e
+drop b
+f end
+drop a
+```
+
+- `let _ =` binds nothing, so `c` drops at its own semicolon. `_a` and `_e` are real bindings; the underscore only silences the unused warning.
+- `take(d)` moves `d` into `n`, which drops at `take`'s closing brace.
+- `drop(b)` moves `b` into an empty function, where it dies; `_a` drops last.
+
+---
+
+<!-- .slide: id="04r-guard" -->
+
+## The guard
+
+A **guard** is a value whose life is the hold: making it takes the resource, dropping it gives it back. This one keeps echo off while a password is typed:
+
+```rust
+pub struct Quiet<'a> { term: &'a mut Term, was: bool }
+impl Drop for Quiet<'_> {
+    fn drop(&mut self) { self.term.echo = self.was; }   // put it back
+}
+fn login(term: &mut Term) {
+    let _q = term.quiet();          // echo off until _q dies
+    let pw = read_secret();
+    if pw.is_empty() { return; }    // _q drops here: echo back on
+    check(pw);
+}                                   // ...or here
+```
+
+Holding the `&mut Term`, the guard shuts everyone else out.
+
+Notes:
+- Read `Quiet<'_>` as "a `Quiet` borrowing something whose lifetime needs no name". `term.quiet()` hands back a `Quiet` with echo already off; `was` remembers the old setting.
+- Every way out of the scope restores echo, including paths nobody thought about while writing it.
+- ↓ where this shape goes next: the lock guard of `37k`.
+- **Q:** "Why `_q` and not just `_`?" `let _ = term.quiet();` binds nothing, so the guard dies at the semicolon and echo comes straight back on. `_q` is a real binding; its underscore only silences the unused warning.
+
+--
+
+<!-- .slide: id="deeper-spinlock" class="deeper" -->
+
+## The guard's destination: a lock
+
+In `37k` the same shape guards a lock. Locking hands back a `SpinLockGuard` (`spinlock.rs`) that borrows the lock, lets you reach the protected data through it, and unlocks in its `Drop`.
+
+"Touch the data only while holding the lock" stops being a rule you remember and becomes one the borrow checker enforces: no reference to the data can outlive the guard.
+
+[Week 10](10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on/#37k-guard) builds it.
+
+---
+
+<!-- .slide: id="04r-one-thing" -->
+
+## The one thing to get right · `04r`
+
+`error[E0503]` or `E0502` on a line that only *reads* a field (`E0499` if it calls a `&mut self` method). Why?
+
+A guard holding `&mut T` is the only road to that `T` while it lives; a plain read counts too.
+
+<div class="highlight-box">rustc names both lines: where the guard took the <code>&amp;mut</code>, and the later use.</div>
+
+Notes:
+- The error lands on an innocent-looking read, not on the line that caused it. Follow rustc's second pointer back to where the guard took the `&mut`.
+- The rule is week 2's: one `&mut` excludes every other access, reads included. A guard only makes that `&mut` last longer.
+- **Q:** "The guard is not used after that line, so why is the borrow still live?" A type with `Drop` uses its borrow one last time when it is dropped at the closing brace, so the `&mut` lasts until the guard dies (rustc says the borrow "might be used here, when `q` is dropped"). `drop(q)` ends it early.
+
+---
+
+<!-- .slide: id="fri-05r" -->
+
+# Part II · Friday
+
+## `05r_enums_match`: one case from a closed list
+
+In `34k` a process is in exactly one of five states. In `36k` the scheduler sometimes finds nobody to run.
+
+On Friday both ideas get a type rustc can enforce.
+
+Notes:
+- Part II runs 30 minutes over nine core slides, two of them exam slides.
+- ↓ below: what an enum costs in bytes, and why an `Option` around a reference is free (optional).
+- **Q:** "Isn't this just C's `enum`?" A C enum is an integer with names, and any integer fits in it. A Rust enum's only values are its variants, and each variant can carry its own fields.
+
+--
+
+<!-- .slide: id="deeper-layout" class="deeper" -->
+
+## What an enum costs
+
+An enum is a **discriminant**, a small tag naming the variant, plus room for its largest payload, rounded up for alignment. `Slot` is 12 bytes: a tag padded to 4, then two `u32`s. The compiler also hides tags in **niches**, bit patterns a payload can never hold:
+
+```text
+size_of::<&Slot>()           8     a reference is never null
+size_of::<Option<&Slot>>()   8     so None takes the null pattern
+size_of::<Option<u32>>()     8     every u32 is valid, so a tag is added
+size_of::<Option<Slot>>()    12    Slot's own tag has unused values
+```
+
+Tony Hoare, who put null references into ALGOL W in 1965, called them his "billion-dollar mistake" in 2009. Absence was never the problem; giving it the same type as presence was.
+
+---
+
+<!-- .slide: id="05r-enums" -->
+
+## An enum is one of a fixed set
+
+A struct is this field *and* that one; an **enum** is this case *or* that one. One slot of a disk-block cache:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Slot {
+    Empty,
+    Loading(u32),                     // a read of this block is in flight
+    Clean { block: u32 },
+    Dirty { block: u32, age: u32 },   // age: seconds since the first write
+}
+```
+
+Build one like a call, `Slot::Loading(12)`, or like a struct, `Slot::Dirty { block: 12, age: 0 }`.
+
+Notes:
+- Each case is a **variant**, and a variant may carry fields of its own.
+- C would write an integer state plus fields that mean something only in some states. Here an `Empty` slot has no `block` to read by mistake, and there is no fifth value.
+- **Q:** "Can a variant hold a struct, or another enum?" Yes, any type. The enum is as big as a tag plus its largest variant: ↓ under the Part slide.
+
+---
+
+<!-- .slide: id="05r-match" -->
+
+## `match`: which variant is it?
+
+```rust
+let line = match slot {
+    Slot::Empty => String::from("free"),
+    Slot::Loading(b) => format!("reading block {b}"),
+    Slot::Clean { block } | Slot::Dirty { block, .. } => format!("block {block}"),
+};
+```
+
+- The first **arm** whose pattern fits is taken
+- A pattern **binds** fields to names; `|` joins two patterns in one arm; `..` skips fields
+- Read `Slot::Dirty { block, .. }` as "a dirty slot: call its block `block`, ignore the rest"
+- `match` is an expression: its value lands in `line`
+
+Notes:
+- Walk one value through: `Slot::Dirty { block: 12, age: 3 }` fits neither of the first two arms, so the third answers "block 12".
+- The two sides of a `|` must bind the same names at the same types, which is why both the `Clean` and the `Dirty` pattern name `block`.
+- **Q:** "Is `Slot::Loading(_)` the same as a `_` arm?" No. A `_` inside a pattern ignores one field of one variant; a `_` arm matches every variant, including ones not written yet (next slide).
+
+---
+
+<!-- .slide: id="05r-exhaustive" -->
+
+## The arms you cannot forget
+
+Add `Pinned { block: u32 }`, and every `match` that has not decided about it stops compiling:
+
+```text
+error[E0004]: non-exhaustive patterns: `Slot::Pinned { .. }` not covered
+```
+
+Change the enum, and rustc names the line of every `match` that must now decide.
+
+<div class="info-box">A bare <code>_</code> fits every value, even future variants, so that <code>match</code> never reaches E0004: fine when all other values share one answer, risky when each variant needs its own.</div>
+
+Notes:
+- The payoff comes later: the day someone adds a variant, the build breaks at exactly the lines that must change, before anything runs.
+- Friday prep question 1 is this error.
+- ↓ when `_` is right: rv6's own `_` arms, and two shorthands with the same blind spot.
+- **Q:** "Can I silence E0004 and fix it later?" No: it is an error, not a warning. The crate does not build until every `match` decides.
+
+--
+
+<!-- .slide: id="deeper-wildcard" class="deeper" -->
+
+## When `_` is right
+
+rv6 has `_` arms, and they are right:
+
+- `dispatch()` (`syscall.rs`) answers a system-call number it does not know with -1
+- `kerneltrap()` (`trap.rs`) ignores interrupt causes it does not handle
+
+Both match a raw integer chosen by a user program or by the hardware: an open domain that no list of arms can close. An enum you defined is closed, so when each variant needs its own answer, name them.
+
+Two shorthands share `_`'s blind spot. `matches!(slot, Slot::Dirty { .. })` answers yes or no, and a new variant is silently no. `let Slot::Loading(b) = slot else { return; };` binds the field or leaves, and a new variant silently leaves.
+
+---
+
+<!-- .slide: id="exam-wildcard" class="exam" -->
+
+## What `_` costs
+
+A `match` over an enum ends in `_ => …`, and a variant is added.
+
+- The `match` still compiles, and the new variant silently takes the `_` arm, whether or not that answer fits
+- Without `_`, the same change is an `E0004` that names the line
+
+<div class="highlight-box">A full answer says both: the compiler stayed quiet, and nobody chose the new variant's answer.</div>
+
+Notes:
+- Midterm 1. Practice Set 1 Problem 3 (b) asks exactly this, about a five-variant state enum whose `match` ends in `_ => 3`.
+- "It still compiles" is half an answer. The cost is the decision nobody made.
+- ↓ Problem 4 practices it on `Slot`.
+- **Q:** "So `_` is always wrong?" No: it is right when the domain is open, like a raw system-call number, or when every other case truly gets one answer. That is ↓ under the previous slide.
+
+--
+
+<!-- .slide: id="problem-4" class="deeper" -->
+
+## Problem 4: the compiler as code reviewer
+
+`Slot` gains `Pinned { block: u32 }`: a slot the kernel holds in memory, which must never be evicted.
+
+```rust
+fn describe(s: Slot) -> String { /* the match from before, unchanged */ }
+
+fn label(s: Slot) -> &'static str {
+    match s { Slot::Empty => "free", Slot::Loading(_) => "reading", _ => "cached" }
+}
+
+fn evictable(s: Slot) -> bool { !matches!(s, Slot::Loading(_)) }
+```
+
+1. Which fail to compile?
+2. For each that compiles, is its answer right for `Pinned`?
+3. What single change to `label` makes the compiler flag it?
+
+--
+
+<!-- .slide: id="problem-4-solution" class="deeper" -->
+
+## Problem 4 · solution
+
+1. Only `describe`, with ``error[E0004]: non-exhaustive patterns: `Slot::Pinned { .. }` not covered``.
+2. `label` calls a pinned slot "cached": true, but only by luck. `evictable` answers `true`, which is **wrong**, and the compiler said nothing.
+3. Replace `_` with the variants it stood for, `Slot::Clean { .. } | Slot::Dirty { .. }`. Adding `Pinned` then breaks the build at that line.
+
+Exhaustiveness protects only the matches that allow it. `_`, `matches!` and a chain of `==` tests all opt out.
+
+---
+
+<!-- .slide: id="05r-guards" -->
+
+## Match guards: a condition on an arm
+
+```rust
+fn evict_cost(slot: Slot, limit: u32) -> u32 {
+    match slot {
+        Slot::Empty | Slot::Clean { .. } => 1,
+        Slot::Dirty { age, .. } if age >= limit => 2,   // old: write back, then reuse
+        Slot::Dirty { .. } => 5,                        // young: likely written again
+        Slot::Loading(_) => 9,                          // mid-read: the worst choice
+    }
+}
+```
+
+- Read `if age >= limit` as part of the test: when it fails, rustc tries the next arm
+- Exhaustiveness ignores guards: delete the `=> 5` arm and rustc says ``E0004 … `Slot::Dirty { .. }` not covered``
+- Two values at once: `match (slot, pinned)`, with arms such as `(_, true) => "keep"`
+
+Notes:
+- Trace a dirty slot of age 10 with a limit of 30: arm 2's pattern fits, its guard fails, so arm 3 answers 5. rustc does not reason about guards, which is why that unguarded `Dirty { .. }` arm must exist.
+- Inside a pattern, `block: b` binds a field under a name you choose. Binding the same name twice in one pattern, as in a pair of two slots, is `error[E0416]`.
+- ↓ Problem 5 traces guards and fall-through.
+- **Q:** "Why not put the `if` inside the arm's body?" By then the arm is chosen: a false test cannot reach the arms below, so you would write their answer again in an `else`.
+
+--
+
+<!-- .slide: id="problem-5" class="deeper" -->
+
+## Problem 5: trace guards and fall-through
+
+```rust
+fn action(slot: Slot, busy: bool) -> &'static str {
+    match slot {
+        Slot::Dirty { age, .. } if age > 60 => "flush now",
+        Slot::Dirty { .. } if !busy => "flush when idle",
+        Slot::Clean { .. } | Slot::Empty => "reusable",
+        _ => "wait",
+    }
+}
+```
+
+1. What does it return for a dirty slot of age 90 while busy, one of age 10 while busy, one of age 10 while idle, and `Loading(4)` while idle?
+2. Swap the first two arms. Do any of the four answers in (1) change? Which dirty slot now gets a different answer?
+3. Delete `_ => "wait"`. What does rustc say?
+
+--
+
+<!-- .slide: id="problem-5-solution" class="deeper" -->
+
+## Problem 5 · solution
+
+1. **"flush now"**: arm 1's guard holds. **"wait"**: arm 1's guard fails, so matching goes on; arm 2's fails too (busy), arm 3 does not fit, and `_` answers. **"flush when idle"**: arm 2. **"wait"**: only `_` fits `Loading`.
+2. None of the four in (1) changes. A dirty slot older than 60 while idle, such as age 90, now gets "flush when idle" instead of "flush now". Arms are tried top to bottom, and the first whose pattern and guard both succeed wins.
+3. ``error[E0004]: non-exhaustive patterns: `Slot::Loading(_)` not covered``. Add a `Loading` arm and rustc names `Slot::Dirty { .. }` next: a young dirty slot on a busy system fails both guards.
+
+---
+
+<!-- .slide: id="05r-one-thing" -->
+
+## The one thing to get right · `05r`
+
+A test expects `None` and gets `Some`, for an input that differs from a legal one only in one field's value. Why?
+
+A pattern such as `Dirty { .. }` matches every dirty slot, whatever its age.
+
+<div class="highlight-box">When a value decides, the decision is a match guard, and a failed one sends matching on to the arms below it.</div>
+
+Notes:
+- The symptom: one test fails, and its input looks almost like a passing one. Compare the two field by field; the field that differs is the one the decision rests on.
+- **Q:** "How do I see which arm answered?" Read the arms top to bottom, as rustc does: the first whose pattern and guard both hold wins. Arm order is part of the meaning.
+
+---
+
+<!-- .slide: id="05r-option" -->
+
+## `Option`: an answer that may be missing
+
+No null pointer: "maybe a value" is a type of its own:
+
+```rust
+enum Option<T> { None, Some(T) }
+
+match dirty.pop() {
+    Some(block) => flush(block),
+    None => println!("nothing dirty"),
+}
+if let Some(block) = dirty.pop() { flush(block); }     // a one-arm match
+```
+
+- `x + 1` on an `Option<u32>` is ``error[E0369]``: take it apart first
+- `.unwrap_or(x)` supplies a fallback. `.unwrap()` panics on `None`, and in a kernel a panic halts the machine
+
+Notes:
+- `Vec::pop` returns an `Option`, so an empty vector answers `None`, not garbage. Read `if let PATTERN = VALUE` as a `match` with one arm and an unwritten "otherwise, nothing".
+- `36k`'s scheduler answers with an `Option<usize>`, where `None` means nobody is runnable. Friday prep question 3 is this choice.
+- **Q:** "Isn't `Option` slower than a null pointer?" Not around a reference: `Option<&Slot>` is 8 bytes, the same as `&Slot`, because `None` takes the null pattern (↓ under the Part slide).
+
+---
+
+<!-- .slide: id="exam-sentinel" class="exam" -->
+
+## A sentinel, or `Option`
+
+A **sentinel** is an ordinary value meaning "no answer": physical address 0 for "not mapped".
+
+- Safe only if no success can take it: rv6's RAM starts at `0x8000_0000`
+- Even then it has a real answer's type, so an unchecked caller uses it as one
+
+<div class="info-box">An <code>Option</code> gives "not mapped" its own type, so the compiler refuses the unchecked use.</div>
+
+Notes:
+- Midterm 1. Practice Set 1 Problem 3 (a) has this shape: a page-table lookup that answers 0 for "not mapped".
+- Answer both halves: why 0 is safe here (no page is ever at 0), and what the type would add.
+- **Q:** "Then why does rv6 keep the 0?" It follows xv6, which is written in C, and C has no `Option`.
+
+---
+
+<!-- .slide: id="summary" -->
+
+## Summary
+
+- Receivers are ownership decisions; `Copy` stops moves
+- A newtype: new type, same bits; shifts and masks pack it
+- `const fn` builds statics before code runs
+- `#[repr(C)]` fixes the offsets assembly relies on
+- `Drop` puts release in the type; a guard is the hold
+- `match` covers every variant; `_` opts out; failed match guards fall through
+- `Option` gives absence its own type
+
+Notes:
+- One sentence per bullet, in the order of the page.
+- ↓ below: the in-class examples from Sep 8, to run and edit.
+- **Q:** "How should I study this for Midterm 1?" Practice Set 1 Problem 3, then the page's five practice problems, on paper.
+
+--
+
+<!-- .slide: id="deeper-run" class="deeper" -->
+
+## Run it yourself
+
+- The [in-class examples](../inclass/week03-examples.html) show every program from Sep 8 beside its output, and seven broken files beside what `rustc` said. Press `i` on a program to edit and run it.
+- The [in-class slides](../inclass/week03-slides.html) are the deck shown that day.
+
+---
+
+<!-- .slide: id="before-thursday" -->
+
+## [Before Thursday](../prep/03-cs326-2026-09-10-prep-structs-and-impl/): check yourself
+
+You build a memory region, a page-table-entry newtype and a page guard, under `cargo test`. Prep: about 30 minutes.
+
+**1.** In `let s = Slot::empty(); s.is_free();`, which call is a method and which an associated function?
+
+**2.** A by-value `self` method on an eight-byte struct without `Copy` is called twice on one variable. What happens?
+
+**3.** What does each need: (a) a static array of 64 process records, correct before the first instruction; (b) a saved-register struct that assembly reads at "base plus 8"?
+
+**4.** A type holds a page taken from a free list and puts it back in `Drop`. Why can it never `#[derive(Copy)]`, and what breaks if it could?
+
+Notes:
+- Walk the prep page (about 30 minutes). What you build: three types that chain together under plain `cargo test`, a memory region, a page-table-entry newtype and a page guard. The prep's own mental model is a wait-status newtype.
+- The four questions are the prep's own Check yourself; answers are on the prep page. Its `Slot` is not this deck's cache slot.
+- **Q:** "Does `04r` need QEMU?" No: it runs under `cargo test` on your laptop, and `oslings watch` reruns it on save. QEMU arrives with `20a`.
+
+---
+
+<!-- .slide: id="before-friday" -->
+
+## [Before Friday](../prep/03-cs326-2026-09-11-prep-enums-and-match/): check yourself
+
+You turn a process state diagram into one `match`, under `cargo test`. Prep: about 25 minutes.
+
+**1.** A `match` over `ProcState` covers `Unused`, `Runnable`, `Running`, and `Sleeping { .. }`, and nothing else. What does the compiler say, and what is the fix?
+
+**2.** In the mental model, `Rx::Byte(0)` arrives with `room == 5`. Which arm answers, and why not the first?
+
+**3.** Why should a function answering "what state comes next" return `Option<ProcState>` rather than `ProcState` with an extra `Invalid` variant?
+
+Notes:
+- Walk the prep page (about 25 minutes). What you build: a given state diagram, turned into one `match`; the tests drive a process through a whole lifecycle.
+- Question 2 needs the prep's mental model, the UART `accept` example, on screen: open the prep page. The three questions are the prep's own Check yourself; answers are on the prep page.
+- **Q:** "Do I need `04r` finished first?" No. Each Rust exercise starts from its own given code, so `05r` stands alone.
+
+---
+
+<!-- .slide: id="next-week" -->
+
+## Next week
+
+Week 4: collections, traits, errors, and your first command. [Read its Essentials](04-cs326-2026-09-15-collections-traits-errors-and-echo/) before Tuesday.
+
+Notes:
+- The in-class deck's fifth part, slices and fixed tables, lives there now under `06r`, and so does Practice Set 1 Problem 3 (c).
+- **Q:** "Is week 4 on Midterm 1?" Yes: arrays, slices, `Vec` and fixed tables, traits and generics, and `Result` with `?` are all in its scope.
+                </textarea>
+            </section>
+        </div>
+    </div>
+
+
+    <!-- Reveal.js -->
+    <script src="https://unpkg.com/reveal.js@5.0.4/dist/reveal.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/markdown/markdown.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/highlight/highlight.js"></script>
+    <script src="https://unpkg.com/reveal.js@5.0.4/plugin/notes/notes.js"></script>
+
+    <!-- Mermaid.js -->
+    <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e8f5e9',
+                primaryBorderColor: '#00543c',
+                primaryTextColor: '#00543c',
+                lineColor: '#00543c',
+                secondaryColor: '#fff3cd',
+                tertiaryColor: '#ffffff'
+            }
+        });
+
+        // Initialize Reveal.js
+        // Press S for the speaker view (notes, timer, next slide).
+        // PageDown/PageUp (what most clickers send) move horizontally, so a
+        // clicker walks the core slides and skips every "Going deeper" stack.
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            fragments: false,   // every slide shows all of its content at once
+            plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ],
+            keyboard: { 33: 'left', 34: 'right' },
+            markdown: {
+                smartypants: false
+            }
+        }).then(() => {
+            renderMermaidDiagrams();
+        });
+
+        // Re-render Mermaid on slide change
+        Reveal.on('slidechanged', () => {
+            renderMermaidDiagrams();
+        });
+
+        // Robust mermaid rendering — read decoded textContent (undo any HTML-entity
+        // escaping from the markdown pipeline) and wait for web fonts so text
+        // measurement does not yield NaN geometry.
+        async function renderMermaidDiagrams() {
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) {}
+            }
+            var nodes = document.querySelectorAll('.mermaid');
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                if (el.getAttribute('data-mmd-done')) { continue; }
+                try {
+                    var out = await mermaid.render('mmd-' + (window.__mmdId = (window.__mmdId || 0) + 1), el.textContent);
+                    el.innerHTML = out.svg;
+                    el.setAttribute('data-mmd-done', '1');
+                } catch (e) { if (window.console) { console.error('mermaid render failed', e); } }
+            }
+        }
+    </script>
+</body>
+</html>

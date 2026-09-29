@@ -1,6 +1,6 @@
 # Prep: Ownership — 02r
 
-**Session:** Thursday Sep 3, 1 h 45 min · **Exercises:** `02r_ownership` · **Prep time:** ~25 min · **Lecture:** [Ownership, Borrowing, and Lifetimes](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md)
+**Session:** Thu Sep 3, 1h45 · **Exercises:** `02r_ownership` · **Prep time:** ~25 min · **Lecture:** [Week 2 · Ownership and Borrowing](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md)
 
 ## What you will build
 
@@ -8,22 +8,23 @@ A physical page allocator modeled by hand from a `Vec<usize>` of free page numbe
 
 ## Concepts you need
 
-- **One owner; drop at the closing brace** — [Lecture §2](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#2-ownership-one-owner-always) · [Guide §1 "The rule"](../guides/rust-for-systems.md#the-rule)
-- **What a move is: three words copied, old name dead** — [Lecture §2.1](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#21-what-a-move-actually-is) · [Guide §1 "Moving"](../guides/rust-for-systems.md#moving)
-- **Moves across a call; returning a value to give it back** — [Lecture §2.2](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#22-moves-at-function-boundaries) · [Guide "E0382"](../guides/rust-for-systems.md#e0382-use-after-move)
-- **`Copy` types: page numbers copy, the list moves** — [Lecture §2.3](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#23-copy-values-that-do-not-move) · [Guide §1 "`Copy` types"](../guides/rust-for-systems.md#copy-types-do-not-move)
-- **Drop is where `free()` went** — [Lecture §3](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#3-drop-where-free-went) · [Guide §1 "Drop"](../guides/rust-for-systems.md#drop)
-- **`Vec` basics, tuples, shadowing** — [Lecture Problem 1](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#problem-1-trace-ownership-through-the-free-list) · [Guide §5](../guides/rust-for-systems.md#three-ways-to-hold-a-run-of-values)
-- **Reading E0382 and the missing-`mut` error** — [Lecture §7](../lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes.md#7-the-four-errors-you-will-actually-hit) · [Guide "Common compiler errors"](../guides/rust-for-systems.md#common-compiler-errors-and-what-they-actually-mean)
+- **One owner; drop at the closing brace** — [Week 2 · No `free()`, and no collector](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-owner) · [Rust for Systems: The rule](../guides/rust-for-systems.md#the-rule)
+- **What a move is: three words copied, old name dead** — [Week 2 · A move copies the handle, not the buffer](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-moves) · [Rust for Systems: Moving](../guides/rust-for-systems.md#moving)
+- **Moves across a call; returning a value to give it back** — [Week 2 · Moving through a call, and handing it back](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-calls) · [Rust for Systems: `E0382`, use after move](../guides/rust-for-systems.md#e0382-use-after-move)
+- **`Copy` types: page numbers copy, the list moves** — [Week 2 · `Copy` types stay put](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-copy), [What survives a move](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#exam-moves) · [Rust for Systems: `Copy` types do not move](../guides/rust-for-systems.md#copy-types-do-not-move)
+- **Drop is where `free()` went** — [Week 2 · No `free()`, and no collector](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-owner) · [Rust for Systems: Drop](../guides/rust-for-systems.md#drop)
+- **`Vec` basics, tuples, shadowing** — [Week 2 · Moving through a call, and handing it back](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-calls), [Problem 1: What survives a move](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#problem-1) · [Rust for Systems: Three ways to hold a run of values](../guides/rust-for-systems.md#three-ways-to-hold-a-run-of-values)
+- **Reading E0382 and the missing-`mut` error** — [Week 2 · A move copies the handle, not the buffer](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#02r-moves), [The errors you will actually hit](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#03r-errors) · [Rust for Systems: Common compiler errors](../guides/rust-for-systems.md#common-compiler-errors-and-what-they-actually-mean)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Lecture §§1–3 (the bug, ownership, moves, `Copy`, drop) | 12 min |
-| Lecture §7, the E0382 row and the reading habits | 3 min |
-| Guide §1 Ownership and moves | 6 min |
-| Guide §5, "Three ways to hold a run of values" | 3 min |
+| [Week 2 · This week](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#this-week), then [Thursday · `02r` Ownership and moves](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#thu-02r), all four sections | 7 min |
+| [Week 2 · For the exam: What survives a move](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#exam-moves). Not needed today; on Midterm 1 | 1 min |
+| [Week 2 · The errors you will actually hit](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#03r-errors), the E0382 and E0596 rows | 1 min |
+| [Rust for Systems: Ownership and moves](../guides/rust-for-systems.md#1-ownership-and-moves) | 6 min |
+| [Rust for Systems: Three ways to hold a run of values](../guides/rust-for-systems.md#three-ways-to-hold-a-run-of-values) | 3 min |
 
 ## Mental model
 
@@ -56,4 +57,4 @@ While `stamp` runs it is the *only* owner of that `String`. The kernel's allocat
 
 ## If you finish early
 
-[Rustlings](https://github.com/rust-lang/rustlings): `06_move_semantics`, then `05_vecs` and the tuple exercises in `04_primitive_types`. [100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/): chapter 3, the Ownership, Stack, Heap, and Destructors sections; chapter 4, `Copy` and `Drop`. Then start Friday's prep page on borrowing, the fix for every "return it so the caller keeps it" line.
+Work [Week 2 · Problem 1: What survives a move](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#problem-1) and [Problem 2: `Copy` or not](../lectures/02-cs326-2026-09-01-ownership-and-borrowing.md#problem-2) on paper (Midterm 1 material). [Rustlings](https://github.com/rust-lang/rustlings): `06_move_semantics`, then `05_vecs` and the tuple exercises in `04_primitive_types`. [100 Exercises To Learn Rust](https://rust-exercises.com/100-exercises/): chapter 3, the Ownership, Stack, Heap, and Destructors sections; chapter 4, `Copy` and `Drop`. Then start Friday's prep page, [Prep: Borrowing and Lifetimes](02-cs326-2026-09-04-prep-borrowing.md), on borrowing: the fix for every "return it so the caller keeps it" line.

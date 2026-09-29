@@ -13,10 +13,11 @@ mkdocs serve          # http://127.0.0.1:8000, live reload
 mkdocs build --strict # what CI runs
 ```
 
-`--strict` fails the build on any broken internal link. That is deliberate and
-should not be relaxed: with 25+ cross-linked lecture pages it is the only
-thing keeping the site honest. If CI is red, it is almost always a link to a
-page that was renamed or never written.
+`--strict` fails the build on any broken internal link or anchor. That is
+deliberate and should not be relaxed: the weekly lecture pages, the prep pages
+and the guides all link into one another, and it is the only thing keeping
+those links honest. If CI is red, it is almost always a link to a page that was
+renamed or never written.
 
 ## Repository layout
 
@@ -41,7 +42,7 @@ utils/
   gen_schedule.py           the calendar → docs/schedule.yml
   gen_exercises.py          cs326-oslings/info.toml + the calendar → docs/assignments/exercises.md
   gen_nav.py                the filesystem → the Lectures / Exercise Prep / Assignments nav
-  check_links.py            every schedule link resolves; every exercise row has a Prep link
+  check_links.py            schedule and deck links resolve; lecture and prep pages fit the schedule
   check_refs.py             every cited OSlings file and item exists; no line-numbered citations
   check_details.py          every block-level <details> carries markdown="1", so it renders
   rename_exercises.py       one-shot exercise rename (old → new names); --dry-run reports leftovers
@@ -65,55 +66,83 @@ per session). It writes `docs/schedule.yml`, which `docs/index.md` renders;
 never hand-edit either the YAML or the table.
 
 ```python
+add(7, 'tuesday', 'Oct 6', 'lecture', 'From Reset to Page Tables: Boot, the Free List, and Sv39',
+    links=L(("Practice Set 1", "/assignments/practice-set-01/")))
 add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
-    links=[('Sv39 Paging', '/guides/sv39-paging/')])
+    links=L(("Sv39 Paging", "/guides/sv39-paging/")))
 ```
 
 ```yaml
   - week: 7
+    tuesday:
+      date: "Oct 6"
+      type: "lecture"        # lecture | exercise | exam | holiday
+      topic: "From Reset to Page Tables: Boot, the Free List, and Sv39"
+      links:
+        - text: "Lecture"    # auto: docs/lectures/*-cs326-2026-10-06-*.md
+          url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39/"
+        - text: "Slides"     # auto: the same stem + -slides.html
+          url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html"
+        - text: "Practice Set 1"   # manual: links= in sessions()
+          url: "assignments/practice-set-01/"
     friday:
       date: "Oct 9"
-      type: "exercise"       # lecture | exercise | exam | holiday
+      type: "exercise"
       topic: "33k paging"
-      due: "33k"             # derived from exercises= / extra= — never typed
       exercises: [33k_paging]
+      due: "33k"             # derived from exercises= / extra= — never typed
       links:
         - text: "Prep"       # auto: docs/prep/*-cs326-2026-10-09-prep-*.md
-          url: "/prep/07-cs326-2026-10-09-prep-paging/"
-        - text: "Reading"    # auto: the lecture page dated that day, if any
-          url: "..."
+          url: "prep/07-cs326-2026-10-09-prep-paging/"
+        - text: "Sv39 Paging"
+          url: "guides/sv39-paging/"
 ```
 
-The lecture page dated a Thursday is that session's **Reading** — but a reading
-is released alongside the exercise and studied for a *later* session, usually
-the next week and twice a fortnight out. Two derived things say so, both from
-the prep pages: each one's header names the lecture its session was built on,
-so `reading_targets()` inverts those citations to find the first session that
-reads each page.
+Links attach to a row directly, by the row's own date: the auto-discovered
+ones first, then the manual `links=` in the order written. Internal URLs are
+written without a leading slash, so they resolve under a repo subpath too.
 
-`reading_placement()` then decides which row shows it. A reading for a later
-week moves to that week's **Friday** row, after Friday's Prep: it is the
-weekend's reading, and Friday is the last session before the week it belongs
-to. One read the same week it goes up stays on its release row — Aug 27 and
-Nov 12 are read that very day, and Dec 3's is Friday's, so a student needs to
-meet it on Thursday.
+- A **lecture** row gets the lecture page dated that day as **Lecture**, and
+  its deck as **Slides**. Every lecture page is dated the Tuesday it is
+  presented, so this is how it reaches the schedule.
+- An **exam** row gets the page dated that day, if any, as **Optional
+  reading**. Only the Dec 8 final review has one; it is read, not lectured,
+  and has no deck.
+- An **exercise** row gets its Prep page and nothing else by date. Its lecture
+  is the one on that week's Tuesday row, except in the two cases below.
 
-`lecture_links()` labels it: a different week by number (`Reading · Week 3`), a
-later day of the same week by date (`Reading · Fri Dec 4`), and a page read the
-day it appears keeps the plain `Reading`. The deck beside it takes the same
-tag. Tuesday rows are untouched: that lecture is delivered in the room that
-day.
+Two sets of sessions are served by a lecture given in an earlier week, so they
+link it by hand. Week 9's Oct 22 and Oct 23 rows link the Oct 13 page, and
+the Dec 3 row links the Nov 24 page (week 15's first half). The links are
+labeled `Lecture · given Oct 13` and `Slides · given Oct 13` (or `Nov 24`),
+and they come from the `WEEK9_LECTURE` and `WEEK15A_LECTURE` constants at the
+top of `sessions()`. Nothing matches them by date, so rename one of those
+pages and you must update its constant; `check_links.py` catches the dead link
+if you forget.
 
-So if a reading's label looks wrong, fix the prep page's `**Lecture:**` header
-rather than the schedule — that header is what students follow from the other
-direction.
+Day keys are `tuesday`, `thursday`, `friday`. Types are `lecture` (a
+Tuesday), `exercise` (Thursday and Friday sessions), `exam`, and `holiday`
+(including the Friday of an exam week). The `due` string is derived from
+`exercises=` and `extra=` (short forms, e.g. `12c, 13c · 14c extra credit`)
+and rendered as the SUBMIT line. Prep, Lecture and Slides links are found on
+the filesystem by date.
 
-Day keys are `tuesday`, `thursday`, `friday`. Types are `lecture` (Tuesday, or
-a Thursday reading page), `exercise` (Thursday and Friday sessions), `exam`, and
-`holiday` (including the Friday of an exam week). The `due` string is derived
-from `exercises=` and `extra=` (short forms, e.g. `12c, 13c · 14c extra credit`)
-and rendered as the SUBMIT line. Prep and Reading links are found on the
-filesystem by date; Slides likewise.
+After `mkdocs build`, `check_links.py` checks the wiring `--strict` cannot
+see, because the schedule table is raw HTML from a Jinja loop and the decks
+are copied through as static files:
+
+- every schedule link resolves to a built page, the Sec01/Sec02 summaries
+  included;
+- every `exercise` row has a Prep link, and every prep page is dated to a
+  session on the schedule;
+- every `lecture` row has exactly one **Lecture** link (and at most one
+  **Slides**), and the Dec 8 row has its **Optional reading**;
+- every lecture page is dated to a `lecture` or `exam` row, since a page dated
+  any other day would never reach the schedule;
+- every prep page's `**Lecture:**` header cites lecture pages that exist and
+  carry the prep page's own `WW`;
+- every relative `href`, `src` and markdown link in a `-slides.html` deck
+  resolves in the built site.
 
 `schedule.js` highlights the current week automatically by parsing the `date`
 strings, so keep the `"Mon DD"` format exactly.
@@ -127,7 +156,7 @@ Each session row can carry a per-section line under the topic — `Sec01:` and
     tuesday:
       date: "Sep 1"
       type: "lecture"
-      topic: "L03 Ownership, Borrowing, and Lifetimes"
+      topic: "Ownership and Borrowing"
       section_02:
         recording: "https://usfca.zoom.us/rec/share/..."       # RECORDINGS
         notes: "notes/CS326-02 2026-09-01 Rust Data.pdf"       # auto: the file
@@ -162,16 +191,17 @@ mistyped date does not 404 silently.
 
 There is **one lecture page per week**, and it is about exactly that week's
 Thursday and Friday exercises. It is presented on the Tuesday of the same week
-and read before it. Pages still in the older seven-section layout (Overview,
-Learning Objectives, … Summary) are being replaced week by week; do not write
-new pages that way.
+and read before it. The older seven-section layout (Overview, Learning
+Objectives, … Summary) is retired; do not write new pages that way.
 
 Filename: `{WW}-cs326-{YYYY-MM-DD}-{kebab-topic}.md` plus a matching
 `-slides.html`. The date is the **Tuesday the page is presented**, which is
 how `gen_schedule.py` attaches it to that Tuesday's row. `WW` is the
 zero-padded week **the page serves**. That is the same week except in two
 places: the week-9 page is presented Tue Oct 13 (week 8, because Oct 20 is
-fall break), and the two week-15 pages are presented Nov 24 and Dec 1.
+fall break), and the two week-15 pages are presented Nov 24 and Dec 1. The
+one page nobody presents is the Dec 8 final review: it is dated the final
+exam's Tuesday, attaches to that row as **Optional reading**, and has no deck.
 
 ```markdown
 # Week N · <Title>

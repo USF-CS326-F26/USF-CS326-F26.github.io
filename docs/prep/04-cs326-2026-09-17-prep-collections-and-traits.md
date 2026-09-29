@@ -1,6 +1,6 @@
 # Prep: Collections and Traits — 06r · 07r
 
-**Session:** Thu Sep 17, 1h45 · **Exercises:** `06r_collections`, `07r_traits` · **Prep time:** ~40 min · **Lecture:** [Arrays, Slices, `Vec`, and Fixed Tables](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md) · [Traits, Generics, and the `ulib` Façade](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md)
+**Session:** Thu Sep 17, 1h45 · **Exercises:** `06r_collections`, `07r_traits` · **Prep time:** ~20 min · **Lecture:** [Week 4 · Collections, Traits, Errors, and Your First Command](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md)
 
 ## What you will build
 
@@ -8,21 +8,21 @@ Two small exercises, one idea each. First, a miniature of rv6's process table: a
 
 ## Concepts you need
 
-- **Array, slice, `Vec`: where the bytes live; slices are the interface** — [Collections §1](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md#1-three-ways-to-hold-n-things) · [Collections §2](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md#2-what-a-slice-really-is) · [Rust for Systems §5](../guides/rust-for-systems.md#5-arrays-slices-vec-iteration)
-- **Bounds checks; validating an untrusted index at the boundary** — [Collections §3](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md#3-indexing-and-bounds-checks)
-- **`iter` vs `iter_mut`, `enumerate`, adapters that allocate nothing** — [Collections §4](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md#4-iterating) · [Rust for Systems: Iteration](../guides/rust-for-systems.md#iteration)
-- **Why `PROCS` is an array, and where `Vec` belongs** — [Collections §5](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md#5-the-kernel-argument-why-procs-is-an-array) · [Collections §7](../lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables.md#7-where-vec-does-belong)
-- **Traits: required and default methods, `impl Trait for Type`** — [Traits §2](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#2-traits-a-contract-between-types) · [Traits §2.2](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#22-default-methods)
-- **Trait bounds, monomorphization, `dyn` dispatch** — [Traits §3](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#3-generics-and-trait-bounds) · [Traits §4](../lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade.md#4-monomorphization-what-the-compiler-actually-emits) · [Rust for Systems: Static dispatch vs `dyn`](../guides/rust-for-systems.md#static-dispatch-vs-dyn)
+- **Array, slice, `Vec`: where the bytes live; slices are the interface** — [Week 4 · Arrays, slices, and `Vec`](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#06r-containers) · [Rust for Systems: Arrays, slices, `Vec`, iteration](../guides/rust-for-systems.md#5-arrays-slices-vec-iteration)
+- **Bounds checks; validating an untrusted index at the boundary** — [Week 4 · Arrays, slices, and `Vec`](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#06r-containers)
+- **`iter` vs `iter_mut`, `enumerate`, adapters that allocate nothing** — [Week 4 · Loops that read, loops that write](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#06r-iterating) · [Rust for Systems: Iteration](../guides/rust-for-systems.md#iteration)
+- **Why `PROCS` is an array, and where `Vec` belongs** — [Week 4 · Why the kernel's tables are arrays](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#06r-fixed)
+- **Traits: required and default methods, `impl Trait for Type`** — [Week 4 · A trait: what a type promises](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#07r-traits)
+- **Trait bounds, monomorphization, `dyn` dispatch** — [Week 4 · Generic functions and their bounds](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#07r-generics), [Static and dynamic dispatch](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#07r-dispatch), [Count the copies](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#exam-copies) · [Rust for Systems: Static dispatch vs `dyn`](../guides/rust-for-systems.md#static-dispatch-vs-dyn)
 
 ## Read before class
 
 | What | Time |
 |---|---|
-| Collections §1–§4 (arrays, slices, indexing, iterating) | 12 min |
-| Collections §5 and §7 (why `PROCS` is an array; where `Vec` belongs) | 8 min |
-| Traits §2–§4 and §5.1 (contracts, bounds, dispatch, `Scheduler`) | 14 min |
-| Rust for Systems: the Iteration table; Static dispatch vs `dyn` | 5 min |
+| [Week 4 · This week](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#this-week), then [Thursday · `06r` Arrays, slices, and fixed tables](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#thu-06r), all three sections | 6 min |
+| [Week 4 · Thursday · `07r` Traits and generics](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#thu-07r), all three sections | 5 min |
+| [Week 4 · For the exam: Count the copies](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#exam-copies). Not needed today; on Midterm 1 | 1 min |
+| [Rust for Systems: Iteration](../guides/rust-for-systems.md#iteration), the table, and [Static dispatch vs `dyn`](../guides/rust-for-systems.md#static-dispatch-vs-dyn) | 4 min |
 
 ## Mental model
 
@@ -56,4 +56,4 @@ fn drain<S: Sink>(ring: &[u8], sink: &mut S) {       // any length, any sink
 
 ## If you finish early
 
-Rustlings (<https://github.com/rust-lang/rustlings>): the `vecs`, `iterators`, `generics`, and `traits` groups. 100 Exercises To Learn Rust (<https://rust-exercises.com/100-exercises/>): chapter 4, *Traits*, and chapter 6, *Ticket Management*. Or start Friday's prep page on errors and `echo`.
+Work [Week 4 · Problem 1: Which loops compile?](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#problem-1) and [Problem 2: Count the copies](../lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo.md#problem-2) on paper. Then Rustlings (<https://github.com/rust-lang/rustlings>): the `vecs`, `iterators`, `generics`, and `traits` groups. 100 Exercises To Learn Rust (<https://rust-exercises.com/100-exercises/>): chapter 4, *Traits*, and chapter 6, *Ticket Management*. Or start Friday's prep page, [Prep: Errors, and Your First Command](04-cs326-2026-09-18-prep-errors-and-echo.md).

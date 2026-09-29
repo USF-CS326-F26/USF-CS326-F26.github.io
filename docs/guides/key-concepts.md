@@ -5,8 +5,8 @@ once, in the order the kernel builds them. Open it mid-exercise when a README
 says "the trapframe" and you want three sentences rather than a chapter, and
 read it straight through before a midterm — with [Exam Prep](exam-prep.md) it
 is half of the revision spine. Every entry ends with a **Where** line naming the
-exercise, the lecture, and the file, so you can go from a word to the code in
-one hop. All file references are to the reference kernel,
+exercise, the week's lecture page, and the file, so you can go from a word to
+the code in one hop. All file references are to the reference kernel,
 `exercises/52k_userland/solution/` (in your tree once `53k` is released).
 
 ---
@@ -23,7 +23,7 @@ timer, and the devices, and is the only code allowed to run privileged
 instructions. rv6's kernel is the whole `rv6` crate — one binary, running in
 supervisor mode after boot.
 
-**Where:** `30k`–`52k`, all of it · L01, Week 7 · `main.rs` (`kmain`)
+**Where:** `30k`–`52k`, all of it · Week 1, Week 7 · `main.rs` (`kmain`)
 
 ### privilege level
 
@@ -612,7 +612,7 @@ reap them. rv6 has no `init` — `kmain` calls the kernel-mode shell directly
 (`main.rs`), `run sh` starts the user-mode shell from there, and orphans are
 freed wholesale by `cleanup_except`.
 
-**Where:** conceptually `52k`; not implemented · L01, Week 15 · `main.rs`,
+**Where:** conceptually `52k`; not implemented · Week 1, Week 15 · `main.rs`,
 `usermode.rs`
 
 ### shell

@@ -13,12 +13,12 @@ weeks:
     tuesday:
       date: "Aug 25"
       type: "lecture"
-      topic: "L01 Building an Operating System"
+      topic: "Building an Operating System, and Your First Rust"
       links:
         - text: "Lecture"
-          url: "lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is/"
+          url: "lectures/01-cs326-2026-08-25-building-an-os-and-first-rust/"
         - text: "Slides"
-          url: "lectures/01-cs326-2026-08-25-course-intro-and-what-an-os-is-slides.html"
+          url: "lectures/01-cs326-2026-08-25-building-an-os-and-first-rust-slides.html"
         - text: "Syllabus"
           url: "syllabus/"
         - text: "Setup"
@@ -35,10 +35,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/01-cs326-2026-08-27-prep-setup-and-hello-rust/"
-        - text: "Reading"
-          url: "lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow/"
-        - text: "Slides"
-          url: "lectures/01-cs326-2026-08-27-rust-values-types-and-control-flow-slides.html"
         - text: "Setup"
           url: "assignments/setup/"
         - text: "Dev Setup"
@@ -64,16 +60,16 @@ weeks:
     tuesday:
       date: "Sep 1"
       type: "lecture"
-      topic: "L03 Ownership, Borrowing, and Lifetimes"
+      topic: "Ownership and Borrowing"
       section_02:
         recording: "https://usfca.zoom.us/rec/share/1hTUJ5B9GP5HyW-5fH52i0WyYJqYUuyfUgCh1ni-YercJgl0x5rdIJ3gq26h5oug.L_6UlW_im3llbIip?startTime=1788300688000"
         notes: "notes/CS326-02 2026-09-01 Rust Data.pdf"
         summary: "summaries/cs326-02-2026-09-01-summary/"
       links:
         - text: "Lecture"
-          url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes/"
+          url: "lectures/02-cs326-2026-09-01-ownership-and-borrowing/"
         - text: "Slides"
-          url: "lectures/02-cs326-2026-09-01-ownership-borrowing-and-lifetimes-slides.html"
+          url: "lectures/02-cs326-2026-09-01-ownership-and-borrowing-slides.html"
         - text: "In-class slides"
           url: "inclass/week02-slides.html"
         - text: "Code and output"
@@ -98,10 +94,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/02-cs326-2026-09-04-prep-borrowing/"
-        - text: "Reading · Week 3"
-          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn/"
-        - text: "Slides · Week 3"
-          url: "lectures/02-cs326-2026-09-03-structs-impl-and-const-fn-slides.html"
 
 
 # === WEEK 3 ===
@@ -109,12 +101,12 @@ weeks:
     tuesday:
       date: "Sep 8"
       type: "lecture"
-      topic: "L05 Collections, Traits, and Errors"
+      topic: "Structs, impl, Enums, and match"
       links:
         - text: "Lecture"
-          url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables/"
+          url: "lectures/03-cs326-2026-09-08-structs-enums-and-match/"
         - text: "Slides"
-          url: "lectures/03-cs326-2026-09-08-collections-slices-and-fixed-tables-slides.html"
+          url: "lectures/03-cs326-2026-09-08-structs-enums-and-match-slides.html"
         - text: "In-class slides"
           url: "inclass/week03-slides.html"
         - text: "Code and output"
@@ -139,10 +131,6 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/03-cs326-2026-09-11-prep-enums-and-match/"
-        - text: "Reading · Week 4"
-          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade/"
-        - text: "Slides · Week 4"
-          url: "lectures/03-cs326-2026-09-10-traits-generics-and-the-ulib-facade-slides.html"
 
 
 # === WEEK 4 ===
@@ -150,12 +138,12 @@ weeks:
     tuesday:
       date: "Sep 15"
       type: "lecture"
-      topic: "L07 Buffers, Bytes, and Line-Oriented I/O"
+      topic: "Collections, Traits, Errors, and Your First Command"
       links:
         - text: "Lecture"
-          url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io/"
+          url: "lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo/"
         - text: "Slides"
-          url: "lectures/04-cs326-2026-09-15-buffers-bytes-and-line-oriented-io-slides.html"
+          url: "lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo-slides.html"
         - text: "In-class slides"
           url: "inclass/week04-slides.html"
         - text: "Code and output"
@@ -189,14 +177,12 @@ weeks:
     tuesday:
       date: "Sep 22"
       type: "lecture"
-      topic: "L09 Leaving std: no_std and Bare-Metal Rust"
+      topic: "Streams of Bytes: cat, wc, and grep"
       links:
         - text: "Lecture"
-          url: "lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust/"
+          url: "lectures/05-cs326-2026-09-22-cat-wc-and-grep/"
         - text: "Slides"
-          url: "lectures/05-cs326-2026-09-22-leaving-std-no-std-and-bare-metal-rust-slides.html"
-        - text: "Unsafe Rust and no_std"
-          url: "guides/rust-unsafe-nostd/"
+          url: "lectures/05-cs326-2026-09-22-cat-wc-and-grep-slides.html"
 
     thursday:
       date: "Sep 24"
