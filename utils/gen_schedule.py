@@ -206,7 +206,8 @@ def sessions():
 
     # ---- Module 2 : Build the kernel --------------------------------------
     add(7, 'tuesday', 'Oct 6', 'lecture', 'From Reset to Page Tables: Boot, the Free List, and Sv39',
-        links=L(("Practice Set 1", "/assignments/practice-set-01/")))
+        links=L(("Practice Set 1", "/assignments/practice-set-01/"),
+                ("Code and output", "/inclass/week07-examples.html")))
     add(7, 'thursday', 'Oct 8', 'exercise', '31k boot · 32k physical_memory',
         exercises=['31k_boot', '32k_physical_memory'])
     add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],

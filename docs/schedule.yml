@@ -264,6 +264,8 @@ weeks:
           url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html"
         - text: "Practice Set 1"
           url: "assignments/practice-set-01/"
+        - text: "Code and output"
+          url: "inclass/week07-examples.html"
 
     thursday:
       date: "Oct 8"

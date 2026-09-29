@@ -343,7 +343,7 @@ QEMU on the instructor's machine; it has no **Edit and run**.
 | `09_volatile_matters` | plain device accesses get merged, dropped, or hoisted | `the UART received: B` |
 | `10_unsafe_does_not_turn_off` | `unsafe` unlocks five operations and turns nothing off | `pub fn end_of(s: &Span) -> u64` |
 | `11_what_core_still_has` | `no_std` removes the OS, not the language | `write!` into a 48-byte buffer on the stack |
-| `12_who_calls_main` | `no_main`: the program names its own first instruction | `_entry 0x80000000` |
+| `12_who_calls_main` | `no_main`: the program names its own entry point | `_entry 0x80000000` |
 | `13_the_panic_handler` | every `no_std` program says what a panic does, once | `fn panic(info: &PanicInfo) -> !` |
 
 ### The seven failures
@@ -367,3 +367,62 @@ They compile for the same bare-metal target, one at a time:
 
 **Next:** exercises `20a_asm_bridge` (Thursday), `21r_unsafe_bridge` and
 `30k_kernel_basics` (Friday).
+
+---
+
+## Week 07 · October 6 — From Reset to Page Tables: Boot, the Free List, and Sv39
+
+[Code and output](week07-examples.html){ .md-button } [Lecture slides](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html){ .md-button }
+
+Companion to the [Week 7 lecture](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md).
+Bare metal under QEMU again, as in week 6, and captured the same way. This
+week the programs look at the machine running them: the boot ROM that ran
+first, where the linker put each of their bytes, the stack they run on, the
+free pages above it, and the bits of the page tables rv6 is about to build.
+None of them builds a free list or walks a page table; that is Thursday's
+and Friday's work.
+
+```sh
+cd inclass/week07/examples
+cargo run --bin 01_the_boot_rom      # Ctrl-A then x quits QEMU if it hangs
+```
+
+### The thirteen programs
+
+| Program | The one idea | The line to watch |
+|---|---|---|
+| `01_the_boot_rom` | at reset, six instructions in ROM hand the hart to `0x8000_0000` | `[t0 + 24] = 0x80000000   loaded into t0, then jr t0` |
+| `02_where_the_linker_put_it` | the linker script gives every byte an address, and `end` names the first one past the image | `&end as *const u8 as usize = 0x80003…` |
+| `03_the_boot_stack` | the stack is 16 KiB of plain RAM: `sp` starts at the top, and nothing guards the bottom | `FLOOR[63], just below end, now holds … = dig + 0x12` |
+| `04_reset_to_rust` | each step of the boot needs the one before it, and each left evidence | `all three match: true` |
+| `05_page_number_and_offset` | an address is a page number and an offset | `>> 12` beside `& 0xFFF` for five real addresses |
+| `06_why_one_page_size` | one block size: every request costs whole pages | `4097 bytes  ->  2 pages … 4095 unused` |
+| `07_a_page_holds_an_address` | a free page has room for the address of another page | `P holds Q's address, and Q itself was never touched` |
+| `08_where_free_memory_starts` | free memory starts at the first whole page above the stack | `add 0xFFF`, then `clear the low 12 bits` |
+| `09_bits_by_hand` | shift, mask, extract, pack; nothing checks that a field fits | `pack_date(46, 10, 32) = 0x5D60: month 11, day 0` |
+| `10_split_the_address` | an Sv39 address is three 9-bit indices over a 12-bit offset | `va 0x20_00A0_35F0` into 128, 5, 3, `0x5F0` |
+| `11_pte_by_hand` | a PTE is a page number at bit 10, above ten bits of flags | `\| V R W     0x2048_D007` |
+| `12_satp_reads_zero` | `satp` names the root table, and here it reads 0: paging is off | `csrr satp = 0x0` |
+| `13_w_xor_x` | a page may be writable or executable, never both | `answer() = 42`, after a store rewrote its code |
+
+### The nine failures
+
+```sh
+./show-errors.sh
+./show-errors.sh e0606     # or jump to one
+```
+
+| File | Error | The fix |
+|---|---|---|
+| `e0133_extern_static_needs_unsafe.rs` | reading the linker's `end` outside `unsafe` | `unsafe { &end as *const u8 as usize }`, or the safe `addr_of!(end)` |
+| `end_is_not_a_const.rs` | `end`'s address in a `const` | work it out at run time: only the linker knows it |
+| `e0606_reference_as_usize.rs` | `&end as usize` | `&end as *const u8 as usize`, or `addr_of!(end) as usize` |
+| `e0614_an_address_is_not_a_pointer.rs` | `*p = q` with `p: usize` | cast first: `*(p as *mut usize) = q` |
+| `e0369_pointer_plus_integer.rs` | `page + PGSIZE` on a `*mut u8` | `page.wrapping_add(PGSIZE)`, or do the arithmetic on `usize` |
+| `tilde_is_not_an_operator.rs` | C's `~0xFFF` | `!0xFFF`: Rust's bitwise NOT is `!` |
+| `e0308_a_flag_test_is_not_a_bool.rs` | `if pte & V` | `if pte & V != 0`: Rust's `&` binds tighter than `!=` |
+| `e0308_usize_is_not_u64.rs` | a `u64` from `satp` into a `usize` | convert where the type changes, `as usize` |
+| `e0080_shift_past_the_type.rs` | `SV39 << 60` with `SV39: u32` | widen before the shift: `(SV39 as u64) << 60` |
+
+**Next:** exercises `31k_boot` and `32k_physical_memory` (Thursday), and
+`33k_paging` (Friday).

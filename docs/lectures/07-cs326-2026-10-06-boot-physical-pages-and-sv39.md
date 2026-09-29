@@ -625,6 +625,11 @@ bitmap.
 
 ## Further reading { #reading }
 
+- [Code and output](../inclass/week07-examples.html): thirteen bare-metal
+  programs that look at the machine running them under QEMU (the boot ROM's
+  six instructions, where the linker put each byte, the stack, the free pages
+  above it, and this page's PTE and Sv39 arithmetic), each beside what it
+  printed, and nine files that must not compile.
 - [Memory Map](../guides/memory-map.md#the-qemu-virt-physical-map): the full
   `virt` map, [`kernel.ld`, line by line](../guides/memory-map.md#kernelld-line-by-line)
   and [what the allocator does with `end`](../guides/memory-map.md#what-the-allocator-does-with-end).
