@@ -35,6 +35,7 @@ docs/
   prep/                     WW-cs326-YYYY-MM-DD-prep-slug.md, one per exercise session
   solutions/                exam + practice-set solutions ONLY (never exercise code)
   summaries/                cs326-SS-YYYY-MM-DD-summary.md, one per section per meeting
+  videos/                   NAME.mp4 (faststart) + NAME.vtt captions + NAME.md player page
   stylesheets/extra.css     USF palette + the schedule table
   javascripts/              schedule.js, mermaid-init.js, mathjax.js
 overrides/                  the external-links header bar and the footer
@@ -205,10 +206,38 @@ fetches an http URL, so a private or mistyped explainer passes every check:
 confirm the sharing state in the Share menu, not by the build. claude.ai is
 off the **cs326** network, so explainers are for use outside a session.
 
-Most explainers walk through an exercise's reference solution, so every
-explainer goes **only on its session's schedule row** — never on a lecture,
-deck, prep, guide or In Class page, which are read before the session, this
-year and next (see Solutions).
+A **video** is served from this site, so it plays on the **cs326** network too.
+It lives in `docs/videos/` as three files: the MP4, its captions, and a
+player page reached from the schedule row (not in the nav, like summaries).
+Prepare the media from the film's output without re-encoding:
+
+```bash
+ffmpeg -i NAME.mp4 -map 0:v -map 0:a -c copy -movflags +faststart docs/videos/NAME.mp4
+ffmpeg -i NAME.srt docs/videos/NAME.vtt
+```
+
+The first moves the index to the front of the file, so playback starts before
+the download finishes, and drops the embedded subtitle stream, which browsers
+ignore; the second makes the WebVTT that `<track>` needs (it does not take
+SRT). The player page is `docs/videos/babyswtch.md`; copy it. Two things in it
+matter:
+
+- The page is served at `videos/NAME/`, and MkDocs does not rewrite a raw
+  HTML `src`, so `<source>` and `<track>` point at `../NAME.mp4` and
+  `../NAME.vtt`. Nothing checks those two paths, which is why the page also
+  carries markdown Download and Captions links to the same files: `--strict`
+  fails the build if either is missing.
+- Captions are on by default (`<track ... default>`); the CC button turns them
+  off. `hide: toc` gives the player the full width, which the film's small
+  on-screen code needs.
+
+Link the page from its session row by hand, with `links=` in `sessions()`, as
+**Video · <title>**.
+
+Most explainers, and the films so far, walk through an exercise's reference
+solution, so every one goes **only on its session's schedule row** — never on
+a lecture, deck, prep, guide or In Class page, which are read before the
+session, this year and next (see Solutions).
 
 ## Lecture pages
 

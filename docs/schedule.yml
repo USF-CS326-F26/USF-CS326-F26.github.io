@@ -251,6 +251,8 @@ weeks:
           url: "guides/riscv/"
         - text: "QEMU and GDB"
           url: "guides/qemu-gdb/"
+        - text: "Video · baby_swtch, Step by Step"
+          url: "videos/babyswtch/"
         - text: "Explainer · The RISC-V Assembly Bridge"
           url: "https://claude.ai/artifact/PJa4qsFhcmyyrg8w1fGLJS"
 

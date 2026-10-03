@@ -1,0 +1,433 @@
+WEBVTT
+
+00:00.000 --> 00:04.352
+baby_swtch, from exercise 20a, is nine instructions long.
+
+00:04.952 --> 00:11.288
+It's the smallest context switch there is, so let's take it slowly, and watch every instruction run.
+
+00:11.800 --> 00:16.259
+A function call is a promise: ret goes back to the address in ra.
+
+00:16.859 --> 00:18.693
+baby_swtch keeps that promise,
+
+00:19.293 --> 00:20.723
+and changes the address.
+
+00:21.240 --> 00:22.968
+Why not just call the other code?
+
+00:23.568 --> 00:27.835
+Because a call always comes back on the same thread, with the same stack.
+
+00:28.435 --> 00:37.053
+An operating system has to pause one program partway through, run another, and later pick the first one up exactly where it stopped.
+
+00:37.560 --> 00:39.117
+Here's the program's memory.
+
+00:39.717 --> 00:47.461
+The test, check_baby_swtch, runs on the boot stack, STACK0, like all the code before it. We'll call that thread main.
+
+00:47.960 --> 00:51.523
+To switch to a second thread, the test needs three more things.
+
+00:52.123 --> 00:53.872
+A stack of its own: CO_STACK.
+
+00:54.472 --> 00:58.675
+A record to save main in, so main can come back: MAIN_CTX.
+
+00:59.275 --> 01:03.371
+And a record that says where the new thread begins: CO_CTX.
+
+01:03.880 --> 01:06.248
+Each record holds just four registers.
+
+01:06.848 --> 01:16.320
+ra, the return address. sp, the stack pointer. And s0 and s1, two registers every function must hand back unchanged.
+
+01:16.920 --> 01:19.373
+Of the four, ra and sp matter most.
+
+01:19.880 --> 01:24.488
+The assembly never sees field names, only byte offsets from a pointer:
+
+01:25.088 --> 01:27.307
+zero, eight, sixteen and twenty-four.
+
+01:27.907 --> 01:32.685
+Rust's repr(C) is what promises the fields sit in exactly that order.
+
+01:33.200 --> 01:36.123
+Here's the whole routine, from the reference solution.
+
+01:36.723 --> 01:39.752
+a0 points at the old record: where to save.
+
+01:40.352 --> 01:43.403
+a1 points at the new record: where to load from.
+
+01:43.920 --> 01:47.589
+Four stores save this thread's registers into the old record.
+
+01:48.189 --> 01:52.072
+Four loads bring in the other thread's registers, from the new one.
+
+01:52.672 --> 01:53.504
+Then, ret.
+
+01:54.000 --> 01:55.131
+And here's the trick.
+
+01:56.131 --> 02:01.741
+That ret jumps to the ra we just loaded, not the one baby_swtch was called with.
+
+02:02.341 --> 02:05.371
+So it returns somewhere other than where it was called from.
+
+02:05.971 --> 02:09.747
+That single fact is the whole idea behind a context switch.
+
+02:11.280 --> 02:12.539
+Now the visualizer.
+
+02:13.139 --> 02:24.125
+Every value in it was recorded from the real program, running in QEMU, one instruction at a time. For this video, a script presses the step button.
+
+02:24.640 --> 02:28.501
+On the left is the code, with the line that just ran highlighted.
+
+02:29.101 --> 02:31.576
+In the middle are the processor's registers.
+
+02:32.176 --> 02:34.331
+Main's record and stack are on their left.
+
+02:34.931 --> 02:36.979
+Co's record and stack are on their right.
+
+02:37.480 --> 02:43.645
+Above the registers, the pill names who's running on the hart, RISC-V's word for a hardware thread.
+
+02:44.245 --> 02:51.947
+The strip across the top has one block per step: blue for main, green inside baby_swtch, pink for co_entry.
+
+02:52.547 --> 02:54.040
+Thirty-nine steps in all.
+
+02:54.560 --> 02:57.099
+Step one has already run the setup lines.
+
+02:57.699 --> 03:00.664
+check_baby_swtch filled in CO_CTX by hand.
+
+03:01.264 --> 03:05.573
+Its ra is the address of co_entry, where the new thread will begin.
+
+03:06.080 --> 03:08.085
+Its sp is the top of CO_STACK.
+
+03:08.685 --> 03:12.013
+Stacks grow downward, so a fresh stack starts at its top.
+
+03:12.520 --> 03:16.595
+And s0 and s1 get two markers you can spot by eye:
+
+03:17.195 --> 03:18.219
+coffee, and beef.
+
+03:18.819 --> 03:23.939
+To baby_swtch, this record looks exactly like a thread that stopped at co_entry.
+
+03:24.539 --> 03:25.584
+It has never run.
+
+03:26.880 --> 03:28.160
+Step two is the call.
+
+03:29.160 --> 03:32.765
+a0 holds the address of MAIN_CTX: save here.
+
+03:33.365 --> 03:37.056
+a1 holds the address of CO_CTX: load from here.
+
+03:37.560 --> 03:40.120
+And the call puts its return address in ra:
+
+03:40.720 --> 03:43.621
+the instruction just after the call, back in main.
+
+03:44.221 --> 03:47.336
+Main expects to come back there, as after any call.
+
+03:49.840 --> 03:53.296
+Now we're inside baby_swtch, and the strip turns green.
+
+03:53.896 --> 03:57.779
+The first store copies ra into MAIN_CTX's first slot.
+
+03:59.280 --> 04:01.179
+The second store saves sp:
+
+04:01.779 --> 04:03.485
+main's place on its own stack.
+
+04:05.000 --> 04:06.067
+Then s0,
+
+04:07.067 --> 04:08.027
+then s1.
+
+04:08.627 --> 04:13.896
+Both are zero, so the numbers don't visibly change, but they're saved all the same.
+
+04:14.496 --> 04:15.989
+Main is now written down.
+
+04:17.320 --> 04:19.539
+Now four loads, from CO_CTX.
+
+04:20.539 --> 04:23.163
+The first puts co_entry's address in ra.
+
+04:23.763 --> 04:27.261
+Main's return address is no longer in any register.
+
+04:27.861 --> 04:30.144
+It survives only in MAIN_CTX.
+
+04:30.640 --> 04:32.325
+Watch sp on the next load.
+
+04:33.825 --> 04:36.257
+Now sp points at the top of CO_STACK.
+
+04:36.857 --> 04:39.951
+From here on, the processor is using a different stack.
+
+04:42.960 --> 04:44.624
+Then s0 gets coffee,
+
+04:45.624 --> 04:47.053
+and s1 gets beef.
+
+04:47.653 --> 04:50.064
+Everything co's thread needs is in place.
+
+04:50.560 --> 04:52.416
+One instruction left: ret.
+
+04:53.016 --> 04:57.496
+In your CS 315 emulator, ret did exactly one thing:
+
+04:58.096 --> 05:00.699
+it copied ra into the program counter.
+
+05:01.299 --> 05:02.472
+It does the same here.
+
+05:03.000 --> 05:05.411
+But ra now holds co_entry's address.
+
+05:06.911 --> 05:09.129
+So ret lands at the start of co_entry,
+
+05:09.729 --> 05:11.457
+a function that never called it.
+
+05:13.480 --> 05:15.272
+The pill still says baby_swtch,
+
+05:15.872 --> 05:20.245
+because each step shows the instruction that just ran, and that was ret.
+
+05:20.845 --> 05:22.637
+The next step is in co_entry.
+
+05:23.637 --> 05:25.045
+That's a context switch:
+
+05:25.645 --> 05:27.331
+main's registers are saved,
+
+05:27.931 --> 05:28.955
+co's are loaded,
+
+05:29.555 --> 05:33.779
+and the processor is about to run a different thread, on a different stack.
+
+05:35.280 --> 05:38.480
+co_entry starts by proving it got the right values.
+
+05:39.480 --> 05:42.851
+It writes s0 into a global named SEEN_S0:
+
+05:43.851 --> 05:44.555
+coffee.
+
+05:46.080 --> 05:47.979
+Then s1, into SEEN_S1:
+
+05:48.979 --> 05:49.597
+beef.
+
+05:50.197 --> 05:53.056
+The test will check those two words when main is back.
+
+05:53.560 --> 05:55.288
+Now co_entry switches back.
+
+05:56.288 --> 06:01.024
+This time a0 points at CO_CTX, so co saves itself there.
+
+06:02.024 --> 06:06.525
+And a1 points at MAIN_CTX, the record saved a moment ago.
+
+06:07.125 --> 06:08.405
+The roles are reversed.
+
+06:09.920 --> 06:15.381
+The call sets ra to the instruction just after it, and jumps into baby_swtch:
+
+06:15.981 --> 06:17.709
+the same routine as before.
+
+06:18.240 --> 06:21.653
+Four stores write co's registers into CO_CTX.
+
+06:22.253 --> 06:24.067
+Look at CO_CTX's ra:
+
+06:24.667 --> 06:29.744
+co's resume point is now just after its call, not the start of co_entry.
+
+06:30.240 --> 06:32.416
+Then four loads, from MAIN_CTX.
+
+06:33.416 --> 06:35.720
+ra gets main's return address back.
+
+06:36.320 --> 06:37.707
+And watch sp again.
+
+06:39.207 --> 06:40.636
+It's back on main's stack.
+
+06:43.360 --> 06:46.795
+s0 and s1 are restored to main's values:
+
+06:47.795 --> 06:48.925
+zero, and zero.
+
+06:49.440 --> 06:50.955
+And ret jumps to ra:
+
+06:51.955 --> 06:54.195
+the instruction just after main's call.
+
+06:55.195 --> 06:56.987
+We're back in check_baby_swtch.
+
+06:58.520 --> 07:01.400
+To main, that was an ordinary call that returned,
+
+07:02.000 --> 07:03.557
+thirty instructions later.
+
+07:04.080 --> 07:07.899
+And SEEN_S0 and SEEN_S1 hold coffee and beef.
+
+07:08.499 --> 07:13.768
+That proves co_entry really ran, with the registers baby_swtch loaded for it.
+
+07:14.280 --> 07:17.203
+One last check switches MAIN_CTX to itself.
+
+07:17.803 --> 07:21.195
+Saving and then loading the same record must change nothing,
+
+07:21.795 --> 07:24.227
+and the return must come straight back to main.
+
+07:26.260 --> 07:27.007
+It does.
+
+07:27.607 --> 07:28.737
+The test passes.
+
+07:31.240 --> 07:34.931
+The other buttons step through the mistakes students make most often.
+
+07:35.531 --> 07:38.923
+Each one was built, and run for real, in QEMU.
+
+07:39.440 --> 07:41.872
+Forget the saves, and the trip out still works.
+
+07:42.472 --> 07:46.056
+But the way back loads MAIN_CTX, which was never written.
+
+07:46.656 --> 07:49.899
+ra is zero, so ret jumps to address zero,
+
+07:51.399 --> 07:52.636
+and the machine hangs.
+
+07:54.640 --> 07:57.307
+Forget the loads, and ra never changes.
+
+07:57.907 --> 07:59.891
+So ret returns to its own caller:
+
+08:00.491 --> 08:02.539
+a plain function call, not a switch.
+
+08:03.139 --> 08:04.525
+co_entry never runs,
+
+08:05.525 --> 08:06.699
+and the test fails.
+
+08:08.400 --> 08:10.981
+From inside, neither thread ever sees a switch.
+
+08:11.581 --> 08:14.824
+Main made a call that took thirty instructions to come back.
+
+08:15.424 --> 08:18.816
+co_entry started as if baby_swtch had returned to it,
+
+08:19.416 --> 08:21.720
+and its own call never returns at all.
+
+08:22.240 --> 08:25.376
+A thread, here, is nothing more than a record and a stack:
+
+08:25.976 --> 08:27.192
+a place to resume,
+
+08:27.792 --> 08:29.371
+and the memory to resume with.
+
+08:29.880 --> 08:35.811
+In exercise 35k, swtch is this same routine with ten more saved registers:
+
+08:36.411 --> 08:39.013
+fourteen stores, fourteen loads, then ret.
+
+08:39.613 --> 08:42.451
+It's how your kernel will move between processes.
+
+08:42.960 --> 08:43.941
+baby_swtch:
+
+08:44.541 --> 08:45.416
+save four,
+
+08:46.016 --> 08:46.869
+load four,
+
+08:47.469 --> 08:48.856
+and return somewhere else.

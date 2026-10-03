@@ -121,7 +121,7 @@ hide:
     An **Explainer** on an exercise row is an interactive walk-through of that
     session's exercise on claude.ai, for use outside a session: the **cs326**
     network does not reach it, and you may need to sign in to a free Claude
-    account.
+    account. A **Video** plays from this site, in the room too.
 
     Did not finish? Complete it at a **make-up session** — office hours, on
     the **cs326** network — for three quarters of the exercise half, or

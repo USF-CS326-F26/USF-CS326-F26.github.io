@@ -220,7 +220,8 @@ def sessions():
         links=L(("Code and output", "/inclass/week06-examples.html")))
     add(6, 'thursday', 'Oct 1', 'exercise', '20a asm_bridge — QEMU deadline',
         exercises=['20a_asm_bridge'],
-        links=L(("RISC-V", "/guides/riscv/"), ("QEMU and GDB", "/guides/qemu-gdb/")))
+        links=L(("RISC-V", "/guides/riscv/"), ("QEMU and GDB", "/guides/qemu-gdb/"),
+                ("Video · baby_swtch, Step by Step", "/videos/babyswtch/")))
     add(6, 'friday', 'Oct 2', 'exercise', '21r unsafe_bridge · 30k kernel_basics',
         exercises=['21r_unsafe_bridge', '30k_kernel_basics'],
         links=L(("Memory Map", "/guides/memory-map/")))
