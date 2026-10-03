@@ -121,6 +121,8 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/03-cs326-2026-09-10-prep-structs-and-impl/"
+        - text: "Explainer · page_align_up, Bit by Bit"
+          url: "https://claude.ai/artifact/AUziX2eDdauYroECE1cZ4F"
 
     friday:
       date: "Sep 11"
@@ -158,6 +160,8 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/04-cs326-2026-09-17-prep-collections-and-traits/"
+        - text: "Explainer · One Name, Many Types"
+          url: "https://claude.ai/artifact/LctgcmEEgUCqqAvxZ8NLYB"
 
     friday:
       date: "Sep 18"
@@ -170,6 +174,12 @@ weeks:
           url: "prep/04-cs326-2026-09-18-prep-errors-and-echo/"
         - text: "ulib and Commands"
           url: "guides/ulib-and-commands/"
+        - text: "Explainer · read_file, Step by Step"
+          url: "https://claude.ai/artifact/LYdAVow7q9teRVPQsyo41B"
+        - text: "Explainer · One Source, Two Machines"
+          url: "https://claude.ai/artifact/EkLSyVkPKox7nnUR6DsY8a"
+        - text: "Explainer · The ulib Surface"
+          url: "https://claude.ai/artifact/RoZQbRWrrSYnRzg3i641dX"
 
 
 # === WEEK 5 ===
@@ -208,6 +218,10 @@ weeks:
           url: "prep/05-cs326-2026-09-25-prep-wc-and-grep/"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
+        - text: "Explainer · wc, the Vec Way"
+          url: "https://claude.ai/artifact/E9YxsV8HHD4hDepe1ko5Qc"
+        - text: "Explainer · Lines, Buffer by Buffer"
+          url: "https://claude.ai/artifact/BpgM2kHRFvut8j4VX31fGR"
 
 
 # === WEEK 6 ===
@@ -237,6 +251,8 @@ weeks:
           url: "guides/riscv/"
         - text: "QEMU and GDB"
           url: "guides/qemu-gdb/"
+        - text: "Explainer · The RISC-V Assembly Bridge"
+          url: "https://claude.ai/artifact/PJa4qsFhcmyyrg8w1fGLJS"
 
     friday:
       date: "Oct 2"

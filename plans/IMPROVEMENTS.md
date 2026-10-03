@@ -97,6 +97,36 @@ after `PageGuard` moves to `03r`; `page_list` is then just a `Vec<usize>` the
 
 ---
 
+## Add each explainer and film only after its solution ships
+
+**Status:** proposed for the next offering.
+
+**Change.** Start the semester without the solution-bearing lines of
+`EXPLAINERS` in `utils/gen_schedule.py` and without the film's `links=` entry,
+and add each one back on the day its exercise's solution is released. Until 20a's solution ships, keep
+`docs/videos/babyswtch.*` off the site entirely, or give the page
+`search: exclude: true` front matter.
+
+**Why.** Most F26 explainers and the `baby_swtch` film walk through a reference
+solution. On a schedule row dated after the session that is a review aid; on
+the first day of the next offering, when the same exercises are reused, it is
+the answer. The player page is not in the nav, but the search index includes
+it, so it can be found by searching `baby_swtch`. The explainers themselves
+live on claude.ai and can be unshared after finals; the film is in this
+repository's history either way.
+
+**Evidence (F26, 2026-10-03).**
+
+- Five of the eight F26 explainers show solution code, for 04r, 07r, 08r,
+  12c and 20a: source listings, or panels that run a line-for-line JavaScript
+  port of `exercises/<name>/solution/`. The other three walk through the given
+  `ulib` library (`sys/`, `lib.rs`, `lines.rs`), and only those could go up at
+  the start of a semester.
+- F26 linked the 20a explainer and the film before 20a's solution was
+  released, by the instructor's choice.
+
+---
+
 ## What F26 actually did (2026-09-07)
 
 `03r_borrowing` was already completed by students by the time this came up, so

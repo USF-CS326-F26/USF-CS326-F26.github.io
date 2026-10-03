@@ -118,6 +118,11 @@ hide:
     Tuesday. Week 9's lecture is given on Tue Oct 13, before fall break, and
     its sessions link back to it.
 
+    An **Explainer** on an exercise row is an interactive walk-through of that
+    session's exercise on claude.ai, for use outside a session: the **cs326**
+    network does not reach it, and you may need to sign in to a free Claude
+    account.
+
     Did not finish? Complete it at a **make-up session** — office hours, on
     the **cs326** network — for three quarters of the exercise half, or
     anywhere else for half, until the solution ships with the next session.

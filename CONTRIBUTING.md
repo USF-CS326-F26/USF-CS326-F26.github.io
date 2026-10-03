@@ -99,7 +99,8 @@ add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
 ```
 
 Links attach to a row directly, by the row's own date: the auto-discovered
-ones first, then the manual `links=` in the order written. Internal URLs are
+ones first, then the manual `links=` in the order written, then any
+`EXPLAINERS` for that date (see below). Internal URLs are
 written without a leading slash, so they resolve under a repo subpath too.
 
 - A **lecture** row gets the lecture page dated that day as **Lecture**, and
@@ -186,6 +187,28 @@ schedule row for the day they belong to, and 40+ of them would swamp every
 other section. `mkdocs build --strict` is fine with that (it reports omitted
 files at INFO), and `check_links.py` resolves the summary and notes links so a
 mistyped date does not 404 silently.
+
+### Explainers and videos
+
+An **explainer** is an interactive page published as a Claude artifact
+(`https://claude.ai/artifact/<id>`). Like a recording, it is only a URL, so it
+is listed by hand: one line in the `EXPLAINERS` table in `gen_schedule.py`,
+giving the session date, the artifact's own title and its id. It renders after
+the row's other links as **Explainer · <title>**, and `gen_schedule.py` refuses
+a date that is not a session.
+
+Share the artifact before adding its line. On claude.ai, open it, choose
+**Share**, set **Who has access** to **Anyone with the link**, and turn on
+**Always share latest version** so later republishes reach students; then check
+that **Copy link** gives the URL the table builds. `check_links.py` never
+fetches an http URL, so a private or mistyped explainer passes every check:
+confirm the sharing state in the Share menu, not by the build. claude.ai is
+off the **cs326** network, so explainers are for use outside a session.
+
+Most explainers walk through an exercise's reference solution, so every
+explainer goes **only on its session's schedule row** — never on a lecture,
+deck, prep, guide or In Class page, which are read before the session, this
+year and next (see Solutions).
 
 ## Lecture pages
 
@@ -437,6 +460,10 @@ exercise N ships with the release of exercise N+1 — after N's deadline — int
 <name>` prints it (before that it reports "not released yet"). Pages may say
 that and may cite the reference kernel by that path; they must not reproduce
 solution code, and the site must never link into the instructor repository.
+
+The one exception is a session's own schedule row. An explainer (or a film)
+that walks through the reference solution is linked from the row of the session
+it serves and from nowhere else — see Explainers and videos.
 
 ## Spelling
 
