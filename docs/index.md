@@ -118,10 +118,12 @@ hide:
     Tuesday. Week 9's lecture is given on Tue Oct 13, before fall break, and
     its sessions link back to it.
 
-    An **Explainer** on an exercise row is an interactive walk-through of that
-    session's exercise on claude.ai, for use outside a session: the **cs326**
+    An **Explainer** on an exercise row is an interactive walk-through, on
+    claude.ai, of code that session works with: its exercise, or the `ulib`
+    code it builds on. It is for review outside a session: the **cs326**
     network does not reach it, and you may need to sign in to a free Claude
-    account. A **Video** plays from this site, in the room too.
+    account. A **Video** is served from this site, but it too is for review
+    outside a session.
 
     Did not finish? Complete it at a **make-up session** — office hours, on
     the **cs326** network — for three quarters of the exercise half, or

@@ -110,7 +110,7 @@ written without a leading slash, so they resolve under a repo subpath too.
 - An **exam** row gets the page dated that day, if any, as **Optional
   reading**. Only the Dec 8 final review has one; it is read, not lectured,
   and has no deck.
-- An **exercise** row gets its Prep page and nothing else by date. Its lecture
+- An **exercise** row gets its Prep page and no other page by date. Its lecture
   is the one on that week's Tuesday row, except in the two cases below.
 
 Two sets of sessions are served by a lecture given in an earlier week, so they
@@ -196,7 +196,7 @@ An **explainer** is an interactive page published as a Claude artifact
 is listed by hand: one line in the `EXPLAINERS` table in `gen_schedule.py`,
 giving the session date, the artifact's own title and its id. It renders after
 the row's other links as **Explainer · <title>**, and `gen_schedule.py` refuses
-a date that is not a session.
+a date with no teaching session.
 
 Share the artifact before adding its line. On claude.ai, open it, choose
 **Share**, set **Who has access** to **Anyone with the link**, and turn on
@@ -206,8 +206,8 @@ fetches an http URL, so a private or mistyped explainer passes every check:
 confirm the sharing state in the Share menu, not by the build. claude.ai is
 off the **cs326** network, so explainers are for use outside a session.
 
-A **video** is served from this site, so it plays on the **cs326** network too.
-It lives in `docs/videos/` as three files: the MP4, its captions, and a
+A **video** is served from this site, so the **cs326** network reaches it, but
+like an explainer it is for review outside a session. It lives in `docs/videos/` as three files: the MP4, its captions, and a
 player page reached from the schedule row (not in the nav, like summaries).
 Prepare the media from the film's output without re-encoding:
 
@@ -217,8 +217,9 @@ ffmpeg -i NAME.srt docs/videos/NAME.vtt
 ```
 
 The first moves the index to the front of the file, so playback starts before
-the download finishes, and drops the embedded subtitle stream, which browsers
-ignore; the second makes the WebVTT that `<track>` needs (it does not take
+the download finishes, and drops the embedded `mov_text` subtitle stream,
+which Chrome and Firefox ignore and Safari would list beside the `<track>` as a
+second English track; the second makes the WebVTT that `<track>` needs (it does not take
 SRT). The player page is `docs/videos/babyswtch.md`; copy it. Two things in it
 matter:
 
@@ -228,16 +229,24 @@ matter:
   carries markdown Download and Captions links to the same files: `--strict`
   fails the build if either is missing.
 - Captions are on by default (`<track ... default>`); the CC button turns them
-  off. `hide: toc` gives the player the full width, which the film's small
-  on-screen code needs.
+  off. `hide: toc` gives the player the table of contents' column too, which
+  the film's small on-screen code needs.
 
 Link the page from its session row by hand, with `links=` in `sessions()`, as
 **Video · <title>**.
 
 Most explainers, and the films so far, walk through an exercise's reference
-solution, so every one goes **only on its session's schedule row** — never on
-a lecture, deck, prep, guide or In Class page, which are read before the
-session, this year and next (see Solutions).
+solution. A schedule row is as public before its session as any other page,
+this year and next, so what makes such a link safe is when it goes up: add a
+solution-bearing explainer's `EXPLAINERS` line, or a film's `links=` entry and
+its `docs/videos/` files, in the push that comes with the release shipping that
+exercise's solution, never before. Explainers that walk through only given
+code (the `ulib` ones) may go up at any time. Either way, link it **only from
+its session's row**, and a film's player page may link the explainer it films;
+never from a lecture, deck, prep, guide or In Class page (see Solutions).
+In F26, the Oct 1 explainer and film went up before 20a's solution shipped, by
+the instructor's choice. After finals, unshare the solution-bearing artifacts
+on claude.ai.
 
 ## Lecture pages
 
@@ -443,6 +452,9 @@ voice, with **different examples**. Every page, deck, speaker note, and
 The test: a student who reads only Essentials walks into Thursday ready, and
 the README still has everything left to teach.
 
+The only exception is a walk-through of a shipped solution, linked from its
+session's schedule row: see Solutions.
+
 ## Formatting conventions
 
 - **Diagrams are mermaid or ASCII art**, inline. No image files in lectures.
@@ -483,16 +495,20 @@ not reintroduce them.
 
 `docs/solutions/` holds **exam and practice-set solutions only**.
 
-Exercise solutions are never published on the site. The reference solution for
+Exercise solutions are never published on the site, with the one exception
+below. The reference solution for
 exercise N ships with the release of exercise N+1 — after N's deadline — into
 `exercises/<name>/solution/` in the student repo, where `oslings solution
 <name>` prints it (before that it reports "not released yet"). Pages may say
 that and may cite the reference kernel by that path; they must not reproduce
 solution code, and the site must never link into the instructor repository.
 
-The one exception is a session's own schedule row. An explainer (or a film)
-that walks through the reference solution is linked from the row of the session
-it serves and from nowhere else — see Explainers and videos.
+The one exception is a walk-through of a solution that has already shipped. An
+explainer on claude.ai, or a film in `docs/videos/`, may show an exercise's
+reference solution once the release that ships it is out. It is linked only
+from the row of the session it serves (a film's player page may also link the
+explainer it films) — see Explainers and videos. Everywhere else the no-leak
+rule holds unchanged.
 
 ## Spelling
 
