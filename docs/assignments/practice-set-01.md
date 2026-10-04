@@ -4,8 +4,9 @@
 October 13 · **Prepares for:** [Midterm 1](midterm-1.md), Thursday, October 15.
 
 **[Midterm 1 Practice Problems](midterm-1-practice-problems.pdf)** (PDF, 21
-pages): the practice exam handed out in class, covering `00r_hello_rust`
-through `12c_wc`. Its solutions will be posted on Friday, October 2.
+pages) · **[Solutions](midterm-1-practice-solutions.pdf)** (PDF, 21 pages):
+the practice exam handed out in class, covering `00r_hello_rust` through
+`12c_wc`, and its answer key. Try the problems before you open the key.
 
 This is the one piece of CS 326 work that happens outside the room, and it is
 deliberately **pencil and paper, not programming** — nothing to write, run, or
