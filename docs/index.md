@@ -120,10 +120,9 @@ hide:
 
     An **Explainer** on an exercise row is an interactive walk-through, on
     claude.ai, of code that session works with: its exercise, or the `ulib`
-    code it builds on. It is for review outside a session: the **cs326**
-    network does not reach it, and you may need to sign in to a free Claude
-    account. A **Video** is served from this site, but it too is for review
-    outside a session.
+    code it builds on. It opens without a Claude account, and it is for review
+    outside a session: the **cs326** network does not reach it. A **Video** is
+    served from this site, but it too is for review outside a session.
 
     Did not finish? Complete it at a **make-up session** — office hours, on
     the **cs326** network — for three quarters of the exercise half, or
