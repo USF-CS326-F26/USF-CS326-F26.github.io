@@ -1,0 +1,193 @@
+WEBVTT
+
+00:00.000 --> 00:01.088
+Reset to Rust:
+
+00:01.688 --> 00:08.067
+an explainer page for exercise 31k_boot, from power-on to your first line of Rust.
+
+00:08.667 --> 00:14.555
+A script steps the page, it was built with Claude, and its addresses are examples, not the lecture's.
+
+00:15.080 --> 00:18.195
+This comes before Tuesday's lecture, October 6.
+
+00:18.795 --> 00:23.275
+On Thursday, October 8, you write the first code your kernel runs.
+
+00:23.875 --> 00:27.821
+No solution is shown: only the state the machine must reach.
+
+00:28.320 --> 00:32.053
+The machine QEMU emulates has one address space.
+
+00:32.653 --> 00:35.555
+RAM starts at 0x8000_0000.
+
+00:36.155 --> 00:41.808
+Below it are devices: a store to a device's address is a message to that device.
+
+00:42.320 --> 00:46.331
+At reset there is one hart, RISC-V's name for a processor core.
+
+00:46.931 --> 00:50.301
+Its pc, the program counter, points at the boot ROM:
+
+00:50.901 --> 00:54.805
+built-in code whose last instruction jumps to the base of RAM.
+
+00:55.320 --> 00:59.928
+The linker script, given to you, assigns every byte of your kernel an address.
+
+01:00.528 --> 01:02.171
+It starts at the base of RAM,
+
+01:02.771 --> 01:06.355
+and the first piece placed there is the section named .entry.
+
+01:06.880 --> 01:13.877
+The only code in that section is the stub, _entry: a few assembly instructions, yours to write.
+
+01:14.477 --> 01:17.720
+Listed first, so placed first: where the ROM jumps.
+
+01:18.320 --> 01:22.053
+Placed last, the boot stack: 16 KiB of zeros.
+
+01:22.560 --> 01:24.203
+Now the boot, step by step:
+
+01:24.803 --> 01:26.168
+the hart's registers,
+
+01:26.768 --> 01:28.752
+the base of RAM, holding your kernel,
+
+01:29.352 --> 01:30.461
+and the address map.
+
+01:31.960 --> 01:38.893
+Reset. pc is in the boot ROM, and sp, the stack pointer, holds zero in this machine: not a stack.
+
+01:39.893 --> 01:43.755
+The ROM's jump lands on your kernel: nothing else runs first.
+
+01:45.280 --> 01:50.976
+Now pc is at the stub: four numbered slots, one for each instruction you will write.
+
+01:51.576 --> 01:56.525
+They stay empty. Watch sp instead: Rust cannot start without a stack.
+
+01:58.040 --> 02:03.800
+After slot 1, sp holds the address of the stack array: its first byte, the low end.
+
+02:04.800 --> 02:09.472
+After slot 2, t0 holds the array's size, 16 KiB.
+
+02:10.072 --> 02:11.203
+Is the stack ready?
+
+02:11.720 --> 02:12.531
+Not yet.
+
+02:14.031 --> 02:19.769
+After slot 3, sp holds the array's top: 16 KiB above the low end.
+
+02:20.369 --> 02:24.593
+A stack grows down, so from here every push lands inside the array.
+
+02:25.193 --> 02:26.345
+Now it is a stack.
+
+02:27.880 --> 02:35.603
+After slot 4, pc is in kmain: your Rust code. No slot stored anything: the stub needed no stack.
+
+02:36.603 --> 02:40.848
+Rust's first store goes through sp, and lands inside the array.
+
+02:42.360 --> 02:47.821
+Printing is a store too: each byte of the banner is stored to the UART, the serial port.
+
+02:48.821 --> 02:50.677
+Then the marker, OSLINGS:PASS:
+
+02:51.277 --> 02:53.197
+the one line oslings looks for.
+
+02:54.720 --> 02:57.557
+The last store, to the test finisher, ends the run.
+
+02:58.157 --> 03:00.952
+oslings finds the marker, and reports a pass.
+
+03:01.480 --> 03:05.491
+Now a broken case, no stack: a stub with only slot 4.
+
+03:06.091 --> 03:09.739
+pc reaches kmain, and sp still holds zero.
+
+03:11.240 --> 03:17.341
+Rust's first store goes through sp, and faults: nothing is at that address, so it cannot finish.
+
+03:18.341 --> 03:24.763
+With no handler installed for a fault, pc goes to address zero, and faults there without end.
+
+03:26.280 --> 03:29.565
+Nothing is printed, and oslings reports a timeout.
+
+03:30.165 --> 03:33.771
+Its message is a guess: it sees silence, not the reason.
+
+03:34.771 --> 03:36.947
+This is why the stack pointer comes first.
+
+03:37.480 --> 03:42.259
+Another broken case leaves out slot 3: sp stays at the low end.
+
+03:43.259 --> 03:45.520
+Rust's first store lands below the array,
+
+03:46.120 --> 03:49.683
+and in this build, the strings the kernel prints are in its path.
+
+03:50.200 --> 03:52.675
+Nothing faults: this is ordinary RAM.
+
+03:53.675 --> 04:00.160
+But the stack overwrote the strings, so what the UART sent is not text, and oslings shows none of it.
+
+04:00.760 --> 04:04.451
+It reports: kernel exited without printing OSLINGS:PASS.
+
+04:04.960 --> 04:06.197
+You write two things.
+
+04:06.797 --> 04:14.243
+The stub's four instruction lines, which leave sp at the top of the array, STACK0, and pc at kmain.
+
+04:14.843 --> 04:17.552
+And one line in kmain that prints the marker.
+
+04:18.080 --> 04:23.157
+If you get a timeout with no output, the hart likely faulted before it could print:
+
+04:23.757 --> 04:27.384
+Rust ran without a stack, or the skeleton is still untouched.
+
+04:27.880 --> 04:30.056
+If the kernel exits without the marker:
+
+04:30.656 --> 04:34.197
+the banner as output means only the marker line is missing.
+
+04:34.797 --> 04:37.891
+No output means sp was likely at the low end.
+
+04:38.491 --> 04:42.480
+But OSLINGS:FAIL means Rust ran and panicked: the stack works.
+
+04:43.000 --> 04:50.061
+A hart at reset can run instructions and has nothing else: your stub gives it a stack before any Rust runs.
+
+04:50.661 --> 04:54.907
+Next: the free list explainer, Tuesday's lecture, and Thursday's session.

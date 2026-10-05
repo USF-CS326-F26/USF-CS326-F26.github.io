@@ -53,9 +53,19 @@ RECORDINGS = {
 # Interactive explainers, published as Claude artifacts: (session date, the
 # artifact's own title, its id). Like a recording, an explainer is only a URL
 # that nothing local names, so add a line here once it is shared on claude.ai as
-# "Anyone with the link". Most walk through that day's reference solution,
-# so they go up only once it has shipped, on the session's row, and on no page
-# read before it.
+# "Anyone with the link". An explainer for an exercise is one of two kinds, and
+# CONTRIBUTING.md ("Explainers and videos") has the rules for each:
+#   - Solution-bearing: it walks through that day's reference solution. Its
+#     line goes up only once that solution has shipped, on the session's row,
+#     and no page read before the session links it.
+#   - Solution-free, like Week 7's four: it shows no code for anything a
+#     student writes, only machine state, given code and test output, and the
+#     instructor vouches for that. Its line may go up before the session. It is
+#     also linked from the hub page on the lecture's row (docs/videos/week07.md
+#     for Week 7), and that week's prep pages link the film that walks through
+#     it, whose player page links it.
+# The ones that walk through only given `ulib` code are neither: their lines
+# may go up at any time, on the session's row alone.
 # A flat list rather than a dict keyed by date, so a second line for the same
 # day adds to that day instead of silently replacing it.
 ART = "https://claude.ai/artifact/"
@@ -68,6 +78,10 @@ EXPLAINERS = [
     ("Sep 25", "wc, the Vec Way", "E9YxsV8HHD4hDepe1ko5Qc"),
     ("Sep 25", "Lines, Buffer by Buffer", "BpgM2kHRFvut8j4VX31fGR"),
     ("Oct 1", "The RISC-V Assembly Bridge", "PJa4qsFhcmyyrg8w1fGLJS"),
+    ("Oct 8", "Reset to Rust", "B9yNe3QyxKETWh6vx4NEMo"),
+    ("Oct 8", "The Free List", "27NDxWWruWL9fM7HsicED7"),
+    ("Oct 9", "Sv39, Field by Field", "Fnb8VPHZPKGMqBR9LX2wP3"),
+    ("Oct 9", "Sv39, Level by Level", "PGDBiEroHNUFMc9BqeucV9"),
 ]
 
 
@@ -229,12 +243,17 @@ def sessions():
 
     # ---- Module 2 : Build the kernel --------------------------------------
     add(7, 'tuesday', 'Oct 6', 'lecture', 'From Reset to Page Tables: Boot, the Free List, and Sv39',
-        links=L(("Practice Set 1", "/assignments/practice-set-01/"),
+        links=L(("Watch first · Week 7", "/videos/week07/"),
+                ("Practice Set 1", "/assignments/practice-set-01/"),
                 ("Code and output", "/inclass/week07-examples.html")))
     add(7, 'thursday', 'Oct 8', 'exercise', '31k boot · 32k physical_memory',
-        exercises=['31k_boot', '32k_physical_memory'])
+        exercises=['31k_boot', '32k_physical_memory'],
+        links=L(("Video · Reset to Rust", "/videos/week07-reset-to-rust/"),
+                ("Video · The Free List", "/videos/week07-free-list/")))
     add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
-        links=L(("Sv39 Paging", "/guides/sv39-paging/")))
+        links=L(("Sv39 Paging", "/guides/sv39-paging/"),
+                ("Video · Sv39, Field by Field", "/videos/week07-sv39-fields/"),
+                ("Video · Sv39, Level by Level", "/videos/week07-sv39-walk/")))
 
     add(8, 'tuesday', 'Oct 13', 'lecture', "Week 9's lecture: Processes, the Context Switch, and Scheduling",
         links=L(("Exam Prep", "/guides/exam-prep/"),

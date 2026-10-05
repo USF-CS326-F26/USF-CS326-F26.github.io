@@ -35,7 +35,7 @@ docs/
   prep/                     WW-cs326-YYYY-MM-DD-prep-slug.md, one per exercise session
   solutions/                exam + practice-set solutions ONLY (never exercise code)
   summaries/                cs326-SS-YYYY-MM-DD-summary.md, one per section per meeting
-  videos/                   NAME.mp4 (faststart) + NAME.vtt captions + NAME.md player page
+  videos/                   NAME.mp4 (faststart) + NAME.vtt captions + NAME.md player page; weekNN.md hub pages
   stylesheets/extra.css     USF palette + the schedule table
   javascripts/              schedule.js, mermaid-init.js, mathjax.js
 overrides/                  the external-links header bar and the footer
@@ -64,7 +64,9 @@ python3 utils/check_refs.py && python3 utils/check_details.py
 
 The calendar lives in `utils/gen_schedule.py` (`sessions()`, one `add(...)`
 per session). It writes `docs/schedule.yml`, which `docs/index.md` renders;
-never hand-edit either the YAML or the table.
+never hand-edit either the YAML or the table. Two of Week 7's rows, abridged
+(each carries more `links=` than shown, and the Friday row has `EXPLAINERS`
+too):
 
 ```python
 add(7, 'tuesday', 'Oct 6', 'lecture', 'From Reset to Page Tables: Boot, the Free List, and Sv39',
@@ -207,7 +209,7 @@ confirm the sharing state in the Share menu, not by the build. claude.ai is
 off the **cs326** network, so explainers are for use outside a session.
 
 A **video** is served from this site, so the **cs326** network reaches it, but
-like an explainer it is for review outside a session. It lives in `docs/videos/` as three files: the MP4, its captions, and a
+like an explainer it is for use outside a session. It lives in `docs/videos/` as three files: the MP4, its captions, and a
 player page reached from the schedule row (not in the nav, like summaries).
 Prepare the media from the film's output without re-encoding:
 
@@ -237,20 +239,77 @@ Link the page from its session row by hand, with `links=` in `sessions()`, as
 beside that key's link instead: Practice Set 1 links the five Midterm 1 practice
 films, `videos/midterm-1-practice-problem-N`, after its Solutions PDF. Escape `&`,
 `<` and `>` in a `.vtt` made from an SRT (`&amp;`, `&lt;`, `&gt;`); WebVTT reads
-them as markup, so a caption like "wc < b.txt" loses the rest of its cue.
+them as markup, so a caption like "wc < b.txt" loses the rest of its cue. Remove
+any markdown backticks the script's captions carry, too: WebVTT shows them as
+typed.
 
-Most explainers, and the films so far, walk through an exercise's reference
-solution. A schedule row is as public before its session as any other page,
+An explainer or film made for an exercise is one of two kinds, and the kind
+decides when it may go up and which pages may link it. (The explainers that walk
+through only given code, the `ulib` ones, are neither; their rule is in the next
+paragraph.)
+
+A **solution-bearing** one walks through the exercise's reference solution:
+the `baby_swtch` film does, and so do most of the explainers through Week 6.
+A schedule row is as public before its session as any other page,
 this year and next, so what makes such a link safe is when it goes up: add a
-solution-bearing explainer's `EXPLAINERS` line, or a film's `links=` entry and
-its `docs/videos/` files, in the push that comes with the release shipping that
-exercise's solution, never before. Explainers that walk through only given
-code (the `ulib` ones) may go up at any time. Either way, link it **only from
-its session's row**, and a film's player page may link the explainer it films;
-never from a lecture, deck, prep, guide or In Class page (see Solutions).
+solution-bearing explainer's `EXPLAINERS` line, or a solution-bearing film's
+`links=` entry and its `docs/videos/` files, in the push that comes with the
+release shipping that exercise's solution, never before. Explainers that walk
+through only given code (the `ulib` ones) may go up at any time. Either way,
+link it **only from its session's row**, and a film's player page may link the
+explainer it films; never from a lecture, deck, prep, guide or In Class page
+(see Solutions).
 In F26, the Oct 1 explainer and film went up before 20a's solution shipped, by
 the instructor's choice. After finals, unshare the solution-bearing artifacts
 on claude.ai.
+
+A **solution-free** one shows no solution at all, and is made for before the
+lecture and the session. All three of these hold, of what it shows and of what
+it says:
+
+- no Rust, assembly or pseudocode for anything a student writes;
+- only the machine's state (registers, memory words, bit fields, table slots),
+  the given code, and test output with what each line means;
+- worked examples with values of its own, not the lecture's and not a prep
+  page's; the machine's fixed addresses and sizes (the base of RAM, the page
+  size) are the same everywhere.
+
+It may show the state after each step of something a student writes, and so how
+many steps there are: Reset to Rust numbers the stub's empty slots, and its
+captions say what the machine holds after each. That goes for the explainer and
+the film, captions included. No page may: a film's player page, the hub page and
+every other page stay under the no-leak rule, marker counts and ordered step
+lists included.
+
+So it may go up before its session, and it may be linked from four places:
+
+- its session's row: the explainer's `EXPLAINERS` line, and the film's `links=`
+  entry as **Video · <title>**;
+- a hub page linked on the lecture's row;
+- that week's prep pages (Week 7's link the films, in the first row of "Read
+  before class");
+- a button on the lecture page, `[Explainers](../videos/weekNN.md){ .md-button }`
+  after the prep buttons, which opens the hub page.
+
+A film's player page links the explainer it films, as it does for the other
+kind. The deck, the guides and the In Class pages still link neither kind.
+
+The hub page is `docs/videos/weekNN.md`; copy `week07.md`. Like a player page
+it is not in the nav. It is linked by hand on the lecture's row, with `links=`
+in `sessions()`, as **Watch first · Week N**, and it lists the week's films in
+watching order: each film's player page and length, the explainer it walks
+through, and the exercise and session it prepares.
+
+The instructor vouches that an explainer or film is solution-free. Nothing in
+this repository can: no check here fetches an artifact or watches a film. What
+the instructor goes on is the explainer's own leak checks, which are kept with
+its source in `~/sync/cs326/explainers/` (Week 7's are in `week07/gates/`),
+and, for a film, the narration gate kept with its script in
+`~/sync/cs326/films/` (`w7-narration-gate.mjs`), which reads every caption and
+every spoken line. Until the instructor has said so, an explainer or film is
+not solution-free, and the rules for the other kind apply to it. Week 7's four
+are the first: the explainers Reset to Rust; The Free List; Sv39, Field by
+Field; and Sv39, Level by Level, each with a film of the same title.
 
 ## Lecture pages
 
@@ -513,6 +572,21 @@ reference solution once the release that ships it is out. It is linked only
 from the row of the session it serves (a film's player page may also link the
 explainer it films) — see Explainers and videos. Everywhere else the no-leak
 rule holds unchanged.
+
+A **solution-free** explainer or film is not an exception, because it shows no
+solution: no Rust, assembly or pseudocode for anything a student writes, only
+machine state, given code and test output, in worked examples whose values are
+not the lecture's or a prep page's (the machine's fixed addresses and sizes are
+the same everywhere). It may show the state after each step of something a
+student writes, and so how many steps there are; no page may, its player page
+and the hub page included. So it may go up before its session, and it may be
+linked from its session's row, from a hub page linked on the lecture's row,
+from that week's prep pages, and by a button on the lecture page. The
+instructor vouches that it is solution-free, on the explainer's own leak
+checks, which are kept with its source in `~/sync/cs326/explainers/`, and, for
+a film, on the narration gate kept with its script in `~/sync/cs326/films/`.
+Week 7's four are the first — see Explainers and videos. An explainer or film
+that shows a solution stays under the paragraph above, whatever else it shows.
 
 ## Spelling
 

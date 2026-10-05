@@ -1,0 +1,187 @@
+WEBVTT
+
+00:00.000 --> 00:10.091
+Sv39, Field by Field: the bits of Sv39, RISC-V's paging scheme, behind exercise 33k_paging.
+
+00:10.691 --> 00:17.816
+The page is stepped by script, the explainer was built with Claude, and its numbers are examples, not the lecture's.
+
+00:18.320 --> 00:21.413
+Watch this before Tuesday's lecture, October 6.
+
+00:22.013 --> 00:30.547
+On Friday, October 9, you will write Pte::new and Pte::pa: an address into a page-table entry, and back.
+
+00:31.147 --> 00:34.133
+No solution code here: only the machine's state.
+
+00:34.640 --> 00:39.269
+A program uses virtual addresses. Memory sits at physical ones.
+
+00:39.869 --> 00:44.733
+A page table, a tree of tables three levels deep, turns one into the other.
+
+00:45.240 --> 00:48.568
+To the page table, a virtual address is four fields.
+
+00:49.168 --> 00:53.691
+The low bits are the offset: which byte inside a 4 KiB page.
+
+00:54.291 --> 00:56.360
+It is the same in the physical address.
+
+00:56.880 --> 01:01.701
+Above the offset is the virtual page number, VPN, in three parts,
+
+01:02.301 --> 01:04.115
+one for each level of the tree.
+
+01:04.715 --> 01:08.213
+Each is a slot number: a position in that level's table.
+
+01:08.720 --> 01:13.029
+Each slot of a table holds one page-table entry, a PTE.
+
+01:13.629 --> 01:14.931
+It carries two things:
+
+01:15.531 --> 01:19.669
+a physical page number, and flags: single bits, each with a letter.
+
+01:20.200 --> 01:23.187
+The page number fills bits 53 down to 10.
+
+01:23.787 --> 01:28.203
+It is the address of the page the entry names, with the offset left off.
+
+01:28.720 --> 01:30.896
+This row is that page's physical address.
+
+01:31.496 --> 01:35.891
+Its page number sits right above the offset, so it starts at bit 12.
+
+01:36.491 --> 01:38.347
+The empty row will be its entry.
+
+01:38.880 --> 01:42.848
+An entry names a whole page, so it has no place for an offset.
+
+01:43.848 --> 01:45.768
+The low 12 bits are set aside.
+
+01:46.280 --> 01:48.541
+Now the page number goes into the entry.
+
+01:50.041 --> 01:52.580
+The same 44 bits, in the same order,
+
+01:53.180 --> 01:55.633
+but starting at bit 10, not bit 12.
+
+01:56.160 --> 01:58.592
+The entry's low ten bits are still empty.
+
+01:59.592 --> 02:02.749
+That is where the flags go: here V, R and X.
+
+02:03.349 --> 02:09.451
+In hex, the finished entry looks nothing like the address: bit 10 falls inside a hex digit.
+
+02:09.960 --> 02:12.712
+Now the other direction, starting from the entry.
+
+02:13.312 --> 02:15.957
+Its low ten bits are not part of any address,
+
+02:16.957 --> 02:18.728
+so this time they are set aside.
+
+02:20.240 --> 02:24.059
+The page number, read from bit 10, is placed at bit 12.
+
+02:25.059 --> 02:26.915
+Below it are twelve zero bits:
+
+02:27.515 --> 02:29.840
+this is the address of the page's first byte.
+
+02:30.360 --> 02:31.533
+Now one mistake.
+
+02:32.133 --> 02:35.589
+The entry is right: its page number starts at bit 10.
+
+02:37.089 --> 02:40.439
+But this read starts at bit 12, where an address keeps it.
+
+02:41.039 --> 02:44.537
+Two bits too many at the high end, two missed at the low end.
+
+02:46.040 --> 02:49.923
+The result looks like a page's address, ending in twelve zeros.
+
+02:51.423 --> 02:54.132
+But it is not the address the entry was built from.
+
+02:54.732 --> 03:00.876
+For this mistake, Friday's test prints: [fail] Pte::pa did not recover the address.
+
+03:01.400 --> 03:04.685
+Every level of the tree uses the same entry format.
+
+03:05.285 --> 03:11.195
+So an entry must say what its page number names: the next table down, or a page of memory.
+
+03:11.720 --> 03:16.563
+R, W and X are a page's permissions: read, write and execute.
+
+03:17.163 --> 03:20.789
+With any of them set, the entry is a leaf, and names a page.
+
+03:21.789 --> 03:25.331
+With all three clear, it is a branch, and names the next table.
+
+03:25.840 --> 03:27.675
+And V, for valid, comes first.
+
+03:28.675 --> 03:33.027
+With V clear, the entry is not valid: the slot counts as empty,
+
+03:34.027 --> 03:35.627
+whatever its other bits hold.
+
+03:36.160 --> 03:38.336
+On Friday you write both directions.
+
+03:38.936 --> 03:44.547
+Pte::new: a page's physical address and flags go in, an entry comes out.
+
+03:45.147 --> 03:49.605
+Pte::pa: an entry goes in, the page's address comes out.
+
+03:50.120 --> 03:56.051
+The test's first check, check 0, builds one entry, then asks for its address and flags back.
+
+03:56.651 --> 04:01.408
+This line means the page number sat at the wrong bit, going in or coming out,
+
+04:02.008 --> 04:03.608
+or was never placed at all.
+
+04:04.120 --> 04:06.787
+The second line means the address did come back,
+
+04:07.387 --> 04:10.416
+but the entry's low ten bits did not keep the flags.
+
+04:10.920 --> 04:13.245
+One page number, at two different bits:
+
+04:13.845 --> 04:17.195
+bit 12 in a physical address, bit 10 in an entry.
+
+04:17.795 --> 04:22.915
+Next: Sv39, Level by Level, and walk, the third function you write.
+
+04:23.515 --> 04:26.096
+Then Tuesday's lecture, and Friday's session.

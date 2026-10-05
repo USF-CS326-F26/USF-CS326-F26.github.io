@@ -1,6 +1,6 @@
 # Prep: Boot, and Physical Memory — 31k · 32k
 
-**Session:** Thu Oct 8, 1h45 · **Exercises:** `31k_boot`, `32k_physical_memory` · **Prep time:** ~20 min · **Lecture:** [Week 7 · From Reset to Page Tables](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md)
+**Session:** Thu Oct 8, 1h45 · **Exercises:** `31k_boot`, `32k_physical_memory` · **Prep time:** ~30 min · **Lecture:** [Week 7 · From Reset to Page Tables](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md)
 
 ## What you will build
 
@@ -20,6 +20,7 @@ First, a kernel that boots: QEMU's ROM jumps to `0x8000_0000`, the linker script
 
 | What | Time |
 |---|---|
+| Watch the videos [Reset to Rust](../videos/week07-reset-to-rust.md) (4:56), then [The Free List](../videos/week07-free-list.md) (4:47). Each video's page links the explainer page it walks through | 10 min |
 | [Week 7 · This week](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#this-week), then [Thursday · `31k` Boot](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#thu-31k), all three sections | 5 min |
 | [Week 7 · Thursday · `32k` The free list](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#thu-32k), all three sections | 5 min |
 | [Week 7 · For the exam: Reset to Rust](../lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39.md#exam-boot-order). Not needed today; on Midterm 1 | 1 min |

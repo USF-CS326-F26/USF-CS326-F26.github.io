@@ -978,7 +978,7 @@ Notes:
 
 ## [Before Thursday](../prep/07-cs326-2026-10-08-prep-boot-and-physical-memory/): check yourself
 
-You boot a kernel that prints over the UART, then give it a page allocator, both in QEMU (`oslings doctor` if unsure). Prep: about 20 minutes.
+You boot a kernel that prints over the UART, then give it a page allocator, both in QEMU (`oslings doctor` if unsure). Prep: about 30 minutes.
 
 **1.** At reset `sp` is garbage. Why can the first Rust function not simply fix it?
 
@@ -987,7 +987,7 @@ You boot a kernel that prints over the UART, then give it a page allocator, both
 **3.** The initial list is built by freeing every page from the page-rounded `end` up to `PHYSTOP`, ascending. Which page does the first allocation return?
 
 Notes:
-- Walk the prep page (about 20 minutes). What you build: a kernel that boots in QEMU and prints over the UART, then a page allocator for the RAM above `end`. Green is `OSLINGS:PASS` for each.
+- Walk the prep page (about 30 minutes). What you build: a kernel that boots in QEMU and prints over the UART, then a page allocator for the RAM above `end`. Green is `OSLINGS:PASS` for each.
 - Both exercises boot in QEMU. If `oslings run` has not worked for you since `20a`, run `oslings doctor` tonight. The three questions are the prep's own Check yourself (31k-stack, 31k-linker, 32k-building); answers are on the prep page.
 - **Q:** "Do I need Friday's bit tricks on Thursday?" Only the rounding of `end`, and the given code does it. The rest of the primer is Friday's.
 
@@ -997,7 +997,7 @@ Notes:
 
 ## [Before Friday](../prep/07-cs326-2026-10-09-prep-paging/): check yourself
 
-You build the Sv39 page-table tree the hardware will read in week 10, on pages from Thursday's allocator; the MMU stays off. Prep: about 35 minutes, including a paper worksheet to bring.
+You build the Sv39 page-table tree the hardware will read in week 10, on pages from Thursday's allocator; the MMU stays off. Prep: about 45 minutes, including a paper worksheet to bring.
 
 **1.** PTE `0x0000_0000_2010_0401`: leaf or branch, and what address?
 
@@ -1006,7 +1006,7 @@ You build the Sv39 page-table tree the hardware will read in week 10, on pages f
 **3.** A table has only a root. You map one page whose subtree does not exist. How many table pages are allocated, with what low ten bits?
 
 Notes:
-- Walk the prep page (about 35 minutes). What you build: the page-table tree for one address space. A software translator in the test stands in for the MMU and reads what you built.
+- Walk the prep page (about 45 minutes). What you build: the page-table tree for one address space. A software translator in the test stands in for the MMU and reads what you built.
 - The worksheet: draw the PTE as boxes, encode one entry, decode one. For question 2, the stale words to fear are a recycled page's old bytes; the free-list link itself has bit 0 clear (33k-one-thing).
 - **Q:** "Is Friday's material on the midterm?" All of it. Translation by hand is the longest question, six days later.
 

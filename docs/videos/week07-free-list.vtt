@@ -1,0 +1,187 @@
+WEBVTT
+
+00:00.000 --> 00:05.504
+Week 7: The Free List, the explainer for exercise 32k_physical_memory.
+
+00:06.104 --> 00:12.269
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.800 --> 00:15.744
+Watch it before Tuesday's lecture, October 6.
+
+00:16.344 --> 00:24.493
+On Thursday, October 8, you write the kernel's page allocator: kalloc hands out a page, and kfree takes one back.
+
+00:25.093 --> 00:28.635
+No solution code here: only what memory must hold.
+
+00:29.160 --> 00:31.720
+RAM runs from KERNBASE up to PHYSTOP,
+
+00:32.320 --> 00:35.328
+in pages: fixed-size blocks, one after another.
+
+00:35.928 --> 00:41.027
+Your kernel sits at the start, and the linker names the first address past it: end.
+
+00:41.560 --> 00:45.592
+That address rarely lands on a page boundary, where a page starts.
+
+00:46.192 --> 00:50.843
+So the allocator's pages start at the next boundary: end, rounded up.
+
+00:51.360 --> 00:57.739
+The allocator cannot allocate memory for a table of free pages: it is what hands memory out.
+
+00:58.339 --> 01:00.792
+So each free page carries its own record.
+
+01:01.392 --> 01:08.069
+Of its 4096 bytes, the first 8 hold the address of the next free page: its link.
+
+01:08.600 --> 01:13.421
+One more 8-byte word, the head, holds the address of the first free page,
+
+01:14.021 --> 01:15.451
+and the last link is null.
+
+01:16.051 --> 01:20.083
+A list with each link inside the thing it lists is called intrusive.
+
+01:20.600 --> 01:24.803
+A toy pool: six pages, one per row, first 8 bytes at the left.
+
+01:25.403 --> 01:26.341
+Two are free.
+
+01:26.941 --> 01:31.763
+The head is on top, outside the pool, and the bottom line reads the list from it.
+
+01:32.280 --> 01:33.325
+An allocation.
+
+01:34.325 --> 01:38.187
+The head names page 8000, so the caller gets that page.
+
+01:39.187 --> 01:44.605
+Now the head holds what the page's first 8 bytes held, and the page is off the list.
+
+01:45.120 --> 01:50.219
+Page 8000 keeps its old link: nothing clears a page on its way out.
+
+01:50.819 --> 01:53.485
+The allocator never reads that stale link again.
+
+01:54.000 --> 01:56.005
+Now page 9000 is freed.
+
+01:57.005 --> 01:59.416
+Its first 8 bytes take a copy of the head.
+
+02:00.016 --> 02:03.323
+The head has not moved, so nothing names this page yet.
+
+02:04.840 --> 02:09.576
+Only now does the head move, to page 9000: the new front of the list.
+
+02:10.176 --> 02:14.187
+Two words written, no other memory needed: a free cannot fail.
+
+02:14.720 --> 02:17.280
+Page 7000 is freed the same way:
+
+02:18.280 --> 02:20.115
+its link takes a copy of the head,
+
+02:21.115 --> 02:22.245
+then the head moves.
+
+02:22.760 --> 02:28.541
+Page 9000 was freed, then page 7000. Which page comes out next?
+
+02:30.041 --> 02:31.279
+The one freed last.
+
+02:32.279 --> 02:36.609
+Page 7000. That order is last in, first out: LIFO.
+
+02:37.120 --> 02:38.400
+Two more allocations.
+
+02:39.400 --> 02:40.701
+Page 9000.
+
+02:41.701 --> 02:45.349
+Page 6000, and the head is null: the list is empty.
+
+02:46.880 --> 02:51.701
+The next allocation returns null: out of memory is an answer, not a crash.
+
+02:52.301 --> 02:56.675
+The console shows a correct kernel passing the exercise's self-test.
+
+02:57.200 --> 03:02.107
+Back to the free of page 9000, with one mistake: the head moves first.
+
+03:03.107 --> 03:06.691
+The address it held was its only way to page 6000.
+
+03:07.291 --> 03:08.976
+That page is free, and lost.
+
+03:10.480 --> 03:17.029
+Then page 9000 gets its link: a copy of the head, which now holds that page's own address.
+
+03:17.629 --> 03:20.723
+The page links to itself, and the list never ends.
+
+03:21.240 --> 03:22.285
+An allocation.
+
+03:23.285 --> 03:28.320
+The caller gets page 9000, and the head takes its link: the same page.
+
+03:29.320 --> 03:30.963
+The next caller gets it too.
+
+03:31.563 --> 03:35.808
+The self-test prints: [fail] second kalloc reused or failed.
+
+03:36.320 --> 03:39.477
+The same line again, from a mistake in an allocation:
+
+03:40.077 --> 03:44.045
+the head never moved on, so page 8000 goes out twice.
+
+03:44.560 --> 03:49.893
+You write two functions: kfree, the free you watched, and kalloc, the allocation.
+
+03:50.493 --> 03:56.552
+At boot, a given function runs your kfree once for every whole page: that builds the list.
+
+03:57.080 --> 04:05.592
+The self-test stops at its first failed check. Expect this line first: [fail] kalloc returned null (free list empty?)
+
+04:06.192 --> 04:08.133
+As shipped, kalloc returns null.
+
+04:08.733 --> 04:14.109
+If the line stays after you write kalloc, look for a free that never moves the head.
+
+04:14.640 --> 04:16.923
+Check 4 wants a second, different page.
+
+04:17.523 --> 04:22.813
+Three mistakes print its line: the two you saw, and a free that never writes its link.
+
+04:23.413 --> 04:25.760
+Hold your code against these three pictures.
+
+04:26.360 --> 04:29.773
+Check 5 asks for LIFO: last in, first out.
+
+04:30.280 --> 04:38.301
+The allocator's whole state is the head, and the first 8 bytes of each free page: when a test line is not enough, look there.
+
+04:38.901 --> 04:45.749
+Next: the explainer Sv39, Field by Field. Then Tuesday's lecture, and Thursday's session.

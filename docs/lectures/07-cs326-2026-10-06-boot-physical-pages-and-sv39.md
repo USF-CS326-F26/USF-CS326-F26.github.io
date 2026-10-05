@@ -8,6 +8,7 @@
 [Slides](07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html){ .md-button }
 [Thursday prep](../prep/07-cs326-2026-10-08-prep-boot-and-physical-memory.md){ .md-button }
 [Friday prep](../prep/07-cs326-2026-10-09-prep-paging.md){ .md-button }
+[Explainers](../videos/week07.md){ .md-button }
 
 ## This week { #this-week }
 

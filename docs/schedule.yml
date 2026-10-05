@@ -280,6 +280,8 @@ weeks:
           url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39/"
         - text: "Slides"
           url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39-slides.html"
+        - text: "Watch first · Week 7"
+          url: "videos/week07/"
         - text: "Practice Set 1"
           url: "assignments/practice-set-01/"
         - text: "Code and output"
@@ -294,6 +296,14 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/07-cs326-2026-10-08-prep-boot-and-physical-memory/"
+        - text: "Video · Reset to Rust"
+          url: "videos/week07-reset-to-rust/"
+        - text: "Video · The Free List"
+          url: "videos/week07-free-list/"
+        - text: "Explainer · Reset to Rust"
+          url: "https://claude.ai/artifact/B9yNe3QyxKETWh6vx4NEMo"
+        - text: "Explainer · The Free List"
+          url: "https://claude.ai/artifact/27NDxWWruWL9fM7HsicED7"
 
     friday:
       date: "Oct 9"
@@ -306,6 +316,14 @@ weeks:
           url: "prep/07-cs326-2026-10-09-prep-paging/"
         - text: "Sv39 Paging"
           url: "guides/sv39-paging/"
+        - text: "Video · Sv39, Field by Field"
+          url: "videos/week07-sv39-fields/"
+        - text: "Video · Sv39, Level by Level"
+          url: "videos/week07-sv39-walk/"
+        - text: "Explainer · Sv39, Field by Field"
+          url: "https://claude.ai/artifact/Fnb8VPHZPKGMqBR9LX2wP3"
+        - text: "Explainer · Sv39, Level by Level"
+          url: "https://claude.ai/artifact/PGDBiEroHNUFMc9BqeucV9"
 
 
 # === WEEK 8 ===

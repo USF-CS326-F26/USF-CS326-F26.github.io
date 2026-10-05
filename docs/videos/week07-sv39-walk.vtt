@@ -1,0 +1,232 @@
+WEBVTT
+
+00:00.000 --> 00:08.235
+Sv39, RISC-V's page table, level by level: one address looked up through it, then a mapping that builds one.
+
+00:08.835 --> 00:15.405
+A script steps the page, the explainer was built with Claude, and the numbers are examples, not the lecture's.
+
+00:15.920 --> 00:19.013
+Watch this before Tuesday's lecture, October 6.
+
+00:19.613 --> 00:26.781
+And on Friday, October 9, in exercise 33k_paging, you will write a function called walk.
+
+00:27.381 --> 00:31.221
+No solution code here: only what the tables must look like.
+
+00:31.720 --> 00:35.432
+A page table maps a program's addresses to real memory.
+
+00:36.032 --> 00:43.712
+It is a tree of tables, each one an ordinary page: 4096 bytes from the kernel's allocator,
+
+00:44.312 --> 00:47.085
+read as 512 slots of 8 bytes.
+
+00:47.600 --> 00:50.032
+Each slot holds one page-table entry.
+
+00:50.632 --> 00:55.688
+A slot's address is its table's address, plus 8 bytes for each slot before it.
+
+00:56.288 --> 00:57.653
+So slot 3 is here.
+
+00:58.960 --> 01:04.336
+With paging on, every address a program uses is virtual: the hardware looks it up.
+
+01:04.936 --> 01:09.971
+Here is one, in four fields: three slot indexes, one per level of the tree,
+
+01:10.571 --> 01:12.107
+and an offset within the page.
+
+01:12.640 --> 01:15.157
+The lookup starts at the root table, level 2.
+
+01:16.157 --> 01:19.165
+The first index, VPN[2], picks slot 3.
+
+01:20.165 --> 01:23.451
+Its entry has only V, the valid bit, set: a branch.
+
+01:24.051 --> 01:25.459
+It names another table.
+
+01:25.960 --> 01:28.840
+Level 1 is the same move in a different page.
+
+01:29.840 --> 01:31.163
+Slot 74.
+
+01:32.163 --> 01:33.229
+A branch again.
+
+01:33.829 --> 01:37.499
+Neither holds the answer: each only says where to look next.
+
+01:38.000 --> 01:40.219
+Level 0 takes the last index.
+
+01:41.219 --> 01:43.053
+Slot 417.
+
+01:44.553 --> 01:47.561
+The address of this slot is what your walk hands back.
+
+01:48.161 --> 01:50.529
+Not the entry, not the page: the slot.
+
+01:51.040 --> 01:57.653
+Paging is off this week, so a given function, translate, stands in for the hardware and reads the entry.
+
+01:58.653 --> 02:03.517
+This time R and X are also set, readable and executable: a leaf.
+
+02:04.117 --> 02:05.845
+It names a page, not a table.
+
+02:07.360 --> 02:12.096
+This address is mapped: the answer is that page's address, ending in the offset.
+
+02:12.696 --> 02:14.467
+The offset was never looked up.
+
+02:15.000 --> 02:20.632
+Now an address nobody mapped. Only its level-1 index differs: 75.
+
+02:21.632 --> 02:26.389
+That slot is all zeros. V is clear: not valid. The lookup stops here.
+
+02:26.920 --> 02:30.163
+There is no level-0 slot for your walk to hand back,
+
+02:31.163 --> 02:33.637
+and the translator answers: not mapped.
+
+02:34.237 --> 02:35.987
+Friday's test checks for that.
+
+02:36.520 --> 02:41.299
+Mapping fills in the tables, so that a lookup of this address answers this page.
+
+02:41.899 --> 02:48.299
+A given function, mappages, asks your walk for the level-0 slot, and lets it make missing tables.
+
+02:48.800 --> 02:51.253
+This root is bare: slot 3 is empty.
+
+02:52.253 --> 02:54.941
+So a page comes off the allocator's free list.
+
+02:55.541 --> 03:00.277
+Its first 8 bytes, slot 0, still hold its link to the next free page.
+
+03:01.800 --> 03:06.749
+The page is zeroed: 512 empty slots, and the link is gone.
+
+03:07.349 --> 03:09.547
+And still, no entry names this page.
+
+03:11.580 --> 03:16.871
+Only now does the root's slot change. It holds a branch that names the new page.
+
+03:17.471 --> 03:20.713
+A lookup can arrive now, and it finds an empty table.
+
+03:21.240 --> 03:23.501
+One level down, the same thing happens.
+
+03:24.501 --> 03:26.293
+Slot 74 is empty.
+
+03:27.293 --> 03:30.515
+A second page comes off the list, old link and all.
+
+03:32.040 --> 03:32.787
+Zeroed.
+
+03:33.787 --> 03:35.621
+And only then, named by a branch.
+
+03:36.221 --> 03:39.357
+Each new table was empty before the tree could reach it.
+
+03:40.880 --> 03:46.128
+Now the level-0 slot exists: slot 417, still empty.
+
+03:46.728 --> 03:49.096
+Its address is what your walk hands back.
+
+03:50.600 --> 03:53.651
+The given function, mappages, writes the leaf there.
+
+03:54.251 --> 03:57.771
+One page mapped, and two pages taken for its tables.
+
+03:58.371 --> 04:00.440
+How many would the very next page need?
+
+04:02.460 --> 04:03.079
+None.
+
+04:03.679 --> 04:10.399
+Only its last index differs, 418: the next slot of the same level-0 table.
+
+04:11.399 --> 04:13.575
+The leaf goes in. No new tables.
+
+04:14.080 --> 04:17.173
+Leave out the zeroing, and Friday's test still passes.
+
+04:17.773 --> 04:19.885
+Two pictures: why the bug can hide,
+
+04:20.485 --> 04:21.893
+and why it is still a bug.
+
+04:22.400 --> 04:28.459
+Right after boot, a page off the list has one nonzero word: the old link, in slot 0.
+
+04:29.059 --> 04:33.304
+A link is a page's address, so its bit 0, the V bit, is 0.
+
+04:33.904 --> 04:35.888
+Every slot still reads as empty.
+
+04:36.400 --> 04:40.752
+Now the same page after an earlier life as a level-0 table.
+
+04:41.352 --> 04:47.603
+Freeing it changed only its first 8 bytes, so slot 75 still holds an old leaf.
+
+04:48.120 --> 04:52.579
+Make this page a table again, and an address nobody mapped translates,
+
+04:53.579 --> 04:55.456
+to the page that old leaf names.
+
+04:56.056 --> 04:59.917
+With the page zeroed first, the same lookup answers: not mapped.
+
+05:00.440 --> 05:07.437
+Your walk is given a root table, an address and one flag, and hands back the address of the level-0 slot.
+
+05:08.037 --> 05:15.760
+If a table is missing, the flag decides: the table is made, or null comes back, as for the address nobody mapped.
+
+05:16.280 --> 05:21.144
+The test stops at the first check that fails, so its line points to one picture.
+
+05:21.744 --> 05:28.464
+If it prints mappages(UART) failed, your walk handed back null when told to make what was missing.
+
+05:28.960 --> 05:31.925
+A page table is made of ordinary pages.
+
+05:32.525 --> 05:38.925
+Three lookups read them, and a mapping makes the missing ones, each zeroed before any entry names it.
+
+05:39.525 --> 05:43.152
+And next: Tuesday's lecture, then on Friday, you write walk.
