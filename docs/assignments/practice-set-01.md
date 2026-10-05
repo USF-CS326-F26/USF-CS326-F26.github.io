@@ -8,6 +8,14 @@ pages) · **[Solutions](midterm-1-practice-solutions.pdf)** (PDF, 21 pages):
 the practice exam handed out in class, covering `00r_hello_rust` through
 `12c_wc`, and its answer key. Try the problems before you open the key.
 
+**Solution videos**, one per problem, each working the answer key on the exam's
+own pages: [Problem 1 · Short Questions](../videos/midterm-1-practice-problem-1.md)
+(11:09) · [Problem 2 · Process States](../videos/midterm-1-practice-problem-2.md)
+(8:00) · [Problem 3 · Scheduling Policies as Traits](../videos/midterm-1-practice-problem-3.md)
+(7:27) · [Problem 4 · Streaming with O(1) State](../videos/midterm-1-practice-problem-4.md)
+(7:14) · [Problem 5 · The Commands](../videos/midterm-1-practice-problem-5.md) (8:18).
+{ #solution-videos }
+
 This is the one piece of CS 326 work that happens outside the room, and it is
 deliberately **pencil and paper, not programming** — nothing to write, run, or
 submit. That is what makes it compatible with the

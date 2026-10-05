@@ -1,0 +1,454 @@
+WEBVTT
+
+00:00.000 --> 00:03.221
+Practice Exam 1, Problem 1: Short Questions.
+
+00:03.821 --> 00:07.533
+Its four parts each come from a different OSlings exercise.
+
+00:08.133 --> 00:10.672
+We'll work them out on the exam's own pages.
+
+00:11.200 --> 00:17.109
+Part (a) is from week 1: 01r_control_flow, on Friday, August 28,
+
+00:17.709 --> 00:21.827
+where students wrote page arithmetic, and met integer overflow.
+
+00:22.360 --> 00:27.011
+Week 2 brought 02r_ownership's moves, on Thursday, September 3,
+
+00:27.611 --> 00:32.965
+and 03r_borrowing's borrows and lifetimes, on Friday, September 4.
+
+00:33.565 --> 00:35.699
+Part (c) is 03r's longest.
+
+00:36.200 --> 00:41.832
+Part (b) is from week 3: 04r_structs_impl, on Thursday, September 10,
+
+00:42.432 --> 00:45.013
+where students built Pte and PageGuard,
+
+00:45.613 --> 00:47.341
+on top of moves and borrows.
+
+00:47.840 --> 00:53.579
+And part (d) is from week 4: 08r_errors, on Friday, September 18,
+
+00:54.179 --> 00:56.419
+where students wrote lookup and read_file,
+
+00:57.019 --> 01:01.840
+returning errors as values and passing them up with the question mark operator.
+
+01:02.960 --> 01:06.288
+Part (a) is from 01r_control_flow, in week 1.
+
+01:07.288 --> 01:12.429
+Here are 01r's functions for rounding addresses up to page boundaries.
+
+01:12.960 --> 01:19.488
+pgroundup adds PAGE_SIZE minus one, then divides and multiplies by PAGE_SIZE.
+
+01:20.088 --> 01:21.795
+The division drops the remainder,
+
+01:22.395 --> 01:24.827
+so adding first is what makes it round up.
+
+01:25.360 --> 01:31.781
+count_pages rounds its start up, then counts whole pages, until the next one would run past end.
+
+01:32.381 --> 01:35.219
+break pages makes the count the value of the loop.
+
+01:35.720 --> 01:36.381
+(i):
+
+01:37.881 --> 01:48.399
+0x8000_2001 plus 0xfff is 0x8000_3000, a multiple of 0x1000, so the division drops nothing.
+
+01:49.899 --> 01:52.608
+The answer: 0x8000_3000.
+
+01:53.640 --> 01:54.280
+(ii):
+
+01:55.780 --> 02:03.289
+adding 0xfff gives 0x8000_5fff, and the division chops off the fff.
+
+02:04.789 --> 02:09.291
+Already aligned, it is unchanged: 0x8000_5000.
+
+02:10.320 --> 02:17.424
+(iii) counts pages from 0x8000_0800 to 0x8000_3800.
+
+02:18.924 --> 02:23.703
+The start rounds up first, so addr starts at 0x8000_1000.
+
+02:25.200 --> 02:31.579
+0x8000_1000 plus a page is 0x8000_2000, not past end,
+
+02:32.579 --> 02:37.443
+so pages becomes 1, and addr steps to 0x8000_2000.
+
+02:38.960 --> 02:46.341
+Next, 0x8000_2000 plus a page is 0x8000_3000: still not past end,
+
+02:47.341 --> 02:52.355
+so pages becomes 2, and addr steps to 0x8000_3000.
+
+02:54.380 --> 02:59.052
+But one more page would reach 0x8000_4000, past end.
+
+03:00.052 --> 03:01.225
+So the loop breaks,
+
+03:02.725 --> 03:04.496
+and count_pages returns 2.
+
+03:05.520 --> 03:06.587
+Why only 2?
+
+03:07.587 --> 03:11.811
+The ragged 0x800 bytes at each end are not whole pages,
+
+03:12.411 --> 03:13.712
+so they do not count.
+
+03:14.240 --> 03:17.867
+(iv) is pgroundup of usize::MAX minus 5,
+
+03:18.467 --> 03:21.539
+an address in the very last page of the address space.
+
+03:22.040 --> 03:24.920
+A debug build checks arithmetic for overflow.
+
+03:25.920 --> 03:27.541
+Here, the addition overflows,
+
+03:29.041 --> 03:32.412
+so the program panics: attempt to add with overflow.
+
+03:33.440 --> 03:36.427
+A release build skips the check, so the addition wraps.
+
+03:37.927 --> 03:44.284
+With a 64-bit usize, usize::MAX minus 5 is 2^64 minus 6,
+
+03:44.884 --> 03:48.084
+and in all, the formula adds 4095.
+
+03:48.600 --> 03:52.141
+That makes 2^64 plus 4089,
+
+03:53.141 --> 03:55.339
+which wraps to 4089.
+
+03:56.839 --> 04:04.433
+And 4089 divided by 4096, times 4096, is 0.
+
+04:06.440 --> 04:08.147
+Round up went down, to 0.
+
+04:08.747 --> 04:12.949
+In a kernel, that's an allocator handing out the page at address 0.
+
+04:13.480 --> 04:16.360
+checked_pgroundup calls checked_add instead.
+
+04:17.360 --> 04:20.325
+The sum does not fit, so checked_add gives None,
+
+04:21.825 --> 04:27.500
+and the None arm makes checked_pgroundup return None, an answer the caller must handle.
+
+04:29.120 --> 04:32.640
+Part (b) is from 04r_structs_impl, in week 3.
+
+04:33.640 --> 04:35.304
+Pte derives Copy,
+
+04:35.904 --> 04:37.781
+and PageGuard implements Drop.
+
+04:38.280 --> 04:40.541
+A Pte wraps one u64,
+
+04:41.141 --> 04:44.512
+and its pa and flags methods take self by value.
+
+04:45.112 --> 04:47.800
+Without Copy, the first call would use it up.
+
+04:48.320 --> 04:52.480
+PageGuard holds the free list by &amp;mut, an exclusive borrow,
+
+04:53.080 --> 04:55.107
+and its Drop pushes its page back.
+
+04:55.707 --> 04:57.883
+Note that release takes self by value.
+
+04:58.400 --> 05:02.731
+In the code, line 1 takes a page, and line 2 builds its entry.
+
+05:03.331 --> 05:06.979
+Two of the numbered lines do not compile. Which two, and why?
+
+05:07.480 --> 05:08.845
+Start with line 5.
+
+05:09.445 --> 05:12.453
+Line 1 lent the free list to page, by &amp;mut,
+
+05:13.053 --> 05:18.259
+and page is still used on line 6, so at line 5, that borrow is alive.
+
+05:20.260 --> 05:22.244
+So line 5 does not compile.
+
+05:23.744 --> 05:28.715
+The free list can't be read while it's lent out: error E0502.
+
+05:29.315 --> 05:33.645
+03r's rule: one &amp;mut, or shared borrows, never both.
+
+05:34.680 --> 05:35.832
+Now line 7.
+
+05:36.432 --> 05:41.125
+release takes self by value, so on line 6, page moved into release,
+
+05:41.725 --> 05:43.731
+and was dropped at its closing brace.
+
+05:45.740 --> 05:48.001
+So line 7 does not compile either.
+
+05:49.501 --> 05:51.101
+The page went back on the list,
+
+05:52.101 --> 05:57.968
+and using page afterwards is a use of a moved value: error E0382.
+
+05:59.000 --> 06:01.432
+That's 02r's move rule, from week 2:
+
+06:02.032 --> 06:06.384
+the compiler catches a use-after-free before the program ever runs.
+
+06:06.880 --> 06:12.000
+Line 3 passed pte by value too, so why does line 4 compile?
+
+06:13.500 --> 06:15.207
+Because Pte is Copy:
+
+06:15.807 --> 06:19.753
+line 3 copied its 8 bytes, and pte is still ours.
+
+06:21.780 --> 06:23.401
+Line 8 is fine as well:
+
+06:24.001 --> 06:27.735
+the borrow of free ended when page died, inside release.
+
+06:28.240 --> 06:31.099
+Last, why can PageGuard never derive Copy?
+
+06:32.599 --> 06:37.271
+First, its free field is an exclusive borrow, which can't be duplicated.
+
+06:38.771 --> 06:45.363
+That borrow has only one holder, so deriving Copy fails, with error E0204.
+
+06:47.380 --> 06:50.815
+Second, Copy plus Drop would run drop once per copy,
+
+06:51.415 --> 06:54.444
+pushing the same page back twice: a double free.
+
+06:56.460 --> 07:05.249
+That's why no Drop type can be Copy: even if all its fields are Copy, deriving Copy fails, with error E0184.
+
+07:05.849 --> 07:09.839
+Copy duplicates the bits, but Drop must run exactly once.
+
+07:11.440 --> 07:14.469
+Part (c) is from 03r_borrowing, in week 2.
+
+07:15.469 --> 07:18.093
+longest returns the longer of two slices.
+
+07:18.693 --> 07:21.744
+Does this code compile? If not, how do we fix it?
+
+07:22.240 --> 07:25.909
+One lifetime, 'a, ties both inputs to the result.
+
+07:26.509 --> 07:29.197
+Give me two slices that live at least that long,
+
+07:29.797 --> 07:31.589
+and I'll return one that does too.
+
+07:32.120 --> 07:33.677
+a lives in the outer scope.
+
+07:34.277 --> 07:37.179
+b is declared in the inner block, where r is set,
+
+07:37.779 --> 07:39.997
+and r is used after the block ends.
+
+07:40.520 --> 07:44.040
+At run time, r would point at a, and a is still alive.
+
+07:45.040 --> 07:45.872
+Even so,
+
+07:47.372 --> 07:48.545
+the answer is no.
+
+07:50.560 --> 07:56.000
+rustc reports error E0597: b does not live long enough.
+
+07:57.500 --> 08:02.343
+The signature gives the result the same lifetime, 'a, as both inputs.
+
+08:04.340 --> 08:07.967
+So as far as the compiler knows, r may borrow from b.
+
+08:08.567 --> 08:11.297
+It checks the signature, not which branch runs.
+
+08:12.800 --> 08:16.213
+b dies at the closing brace, but r is used after it.
+
+08:17.213 --> 08:18.792
+So the code is rejected.
+
+08:21.300 --> 08:24.073
+To fix it, move the println inside the block,
+
+08:24.673 --> 08:27.319
+or declare b in the outer scope, next to a.
+
+08:27.840 --> 08:31.147
+Each call is checked against the signature, not the body,
+
+08:31.747 --> 08:35.181
+so a lifetime is a promise about every possible run.
+
+08:36.280 --> 08:39.181
+Part (d) is from 08r_errors, in week 4.
+
+08:40.181 --> 08:49.440
+The exercise builds a small filesystem, whose directory holds three entries: README and init are files, and dev is a directory.
+
+08:50.040 --> 08:51.512
+NAME_MAX is 14.
+
+08:52.040 --> 08:54.088
+find returns Some inode, or None.
+
+08:54.688 --> 09:01.173
+lookup rejects a name longer than NAME_MAX, then turns a None from find into the error NotFound.
+
+09:01.680 --> 09:06.160
+read refuses a directory, and otherwise returns the file's bytes.
+
+09:07.160 --> 09:08.803
+read_file chains the two:
+
+09:09.403 --> 09:11.792
+lookup, with a question mark, then read.
+
+09:12.320 --> 09:17.611
+If lookup returns an error, the question mark returns it from read_file, right away.
+
+09:18.211 --> 09:20.771
+Otherwise it unwraps the inode and carries on.
+
+09:21.880 --> 09:25.741
+Part (d) continues on the next page, with its code beside it.
+
+09:26.341 --> 09:29.989
+(i) asks us to rewrite read_file without the question mark.
+
+09:32.020 --> 09:33.641
+The signature stays the same.
+
+09:34.641 --> 09:38.439
+Instead of the question mark, we match on what lookup returns.
+
+09:39.960 --> 09:43.523
+If it's Ok, the inode comes out as the value of the match.
+
+09:44.523 --> 09:48.427
+If it's an error, we return that error from read_file, right now.
+
+09:48.960 --> 09:52.203
+That's what the question mark does, written out by hand.
+
+09:53.703 --> 09:55.793
+Then, as before, we read the inode.
+
+09:56.800 --> 10:01.301
+(ii): what does read_file return for each call, and which function produced it?
+
+10:02.301 --> 10:06.227
+First, init: lookup finds it, and read returns its bytes.
+
+10:08.260 --> 10:10.543
+read_file passes read's answer along.
+
+10:11.543 --> 10:15.425
+So it returns Ok, holding the bytes first user process.
+
+10:17.440 --> 10:18.400
+Next, dev.
+
+10:19.000 --> 10:21.517
+lookup finds it, but read sees a directory,
+
+10:23.017 --> 10:26.729
+so read_file returns the error, IsADirectory, from read.
+
+10:28.760 --> 10:30.723
+Last, sixteen_chars_xx.
+
+10:31.323 --> 10:34.053
+The question says it is 16 characters long,
+
+10:34.653 --> 10:36.488
+and lookup checks the length first.
+
+10:38.500 --> 10:43.300
+16 is more than 14, so lookup returns the error, NameTooLong.
+
+10:44.300 --> 10:48.695
+read_file's question mark passes it straight up, and read never runs.
+
+10:49.720 --> 10:54.499
+Each error came back as an ordinary value, from the function that noticed it.
+
+10:55.099 --> 10:57.424
+A kernel has nowhere to throw an exception.
+
+10:57.920 --> 10:59.115
+That's Problem 1:
+
+10:59.715 --> 11:01.528
+page arithmetic and overflow,
+
+11:02.128 --> 11:04.048
+moves, borrows, Copy and Drop,
+
+11:04.648 --> 11:05.587
+lifetimes,
+
+11:06.187 --> 11:07.616
+and errors as values.

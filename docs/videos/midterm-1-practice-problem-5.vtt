@@ -1,0 +1,316 @@
+WEBVTT
+
+00:00.000 --> 00:03.136
+Practice Exam 1, Problem 5: The Commands.
+
+00:03.736 --> 00:08.984
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:09.584 --> 00:13.296
+A script reveals it, and this explainer was built with Claude.
+
+00:13.800 --> 00:17.427
+Problem 5 draws on the OSlings command exercises.
+
+00:18.027 --> 00:27.285
+10c, echo, week 4, Friday, September 18: your first command against ulib, printing its arguments with spaces between.
+
+00:27.800 --> 00:35.651
+11c, cat, week 5, Thursday, September 24: a read loop through one 512-byte buffer.
+
+00:36.651 --> 00:44.565
+And 12c, wc, week 5, Friday, September 25: counting bytes, lines and words in one pass.
+
+00:45.680 --> 00:49.456
+Page 17 lists the ulib calls the commands are built on.
+
+00:50.456 --> 00:56.131
+args.len counts the arguments, including argument 0, the command's own name.
+
+00:57.240 --> 01:03.853
+Part (a). When the first argument is exactly -n, echo prints neither it nor the trailing newline.
+
+01:04.453 --> 01:08.037
+So "echo -n a b" prints "a b", and no newline.
+
+01:08.560 --> 01:09.925
+Here is 10c's run.
+
+01:10.525 --> 01:13.128
+The loop starts at 1, past the command's name.
+
+01:13.728 --> 01:16.779
+It writes a space before every argument but the first,
+
+01:17.379 --> 01:18.808
+then a newline at the end.
+
+01:19.320 --> 01:24.760
+To support -n, run must track where printing starts, and whether to end with a newline.
+
+01:25.760 --> 01:27.339
+So, first, starting at 1,
+
+01:28.339 --> 01:29.896
+and newline, starting true.
+
+01:31.400 --> 01:34.749
+Then, if argument 1 is exactly the bytes -n,
+
+01:35.749 --> 01:37.029
+first becomes 2,
+
+01:38.029 --> 01:39.544
+and newline becomes false.
+
+01:41.540 --> 01:43.183
+The loop now starts at first,
+
+01:43.783 --> 01:47.217
+so with -n, index 1, the -n itself, is skipped.
+
+01:49.220 --> 01:51.887
+And the space test becomes i &gt; first.
+
+01:52.887 --> 01:58.135
+Left at 1, as the note says, "echo -n a b" would print a space before "a",
+
+01:58.735 --> 02:02.020
+since printing starts at 2, and 2 is greater than 1.
+
+02:03.520 --> 02:06.357
+Last, the final newline is wrapped in if newline,
+
+02:06.957 --> 02:11.395
+so with -n it is skipped, and without -n it prints as before.
+
+02:11.920 --> 02:13.413
+Check the other examples.
+
+02:14.013 --> 02:20.072
+"echo -n" alone prints nothing: no arguments are left for the loop, and newline is false.
+
+02:20.672 --> 02:25.259
+And in "echo a -n", argument 1 is "a", so it prints as before.
+
+02:27.260 --> 02:32.359
+The key sums it up: the separator rule has to follow the new first argument.
+
+02:33.859 --> 02:40.643
+Spaces go between printed arguments, so the test is i &gt; first, not i &gt; 1.
+
+02:42.160 --> 02:48.667
+It also accepts checking the length, then comparing argument 1, unwrapped, with b"-n".
+
+02:49.267 --> 02:52.680
+Without the length check, unwrap would panic on a bare echo.
+
+02:54.600 --> 02:57.651
+Part (b). On the left, 11c's cat_fd.
+
+02:58.251 --> 03:03.755
+It reads into a 512-byte buffer, and stops when read returns 0.
+
+03:04.355 --> 03:07.747
+Otherwise it writes the n bytes it got, and reads again.
+
+03:08.280 --> 03:10.712
+On the right, a student's version with no loop.
+
+03:11.312 --> 03:17.392
+It has the same 512-byte buffer, reads once, writes what it got, and returns.
+
+03:17.920 --> 03:22.869
+Question (i). Of cat's six tests, one copies a 1500-byte file;
+
+03:23.469 --> 03:29.144
+every other test file is under 100 bytes, and each read gets as many bytes as fit.
+
+03:29.744 --> 03:32.944
+The student's version passes five. Which one fails?
+
+03:34.940 --> 03:43.793
+The 1500-byte file: one read returns at most 512 bytes, so only the first 512 are copied.
+
+03:44.793 --> 03:45.945
+That test fails.
+
+03:46.945 --> 03:49.719
+The small files fit in one read, so they pass.
+
+03:50.840 --> 03:58.413
+Question (ii): the correct cat_fd, a 1300-byte file, and every read as full as the buffer allows.
+
+03:59.013 --> 04:01.275
+How many calls to read, and to write_all?
+
+04:03.300 --> 04:10.169
+The reads return 512, 512, then the 276 bytes left,
+
+04:10.769 --> 04:12.476
+then 0, at end of file.
+
+04:14.500 --> 04:17.721
+That's 4 reads, counting the one that returns 0.
+
+04:18.721 --> 04:23.905
+And 3 write_alls: when read returns 0, the loop returns before it writes.
+
+04:25.040 --> 04:31.461
+Question (iii): the same file, but read never returns more than 128 bytes per call.
+
+04:32.061 --> 04:35.517
+How many calls now, and why is a short read not an error?
+
+04:37.540 --> 04:41.743
+1300 is 10 times 128, plus 20.
+
+04:42.743 --> 04:49.740
+So 10 full reads, and one of 20 bytes: 11 reads carry data, plus the one that returns 0.
+
+04:51.740 --> 04:52.956
+12 reads in all,
+
+04:53.956 --> 04:57.476
+and 11 write_alls, a write_all for each read with data.
+
+05:00.100 --> 05:06.201
+Why not an error? read returns how many bytes it did read, and fewer than asked is normal.
+
+05:07.701 --> 05:10.859
+It happens at a file's end, at a terminal, with a pipe.
+
+05:11.459 --> 05:13.336
+Only 0 means end of file.
+
+05:15.240 --> 05:19.293
+Part (c) needs the rest of 12c's wc, on this page:
+
+05:19.893 --> 05:22.859
+report and run, which came with the exercise.
+
+05:23.459 --> 05:25.315
+The question is on the next page.
+
+05:26.440 --> 05:28.979
+a.txt holds these 22 bytes,
+
+05:29.579 --> 05:33.483
+b.txt holds 21, with no newline at the end,
+
+05:34.083 --> 05:35.789
+and nosuch does not exist.
+
+05:36.389 --> 05:40.528
+The command: "wc a.txt nosuch b.txt".
+
+05:41.040 --> 05:43.237
+run's loop opens each file in turn.
+
+05:43.837 --> 05:46.675
+Several files are named, so multiple is true,
+
+05:47.275 --> 05:48.896
+and a total row will follow.
+
+05:49.400 --> 05:53.155
+A file that opens is counted, and report prints its row:
+
+05:53.755 --> 05:57.595
+lines, words and bytes, each right-aligned in 8 columns,
+
+05:58.195 --> 05:59.603
+then a space and the name.
+
+06:00.120 --> 06:04.472
+First, a.txt. Lines are newline bytes, and it has these.
+
+06:05.472 --> 06:06.304
+2 lines.
+
+06:07.304 --> 06:12.381
+4 words: one, two, three, four; the tab and the double spaces just split them.
+
+06:13.381 --> 06:15.963
+And 22 bytes, labeled a.txt.
+
+06:16.480 --> 06:18.528
+Next, nosuch. open fails,
+
+06:19.128 --> 06:22.861
+so its message goes to standard error, not into this table,
+
+06:23.461 --> 06:24.955
+and status is set to 1.
+
+06:25.480 --> 06:26.803
+Then b.txt.
+
+06:27.803 --> 06:31.451
+0 lines: its only line has no newline at the end.
+
+06:32.451 --> 06:34.819
+4 words: last, line, no, newline.
+
+06:35.819 --> 06:38.549
+And 21 bytes, labeled b.txt.
+
+06:39.080 --> 06:42.152
+After the loop, multiple is true, so the total row.
+
+06:43.152 --> 06:44.944
+Lines: 2 plus 0, 2.
+
+06:45.944 --> 06:47.565
+Words: 4 plus 4, 8.
+
+06:48.565 --> 06:52.299
+Bytes: 22 plus 21, 43, labeled total.
+
+06:53.800 --> 06:58.451
+Line 4: none. Only three rows print, since nosuch never got one.
+
+06:59.451 --> 07:03.909
+Its message went to standard error: "wc: cannot open nosuch".
+
+07:04.440 --> 07:05.677
+And the exit status?
+
+07:07.177 --> 07:11.252
+It's 1: run returns status, which the failed open set to 1,
+
+07:11.852 --> 07:13.729
+and nothing sets it back to 0.
+
+07:16.340 --> 07:22.441
+As the key says, the total row is printed because three files were named, though only two opened.
+
+07:23.441 --> 07:26.983
+The failure goes to stderr, and makes the status 1.
+
+07:27.480 --> 07:34.285
+Then "wc b.txt": a single file, so multiple is false, and there is no total row.
+
+07:35.785 --> 07:40.521
+Just 0, 4, 21, b.txt, with exit status 0.
+
+07:41.640 --> 07:49.875
+And "wc &lt; b.txt": the shell makes that file standard input, so wc gets no file arguments.
+
+07:51.375 --> 07:53.764
+0, 4, 21, with no label:
+
+07:54.764 --> 07:58.135
+standard input has no name. Exit status 0.
+
+07:59.640 --> 08:01.005
+That's Problem 5.
+
+08:01.605 --> 08:04.315
+(a): spaces go between printed arguments.
+
+08:04.915 --> 08:08.925
+(b): a short read is normal; only 0 means end of file.
+
+08:09.525 --> 08:15.797
+(c): a file that won't open is reported on standard error, and the status remembers the failure.

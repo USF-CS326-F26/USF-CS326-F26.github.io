@@ -1,0 +1,313 @@
+WEBVTT
+
+00:00.000 --> 00:04.395
+Problem 3 of the practice exam: scheduling policies as traits.
+
+00:04.995 --> 00:10.243
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.240 --> 00:18.515
+It's built on exercise 07r, traits and generics, from week 4, on Thursday, September 17.
+
+00:19.115 --> 00:22.144
+There you implemented Out for StringOut and CountingOut,
+
+00:22.744 --> 00:25.731
+Scheduler for RoundRobin, and the generic trace.
+
+00:26.240 --> 00:34.176
+Part (c) also leans on 01r, control flow and overflow, from week 1, on Friday, August 28:
+
+00:34.776 --> 00:38.253
+in a debug build, arithmetic that overflows panics.
+
+00:39.880 --> 00:42.888
+Problem 3 opens with code from 07r.
+
+00:43.888 --> 00:46.469
+Each slot is Unused, Runnable, or Sleeping,
+
+00:47.069 --> 00:51.272
+and the trait Scheduler names what every scheduling policy must provide.
+
+00:51.800 --> 00:55.832
+A policy provides pick_next: the slot to run next, or None.
+
+00:56.432 --> 00:59.568
+run_for, a default method, calls it once per turn,
+
+01:00.168 --> 01:03.411
+pushes each slot onto picked, and stops at the first None.
+
+01:04.920 --> 01:07.608
+RoundRobin is the policy you implemented.
+
+01:08.208 --> 01:12.283
+It keeps a cursor, next, and its constructor, new, sets it to zero.
+
+01:13.400 --> 01:17.005
+Part (a) runs RoundRobin for five turns on this table.
+
+01:17.605 --> 01:20.443
+What does picked hold, what is rr.next,
+
+01:21.043 --> 01:23.091
+and which slots does each call look at?
+
+01:24.600 --> 01:27.565
+Call one scans forward from next, which is zero.
+
+01:28.165 --> 01:31.237
+Slot zero is Sleeping; slot one is Runnable.
+
+01:32.237 --> 01:36.013
+So it returns one, and moves the cursor one past it, to two.
+
+01:37.520 --> 01:40.251
+Call two starts at slot two, which is Runnable.
+
+01:41.251 --> 01:43.235
+It returns two, and next is three.
+
+01:44.760 --> 01:48.877
+Call three looks at slot three, Unused, then slot four, Runnable.
+
+01:50.377 --> 01:51.529
+It returns four,
+
+01:52.129 --> 01:55.948
+and four plus one, mod five, wraps the cursor back to zero.
+
+01:58.460 --> 02:01.340
+Call four repeats call one, and returns one.
+
+02:02.840 --> 02:07.171
+Call five repeats call two, and returns two, leaving next at three.
+
+02:07.680 --> 02:10.688
+No call returned None, so all five turns ran.
+
+02:11.688 --> 02:13.821
+picked holds [1, 2, 4, 1, 2]:
+
+02:14.821 --> 02:16.592
+the slots, in the order they ran.
+
+02:18.600 --> 02:20.349
+And rr.next is three,
+
+02:21.349 --> 02:22.949
+where the next call would start.
+
+02:23.549 --> 02:28.563
+Every runnable slot ran before any ran again: round robin starves no one.
+
+02:30.680 --> 02:33.603
+Part (b) adds 07r's other trait, Out,
+
+02:34.203 --> 02:36.379
+which StringOut and CountingOut implement.
+
+02:36.979 --> 02:39.112
+And Priority is another Scheduler.
+
+02:39.640 --> 02:42.584
+write_banner takes its sink as &amp;mut dyn Out.
+
+02:43.184 --> 02:44.421
+trace is generic:
+
+02:45.021 --> 02:50.099
+S is any type that implements Scheduler, and O, any type that implements Out.
+
+02:51.600 --> 02:56.379
+trace is called four times, with these pairs of types, and write_banner twice.
+
+02:56.979 --> 03:02.504
+Question (i): how many copies of each are in the binary, and how does each find its method?
+
+03:03.000 --> 03:07.885
+A generic function gets one copy per distinct set of types it's called with.
+
+03:08.485 --> 03:10.000
+RoundRobin with StringOut,
+
+03:10.600 --> 03:11.987
+Priority with StringOut,
+
+03:12.587 --> 03:14.315
+RoundRobin with StringOut again,
+
+03:14.915 --> 03:16.664
+and Priority with CountingOut.
+
+03:18.160 --> 03:21.381
+That's three distinct pairs, so three copies of trace.
+
+03:22.881 --> 03:24.247
+One per distinct pair:
+
+03:25.747 --> 03:27.603
+the repeat reuses its copy.
+
+03:28.203 --> 03:32.085
+This is monomorphization, also called static dispatch.
+
+03:34.120 --> 03:38.173
+In each copy, the compiler knows exactly which methods it calls.
+
+03:38.773 --> 03:43.104
+So each call is resolved at compile time, and can be inlined.
+
+03:43.600 --> 03:47.333
+write_banner isn't generic: it takes a reference to dyn Out.
+
+03:48.333 --> 03:50.147
+So there's exactly one copy,
+
+03:51.147 --> 03:52.512
+shared by both calls.
+
+03:54.540 --> 03:56.289
+It uses dynamic dispatch:
+
+03:56.889 --> 04:02.031
+the reference carries a pointer to a vtable, a table of that type's Out methods.
+
+04:03.031 --> 04:05.548
+The right method is looked up there at run time.
+
+04:06.080 --> 04:09.899
+Question (ii): what if we delete ": Scheduler" from trace?
+
+04:11.399 --> 04:12.679
+It stops compiling.
+
+04:13.279 --> 04:19.828
+rustc reports E0599: no method named run_for found for &amp;mut S.
+
+04:21.860 --> 04:25.743
+Without the bound, the body may only assume that S is some type.
+
+04:26.743 --> 04:30.348
+The bound is the only thing that promises S has run_for.
+
+04:32.480 --> 04:35.616
+Part (c): write Backward, which rotates the other way.
+
+04:36.216 --> 04:40.653
+Each call scans down from next, wrapping from zero to the last slot,
+
+04:41.653 --> 04:45.536
+takes the first Runnable slot, and leaves the cursor one below it.
+
+04:46.040 --> 04:51.565
+Like RoundRobin, it returns None when nothing is runnable, even for an empty table.
+
+04:52.165 --> 04:55.024
+And it must never panic, which is the hard part.
+
+04:55.520 --> 04:57.845
+The struct and its constructor are given.
+
+04:58.845 --> 05:01.299
+The loop can start just like RoundRobin's:
+
+05:01.899 --> 05:07.083
+n is the table's length, and off, starting at zero, counts the steps down from next.
+
+05:07.600 --> 05:10.608
+Going down, the obvious slot is next minus off.
+
+05:11.208 --> 05:13.192
+But next and off are both usize,
+
+05:13.792 --> 05:15.989
+and a usize can never be negative.
+
+05:18.020 --> 05:22.159
+So once off is bigger than next, next minus off would underflow,
+
+05:22.759 --> 05:27.089
+and, just as 01r showed for addition, a debug build panics.
+
+05:29.120 --> 05:30.379
+So add n first.
+
+05:30.979 --> 05:37.208
+next plus n is at least n, and off is less than n, so the result never goes below zero.
+
+05:38.240 --> 05:40.779
+Adding n does not change which slot we reach:
+
+05:41.379 --> 05:45.091
+n steps is one full lap of the table, back where you started.
+
+05:46.091 --> 05:49.013
+Then mod n brings the number back into the table.
+
+05:50.520 --> 05:52.547
+If that slot is Runnable, we take it,
+
+05:53.547 --> 05:58.581
+and the cursor goes one below it, by the same trick: plus n before minus one.
+
+05:59.581 --> 06:00.883
+Then return the slot.
+
+06:02.900 --> 06:05.460
+If the loop ends, nothing was runnable: None.
+
+06:06.060 --> 06:09.623
+With an empty table, n is zero, so the loop never runs,
+
+06:10.223 --> 06:14.361
+and it never computes a remainder by zero, which would also panic.
+
+06:15.960 --> 06:20.504
+Now the last question: Backward's run_for, on the table from part (a).
+
+06:21.504 --> 06:23.829
+Five turns, starting from next at zero.
+
+06:25.360 --> 06:30.373
+Call one looks at slot zero, Sleeping, then wraps down to slot four: Runnable.
+
+06:31.373 --> 06:36.152
+It takes four, so the cursor goes one below, to three, where call two begins.
+
+06:36.680 --> 06:39.837
+Call two looks at three, Unused, then two, Runnable.
+
+06:40.837 --> 06:43.205
+It takes two, and the cursor drops to one.
+
+06:43.720 --> 06:46.515
+Call three finds slot one Runnable right away.
+
+06:47.515 --> 06:50.139
+It takes one, and the cursor drops to zero.
+
+06:50.739 --> 06:54.045
+So call four repeats call one: zero, then four.
+
+06:55.560 --> 07:00.403
+Call four takes four again, and call five repeats call two: three, then two.
+
+07:01.403 --> 07:02.405
+It takes two.
+
+07:03.920 --> 07:06.715
+So run_for returns [4, 2, 1, 4, 2].
+
+07:08.215 --> 07:13.057
+The same runnable slots as RoundRobin, visited in the opposite direction.
+
+07:14.560 --> 07:17.419
+Same trait, same run_for, a different pick_next.
+
+07:18.019 --> 07:20.365
+That's the design 07r teaches:
+
+07:20.965 --> 07:24.869
+the policy can change, and the loop that uses it never has to.

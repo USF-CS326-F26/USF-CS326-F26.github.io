@@ -233,7 +233,11 @@ matter:
   the film's small on-screen code needs.
 
 Link the page from its session row by hand, with `links=` in `sessions()`, as
-**Video · <title>**.
+**Video · <title>**. A film that works a posted exam or practice-set key goes
+beside that key's link instead: Practice Set 1 links the five Midterm 1 practice
+films, `videos/midterm-1-practice-problem-N`, after its Solutions PDF. Escape `&`,
+`<` and `>` in a `.vtt` made from an SRT (`&amp;`, `&lt;`, `&gt;`); WebVTT reads
+them as markup, so a caption like "wc < b.txt" loses the rest of its cue.
 
 Most explainers, and the films so far, walk through an exercise's reference
 solution. A schedule row is as public before its session as any other page,
