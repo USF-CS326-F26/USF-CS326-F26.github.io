@@ -18,4 +18,4 @@ adds: ten more saved registers, and the same shape.
   <track kind="captions" src="../babyswtch.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](babyswtch.mp4){ download="babyswtch.mp4" } (MP4, 39 MB) · [Captions](babyswtch.vtt) (WebVTT)
+[Download the video](babyswtch.mp4){ download="babyswtch.mp4" } (MP4, 38 MB) · [Captions](babyswtch.vtt) (WebVTT)
