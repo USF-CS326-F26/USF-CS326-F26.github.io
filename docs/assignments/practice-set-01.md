@@ -16,6 +16,13 @@ own pages: [Problem 1 · Short Questions](../videos/midterm-1-practice-problem-1
 (7:14) · [Problem 5 · The Commands](../videos/midterm-1-practice-problem-5.md) (8:18).
 { #solution-videos }
 
+**[Midterm 1 Practice Problems 2](midterm-1-practice-2-problems.pdf)** (PDF, 24
+pages) · **[Solutions](midterm-1-practice-2-solutions.pdf)** (PDF, 24 pages):
+a second practice exam, covering Weeks 6 and 7, `20a_asm_bridge` through
+`33k_paging`, and its answer key. Each problem prints the code and the
+reference facts it uses, so nothing in it has to be memorized. Try the
+problems before you open the key.
+
 This is the one piece of CS 326 work that happens outside the room, and it is
 deliberately **pencil and paper, not programming** — nothing to write, run, or
 submit. That is what makes it compatible with the
