@@ -1,0 +1,496 @@
+WEBVTT
+
+00:00.000 --> 00:03.371
+Practice Exam 2, Problem 2: The Assembly Bridge.
+
+00:03.971 --> 00:09.219
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:09.819 --> 00:13.531
+A script reveals it, and this explainer was built with Claude.
+
+00:14.040 --> 00:20.355
+Problem 2 draws on 20a_asm_bridge, from week 6, on Thursday, October 1.
+
+00:20.955 --> 00:23.536
+You wrote three routines in RISC-V assembly:
+
+00:24.136 --> 00:26.376
+add3, bytecopy and baby_swtch.
+
+00:26.880 --> 00:30.443
+The Ctx struct and the extern declarations were given,
+
+00:31.043 --> 00:32.643
+and so was the test harness,
+
+00:33.243 --> 00:35.333
+with check_baby_swtch and co_entry.
+
+00:36.960 --> 00:41.333
+Problem 2 opens with two tables: all the RISC-V it uses.
+
+00:42.333 --> 00:46.003
+A function you call may destroy any caller-saved register,
+
+00:46.603 --> 00:51.211
+but it must hand back every callee-saved one, holding what it held at the call.
+
+00:51.720 --> 00:53.939
+The second table gives the instructions.
+
+00:54.539 --> 00:57.056
+lb and sb load and store 1 byte.
+
+00:57.656 --> 01:01.475
+ld and sd load and store 8 bytes: a doubleword.
+
+01:02.000 --> 01:03.493
+Two details matter later.
+
+01:04.093 --> 01:09.640
+lb sign-extends: the byte's top bit is copied into the 56 bits above it.
+
+01:10.240 --> 01:12.011
+And sb stores the low byte.
+
+01:12.520 --> 01:15.272
+Then 20a's bytecopy, the loop you wrote.
+
+01:15.872 --> 01:19.136
+a0 is dst, a1 is src, and a2 is n.
+
+01:19.736 --> 01:23.000
+If n is 0, the beqz skips to the ret.
+
+01:23.520 --> 01:24.331
+Each trip:
+
+01:24.931 --> 01:29.923
+lb loads a byte from src into t0, and sb stores it to dst.
+
+01:30.523 --> 01:34.128
+Both pointers advance by 1, a2 drops by 1,
+
+01:34.728 --> 01:38.461
+and bnez goes back to label 1 while any remain.
+
+01:39.560 --> 01:40.413
+Part (a).
+
+01:41.013 --> 01:46.219
+Memory at src holds three bytes, in hex: 52, C9 and 0A.
+
+01:46.819 --> 01:51.021
+bytecopy is called with dst and src as printed, and n of 3.
+
+01:51.520 --> 01:57.749
+The table wants each register every time the bnez is reached, just before it runs,
+
+01:58.349 --> 02:01.251
+and t0 as a full 64-bit value.
+
+02:01.851 --> 02:03.963
+Three bytes: three trips, three rows.
+
+02:04.480 --> 02:05.483
+The first trip.
+
+02:06.083 --> 02:09.859
+lb loads the first byte, 52, and sb stores it.
+
+02:10.859 --> 02:17.131
+The top bit of 52 is clear, so t0 is 52, with zeros in every bit above.
+
+02:17.640 --> 02:19.667
+Then both pointers advance by 1.
+
+02:20.667 --> 02:27.067
+a0 is 0x8010_3001, and a1 ends in 2001.
+
+02:28.067 --> 02:30.285
+And the counter, a2, drops to 2.
+
+02:30.800 --> 02:33.573
+a2 is not 0, so the branch goes back.
+
+02:34.173 --> 02:35.859
+The second byte is C9.
+
+02:37.359 --> 02:41.305
+Now t0 isn't just C9: every bit above it is set.
+
+02:41.905 --> 02:46.279
+The top bit of C9 is set, so sign extension fills with ones.
+
+02:46.800 --> 02:49.637
+sb stores the byte, and the pointers advance:
+
+02:50.637 --> 02:55.288
+a0 ends in 3002, and a1 in 2002,
+
+02:56.288 --> 02:58.144
+and the counter, a2, is 1.
+
+02:58.640 --> 03:01.648
+The third trip loads 0A: top bit clear,
+
+03:02.648 --> 03:04.227
+so zeros above it again.
+
+03:05.727 --> 03:11.145
+The pointers end in 3003 and 2003, and a2 is 0,
+
+03:11.745 --> 03:14.177
+so the branch falls through, and the ret runs.
+
+03:15.880 --> 03:20.381
+(i): which bytes of memory has bytecopy changed, and what do they hold?
+
+03:21.881 --> 03:28.260
+The three bytes at dst: the addresses ending 3000, 3001 and 3002.
+
+03:29.760 --> 03:32.768
+They now hold 52, C9 and 0A.
+
+03:33.680 --> 03:34.597
+Nothing else:
+
+03:35.197 --> 03:38.056
+a2 reached 0 after exactly three trips,
+
+03:39.056 --> 03:42.981
+so the byte at the address ending 3003 was not touched.
+
+03:43.880 --> 03:47.357
+(ii): a load sign-extended its byte into another value.
+
+03:47.957 --> 03:49.472
+Did that make the copy wrong?
+
+03:50.972 --> 03:51.548
+No.
+
+03:54.180 --> 03:57.977
+The key writes C9 in binary: its top bit is a 1.
+
+03:58.577 --> 04:02.033
+So lb copied that bit into the upper 56 bits.
+
+04:03.533 --> 04:09.208
+In decimal, the value in t0 became -55, not 201.
+
+04:11.220 --> 04:15.977
+But sb stores only the low byte of t0, which is still C9.
+
+04:16.977 --> 04:21.095
+The extra ones never reach memory, so the byte arrives unchanged.
+
+04:23.500 --> 04:27.745
+The key adds: it would matter if the code added or compared t0.
+
+04:28.345 --> 04:31.823
+Then the load should be lbu, which fills with zeros.
+
+04:33.720 --> 04:35.875
+Part (b). Here is bytecopy again.
+
+04:36.875 --> 04:42.443
+Change it into wordcopy, which copies n 64-bit words, of 8 bytes each.
+
+04:43.043 --> 04:46.563
+Cross out what you change, and write the replacement next to it.
+
+04:47.080 --> 04:48.147
+First, the label.
+
+04:49.647 --> 04:51.588
+bytecopy becomes wordcopy.
+
+04:52.188 --> 04:55.431
+The registers keep their jobs: dst, src and n.
+
+04:55.960 --> 04:58.563
+Each word here is 8 bytes: a doubleword.
+
+04:59.563 --> 05:02.869
+So lb becomes ld, to load all 8 bytes,
+
+05:03.869 --> 05:06.408
+and sb becomes sd, to store 8.
+
+05:06.920 --> 05:09.395
+And each word sits 8 bytes after the last.
+
+05:10.395 --> 05:13.104
+So a0 advances by 8, not 1,
+
+05:14.104 --> 05:15.832
+and so does a1: by 8.
+
+05:16.360 --> 05:17.341
+And the counter?
+
+05:18.841 --> 05:21.444
+No change: n counts words, not bytes.
+
+05:22.044 --> 05:24.263
+One word copied, one fewer to go.
+
+05:26.360 --> 05:33.037
+(i): wordcopy is called with n of 2, and with dst and src ending 5000 and 4000.
+
+05:33.637 --> 05:37.200
+What do a0, a1 and a2 hold when it returns?
+
+05:39.220 --> 05:41.823
+Two trips, each adding 8 to both pointers.
+
+05:42.423 --> 05:46.689
+In hex, 8 and 8 carry into the next digit and leave nothing behind,
+
+05:47.289 --> 05:53.775
+so a0 ends in 5010, and a1 ends in 4010.
+
+05:54.775 --> 05:56.119
+And a2 is 0.
+
+05:57.840 --> 06:02.149
+(ii): the caller was keeping values in t1, a3 and s1.
+
+06:02.749 --> 06:04.925
+Going only by the calling convention,
+
+06:05.525 --> 06:07.125
+which may it still rely on?
+
+06:09.140 --> 06:10.185
+Only s1.
+
+06:11.685 --> 06:15.717
+It is callee-saved, so any function must hand it back unchanged:
+
+06:16.317 --> 06:17.747
+the last row of the table.
+
+06:20.380 --> 06:27.228
+t1 and a3 are caller-saved: a callee may destroy them, so the caller must not count on them.
+
+06:28.728 --> 06:33.933
+This wordcopy happens to leave them alone, but the caller is not allowed to know that.
+
+06:34.840 --> 06:37.229
+(iii): wordcopy never moves sp,
+
+06:37.829 --> 06:39.493
+and saves nothing on the stack.
+
+06:40.093 --> 06:42.355
+Which two facts about it make that legal?
+
+06:44.380 --> 06:47.239
+First, it is a leaf function: it calls nothing,
+
+06:47.839 --> 06:51.849
+so ra still holds its caller's return address when ret runs.
+
+06:53.860 --> 06:58.127
+Second, it uses only a and t registers, which are caller-saved,
+
+06:59.127 --> 07:00.599
+so it owes nothing back.
+
+07:02.520 --> 07:07.363
+Part (c). A page of code: baby_swtch, co_entry, and the test, shortened.
+
+07:08.363 --> 07:14.421
+20a's baby_swtch saves four registers in one Ctx, and loads them from another.
+
+07:14.920 --> 07:18.547
+A Ctx holds ra, sp, s0 and s1,
+
+07:19.147 --> 07:22.112
+at offsets 0, 8, 16 and 24.
+
+07:22.712 --> 07:24.952
+repr(C) keeps the fields in that order.
+
+07:25.480 --> 07:26.781
+You wrote baby_swtch:
+
+07:27.381 --> 07:30.773
+four stores through a0, into the old Ctx,
+
+07:31.373 --> 07:34.616
+then four loads through a1, from the new one, and ret.
+
+07:35.120 --> 07:38.939
+co_entry, which the test switches to, came with the exercise.
+
+07:39.539 --> 07:42.995
+It records the s0 and s1 it was started with,
+
+07:43.595 --> 07:47.072
+then calls baby_swtch itself, to switch back: call 2.
+
+07:47.600 --> 07:49.477
+The test fills in CO_CTX.
+
+07:50.077 --> 07:55.005
+Its ra is co_entry's address, 0x8000_099A,
+
+07:55.605 --> 07:58.144
+and its sp, the top of a second stack.
+
+07:58.640 --> 08:01.925
+CO_CTX's s0 and s1 get two markers.
+
+08:02.525 --> 08:03.763
+Then comes call 1.
+
+08:04.363 --> 08:09.632
+When the test makes it, the test's own sp ends in 7230,
+
+08:10.232 --> 08:13.219
+and its own s0 and s1 are both 0.
+
+08:14.320 --> 08:17.712
+The questions are on the next page, here beside the code.
+
+08:18.312 --> 08:25.117
+(i): the registers at each of two moments, when baby_swtch is about to run its ret, and what runs next.
+
+08:25.640 --> 08:31.187
+The first time is inside call 1: old is MAIN_CTX, new is CO_CTX.
+
+08:31.787 --> 08:35.435
+The four registers have just been loaded from CO_CTX:
+
+08:36.435 --> 08:40.189
+ra is co_entry's address, ending 099A,
+
+08:41.189 --> 08:43.557
+and sp is the top of the second stack.
+
+08:45.080 --> 08:48.472
+s0 and s1 hold the markers, 0xC0FFEE and 0xBEEF.
+
+08:49.972 --> 08:57.119
+And ret goes to the address in ra, ending 099A: the first instruction of co_entry.
+
+08:58.240 --> 09:03.360
+co_entry runs, and at call 2 the registers are loaded from MAIN_CTX,
+
+09:03.960 --> 09:07.459
+where the four stores of call 1 saved the test's registers.
+
+09:08.459 --> 09:13.664
+ra ends in 1070: call 1 set it to the next instruction,
+
+09:14.664 --> 09:16.349
+and sp is the test's again.
+
+09:17.880 --> 09:21.741
+s0 and s1 are the test's again: 0 and 0.
+
+09:23.241 --> 09:28.404
+And this ret goes to the address ending 1070, just after call 1.
+
+09:30.120 --> 09:31.379
+The key sums it up.
+
+09:32.879 --> 09:39.279
+The first ret uses the ra just loaded from CO_CTX, so it lands in co_entry.
+
+09:40.779 --> 09:46.731
+The second uses the ra loaded from MAIN_CTX: back to the line after call 1.
+
+09:47.640 --> 09:52.461
+(ii): what four values does MAIN_CTX hold at the first moment in the table?
+
+09:53.961 --> 09:59.636
+ra ending 1070, sp ending 7230,
+
+10:00.236 --> 10:02.519
+and s0 and s1 both 0.
+
+10:04.540 --> 10:09.767
+That is what the test had at call 1: the four stores saved it in MAIN_CTX.
+
+10:10.367 --> 10:12.671
+And the test's ra was set by that call.
+
+10:13.600 --> 10:19.893
+And CO_CTX's ra at the second moment? And which instruction put that value in ra?
+
+10:21.393 --> 10:24.551
+The value first: it ends in 09CA,
+
+10:25.151 --> 10:29.033
+the address of the instruction after call 2, the j 1b.
+
+10:30.960 --> 10:37.936
+And the instruction: co_entry's own call to baby_swtch, call 2, set ra to the next instruction,
+
+10:38.536 --> 10:41.224
+and the first sd saved it in CO_CTX.
+
+10:42.920 --> 10:50.152
+(iii): a student adds a field, id, at the top of the Ctx struct, above ra, and changes nothing else.
+
+10:50.752 --> 10:53.547
+Everything still compiles, and id is 0.
+
+10:54.147 --> 10:57.560
+Where does the first ret jump now, and what is in sp?
+
+10:58.080 --> 11:02.880
+The new field takes offset 0, and the ra field moves to offset 8.
+
+11:03.480 --> 11:05.144
+But the assembly didn't change:
+
+11:05.744 --> 11:08.155
+it still loads ra from offset 0.
+
+11:10.180 --> 11:13.060
+That slot is now id, so ra is 0,
+
+11:14.560 --> 11:16.373
+and ret jumps to address 0.
+
+11:17.873 --> 11:20.497
+Nothing is there: the machine faults and hangs.
+
+11:21.600 --> 11:23.456
+And sp comes from offset 8.
+
+11:24.956 --> 11:28.284
+That slot now holds what Rust stored in the ra field:
+
+11:28.884 --> 11:32.148
+the address of co_entry, ending 099A.
+
+11:33.280 --> 11:37.440
+And the numbers 0, 8, 16 and 24 in the assembly?
+
+11:38.940 --> 11:41.393
+The offsets are welded into the instructions.
+
+11:43.420 --> 11:50.161
+repr(C) keeps the fields in declared order, but nobody checks that the assembly's numbers match the struct.
+
+11:50.761 --> 11:52.980
+Change one, and you must change the other.
+
+11:54.680 --> 11:55.939
+That's Problem 2.
+
+11:56.539 --> 12:00.571
+(a): lb sign-extends, but sb stores only the low byte.
+
+12:01.171 --> 12:06.312
+(b): leaf functions using only caller-saved registers have nothing to save.
+
+12:06.912 --> 12:11.328
+(c): ret goes wherever ra points, and nobody checks the offsets.

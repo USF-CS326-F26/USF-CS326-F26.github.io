@@ -1,0 +1,487 @@
+WEBVTT
+
+00:00.000 --> 00:04.715
+Practice Exam 2, Problem 5: Sv39 Page Tables.
+
+00:05.315 --> 00:10.563
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.163 --> 00:14.875
+A script reveals it, and this explainer was built with Claude.
+
+00:15.400 --> 00:21.672
+Problem 5 draws on 33k_paging, from week 7, on Friday, October 9.
+
+00:22.272 --> 00:25.600
+You wrote Pte::new, Pte::pa and walk.
+
+00:26.120 --> 00:31.624
+You were given the flag constants, the methods flags and is_valid, px, mappages,
+
+00:32.224 --> 00:34.315
+and translate, which the test uses.
+
+00:34.915 --> 00:41.891
+walk calls kalloc, which you wrote in 32k_physical_memory, on Thursday, October 8.
+
+00:43.000 --> 00:45.624
+Problem 5, from 33k_paging.
+
+00:46.624 --> 00:53.109
+An Sv39 virtual address is three 9-bit indices over a 12-bit offset.
+
+00:53.640 --> 00:56.797
+VPN[2] picks an entry of the root table,
+
+00:57.397 --> 01:04.949
+VPN[1] picks an entry of a level-1 table, and VPN[0] an entry of a level-0 table.
+
+01:05.549 --> 01:09.261
+Each table is one page, of 512 entries.
+
+01:09.760 --> 01:14.901
+Each entry, a PTE, packs a physical page number above ten flag bits.
+
+01:15.501 --> 01:20.173
+V is 1, R is 2, W is 4, X is 8, U is 16.
+
+01:20.773 --> 01:25.061
+Three formulas: build a PTE, read its address, read its flags.
+
+01:25.560 --> 01:27.139
+Two kinds of valid entry.
+
+01:27.739 --> 01:32.517
+R, W and X all clear: a branch, and its address is the next table.
+
+01:33.117 --> 01:36.787
+Any of them set: a leaf, and its address is the mapped page.
+
+01:37.920 --> 01:39.947
+Part (a). Four questions, by hand.
+
+01:40.547 --> 01:49.379
+(i): split the virtual address 0x20_4060_5ABC into three indices, in decimal, and an offset.
+
+01:49.880 --> 01:53.955
+The offset is the low 12 bits: the last three hex digits.
+
+01:55.455 --> 01:56.585
+0xABC.
+
+01:57.185 --> 02:01.004
+For an index, shift right, then mask with 0x1FF.
+
+02:02.504 --> 02:09.011
+Shift by 12; the mask keeps 9 bits, not three hex digits, so VPN[0] is 5.
+
+02:11.020 --> 02:17.036
+The next index is 9 bits up: shift by 21, mask, and VPN[1] is 3.
+
+02:18.036 --> 02:21.001
+Shift by 30, and only 0x81 is left.
+
+02:22.001 --> 02:25.415
+In decimal, VPN[2] is 129.
+
+02:26.320 --> 02:33.275
+(ii): build the PTE for the page at 0x8001_2000, with flags V, R and X.
+
+02:33.875 --> 02:35.091
+The first formula:
+
+02:36.591 --> 02:43.311
+shift right by 12 for the page number, then left by 10: append two hex zeros, then times 4.
+
+02:43.840 --> 02:46.528
+That value ends in 4800.
+
+02:47.528 --> 02:50.941
+V, R and X: 1, 2 and 8. Together, 0xB.
+
+02:52.441 --> 02:56.729
+OR that in, and the entry is 0x2000_480B.
+
+02:57.640 --> 03:01.971
+(iii): decode the PTE 0x2000_4C17.
+
+03:02.571 --> 03:04.405
+Its flags are the low 10 bits.
+
+03:05.905 --> 03:12.689
+0x017. That's 1 plus 2 plus 4 plus 16: V, R, W and U.
+
+03:13.289 --> 03:16.191
+The bits set in the digit C belong to the page number.
+
+03:16.720 --> 03:20.240
+For the address, shift right by 10, then left by 12.
+
+03:21.240 --> 03:23.565
+0x8001_3000.
+
+03:24.165 --> 03:28.005
+Leaf or branch? And may a user program store to that page?
+
+03:29.505 --> 03:34.391
+R and W are set: a leaf. And yes: W and U are both set.
+
+03:35.320 --> 03:44.045
+(iv): table is a pointer to Pte, and a Pte is 8 bytes. What address is table.add(128)?
+
+03:45.545 --> 03:54.932
+So that add counts 8-byte entries, not single bytes: 128 times 8 is 0x400 bytes past the start of the table.
+
+03:56.432 --> 04:00.549
+The answer: 0x8040_7400.
+
+04:02.280 --> 04:04.328
+Parts (b) and (c) share this code.
+
+04:05.328 --> 04:08.528
+Most of it is 33k's vm.rs.
+
+04:09.128 --> 04:15.080
+Pte::new builds an entry, and Pte::pa reads its address; you wrote both.
+
+04:15.600 --> 04:16.987
+You also wrote walk.
+
+04:17.587 --> 04:21.896
+From level 2, it follows each valid entry down to the next table,
+
+04:22.496 --> 04:25.227
+and returns a pointer to the level-0 entry.
+
+04:25.760 --> 04:28.256
+Where a table is missing, alloc decides.
+
+04:28.856 --> 04:30.435
+False: walk returns null.
+
+04:31.035 --> 04:34.000
+True: it takes a page from kalloc and zeroes it,
+
+04:34.600 --> 04:39.485
+then makes the invalid entry a branch that points at it, with only V set.
+
+04:40.600 --> 04:45.955
+mappages, which was given, asks walk for each page's entry, with alloc true,
+
+04:46.555 --> 04:49.392
+and writes the leaf there: the permissions, plus V.
+
+04:49.992 --> 04:55.112
+translate, which the test uses, reads the tables the way the MMU will.
+
+04:56.240 --> 04:58.053
+Part (b). It runs that code.
+
+04:59.053 --> 05:05.261
+The root table, with every entry zero, is the page at 0x8040_0000.
+
+05:05.861 --> 05:12.837
+The first pages on the free list end in 7000, 2000, 5000 and 9000.
+
+05:13.437 --> 05:16.147
+As in Problem 4, kalloc takes the head.
+
+05:16.680 --> 05:18.216
+The kernel makes two calls.
+
+05:18.816 --> 05:23.168
+Call 1 maps the UART's page to itself, readable and writable.
+
+05:23.768 --> 05:27.779
+Call 2 maps two pages of code, readable and executable.
+
+05:28.379 --> 05:31.792
+The indices of all three virtual pages are given.
+
+05:32.920 --> 05:37.251
+(i): the two calls write six PTEs; the first row is done.
+
+05:37.851 --> 05:41.947
+Call 1 starts in the root: VPN[2] picks entry 0.
+
+05:42.547 --> 05:49.992
+That entry is empty: walk takes page 7000, zeroes it, and makes the entry a branch that points at it.
+
+05:50.520 --> 05:54.595
+The second row is in that new table, at index VPN[1].
+
+05:55.595 --> 05:58.752
+128. That entry is empty too,
+
+05:59.752 --> 06:06.941
+so walk takes the next page, 2000, and entry 128 becomes a branch that points at it.
+
+06:07.440 --> 06:09.104
+Now walk returns a pointer:
+
+06:10.104 --> 06:15.373
+into the table at 2000, at index 0, the page's VPN[0].
+
+06:16.373 --> 06:20.192
+mappages writes a leaf there: it points at the UART's page.
+
+06:20.720 --> 06:24.859
+Call 2. Root entry 0 is valid now, so walk follows it,
+
+06:25.859 --> 06:31.000
+to the table at 7000. There, entry 129 is empty:
+
+06:32.000 --> 06:37.867
+one new table, page 5000, zeroed like the others, and a branch that points at it.
+
+06:38.400 --> 06:41.344
+Page 5000 is the level-0 table.
+
+06:42.344 --> 06:45.480
+In it, the index is VPN[0], which is 3.
+
+06:46.480 --> 06:53.115
+mappages writes a leaf that points at the first code page, 0x8005_0000.
+
+06:53.640 --> 06:56.435
+The next virtual page needs no new table.
+
+06:57.435 --> 06:59.013
+Same table, index 4,
+
+07:00.013 --> 07:04.323
+and a leaf that points at the next physical page, ending 1000.
+
+07:05.840 --> 07:10.619
+Three values are still blank. First, the branch that points at 5000.
+
+07:11.619 --> 07:15.843
+That's row 4. Take the address it points at: shift right by 12,
+
+07:16.843 --> 07:21.259
+then left by 10: 0x2010_1400.
+
+07:22.760 --> 07:25.811
+walk writes a branch with only V, so OR in V.
+
+07:26.811 --> 07:31.888
+The value for row 4 is 0x2010_1401.
+
+07:33.800 --> 07:37.235
+Row 5, the first code page: the same two shifts.
+
+07:38.735 --> 07:41.636
+This time OR in R, X and V: 0xB.
+
+07:43.136 --> 07:46.891
+So the value in row 5 ends in 400B.
+
+07:47.400 --> 07:51.923
+Row 6 is the next page: its physical page number is 1 more.
+
+07:52.523 --> 07:57.131
+The page number sits 10 bits up, so the value is 0x400 more.
+
+07:58.131 --> 08:00.157
+It ends in 440B.
+
+08:01.080 --> 08:06.989
+(ii): how many pages did kalloc hand out? And why did call 2 need fewer new tables?
+
+08:08.489 --> 08:09.705
+It handed out 3:
+
+08:11.205 --> 08:16.965
+pages 7000 and 2000 for call 1, and page 5000 for call 2.
+
+08:19.380 --> 08:25.332
+For all three pages, VPN[2] is 0, so call 2 found the root's entry valid,
+
+08:26.832 --> 08:30.096
+and followed it to the level-1 table that call 1 made.
+
+08:30.696 --> 08:35.176
+Only a level-0 table was missing, and both code pages share it.
+
+08:36.880 --> 08:39.312
+Part (b) continues, under the finished table.
+
+08:39.912 --> 08:45.757
+(iii): translate the virtual address 0x1020_4ABC by hand.
+
+08:47.780 --> 08:54.009
+It's in the page ending 4000, whose indices are 0, 129 and 4.
+
+08:54.609 --> 08:58.321
+The offset is the last three hex digits, 0xABC.
+
+09:00.340 --> 09:05.759
+The root's entry 0 has only V set: a branch, to the table at 7000.
+
+09:07.259 --> 09:14.043
+There, entry 129 also has only V: a branch, to the table at 5000.
+
+09:16.060 --> 09:21.649
+And there, entry 4 has V, R and X: a leaf, to the page ending 1000.
+
+09:23.149 --> 09:27.096
+Put the offset back: 0x8005_1ABC.
+
+09:28.096 --> 09:33.131
+Its last three hex digits match the question: the offset is never translated.
+
+09:34.840 --> 09:40.643
+(iv): two addresses that were never mapped. Does walk return null, or a pointer to an entry?
+
+09:41.243 --> 09:45.168
+What does translate return, and which of its two tests catches it?
+
+09:45.680 --> 09:49.435
+First, indices 0, 129 and 5.
+
+09:50.935 --> 09:57.889
+For those, both tables exist, so walk returns a pointer, to entry 5 of the table at 5000.
+
+09:58.489 --> 10:02.372
+That entry is 0: not valid. The second test catches it.
+
+10:03.872 --> 10:05.323
+translate returns None.
+
+10:06.240 --> 10:09.525
+Next, indices 0, 130 and 0.
+
+10:11.025 --> 10:18.620
+Entry 130 of the level-1 table is 0, and alloc is false, so walk gives up and returns null.
+
+10:19.220 --> 10:21.972
+The first test catches it: the pointer is null.
+
+10:23.472 --> 10:25.179
+translate returns None again.
+
+10:27.580 --> 10:34.065
+So there are two ways to be unmapped: the table is missing, or the table is there and the entry is empty.
+
+10:34.665 --> 10:36.479
+translate needs both tests.
+
+10:38.000 --> 10:45.253
+(v): satp holds the paging mode in bits 63 to 60, where 8 means Sv39,
+
+10:45.853 --> 10:52.125
+and the root table's page number in bits 43 to 0. What value selects this root table?
+
+10:54.140 --> 10:58.044
+The page number is the root's address, shifted right by 12.
+
+10:59.544 --> 11:05.219
+Mode 8 goes in the top hex digit, the page number at the bottom, with zeros between.
+
+11:07.120 --> 11:11.195
+Part (c). The kernel must check addresses that user programs hand it.
+
+11:11.795 --> 11:14.461
+(i): write walkaddr, modeled on translate.
+
+11:15.061 --> 11:22.421
+If the page is mapped and user mode may use it, return its physical address, without the offset; otherwise, 0.
+
+11:22.920 --> 11:24.499
+Start as translate does.
+
+11:25.499 --> 11:26.928
+walk, with alloc false.
+
+11:28.428 --> 11:34.615
+Then the same two tests, but where translate returns None, walkaddr returns 0: not mapped.
+
+11:35.120 --> 11:36.229
+Now the new test.
+
+11:37.229 --> 11:39.725
+Mask the entry's flags with PTE_U.
+
+11:41.225 --> 11:45.343
+If that is 0, return 0: mapped, but not for user mode.
+
+11:46.343 --> 11:51.441
+Otherwise, return the entry's pa, without the offset that translate ORs in.
+
+11:52.960 --> 11:59.275
+(ii): what does walkaddr return for the address ending 4ABC, with the tables of part (b)?
+
+12:00.775 --> 12:01.969
+It returns 0.
+
+12:03.469 --> 12:08.717
+That page's leaf has V, R and X, but no U: mapped, but not for user mode.
+
+12:09.240 --> 12:12.867
+Would the MMU translate that address for the kernel itself?
+
+12:14.367 --> 12:17.033
+It would, to the address ending 1ABC.
+
+12:17.633 --> 12:21.836
+Whether it is mapped, and whether the user may touch it, are different questions.
+
+12:23.360 --> 12:26.709
+(iii): a student deletes the write_bytes line from walk.
+
+12:27.309 --> 12:33.261
+The page at 0x8040_5000 was used as a buffer before it was freed,
+
+12:33.861 --> 12:37.851
+and its 8-byte word at index 5 still holds 0x41.
+
+12:38.360 --> 12:41.368
+The student's kernel makes the two calls of part (b).
+
+12:41.968 --> 12:46.747
+What does translate return now for 0x1020_5000?
+
+12:48.247 --> 12:49.740
+It returns Some(0).
+
+12:52.140 --> 12:57.196
+The buffer page becomes the level-0 table, with its old contents still in it.
+
+12:57.796 --> 13:00.484
+The walk for that address still ends at entry 5,
+
+13:01.984 --> 13:04.309
+and entry 5 is now 0x41.
+
+13:04.840 --> 13:09.192
+Bit 0, which is V, is set, so the call to is_valid says yes.
+
+13:10.692 --> 13:15.087
+And pa shifts 0x41 right by 10, which leaves 0.
+
+13:15.687 --> 13:20.487
+So an address that nobody mapped now translates, to physical address 0.
+
+13:21.400 --> 13:24.728
+Why does the same kernel pass every test on a fresh boot?
+
+13:26.228 --> 13:33.375
+There, the only stale word in a page is the free-list link, in its first 8 bytes: the address of another page.
+
+13:35.380 --> 13:43.551
+A page address ends in 000, so its bit 0 is clear, and the entry reads as invalid, the same as a zero.
+
+13:44.151 --> 13:46.327
+The bug waits for a recycled page.
+
+13:48.040 --> 13:49.405
+That's Problem 5.
+
+13:50.005 --> 13:53.269
+(a): an entry packs a page number above its flag bits.
+
+13:53.869 --> 13:57.176
+(b): walk makes a new table only where one is missing.
+
+13:57.776 --> 14:00.891
+(c): mapped is not the same as usable by the user.

@@ -1,0 +1,418 @@
+WEBVTT
+
+00:00.000 --> 00:03.029
+Practice Exam 2, Problem 4: The Free List.
+
+00:03.629 --> 00:08.877
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:09.477 --> 00:13.189
+A script reveals it, and this explainer was built with Claude.
+
+00:13.720 --> 00:20.632
+Problem 4 draws on 32k_physical_memory, from week 7, on Thursday, October 8.
+
+00:21.232 --> 00:23.088
+You wrote kfree and kalloc:
+
+00:23.688 --> 00:26.525
+push a page onto the free list, and pop one off.
+
+00:27.040 --> 00:29.152
+Everything else came with the exercise:
+
+00:29.752 --> 00:34.957
+Run, FREELIST, the linker's end symbol, pgroundup, init and free_range,
+
+00:35.557 --> 00:37.648
+and the self-test, with its five checks.
+
+00:38.760 --> 00:43.752
+Problem 4 opens with the page allocator of exercise 32k.
+
+00:44.752 --> 00:50.341
+A page is PGSIZE bytes: 4096, or 0x1000.
+
+00:50.840 --> 00:52.845
+A Run is a single pointer, next.
+
+00:53.445 --> 00:56.987
+The variable FREELIST is the head of the list, null at first.
+
+00:57.587 --> 01:02.749
+And the symbol end, from the linker script, is the first address past the kernel image.
+
+01:03.280 --> 01:07.397
+pgroundup, init and free_range came with the exercise.
+
+01:07.997 --> 01:11.624
+init hands free_range the address of end, and PHYSTOP.
+
+01:12.224 --> 01:19.221
+free_range rounds its start up to a page boundary, then calls kfree on every whole page below stop.
+
+01:20.720 --> 01:22.576
+These are the two functions you wrote.
+
+01:23.176 --> 01:26.312
+kfree writes the current head into the page's next,
+
+01:26.912 --> 01:28.469
+then makes that page the head.
+
+01:29.000 --> 01:30.451
+kalloc takes the head.
+
+01:31.051 --> 01:34.592
+If it is not null, the head moves on to that page's next.
+
+01:35.192 --> 01:39.672
+kalloc returns the page, or null: an answer the caller checks for.
+
+01:40.200 --> 01:45.128
+Below the code: r's next is the first 8 bytes of the page r points at.
+
+01:45.728 --> 01:50.763
+The exam supposes a small machine: only 64 KiB of RAM.
+
+01:51.363 --> 01:55.352
+The linker put the symbol end at 0x8000_C2A8.
+
+01:56.480 --> 01:58.400
+Part (a). kmain calls init.
+
+01:59.000 --> 02:03.117
+(i): compute pgroundup of end, showing the add and the mask,
+
+02:03.717 --> 02:07.984
+and list, in order, the pages that free_range passes to kfree.
+
+02:08.480 --> 02:09.483
+First, the add:
+
+02:10.083 --> 02:13.667
+PGSIZE minus 1, added to the address of end.
+
+02:15.167 --> 02:18.068
+0xFFF is PGSIZE minus 1.
+
+02:18.668 --> 02:24.513
+Added to 0x8000_C2A8, it gives 0x8000_D2A7.
+
+02:25.040 --> 02:25.979
+Then the mask:
+
+02:26.579 --> 02:30.419
+ANDing with the NOT of 0xFFF clears the low 12 bits,
+
+02:31.919 --> 02:37.209
+leaving 0x8000_D000, the first page boundary at or above end.
+
+02:39.820 --> 02:45.857
+So free_range calls kfree on page D000, then E000, then F000.
+
+02:46.457 --> 02:50.852
+Then p is 0x8001_0000, which is PHYSTOP:
+
+02:52.352 --> 02:56.789
+one more page would run past stop, so the loop ends. 3 pages.
+
+02:57.920 --> 03:00.971
+(ii): the state of the allocator when init returns.
+
+03:01.571 --> 03:05.624
+Each kfree writes the head into the first 8 bytes of its page,
+
+03:06.224 --> 03:08.869
+then moves the head. Follow it three times.
+
+03:09.400 --> 03:13.773
+The first call frees page D000, while FREELIST is still null.
+
+03:14.773 --> 03:18.741
+So the first 8 bytes of D000, its link, hold null,
+
+03:19.341 --> 03:21.176
+and D000 becomes the head.
+
+03:21.680 --> 03:23.259
+Next, page E000:
+
+03:24.259 --> 03:26.605
+its link is the old head, D000.
+
+03:27.605 --> 03:29.845
+Then F000 links to E000.
+
+03:30.845 --> 03:36.691
+And FREELIST ends up at 0x8000_F000: freed last, so first on the list.
+
+03:38.400 --> 03:42.261
+(iii): the kernel then runs the six lines in the table, in order.
+
+03:42.861 --> 03:46.317
+For each one: what the call returns, and FREELIST afterwards.
+
+03:46.840 --> 03:48.845
+The first kalloc takes the head:
+
+03:49.845 --> 03:51.637
+it returns page F000,
+
+03:52.637 --> 03:55.965
+and FREELIST moves on to that page's link, E000.
+
+03:56.965 --> 04:00.976
+The second returns E000, and leaves D000 at the head.
+
+04:01.480 --> 04:04.893
+The third line is kfree(a), which returns nothing.
+
+04:05.493 --> 04:08.459
+It gives back the first line's page, F000:
+
+04:09.059 --> 04:12.259
+the page's link takes a copy of the head, D000,
+
+04:13.259 --> 04:15.243
+and FREELIST is F000 again.
+
+04:15.760 --> 04:18.320
+Which page does the next kalloc return?
+
+04:19.820 --> 04:23.404
+F000: the page freed last. Last in, first out.
+
+04:24.404 --> 04:26.324
+And the head is back at D000.
+
+04:27.840 --> 04:33.365
+The next kalloc returns D000. Its link is null, so FREELIST is null.
+
+04:34.365 --> 04:39.443
+The sixth line finds the list empty: it returns null, and FREELIST stays null.
+
+04:40.560 --> 04:45.893
+(iv): after the last line, what do the first 8 bytes of page F000 hold?
+
+04:47.393 --> 04:51.532
+0x8000_D000: the link kfree(a) wrote there,
+
+04:52.532 --> 04:55.476
+when the list ran from F000 to D000.
+
+04:56.000 --> 04:59.115
+Nothing erased it. Why does the allocator not care?
+
+05:00.615 --> 05:04.092
+It is stale: kalloc read it once, when it popped the page.
+
+05:05.592 --> 05:10.840
+Nothing on the list points at F000 now, so the allocator never reads it again.
+
+05:12.360 --> 05:20.808
+The page's owner, whoever kalloc handed it to, may overwrite all 4096 bytes, the old link included.
+
+05:21.408 --> 05:25.312
+The exam's last problem comes back to a stale link like this one.
+
+05:27.240 --> 05:28.136
+Part (b).
+
+05:29.136 --> 05:32.912
+A student writes the last two lines of kfree in the other order:
+
+05:33.512 --> 05:37.139
+FREELIST is set first, and only then is the link written.
+
+05:37.640 --> 05:42.931
+(i): redo init with this kfree. Take the first call, on page D000.
+
+05:43.531 --> 05:45.429
+FREELIST becomes D000.
+
+05:46.029 --> 05:48.184
+Then the link is copied from FREELIST:
+
+05:49.184 --> 05:53.216
+0x8000_D000. The page points at itself.
+
+05:54.720 --> 05:56.597
+The same happens to E000,
+
+05:57.597 --> 05:58.813
+and to F000.
+
+05:59.813 --> 06:03.995
+And FREELIST ends up at F000. The head alone looks right.
+
+06:06.620 --> 06:10.076
+As the key says, each page ends up pointing at itself.
+
+06:11.576 --> 06:18.147
+FREELIST already names the page when the link is written, so the link records the page, not the old head.
+
+06:18.680 --> 06:21.901
+(ii): what do the first two calls to kalloc return?
+
+06:23.401 --> 06:26.068
+The first returns page F000, the head.
+
+06:27.568 --> 06:30.149
+And the second returns page F000 again.
+
+06:31.080 --> 06:33.576
+Why? Here is the list that kalloc follows.
+
+06:35.076 --> 06:37.188
+FREELIST points at page F000,
+
+06:38.688 --> 06:43.403
+and the link in F000 points at F000 again: a one-page loop.
+
+06:45.420 --> 06:48.769
+kalloc sets FREELIST to the link in the page it returns,
+
+06:49.369 --> 06:52.420
+which is F000 itself, so the head never moves.
+
+06:53.920 --> 06:58.805
+And D000 and E000 are lost: nothing on the list points at them.
+
+06:59.920 --> 07:02.907
+(iii): the self-test makes these five checks, in order,
+
+07:03.507 --> 07:05.363
+and stops at the first that fails.
+
+07:05.963 --> 07:08.885
+Which one fails, and why do the ones before it pass?
+
+07:10.900 --> 07:16.105
+Check 4. It wants a second page that is not null, and not the first page again.
+
+07:16.705 --> 07:19.692
+But the second kalloc returns F000 again,
+
+07:20.292 --> 07:24.431
+so the self-test prints: second kalloc reused or failed.
+
+07:26.460 --> 07:34.524
+Checks 1 to 3 pass because F000 is a real page: not null, page-aligned, inside RAM, and writable.
+
+07:35.524 --> 07:38.617
+One allocation looks perfect; the bug needs two.
+
+07:40.320 --> 07:43.776
+The exercise's own comment in kfree gave the order:
+
+07:44.376 --> 07:47.917
+save the old head into the new node before you move the head.
+
+07:49.840 --> 07:52.165
+Part (c). Back to the correct kfree.
+
+07:52.765 --> 07:58.056
+(i): write count_free, which counts the pages on the free list without changing the list.
+
+07:58.656 --> 08:01.621
+kalloc is the model for the raw-pointer syntax.
+
+08:02.120 --> 08:03.827
+count_free needs two variables.
+
+08:04.827 --> 08:06.747
+A counter, n, starting at 0.
+
+08:08.247 --> 08:13.964
+And r, a copy of FREELIST: the loop moves r, so FREELIST itself never changes.
+
+08:15.480 --> 08:19.363
+Loop while r is not null: the same test kalloc makes.
+
+08:20.363 --> 08:21.920
+Each time, add 1 to n,
+
+08:22.920 --> 08:28.296
+and step r to its next: the link kalloc reads, followed here at every page.
+
+08:29.800 --> 08:31.635
+Then close the loop, and return n.
+
+08:32.235 --> 08:36.011
+Nothing here assigns to FREELIST, or writes into a page,
+
+08:36.611 --> 08:39.043
+so the list is left exactly as it was.
+
+08:40.760 --> 08:47.352
+(ii): what does count_free return right after init, on the 64 KiB machine of part (a)?
+
+08:48.852 --> 08:50.025
+It returns 3.
+
+08:51.525 --> 08:56.581
+The loop visits F000, then E000, then D000, and stops at null.
+
+08:57.080 --> 08:59.256
+And on the student's list, from part (b)?
+
+09:00.756 --> 09:06.132
+It never returns. The next of F000 is F000, so r is never null:
+
+09:07.632 --> 09:11.856
+the loop never ends. A list with a loop in it has no end to find.
+
+09:12.960 --> 09:15.051
+(iii): kfree has no way to fail.
+
+09:15.651 --> 09:18.509
+Where does it find the memory to record a free page,
+
+09:19.109 --> 09:22.267
+and why does that matter most when memory is nearly gone?
+
+09:24.300 --> 09:28.801
+In the page being freed. A free page holds nothing anyone needs,
+
+09:30.301 --> 09:34.013
+so its own first 8 bytes store the link to the next free page.
+
+09:35.520 --> 09:39.808
+The list lives inside the memory it describes: an intrusive list.
+
+09:41.308 --> 09:46.961
+So kfree needs no memory of its own: no table to grow, and nothing to allocate.
+
+09:48.980 --> 09:52.564
+And it cannot fail. That matters most when memory is short,
+
+09:54.064 --> 09:57.029
+because that is exactly when the kernel frees things.
+
+09:57.629 --> 10:02.088
+A free that could fail for lack of memory would fail just when it is needed.
+
+10:03.200 --> 10:04.821
+The key adds one more note.
+
+10:06.321 --> 10:09.479
+On the real 128 MiB machine,
+
+10:10.079 --> 10:13.855
+with the symbol end at 0x8000_6E38,
+
+10:14.455 --> 10:19.425
+count_free returned 32761 after init.
+
+10:21.160 --> 10:22.440
+That's Problem 4.
+
+10:23.040 --> 10:26.197
+(a): the last page freed is the first one handed out.
+
+10:26.797 --> 10:30.125
+(b): in kfree, write the link before you move the head.
+
+10:30.725 --> 10:33.669
+(c): the list lives in the free pages themselves.

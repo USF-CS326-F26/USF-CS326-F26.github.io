@@ -23,6 +23,15 @@ a second practice exam, covering Weeks 6 and 7, `20a_asm_bridge` through
 reference facts it uses, so nothing in it has to be memorized. Try the
 problems before you open the key.
 
+**Solution videos**, one per problem, each working the answer key on the exam's
+own pages: [Problem 1 · Short Questions](../videos/midterm-1-practice-2-problem-1.md)
+(11:27) · [Problem 2 · The Assembly Bridge](../videos/midterm-1-practice-2-problem-2.md)
+(12:13) · [Problem 3 · From Reset to kmain](../videos/midterm-1-practice-2-problem-3.md)
+(11:42) · [Problem 4 · The Free List](../videos/midterm-1-practice-2-problem-4.md)
+(10:36) · [Problem 5 · Sv39 Page Tables](../videos/midterm-1-practice-2-problem-5.md)
+(14:03).
+{ #solution-videos-2 }
+
 This is the one piece of CS 326 work that happens outside the room, and it is
 deliberately **pencil and paper, not programming** — nothing to write, run, or
 submit. That is what makes it compatible with the

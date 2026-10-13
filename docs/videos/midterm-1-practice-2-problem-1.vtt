@@ -1,0 +1,466 @@
+WEBVTT
+
+00:00.000 --> 00:03.157
+Practice Exam 2, Problem 1: Short Questions.
+
+00:03.757 --> 00:09.005
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:09.605 --> 00:13.317
+A script reveals it, and this explainer was built with Claude.
+
+00:13.840 --> 00:19.280
+Problem 1 draws on three OSlings exercises, here in the order you met them.
+
+00:19.880 --> 00:24.531
+20a_asm_bridge, from week 6, on Thursday, October 1.
+
+00:25.131 --> 00:30.016
+You wrote bytecopy in assembly, and its extern "C" declaration was given.
+
+00:30.520 --> 00:35.512
+21r_unsafe_bridge, from week 6, on Friday, October 2.
+
+00:36.112 --> 00:41.104
+You wrote three register functions: write_reg, read_reg and write_reg_checked,
+
+00:41.704 --> 00:42.835
+and copy_bytes.
+
+00:43.360 --> 00:47.136
+30k_kernel_basics, the same Friday, October 2.
+
+00:47.736 --> 00:52.856
+You added the two attributes, no_std and no_main, and wrote the panic handler.
+
+00:53.456 --> 00:55.163
+_entry was given.
+
+00:56.280 --> 01:00.184
+Part (a) is from 21r_unsafe_bridge, in week 6.
+
+01:01.184 --> 01:05.664
+21r reaches a device's registers through a raw pointer,
+
+01:06.264 --> 01:12.109
+and for this byte pointer, base.add(offset) is the address that many bytes past base.
+
+01:12.640 --> 01:14.368
+You wrote all three functions.
+
+01:14.968 --> 01:20.429
+write_reg and read_reg are each an unsafe fn around one volatile access.
+
+01:21.029 --> 01:25.381
+THR is offset 0, and LSR is offset 5.
+
+01:25.880 --> 01:27.949
+write_reg_checked is a safe fn.
+
+01:28.549 --> 01:32.240
+If the offset is past the end of the slice, it returns false.
+
+01:32.840 --> 01:36.360
+Otherwise it calls write_reg, inside an unsafe block.
+
+01:36.880 --> 01:40.421
+A test uses an 8-byte array in place of the device,
+
+01:41.021 --> 01:42.771
+with five of its lines numbered.
+
+01:43.371 --> 01:47.403
+(i): exactly one line does not compile. Which line, and why?
+
+01:49.420 --> 01:52.193
+Line 3. write_reg is an unsafe fn,
+
+01:52.793 --> 01:55.503
+and this call is not inside an unsafe block.
+
+01:57.003 --> 02:03.851
+That's error E0133: call to unsafe function requires unsafe function or block.
+
+02:04.451 --> 02:08.867
+The calls on lines 4 and 5 each sit inside an unsafe block.
+
+02:09.880 --> 02:15.128
+(ii): line 1 passes an offset past the end, and line 2 makes a raw pointer.
+
+02:15.728 --> 02:17.328
+Why does neither need unsafe?
+
+02:17.928 --> 02:19.677
+And what value does ok get?
+
+02:21.700 --> 02:24.537
+Line 1: write_reg_checked is a safe fn.
+
+02:25.137 --> 02:29.809
+It does the check itself, 9 against 8, and returns before any store.
+
+02:31.820 --> 02:33.676
+So the value of ok is false,
+
+02:34.676 --> 02:36.169
+and device is untouched.
+
+02:36.769 --> 02:40.503
+The check you wrote is why the function never stores past the end.
+
+02:43.020 --> 02:46.668
+Line 2: making a raw pointer only computes an address.
+
+02:47.268 --> 02:50.553
+Nothing is loaded or stored until someone uses it.
+
+02:51.080 --> 02:54.067
+(iii): the unsafe block on line 4 compiles.
+
+02:54.667 --> 02:56.096
+What does it do when it runs?
+
+02:56.696 --> 03:00.536
+And who is responsible, when write_reg is an unsafe fn?
+
+03:02.540 --> 03:07.191
+It stores one byte at base plus 9, past the end of the 8-byte array,
+
+03:08.691 --> 03:10.717
+on top of whatever sits next to it.
+
+03:11.317 --> 03:14.325
+No error and no panic: undefined behavior.
+
+03:16.340 --> 03:23.103
+Here, unsafe fn means the caller promises that base plus offset is a real, writable byte.
+
+03:24.603 --> 03:28.699
+The unsafe block on line 4 made that promise, and it was false.
+
+03:29.720 --> 03:32.024
+write_reg did exactly what it was told.
+
+03:32.624 --> 03:34.395
+In the exercise's own words:
+
+03:34.995 --> 03:38.323
+an unsafe fn pushes that promise onto its caller.
+
+03:39.440 --> 03:42.939
+Part (b) is also from 21r_unsafe_bridge.
+
+03:43.939 --> 03:49.421
+The UART sets bit 5 of its Line Status Register, LSR_TX_IDLE,
+
+03:50.021 --> 03:52.176
+when it is ready to accept another byte.
+
+03:52.680 --> 03:57.843
+A student writes a putc that waits for that bit, using plain pointer accesses.
+
+03:58.443 --> 04:00.405
+Line A loops while the bit is 0.
+
+04:01.005 --> 04:02.520
+Line B stores the byte.
+
+04:03.040 --> 04:04.469
+It passes every test.
+
+04:05.069 --> 04:06.925
+But the tests point base at an array,
+
+04:07.525 --> 04:09.637
+and they are built without optimization.
+
+04:10.160 --> 04:16.347
+(i): an optimizing compiler assumes that memory changes only when the program stores to it.
+
+04:16.947 --> 04:19.080
+What may it do with the load on line A,
+
+04:19.680 --> 04:22.048
+and what would a person watching the terminal see?
+
+04:24.060 --> 04:29.628
+Line A: nothing in the loop stores to the LSR, so the compiler may load it once,
+
+04:31.128 --> 04:32.109
+before the loop.
+
+04:32.709 --> 04:33.925
+That's called hoisting.
+
+04:34.440 --> 04:36.957
+If the UART was not ready at that instant,
+
+04:38.457 --> 04:41.657
+the loop becomes "jump to myself", and the kernel hangs.
+
+04:42.657 --> 04:46.753
+The terminal shows nothing more, even after the UART is ready.
+
+04:47.760 --> 04:48.805
+Now line B:
+
+04:49.405 --> 04:55.677
+what may the compiler do with the store, when the kernel runs putc_wait with 'h', and then with 'i'?
+
+04:57.177 --> 05:01.039
+The store of 'h' is followed by another store to the same address.
+
+05:03.060 --> 05:09.311
+Nothing loads that address in between. The store of 'h' is a dead store, so it may be deleted.
+
+05:10.811 --> 05:13.435
+The terminal shows 'i', instead of 'hi'.
+
+05:15.940 --> 05:20.164
+The key adds that rustc, with optimization on, really does both:
+
+05:20.764 --> 05:22.940
+one load, and a single store of 'i'.
+
+05:23.840 --> 05:27.424
+(ii): rewrite lines A and B so the compiler may do neither,
+
+05:28.024 --> 05:30.883
+using read_reg and write_reg from part (a):
+
+05:31.483 --> 05:33.488
+the two volatile accesses you wrote.
+
+05:35.500 --> 05:38.060
+Line A: the while loop now calls read_reg,
+
+05:39.060 --> 05:40.788
+and line B calls write_reg.
+
+05:41.788 --> 05:45.969
+Volatile means: do this access exactly as written, every time.
+
+05:47.000 --> 05:53.400
+(iii): copy_bytes, from 21r, copies one buffer in RAM to another with plain accesses.
+
+05:54.000 --> 05:56.304
+Should it use volatile accesses as well?
+
+05:57.804 --> 05:58.977
+The answer is no.
+
+06:01.500 --> 06:05.148
+A buffer in RAM changes only when the program stores to it,
+
+06:06.648 --> 06:11.661
+so the compiler's assumption is true there, and it is welcome to make the copy fast.
+
+06:13.660 --> 06:18.055
+Volatile is for device registers, which change, and act, on their own.
+
+06:18.655 --> 06:24.479
+That's the rule from 21r. Its other half: ordinary memory gets a plain access.
+
+06:26.200 --> 06:29.891
+Part (c) is from 30k_kernel_basics, in week 6.
+
+06:30.891 --> 06:34.347
+This is the kernel of 30k, with its lines numbered.
+
+06:34.880 --> 06:37.803
+You added lines 1 and 2, the two attributes,
+
+06:38.403 --> 06:41.283
+and wrote the panic handler, lines 6 to 9.
+
+06:41.883 --> 06:48.112
+_entry was given. Both functions are declared with the never type: neither returns.
+
+06:48.640 --> 06:52.096
+Each change in the table is made to this file on its own.
+
+06:52.696 --> 06:55.597
+Each build fails with one of these five messages.
+
+06:56.197 --> 06:59.440
+(i): fill in the table. Each message is used once.
+
+06:59.960 --> 07:01.048
+Delete line 1,
+
+07:02.048 --> 07:06.165
+and the build fails with message D: can't find crate for std.
+
+07:07.165 --> 07:11.027
+There is no OS here, so there is no std library to link.
+
+07:11.960 --> 07:13.112
+Delete line 2,
+
+07:14.112 --> 07:17.013
+and it's message A: main function not found.
+
+07:18.013 --> 07:21.085
+rustc wants a main, for a C runtime to call.
+
+07:22.000 --> 07:24.197
+Delete lines 6 to 9, the handler,
+
+07:25.197 --> 07:29.613
+and it's message E: panic_handler function required, but not found.
+
+07:30.613 --> 07:34.133
+A panic needs a handler, and the std library had it.
+
+07:35.040 --> 07:36.960
+Delete line 8, only the loop,
+
+07:37.960 --> 07:40.200
+and it's message C: mismatched types.
+
+07:41.200 --> 07:45.808
+The never type, the exclamation mark after the arrow, means never returns,
+
+07:46.408 --> 07:50.163
+and an empty body returns unit, the empty parentheses.
+
+07:51.080 --> 07:53.107
+Put a println above line 13,
+
+07:54.107 --> 07:58.181
+and it's message B: cannot find macro println in this scope.
+
+07:59.181 --> 08:03.277
+println belongs to the std library, and it needs an OS.
+
+08:04.280 --> 08:07.864
+(ii): a student types line 1 without the exclamation mark.
+
+08:08.464 --> 08:11.941
+The build fails, and one of its errors is message D again.
+
+08:12.541 --> 08:15.336
+Why does the attribute no longer do its job?
+
+08:17.340 --> 08:24.145
+Without the exclamation mark, it is an outer attribute: it applies only to the one item that follows.
+
+08:25.645 --> 08:32.515
+With the mark, it's an inner attribute, and applies to the whole crate, which the no_std attribute has to do.
+
+08:34.240 --> 08:37.803
+Part (d) is from 20a_asm_bridge, in week 6.
+
+08:38.803 --> 08:43.496
+20a calls its assembly routine, bytecopy, through this declaration.
+
+08:44.096 --> 08:51.008
+extern "C" means the arguments are passed in a0, a1, a2, in the order they are declared.
+
+08:51.520 --> 08:54.400
+The declaration was given; you wrote the routine.
+
+08:55.000 --> 09:00.419
+It loads one byte from the address in a1, and stores it at the address in a0.
+
+09:01.019 --> 09:04.197
+Then it steps both pointers, and counts a2 down.
+
+09:04.720 --> 09:09.755
+A student changes only the Rust declaration: n and src trade places.
+
+09:10.355 --> 09:12.659
+The call passes dst, 14, src.
+
+09:13.259 --> 09:21.728
+dst is 0x8010_3000, and src is the same but for its last group, 2000: both are in RAM.
+
+09:22.240 --> 09:23.627
+(i): the kernel builds,
+
+09:24.227 --> 09:26.040
+with no error and no warning.
+
+09:26.640 --> 09:29.243
+Why can the compiler not catch this mistake?
+
+09:31.260 --> 09:34.716
+The extern block only declares a name and a signature.
+
+09:36.216 --> 09:42.509
+The body is assembly, which rustc never looks at, so there is nothing to check the signature against.
+
+09:43.509 --> 09:45.109
+The signature is a promise.
+
+09:46.120 --> 09:51.005
+(ii): what do a0, a1 and a2 hold when the first instruction runs?
+
+09:52.505 --> 09:59.332
+Rust follows its own declaration: a0 is dst, ending 3000, and a1 is 14.
+
+10:00.332 --> 10:02.572
+a2 is src, ending 2000.
+
+10:03.600 --> 10:06.096
+(iii): what does the first lb try to do,
+
+10:06.696 --> 10:07.741
+and what happens?
+
+10:08.341 --> 10:12.352
+And had that load worked, how many bytes would the loop try to copy?
+
+10:14.380 --> 10:19.543
+The assembly still reads a1 as src, so it loads a byte from address 14.
+
+10:20.143 --> 10:25.860
+There is no memory and no device at any address below 0x1000: nothing is there.
+
+10:27.860 --> 10:31.721
+The load faults, there is no trap handler yet, and the machine hangs.
+
+10:33.221 --> 10:35.909
+The run times out, and nothing more is printed.
+
+10:36.840 --> 10:39.635
+Had the load worked, the loop would count a2 down,
+
+10:40.235 --> 10:41.493
+and a2 is src.
+
+10:42.493 --> 10:47.592
+So the count is 0x8010_2000: about 2 billion bytes.
+
+10:48.600 --> 10:50.563
+(iv): which keyword, at the call,
+
+10:51.163 --> 10:55.323
+marks that the caller is vouching for something the compiler cannot check?
+
+10:56.823 --> 10:58.252
+The keyword is unsafe.
+
+10:59.280 --> 11:02.309
+So the compiler checked the call against the declaration,
+
+11:02.909 --> 11:05.213
+and the declaration against nothing at all.
+
+11:05.813 --> 11:09.056
+That's why the exercise calls the signature a promise.
+
+11:10.760 --> 11:11.955
+That's Problem 1.
+
+11:12.555 --> 11:15.712
+(a): an unsafe fn moves its promise to the caller.
+
+11:16.312 --> 11:18.957
+(b): volatile is for device registers.
+
+11:19.557 --> 11:22.011
+(c): a kernel has no standard library.
+
+11:22.611 --> 11:25.299
+(d): an extern signature is a promise too.
