@@ -66,6 +66,9 @@ hide:
             {% if section.recording %}
             <a href="{{ section.recording }}" class="resource-link" target="_blank" rel="noopener noreferrer">Recording</a>
             {% endif %}
+            {% for url in section.recordings or [] %}
+            <a href="{{ url }}" class="resource-link" target="_blank" rel="noopener noreferrer">Recording {{ loop.index }}</a>
+            {% endfor %}
             {% if section.notes %}
             <!-- Notes filenames carry spaces; encode them rather than emitting a bare space in the href. -->
             <a href="{{ section.notes | urlencode }}" class="resource-link">Notes</a>

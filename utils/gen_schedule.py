@@ -45,9 +45,31 @@ DAY_ABBR = {"tuesday": "Tue", "thursday": "Thu", "friday": "Fri"}
 # Zoom cloud recordings, keyed by (date, section). The meeting summaries in
 # docs/summaries/ are found on the filesystem by date, the way Prep and lecture
 # pages are, but a recording is only a URL Zoom hands back — nothing local
-# names it — so add a line here when one is published.
+# names it — so add a line here when one is published. The link is the
+# "Shareable link" in Zoom's "Meeting assets ... are ready!" email (or the one
+# the recordings page copies). A lecture recorded in more than one piece, because
+# the meeting was ended and started again, is a list of links in class order;
+# the schedule numbers them "Recording 1", "Recording 2", ...
 RECORDINGS = {
+    # Aug 25, section 01 was recorded in three pieces: 1:01:52, 0:04:44, 0:29:00.
+    ("Aug 25", "01"): [
+        "https://usfca.zoom.us/rec/share/z7prfLm1YikFwrwOD3e8txDBxm5LA9DJf6sgmSyoblTcK8KsEmVHYoHrPwmlZp-L.Z1_R2ID1ZD217wSD",
+        "https://usfca.zoom.us/rec/share/i3qkzGRSv_b7zrKNf26_zY-Pf1Y6ZCc44F2qrtCguVCa69NLUtjrs8PyUvxWOivF.GMjv-yVfMsY57FDT",
+        "https://usfca.zoom.us/rec/share/OvPhAOVSu8y2xitULb28UIcLfjuRG2CDKiA9OiTmkMUZ0u8qoCjXAudxnh6FiTyD.BCKTtCRGEFpuSB4R",
+    ],
+    ("Aug 25", "02"): "https://usfca.zoom.us/rec/share/L5SSj9jsHJ4gQJ1xYRUeVyvS-zaNtqIVtFeevkJkD24VZv9g2z7rAl32Ap4tWHLY.F0XBjeiygwntJaDq",
+    ("Sep 1", "01"): "https://usfca.zoom.us/rec/share/yefQondgg__w5cX22SkF9KE7IQJRJfuJ7oPJ42u0eI3JIZCJyBewhrgQh4ZH0E1Z.jZ9IsKy8sHgOkNJT",
     ("Sep 1", "02"): "https://usfca.zoom.us/rec/share/1hTUJ5B9GP5HyW-5fH52i0WyYJqYUuyfUgCh1ni-YercJgl0x5rdIJ3gq26h5oug.L_6UlW_im3llbIip?startTime=1788300688000",
+    ("Sep 8", "01"): "https://usfca.zoom.us/rec/share/FMwxTDEek1wfPfl9tilLEa5RP3cMAaCnJoq6f7YR79yk8VAfj5la9Mc7K9fBy0mp.LyM0m-3mJVxuJ_mm",
+    ("Sep 15", "01"): "https://usfca.zoom.us/rec/share/rgQAEYFeV-wa7ww7v6WOoQ-1bjKAPHKvNzbaFpn04UNQPqS5jQi6g7Khs1DYXs_i.43iheLAm9LQXRkCC",
+    ("Sep 15", "02"): "https://usfca.zoom.us/rec/share/rkdkJscYX9BItlDWnxLXeDXSGkWqTJKBmcxSSiOdy9fXWboG8_ewXqzUsQLVEH07.wy5KtjnEuukz5H9r",
+    ("Sep 22", "01"): "https://usfca.zoom.us/rec/share/UKsLDyxHP_cDO8VzQK6D39xhH7mX6FzJBRx-Ewe0LjFhutyebqh4AdDyldJXla_w.XcCGLLS6554hW0jl",
+    ("Sep 22", "02"): "https://usfca.zoom.us/rec/share/TYYJa0DjpmH-m_2ULM2wDjO2cZBjTmV-R5rdNdU0BxZPopktn646WCgQugTTC0G2.CPy0Ye8Pp_rvTE0e",
+    ("Sep 29", "01"): "https://usfca.zoom.us/rec/share/Hqq99Q8F9Z3Jm10ZsV3HZ0BpD6gkGJbraC-fxY2_KMBR2AvO7Bkx_EragWWD0Mvk.mLJCJOLhgxogZXdc",
+    ("Sep 29", "02"): "https://usfca.zoom.us/rec/share/BlVQiD4OdDuWJmU9jN-er0kuS8rtssYS6deb-G_Ar0O91RyEkDkw1vKsi2e2AjaP.UIxldOUOIETYMOE7",
+    ("Oct 6", "01"): "https://usfca.zoom.us/rec/share/8g-j3Phys_08umjl8_0JSZf9_XUeyupN5fEYgzClkFqHo_PCCBhBKew6B45Y0vIc.q4t6JG1hSTlCMnNp",
+    ("Oct 6", "02"): "https://usfca.zoom.us/rec/share/CZUmGjWgJDkFbkeupLSCm_ODoIt_QjXxhLsudbfAdBlZa-05SrDMt5-ScrDDSyv1.5jPkDYsmEh0LsT8s",
+    ("Oct 13", "01"): "https://usfca.zoom.us/rec/share/DfZrhJwGXrpACDRs-C9P_Zi-tZnX-nZxVgyqUNAKJ_ldhojoUN-gb7oV3L9FujMq.Dp7H6neI5kwzsL1l",
 }
 
 # Interactive explainers, published as Claude artifacts: (session date, the
@@ -120,14 +142,18 @@ def lecture_links(date_str, label="Lecture"):
 def section_resources(date_str):
     """{"01": {"recording": url, "notes": url, "summary": url}, ...} for `date_str`.
 
-    Sections with nothing published yet are left out, so a session carries a
-    Sec01/Sec02 line only once it has one of the three.
+    A lecture recorded in pieces has "recordings": [url, ...] in place of
+    "recording". Sections with nothing published yet are left out, so a session
+    carries a Sec01/Sec02 line only once it has one of the three.
     """
     out = {}
     for sec in SECTIONS:
         res = {}
-        if url := RECORDINGS.get((date_str, sec)):
-            res["recording"] = url
+        if rec := RECORDINGS.get((date_str, sec)):
+            if isinstance(rec, str):
+                res["recording"] = rec
+            else:
+                res["recordings"] = list(rec)
         # Handwritten notes, exported from class: "CS326-02 2026-09-01 Topic.pdf".
         # The topic is free text, so match on the section and date only.
         pdfs = sorted(NOTES.glob(f"CS326-{sec} {stamp(date_str)} *.pdf"))
@@ -391,8 +417,11 @@ def main():
                 out.append(f'      due: {q(s["due"])}')
             for sec, res in section_resources(s["date"]).items():
                 out.append(f'      section_{sec}:')
-                for key in ("recording", "notes", "summary"):
-                    if key in res:
+                for key in ("recording", "recordings", "notes", "summary"):
+                    if key == "recordings" and key in res:
+                        out.append('        recordings:')
+                        out += [f'          - {q(url)}' for url in res[key]]
+                    elif key in res:
                         out.append(f'        {key}: {q(res[key])}')
             if links:
                 out.append('      links:')
@@ -415,7 +444,7 @@ def main():
     print(f"lecture pages attached: {len(attached)} of {len(pages)}")
     for p in stray:
         print(f"  ! {p}.md is not dated to a lecture or exam row, so no row links it")
-    print(f"section resources: {have('recording')} recordings, "
+    print(f"section resources: {have('recording') + have('recordings')} recordings, "
           f"{have('notes')} note sets, {have('summary')} summaries")
     print(f"explainers: {len(EXPLAINERS)}")
     n_ex = sum(len(s['exercises']) for s in S)

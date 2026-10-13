@@ -86,10 +86,12 @@ for wk in sched["weeks"]:
         if d["date"] == FINAL_READING_DATE and "Optional reading" not in texts:
             bad_rows.append(f"{where}: {d['type']} row has no \"Optional reading\" link")
         # The per-section resources render as links in the same cell; only the
-        # summary is internal, the recording is a Zoom URL.
+        # notes and summary are internal, a recording is a Zoom URL. A lecture
+        # recorded in pieces has a list of them under "recordings".
         section_links = [{"text": f"{sec} {kind}", "url": url}
                          for sec in ("section_01", "section_02")
-                         for kind, url in (d.get(sec) or {}).items()]
+                         for kind, val in (d.get(sec) or {}).items()
+                         for url in (val if isinstance(val, list) else [val])]
         for link in links + section_links:
             url = link["url"]
             if url.startswith("http"):

@@ -14,6 +14,13 @@ weeks:
       date: "Aug 25"
       type: "lecture"
       topic: "Building an Operating System, and Your First Rust"
+      section_01:
+        recordings:
+          - "https://usfca.zoom.us/rec/share/z7prfLm1YikFwrwOD3e8txDBxm5LA9DJf6sgmSyoblTcK8KsEmVHYoHrPwmlZp-L.Z1_R2ID1ZD217wSD"
+          - "https://usfca.zoom.us/rec/share/i3qkzGRSv_b7zrKNf26_zY-Pf1Y6ZCc44F2qrtCguVCa69NLUtjrs8PyUvxWOivF.GMjv-yVfMsY57FDT"
+          - "https://usfca.zoom.us/rec/share/OvPhAOVSu8y2xitULb28UIcLfjuRG2CDKiA9OiTmkMUZ0u8qoCjXAudxnh6FiTyD.BCKTtCRGEFpuSB4R"
+      section_02:
+        recording: "https://usfca.zoom.us/rec/share/L5SSj9jsHJ4gQJ1xYRUeVyvS-zaNtqIVtFeevkJkD24VZv9g2z7rAl32Ap4tWHLY.F0XBjeiygwntJaDq"
       links:
         - text: "Lecture"
           url: "lectures/01-cs326-2026-08-25-building-an-os-and-first-rust/"
@@ -61,6 +68,8 @@ weeks:
       date: "Sep 1"
       type: "lecture"
       topic: "Ownership and Borrowing"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/yefQondgg__w5cX22SkF9KE7IQJRJfuJ7oPJ42u0eI3JIZCJyBewhrgQh4ZH0E1Z.jZ9IsKy8sHgOkNJT"
       section_02:
         recording: "https://usfca.zoom.us/rec/share/1hTUJ5B9GP5HyW-5fH52i0WyYJqYUuyfUgCh1ni-YercJgl0x5rdIJ3gq26h5oug.L_6UlW_im3llbIip?startTime=1788300688000"
         notes: "notes/CS326-02 2026-09-01 Rust Data.pdf"
@@ -102,6 +111,8 @@ weeks:
       date: "Sep 8"
       type: "lecture"
       topic: "Structs, impl, Enums, and match"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/FMwxTDEek1wfPfl9tilLEa5RP3cMAaCnJoq6f7YR79yk8VAfj5la9Mc7K9fBy0mp.LyM0m-3mJVxuJ_mm"
       links:
         - text: "Lecture"
           url: "lectures/03-cs326-2026-09-08-structs-enums-and-match/"
@@ -141,6 +152,10 @@ weeks:
       date: "Sep 15"
       type: "lecture"
       topic: "Collections, Traits, Errors, and Your First Command"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/rgQAEYFeV-wa7ww7v6WOoQ-1bjKAPHKvNzbaFpn04UNQPqS5jQi6g7Khs1DYXs_i.43iheLAm9LQXRkCC"
+      section_02:
+        recording: "https://usfca.zoom.us/rec/share/rkdkJscYX9BItlDWnxLXeDXSGkWqTJKBmcxSSiOdy9fXWboG8_ewXqzUsQLVEH07.wy5KtjnEuukz5H9r"
       links:
         - text: "Lecture"
           url: "lectures/04-cs326-2026-09-15-collections-traits-errors-and-echo/"
@@ -188,6 +203,10 @@ weeks:
       date: "Sep 22"
       type: "lecture"
       topic: "Streams of Bytes: cat, wc, and grep"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/UKsLDyxHP_cDO8VzQK6D39xhH7mX6FzJBRx-Ewe0LjFhutyebqh4AdDyldJXla_w.XcCGLLS6554hW0jl"
+      section_02:
+        recording: "https://usfca.zoom.us/rec/share/TYYJa0DjpmH-m_2ULM2wDjO2cZBjTmV-R5rdNdU0BxZPopktn646WCgQugTTC0G2.CPy0Ye8Pp_rvTE0e"
       links:
         - text: "Lecture"
           url: "lectures/05-cs326-2026-09-22-cat-wc-and-grep/"
@@ -230,6 +249,10 @@ weeks:
       date: "Sep 29"
       type: "lecture"
       topic: "Below Rust: Assembly, unsafe, and no_std"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/Hqq99Q8F9Z3Jm10ZsV3HZ0BpD6gkGJbraC-fxY2_KMBR2AvO7Bkx_EragWWD0Mvk.mLJCJOLhgxogZXdc"
+      section_02:
+        recording: "https://usfca.zoom.us/rec/share/BlVQiD4OdDuWJmU9jN-er0kuS8rtssYS6deb-G_Ar0O91RyEkDkw1vKsi2e2AjaP.UIxldOUOIETYMOE7"
       links:
         - text: "Lecture"
           url: "lectures/06-cs326-2026-09-29-below-rust-assembly-unsafe-and-no-std/"
@@ -275,6 +298,10 @@ weeks:
       date: "Oct 6"
       type: "lecture"
       topic: "From Reset to Page Tables: Boot, the Free List, and Sv39"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/8g-j3Phys_08umjl8_0JSZf9_XUeyupN5fEYgzClkFqHo_PCCBhBKew6B45Y0vIc.q4t6JG1hSTlCMnNp"
+      section_02:
+        recording: "https://usfca.zoom.us/rec/share/CZUmGjWgJDkFbkeupLSCm_ODoIt_QjXxhLsudbfAdBlZa-05SrDMt5-ScrDDSyv1.5jPkDYsmEh0LsT8s"
       links:
         - text: "Lecture"
           url: "lectures/07-cs326-2026-10-06-boot-physical-pages-and-sv39/"
@@ -332,6 +359,8 @@ weeks:
       date: "Oct 13"
       type: "lecture"
       topic: "Week 9's lecture: Processes, the Context Switch, and Scheduling"
+      section_01:
+        recording: "https://usfca.zoom.us/rec/share/DfZrhJwGXrpACDRs-C9P_Zi-tZnX-nZxVgyqUNAKJ_ldhojoUN-gb7oV3L9FujMq.Dp7H6neI5kwzsL1l"
       links:
         - text: "Lecture"
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
