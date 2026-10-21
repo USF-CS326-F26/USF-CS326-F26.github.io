@@ -1,0 +1,202 @@
+WEBVTT
+
+00:00.000 --> 00:04.949
+Week 9: The Process Table, for exercise 34k_processes.
+
+00:05.549 --> 00:11.715
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.240 --> 00:14.395
+After the October 13 lecture:
+
+00:14.995 --> 00:23.443
+on Thursday, October 22, you write allocproc and freeproc, which claim a slot in the process table and give one back.
+
+00:24.043 --> 00:27.691
+No solution code here: only what the table must hold.
+
+00:28.200 --> 00:30.248
+A process is one record, a Proc.
+
+00:30.848 --> 00:33.984
+state is one of five values; pid is its id.
+
+00:34.584 --> 00:39.725
+pagetable holds the address of one page, its page table's root, or null.
+
+00:40.240 --> 00:44.251
+PROCS is one array of 64 slots, all Unused: free.
+
+00:44.851 --> 00:48.264
+Outside it, NEXTPID: the pid the next process gets.
+
+00:48.864 --> 00:52.811
+A slot's index is where a process is; a pid is who it is.
+
+00:53.320 --> 00:56.712
+Here slots 0 to 7 are cards, the rest a strip.
+
+00:57.312 --> 01:02.027
+Outside the table: NEXTPID, and the allocator's free pages, head first.
+
+01:02.627 --> 01:04.867
+The head is the page it hands out next.
+
+01:05.400 --> 01:07.363
+A claim looks from slot 0 up.
+
+01:08.363 --> 01:10.731
+Slot 0 reads Unused: found.
+
+01:11.731 --> 01:17.149
+Now it reads Runnable, ready to run, with pid 1, and owns the page that was the head.
+
+01:17.680 --> 01:19.216
+NEXTPID holds 2 now.
+
+01:20.216 --> 01:25.229
+The next claim looks at slot 0, in use, and takes slot 1, with pid 2.
+
+01:26.229 --> 01:27.893
+Then slot 2, with pid 3.
+
+01:29.400 --> 01:30.872
+Slot 3, pid 4.
+
+01:31.872 --> 01:33.344
+Slot 4, pid 5.
+
+01:33.944 --> 01:38.189
+Each slot in use owns a page; one page is left on the list.
+
+01:38.720 --> 01:40.405
+Now slot 1 is given back.
+
+01:41.405 --> 01:44.200
+Its page goes back to the allocator, at the head.
+
+01:44.800 --> 01:50.859
+The slot is unchanged: Runnable, pid 2, its pagetable field still naming that page.
+
+01:52.360 --> 02:00.851
+The pagetable field reads null, and the pid 0. The slot owns nothing, but still reads Runnable: no claim would take it.
+
+02:02.351 --> 02:04.633
+Only then does the state read Unused.
+
+02:06.160 --> 02:08.955
+Slot 3 is given back too, in one step here.
+
+02:09.555 --> 02:12.819
+Its page goes on at the head, in front of slot 1's.
+
+02:13.320 --> 02:19.443
+Slots 1 and 3 are free, and 3 was given back last. Which slot does the next claim take?
+
+02:20.943 --> 02:22.628
+The first that reads Unused:
+
+02:23.628 --> 02:24.545
+slot 1.
+
+02:25.545 --> 02:28.831
+It gets a new pid, 6, and slot 3's old page.
+
+02:30.360 --> 02:34.008
+Then slot 3, with pid 7 and slot 1's old page.
+
+02:34.608 --> 02:37.104
+A page goes with a process, not a slot.
+
+02:37.704 --> 02:41.139
+The console: what the course's test prints for a correct kernel.
+
+02:41.640 --> 02:49.427
+Now a broken case, named always slot 0: its claim takes slot 0 without asking whether it reads Unused.
+
+02:50.427 --> 02:52.411
+On an empty table, that looks right.
+
+02:53.920 --> 02:56.224
+The second claim takes slot 0 again.
+
+02:56.824 --> 03:00.728
+The first process is gone; its page is owned by no slot.
+
+03:01.328 --> 03:06.085
+The test prints: [fail] second allocproc reused the slot or failed.
+
+03:06.600 --> 03:10.675
+Back to slot 1's give-back, with one mistake: never Unused.
+
+03:11.675 --> 03:14.512
+The give-back is over, and the slot owns nothing,
+
+03:15.112 --> 03:16.584
+but it still reads Runnable.
+
+03:18.080 --> 03:22.453
+The next claim passes slot 1, not Unused, and takes slot 5.
+
+03:23.053 --> 03:25.187
+No claim will ever take slot 1.
+
+03:25.787 --> 03:33.680
+The test reads the state once the give-back returns, and prints: [fail] freeproc did not reset the slot to Unused.
+
+03:34.200 --> 03:40.813
+Now the whole table again, with the pages left out. Suppose every process so far was given back:
+
+03:41.413 --> 03:42.992
+NEXTPID still holds 8.
+
+03:43.992 --> 03:46.403
+A claim takes slot 0, with pid 8.
+
+03:47.920 --> 03:53.061
+Then 63 more claims, in one step here: all 64 slots in use.
+
+03:54.061 --> 03:59.992
+One more claim finds no Unused slot, and returns null: an answer the caller checks for.
+
+04:01.520 --> 04:03.141
+Slot 6 is given back.
+
+04:04.141 --> 04:08.408
+The next claim takes exactly that slot, with a new pid, 72.
+
+04:09.008 --> 04:11.931
+The console: what the test prints for a correct kernel.
+
+04:12.440 --> 04:13.891
+You write two functions.
+
+04:14.491 --> 04:20.869
+allocproc returns a slot that reads Runnable, with a new pid and its own page table, or null.
+
+04:21.469 --> 04:24.989
+After freeproc, the slot owns nothing and reads Unused.
+
+04:25.520 --> 04:27.995
+The test stops at the first check that fails.
+
+04:28.595 --> 04:34.184
+Before you write anything, expect: [fail] allocproc returned null on an empty table.
+
+04:34.784 --> 04:39.499
+Each row names its picture: for check 5, the case always slot 0.
+
+04:40.000 --> 04:44.480
+After a give-back, check 9 wants Unused and check 10 a null field.
+
+04:45.080 --> 04:54.083
+No check sees the order in which the fields changed, and none counts pages: a page never given back is lost, and no line says so.
+
+04:54.600 --> 05:04.115
+A claim fills the first Unused slot with a new pid and one page; a give-back leaves the slot reading Unused only once it owns nothing.
+
+05:04.715 --> 05:06.997
+Next: the explainer Save Here, Load There.
+
+05:07.597 --> 05:09.731
+Then Thursday's session, and Friday's.

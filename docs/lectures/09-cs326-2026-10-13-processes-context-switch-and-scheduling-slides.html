@@ -940,7 +940,7 @@ Notes:
 
 ## [Before Oct 22](../prep/09-cs326-2026-10-22-prep-processes/): reread Essentials first
 
-Back from break, start with Thursday · `34k` in Essentials, then the prep. You build the process table. Prep: about 25 minutes.
+Back from break, start with Thursday · `34k` in Essentials, then the prep. You build the process table. Prep: about 30 minutes.
 
 **1.** A freshly claimed slot is marked `Runnable`, not `Running`. Why?
 
@@ -949,7 +949,7 @@ Back from break, start with Thursday · `34k` in Essentials, then the prep. You 
 **3.** Why null the page-table field right after releasing the page?
 
 Notes:
-- Walk the prep page (about 25 minutes). What you build: the kernel's process table, a fixed array of `NPROC` PCBs, and the bookkeeping that claims a free slot and gives it back. Nothing runs or switches yet; that is Friday.
+- Walk the prep page (about 30 minutes). What you build: the kernel's process table, a fixed array of `NPROC` PCBs, and the bookkeeping that claims a free slot and gives it back. Nothing runs or switches yet; that is Friday.
 - Nine days pass between today and Oct 22, so reread Essentials before the prep. The three questions are the prep's own Check yourself; answers are on the prep page.
 - **Q:** "Will Midterm 1 ask for `34k`'s code?" No. It asks what a `Proc` must hold and why; the code of `34k` comes after the exam.
 
@@ -959,7 +959,7 @@ Notes:
 
 ## [Before Oct 23](../prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling/): check yourself
 
-You build the switch, then round robin. Reread Friday's Essentials first. Prep: about 20 minutes.
+You build the switch, then round robin. Reread Friday's Essentials first. Prep: about 35 minutes.
 
 **1.** Why does a context hold `ra`, `sp`, and `s0`–`s11` but no `t` or `a` registers and no program counter?
 
@@ -968,7 +968,7 @@ You build the switch, then round robin. Reread Friday's Essentials first. Prep: 
 **3.** A forged context sets `sp` to the base of its fresh page rather than base + 4096. What goes wrong, and when?
 
 Notes:
-- Walk the prep page (about 20 minutes). What you build: first the mechanism, the switch that saves one context and resumes another; then the policy, a round-robin pick that drives the double switch through the scheduler.
+- Walk the prep page (about 35 minutes). What you build: first the mechanism, the switch that saves one context and resumes another; then the policy, a round-robin pick that drives the double switch through the scheduler.
 - Back from break, reread Essentials (Friday · `35k` and Friday · `36k`) first. The three questions are the prep's own Check yourself; answers are on the prep page.
 - **Q:** "Is `35k` in QEMU?" Yes, like every kernel exercise since `31k`: `oslings run` boots it, and green is `OSLINGS:PASS`.
 

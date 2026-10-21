@@ -366,6 +366,8 @@ weeks:
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
         - text: "Slides"
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
+        - text: "Watch first · Week 9"
+          url: "videos/week09/"
         - text: "Exam Prep"
           url: "guides/exam-prep/"
         - text: "Practice Set 1"
@@ -407,6 +409,10 @@ weeks:
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
         - text: "Slides · given Oct 13"
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
+        - text: "Video · The Process Table"
+          url: "videos/week09-process-table/"
+        - text: "Explainer · The Process Table"
+          url: "https://claude.ai/artifact/2facgHTFnageeBWSvgYVPY"
 
     friday:
       date: "Oct 23"
@@ -421,6 +427,18 @@ weeks:
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
         - text: "Slides · given Oct 13"
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
+        - text: "Video · Save Here, Load There"
+          url: "videos/week09-context-switch/"
+        - text: "Video · Round Robin, by the Cursor"
+          url: "videos/week09-round-robin/"
+        - text: "Video · The Double Switch"
+          url: "videos/week09-double-switch/"
+        - text: "Explainer · Save Here, Load There"
+          url: "https://claude.ai/artifact/6egDZD6t2RrmoDoen2YuaJ"
+        - text: "Explainer · Round Robin, by the Cursor"
+          url: "https://claude.ai/artifact/VxxxuK5B3AEeHFCZdZGfFL"
+        - text: "Explainer · The Double Switch"
+          url: "https://claude.ai/artifact/WZFaf1My4MZTrudwutMTEy"
 
 
 # === WEEK 10 ===

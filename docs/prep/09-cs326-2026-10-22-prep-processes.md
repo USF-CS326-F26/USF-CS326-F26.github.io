@@ -1,6 +1,6 @@
 # Prep: Processes and the PCB — 34k
 
-**Session:** Thu Oct 22, 1h45 · **Exercises:** `34k_processes` · **Prep time:** ~25 min · **Lecture:** [Week 9 · Processes, the Context Switch, and Scheduling](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md)
+**Session:** Thu Oct 22, 1h45 · **Exercises:** `34k_processes` · **Prep time:** ~30 min · **Lecture:** [Week 9 · Processes, the Context Switch, and Scheduling](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md)
 
 ## Back from break
 
@@ -25,6 +25,7 @@ The kernel's process table: a fixed static array of `NPROC` process control bloc
 
 | What | Time |
 |---|---|
+| Watch the video [The Process Table](../videos/week09-process-table.md) (5:11). Its page links the explainer page it walks through | 5 min |
 | [Week 9 · This week](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#this-week), then [Thursday · `34k` Processes](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#thu-34k) through [The PCB: what it holds, and when](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-pcb) | 3 min |
 | [Week 9 · Five states, one enum](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-states) and [The process table: slots and pids](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-table) | 3 min |
 | [Week 9 · Ownership by hand](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#34k-ownership) | 2 min |

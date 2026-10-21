@@ -1,0 +1,214 @@
+WEBVTT
+
+00:00.000 --> 00:05.291
+Week 9: Save Here, Load There, for exercise 35k_context_switch.
+
+00:05.891 --> 00:12.056
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.560 --> 00:15.056
+This follows the October 13 lecture.
+
+00:15.656 --> 00:20.605
+On Friday, October 23, you write the load half of the function swtch.
+
+00:21.205 --> 00:22.592
+Its save half is given.
+
+00:23.192 --> 00:26.179
+No solution code here: only the machine's state.
+
+00:26.680 --> 00:30.136
+A switch pauses one piece of code and resumes another.
+
+00:30.736 --> 00:35.131
+The paused code waits in a context: fourteen words of 8 bytes,
+
+00:35.731 --> 00:37.501
+112 bytes in all.
+
+00:38.000 --> 00:40.219
+ra is where the paused code resumes.
+
+00:40.819 --> 00:42.056
+sp is its stack.
+
+00:42.656 --> 00:47.648
+s0 to s11 are what a call promises to give back unchanged.
+
+00:48.248 --> 00:50.851
+Every other register is the caller's business.
+
+00:51.360 --> 00:54.645
+A task that has never run has no context to load.
+
+00:55.245 --> 00:58.104
+So one is forged, for the page it will run on.
+
+00:58.704 --> 01:01.627
+The top of that page is one past its last byte.
+
+01:02.160 --> 01:07.323
+In the forged context, ra holds task_entry, the task's first instruction,
+
+01:07.923 --> 01:11.144
+sp holds the top, and every other word is zero.
+
+01:11.744 --> 01:12.683
+Another page:
+
+01:13.683 --> 01:15.752
+another top, and sp follows it.
+
+01:16.280 --> 01:18.840
+Now one switch into the task, and one back.
+
+01:19.440 --> 01:22.939
+In the middle, the hart, RISC-V's name for a processor core.
+
+01:23.539 --> 01:26.653
+On each side, a context; at the edges, two stacks.
+
+01:27.160 --> 01:31.704
+run_checks, the test's code, is about to call the switch, with two arguments.
+
+01:32.304 --> 01:36.251
+a0 names SCHED_CTX, where its registers will wait.
+
+01:36.851 --> 01:39.603
+a1 names TASK_CTX, the forged one.
+
+01:41.120 --> 01:45.728
+The call leaves its return point in ra, after the call in run_checks.
+
+01:46.728 --> 01:54.109
+The given save half copies ra, sp and s0 to s11 into the context a0 names.
+
+01:54.709 --> 01:56.501
+Not one register changes.
+
+01:57.000 --> 01:59.048
+Your half. Where do the loads read from?
+
+02:00.548 --> 02:02.276
+The context a1 names.
+
+02:03.276 --> 02:08.332
+ra, sp and s0 to s11 hold TASK_CTX's words:
+
+02:08.932 --> 02:12.303
+ra is task_entry, sp the top of its page.
+
+02:13.800 --> 02:15.805
+ret jumps to the address in ra.
+
+02:16.405 --> 02:21.568
+The hart is at task_entry for the first time, on the top of the task's own page.
+
+02:23.080 --> 02:26.920
+The task runs on its page, and sets the flag the test checks.
+
+02:27.920 --> 02:29.797
+Then it calls the switch to go back:
+
+02:30.397 --> 02:35.048
+now a0 names TASK_CTX, and a1 names SCHED_CTX.
+
+02:36.560 --> 02:40.592
+The given save half keeps the task's registers in TASK_CTX.
+
+02:41.592 --> 02:42.467
+Then yours:
+
+02:43.067 --> 02:50.043
+ra, sp and s0 to s11 hold run_checks' words again, the ones the first switch kept.
+
+02:51.560 --> 02:56.573
+ret lands right after the call in run_checks, as if the switch were a plain call.
+
+02:57.573 --> 03:01.627
+The check reads the flag, set, and the test prints its ok line.
+
+03:02.160 --> 03:05.957
+Now a broken case, from the same save: sp not loaded.
+
+03:06.957 --> 03:11.672
+ra and s0 to s11 take their words from TASK_CTX.
+
+03:12.272 --> 03:16.411
+sp still points into run_checks' frame, its share of the boot stack.
+
+03:17.920 --> 03:22.123
+The task runs on the boot stack, below that frame, and sets the flag.
+
+03:23.123 --> 03:26.408
+Its switch back leaves sp 48 bytes too low.
+
+03:27.008 --> 03:31.467
+The flag is a static, on no stack, so the test prints its ok line.
+
+03:33.000 --> 03:34.557
+Then run_checks returns.
+
+03:35.157 --> 03:37.248
+It reads its frame from the wrong place.
+
+03:37.848 --> 03:42.541
+For its return address, it takes a local that holds the task's page address.
+
+03:43.141 --> 03:46.640
+There is no code there. The hart faults, and the test hangs.
+
+03:47.160 --> 03:50.701
+One more, from the same save: ra and sp swapped.
+
+03:51.701 --> 03:54.048
+ra holds the top of the task's page,
+
+03:54.648 --> 03:57.763
+and sp holds task_entry: code, not a stack.
+
+03:59.280 --> 04:02.501
+ret jumps to the top of the page, and finds no code.
+
+04:03.501 --> 04:09.709
+The hart faults, and a fault goes to the trap vector, address 0: it faults there too, without end.
+
+04:10.309 --> 04:11.419
+Nothing more prints.
+
+04:11.920 --> 04:14.608
+This table holds each case's first landing.
+
+04:15.208 --> 04:17.320
+ret reads one register, ra.
+
+04:17.920 --> 04:23.765
+What the load half leaves in ra and sp decides where the hart goes, and on which stack.
+
+04:24.280 --> 04:26.669
+You write the load half of the function swtch.
+
+04:27.269 --> 04:36.656
+When it is right, the registers end up holding the fourteen words of the context a1 names, as at step 4 and step 9 of the correct case.
+
+04:37.160 --> 04:43.197
+When ret comes straight back to run_checks, the test prints [fail] task never ran (did swtch switch?)
+
+04:43.797 --> 04:46.144
+The skeleton, with no load half, prints it,
+
+04:46.744 --> 04:48.771
+and so does a load from a0.
+
+04:49.280 --> 04:58.091
+In these two cases, a timeout means the hart faulted, in or after the switch, not before kmain as the timeout's hint guesses.
+
+04:58.691 --> 05:01.784
+Look at what your load half leaves in ra and sp.
+
+05:02.280 --> 05:08.019
+A context is fourteen words, and a switch hands the registers to another piece of code.
+
+05:08.619 --> 05:12.928
+Next: the explainer Round Robin, by the Cursor, then Friday's session.

@@ -10,6 +10,7 @@
 [Slides](09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html){ .md-button }
 [Thursday Oct 22 prep](../prep/09-cs326-2026-10-22-prep-processes.md){ .md-button }
 [Friday Oct 23 prep](../prep/09-cs326-2026-10-23-prep-context-switch-and-scheduling.md){ .md-button }
+[Explainers](../videos/week09.md){ .md-button }
 
 ## This week { #this-week }
 

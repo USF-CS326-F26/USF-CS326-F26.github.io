@@ -1,6 +1,6 @@
 # Prep: The Context Switch and the Scheduler — 35k · 36k
 
-**Session:** Fri Oct 23, 1h30 · **Exercises:** `35k_context_switch`, `36k_scheduling` · **Prep time:** ~20 min · **Lecture:** [Week 9 · Processes, the Context Switch, and Scheduling](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md)
+**Session:** Fri Oct 23, 1h30 · **Exercises:** `35k_context_switch`, `36k_scheduling` · **Prep time:** ~35 min · **Lecture:** [Week 9 · Processes, the Context Switch, and Scheduling](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md)
 
 ## Back from break
 
@@ -24,6 +24,7 @@ First the mechanism: a context is the fourteen registers `ra`, `sp` and `s0`–`
 
 | What | Time |
 |---|---|
+| Watch the videos [Save Here, Load There](../videos/week09-context-switch.md) (5:14), then [Round Robin, by the Cursor](../videos/week09-round-robin.md) (4:56) and [The Double Switch](../videos/week09-double-switch.md) (5:04). Each video's page links the explainer page it walks through | 15 min |
 | [Week 9 · This week](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#this-week), then [Friday · `35k` The context switch](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#fri-35k), all three sections | 5 min |
 | [Week 9 · Friday · `36k` Round robin](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#fri-36k), all three sections | 3 min |
 | [Week 9 · For the exam](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam): [The vocabulary](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam-terms) and [The scheduling survey](../lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling.md#exam-survey). Not needed today; on Midterm 2 | 2 min |

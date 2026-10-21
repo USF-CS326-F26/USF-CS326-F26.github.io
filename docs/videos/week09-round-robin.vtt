@@ -1,0 +1,163 @@
+WEBVTT
+
+00:00.000 --> 00:05.376
+Week 9: Round Robin, by the Cursor, for exercise 36k_scheduling.
+
+00:05.976 --> 00:12.141
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.640 --> 00:15.136
+This follows the October 13 lecture.
+
+00:15.736 --> 00:23.075
+On Friday, October 23, you write pick_next, the round-robin policy, where ready processes take turns.
+
+00:23.675 --> 00:27.536
+No solution code here: only what the machine must look like.
+
+00:28.040 --> 00:29.597
+Scheduling has two halves.
+
+00:30.197 --> 00:41.739
+The mechanism is the switch from 35k: it moves the hart, the processor, out of one context, the saved registers of a paused computation, and into another.
+
+00:42.339 --> 00:45.240
+Which process gets the hart next is the policy.
+
+00:45.760 --> 00:50.773
+The given scheduler loop hands the policy a snapshot of the state of every slot
+
+00:51.373 --> 00:53.485
+and gets back a slot to run, or None.
+
+00:54.085 --> 01:01.573
+Between calls, the policy keeps one field: next, the cursor. In this example of 8 slots, it reads 5.
+
+01:02.080 --> 01:09.717
+Here the process table is a ring: slot 0 at the top, then clockwise, so slot 7 sits beside slot 0.
+
+01:10.317 --> 01:13.261
+The hand from the hub is the cursor, at slot 5.
+
+01:13.760 --> 01:15.787
+Each call is a walk from the cursor.
+
+01:16.787 --> 01:22.973
+Slot 5 is Sleeping: its process is waiting, not asking to run. The walk passes it by.
+
+01:24.480 --> 01:29.472
+Slot 6 is Runnable, ready to run: the walk stops, and the call returns 6.
+
+01:30.072 --> 01:34.893
+The cursor moves to 7, the cell after it. The dashed hand is where it was.
+
+01:36.400 --> 01:39.131
+The loop calls again, and the cursor reads 7.
+
+01:39.731 --> 01:43.123
+Which slot will this call return: 0, 1, or 6?
+
+01:46.120 --> 01:50.493
+Slot 7 is Unused: no process is in it. It is passed by.
+
+01:51.493 --> 01:56.677
+Past the last slot, the walk comes around to slot 0. Sleeping: passed by.
+
+01:58.200 --> 02:02.723
+Slot 1 is Runnable: the call returns 1, and the cursor moves to 2.
+
+02:03.323 --> 02:07.589
+This walk looked at 7, 0 and 1: around the end of the table.
+
+02:08.120 --> 02:13.411
+The third call starts at the cursor, slot 2: a Zombie, whose process has exited.
+
+02:14.411 --> 02:15.840
+Slot 3 is Unused.
+
+02:16.840 --> 02:21.725
+Slot 4 is Runnable: the call returns 4, and the cursor moves to 5.
+
+02:22.240 --> 02:26.165
+The fourth call starts at 5 again, and passes the sleeper by.
+
+02:27.165 --> 02:30.899
+It returns 6 again: the picks read 6, 1, 4, 6.
+
+02:31.899 --> 02:37.040
+At the next call, slot 6 reads Zombie: its process exited during that turn.
+
+02:37.560 --> 02:39.160
+The fifth call returned 1,
+
+02:40.160 --> 02:44.128
+and the sixth returns 4: turns in ring order, round robin.
+
+02:44.728 --> 02:53.773
+The test runs on its own table. For a correct policy, it prints: [ok] round-robin scheduled processes in interleaved order.
+
+02:54.280 --> 02:59.592
+Now a broken case, no wrap. As in the correct run, the first call returned 6.
+
+03:00.592 --> 03:09.317
+The second stops at slot 7, the end of the table, and returns None, though slots 1, 4 and 6 are Runnable, all before the cursor.
+
+03:10.840 --> 03:15.021
+The loop takes None to mean nothing can run, and ends after one pick.
+
+03:15.621 --> 03:23.579
+On its own table, the test's run ends early too, and it prints: [fail] wrong number of runs (policy not round-robin?)
+
+03:24.080 --> 03:29.584
+Another broken case: the cursor reads 5, but every walk begins at slot 0.
+
+03:30.584 --> 03:36.771
+Past the sleeper in slot 0, the call returns 1, and the cursor moves to 2. Nothing reads it.
+
+03:37.280 --> 03:41.397
+The second call returns 1 too; here, each step is a whole call.
+
+03:42.397 --> 03:43.507
+Slot 1 again,
+
+03:44.507 --> 03:49.264
+and again: the picks read 1, 1, 1, 1, while slots 4 and 6 wait.
+
+03:49.864 --> 03:53.320
+The test prints: [fail] run order is not round-robin.
+
+03:53.840 --> 03:58.107
+Let the correct run go on until slots 1 and 4 are Zombies too.
+
+03:58.707 --> 04:01.864
+The next walk looks at every cell once and returns None.
+
+04:02.464 --> 04:04.811
+The cursor stays at 5, and the loop ends.
+
+04:05.320 --> 04:09.821
+You write one method in sched.rs: pick_next, for RoundRobin.
+
+04:10.421 --> 04:13.984
+It gets the snapshot and returns the slot to run, or None.
+
+04:14.480 --> 04:20.219
+The test fills four slots of the real table: three Runnable processes and one Sleeping.
+
+04:20.819 --> 04:26.685
+It checks the number of runs, then their order, and prints one [fail] line for the first that fails.
+
+04:27.200 --> 04:31.211
+As received, pick_next returns None at once: the no-wrap line.
+
+04:31.811 --> 04:34.904
+When the order is wrong, look at where each walk began.
+
+04:35.504 --> 04:38.939
+The boot banner, then nothing: the walk took a Sleeping slot.
+
+04:39.440 --> 04:45.840
+The policy's whole state is one number, and each call walks the ring from it to the first Runnable slot.
+
+04:46.440 --> 04:54.035
+On the page, drive your own table in the sandbox. Next: the explainer The Double Switch. Then Friday's session.

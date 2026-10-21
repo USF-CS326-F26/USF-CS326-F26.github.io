@@ -80,12 +80,12 @@ RECORDINGS = {
 #   - Solution-bearing: it walks through that day's reference solution. Its
 #     line goes up only once that solution has shipped, on the session's row,
 #     and no page read before the session links it.
-#   - Solution-free, like Week 7's four: it shows no code for anything a
+#   - Solution-free, like Week 7's and Week 9's: it shows no code for anything a
 #     student writes, only machine state, given code and test output, and the
 #     instructor vouches for that. Its line may go up before the session. It is
 #     also linked from the hub page on the lecture's row (docs/videos/week07.md
-#     for Week 7), and that week's prep pages link the film that walks through
-#     it, whose player page links it.
+#     for Week 7, docs/videos/week09.md for Week 9), and that week's prep pages
+#     link the film that walks through it, whose player page links it.
 # The ones that walk through only given `ulib` code are neither: their lines
 # may go up at any time, on the session's row alone.
 # A flat list rather than a dict keyed by date, so a second line for the same
@@ -104,6 +104,10 @@ EXPLAINERS = [
     ("Oct 8", "The Free List", "27NDxWWruWL9fM7HsicED7"),
     ("Oct 9", "Sv39, Field by Field", "Fnb8VPHZPKGMqBR9LX2wP3"),
     ("Oct 9", "Sv39, Level by Level", "PGDBiEroHNUFMc9BqeucV9"),
+    ("Oct 22", "The Process Table", "2facgHTFnageeBWSvgYVPY"),
+    ("Oct 23", "Save Here, Load There", "6egDZD6t2RrmoDoen2YuaJ"),
+    ("Oct 23", "Round Robin, by the Cursor", "VxxxuK5B3AEeHFCZdZGfFL"),
+    ("Oct 23", "The Double Switch", "WZFaf1My4MZTrudwutMTEy"),
 ]
 
 
@@ -282,7 +286,8 @@ def sessions():
                 ("Video · Sv39, Level by Level", "/videos/week07-sv39-walk/")))
 
     add(8, 'tuesday', 'Oct 13', 'lecture', "Week 9's lecture: Processes, the Context Switch, and Scheduling",
-        links=L(("Exam Prep", "/guides/exam-prep/"),
+        links=L(("Watch first · Week 9", "/videos/week09/"),
+                ("Exam Prep", "/guides/exam-prep/"),
                 ("Practice Set 1", "/assignments/practice-set-01/")))
     add(8, 'thursday', 'Oct 15', 'exam', 'MIDTERM 1 — Module 1 + kernel through 33k paging',
         links=L(("Midterm 1", "/assignments/midterm-1/"), ("Exam Prep", "/guides/exam-prep/")))
@@ -290,10 +295,14 @@ def sessions():
 
     add(9, 'tuesday', 'Oct 20', 'holiday', 'Fall Break — no class')
     add(9, 'thursday', 'Oct 22', 'exercise', '34k processes', exercises=['34k_processes'],
-        links=L(*WEEK9_LECTURE))
+        links=L(*WEEK9_LECTURE,
+                ("Video · The Process Table", "/videos/week09-process-table/")))
     add(9, 'friday', 'Oct 23', 'exercise', '35k context_switch · 36k scheduling',
         exercises=['35k_context_switch', '36k_scheduling'],
-        links=L(*WEEK9_LECTURE))
+        links=L(*WEEK9_LECTURE,
+                ("Video · Save Here, Load There", "/videos/week09-context-switch/"),
+                ("Video · Round Robin, by the Cursor", "/videos/week09-round-robin/"),
+                ("Video · The Double Switch", "/videos/week09-double-switch/")))
 
     add(10, 'tuesday', 'Oct 27', 'lecture', 'Locks, Semaphores, and Turning the MMU On')
     add(10, 'thursday', 'Oct 29', 'exercise', '37k spinlocks · 38k semaphores',

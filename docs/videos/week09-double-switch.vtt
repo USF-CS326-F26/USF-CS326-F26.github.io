@@ -1,0 +1,172 @@
+WEBVTT
+
+00:00.000 --> 00:05.312
+Week 9: The Double Switch, the explainer for exercise 36k_scheduling.
+
+00:05.912 --> 00:12.077
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.600 --> 00:15.096
+This follows the October 13 lecture.
+
+00:15.696 --> 00:21.413
+On Friday, October 23, you write pick_next, the policy that picks who runs next.
+
+00:22.013 --> 00:25.384
+No solution code here: only what the machine holds.
+
+00:25.880 --> 00:32.173
+Each slot of the process table, PROCS, holds a context: fourteen words a paused call needs.
+
+00:32.773 --> 00:36.101
+ra says where it resumes, sp where its stack is.
+
+00:36.701 --> 00:39.496
+The scheduler has its own: SCHED_CTX.
+
+00:40.000 --> 00:46.123
+Two given listings: the scheduler's loop, run_round_robin, and task, which every process runs.
+
+00:46.723 --> 00:50.669
+The hart, the one processor core, is on the line the band marks.
+
+00:51.200 --> 00:54.379
+Slots 2, 3 and 5 are Runnable, ready to run.
+
+00:54.979 --> 00:59.181
+Each of their contexts holds task's start and the top of its stack page.
+
+00:59.781 --> 01:04.048
+SCHED_CTX is all zeros: the scheduler has not paused yet.
+
+01:05.560 --> 01:07.352
+The policy answers slot 2.
+
+01:08.352 --> 01:15.883
+Slot 2 reads Running, chosen for the hart. The pointer CURRENT, which a process reads to find its own slot, names it.
+
+01:17.400 --> 01:28.643
+The scheduler calls the switch, which moves the hart between contexts: a0 names where the hart's words go, SCHED_CTX; a1, where new ones come from.
+
+01:29.643 --> 01:33.675
+SCHED_CTX now holds the scheduler's return point and stack.
+
+01:35.200 --> 01:40.811
+The hart takes slot 2's words: ra is task's start, sp the top of its page.
+
+01:41.811 --> 01:45.693
+The switch returns onto task's first line, on an empty page.
+
+01:47.200 --> 01:52.341
+The process reads the pointer CURRENT and learns its process id, or pid: 8.
+
+01:52.941 --> 01:58.381
+Its frame, where its locals live, holds that pid and k, its turn counter, at 0.
+
+01:58.981 --> 02:00.645
+It writes 8 in the run log.
+
+02:02.160 --> 02:09.371
+Its turn done, it calls the switch back: a0 names its own context, and a1 names SCHED_CTX.
+
+02:10.371 --> 02:12.632
+Its context now holds where it stopped.
+
+02:13.232 --> 02:14.832
+Where does the scheduler resume?
+
+02:16.860 --> 02:18.289
+Look at SCHED_CTX.
+
+02:19.289 --> 02:28.377
+The scheduler resumes right after its own switch, at the return point SCHED_CTX held: 0x8000_0B1C.
+
+02:29.377 --> 02:31.255
+Slot 2 reads Runnable again.
+
+02:32.760 --> 02:37.837
+Pid 6, in slot 3, starts on task's first line, at the top of its page.
+
+02:38.837 --> 02:43.339
+It writes 6 and switches back, and the scheduler resumes at the same point.
+
+02:44.840 --> 02:50.643
+Slot 4 is Sleeping, not asking to run, so the policy passes it over for pid 7.
+
+02:51.643 --> 02:54.117
+Back again. The log reads 8 6 7.
+
+02:55.640 --> 03:01.400
+Slot 2 again: its context now holds a new place, just after task's own switch.
+
+03:02.400 --> 03:05.451
+SCHED_CTX takes the same two words as before.
+
+03:07.460 --> 03:12.175
+The switch lands just after task's own switch, in the frame pid 8 left.
+
+03:12.775 --> 03:15.292
+It still holds pid 8, and k at 0.
+
+03:16.800 --> 03:23.072
+k reads 1, pid 8 is in the log again, and its slot reads Zombie, finished: its last turn.
+
+03:24.072 --> 03:27.571
+It switches back, and the scheduler resumes at the same point.
+
+03:29.080 --> 03:30.360
+Pid 6 runs again,
+
+03:31.360 --> 03:34.027
+then pid 7, and their slots read Zombie.
+
+03:35.027 --> 03:43.560
+No slot is Runnable, so the policy answers None and the loop ends. The log reads 8 6 7 8 6 7: interleaved.
+
+03:44.080 --> 03:47.365
+A turn is two switches: out of the scheduler, and back.
+
+03:47.965 --> 03:54.173
+Of the example's 12 switches, every odd one leaves the scheduler, every even one returns.
+
+03:54.773 --> 03:56.629
+None goes process to process.
+
+03:57.160 --> 03:58.440
+Back to slot 4.
+
+03:59.040 --> 04:02.475
+Its context was never set up: both words are zero.
+
+04:03.075 --> 04:07.811
+Nothing loads it, as long as the policy answers only Runnable slots.
+
+04:08.320 --> 04:12.480
+If the policy takes a Sleeping slot, the switch loads those zeros:
+
+04:13.080 --> 04:18.840
+ret, the switch's return, jumps to address 0, and the hart faults there, again and again.
+
+04:19.440 --> 04:24.603
+The test prints its banner, then nothing; the test harness times out, with a wrong hint.
+
+04:25.120 --> 04:28.768
+Nothing here is new: the loop, task and the switch are given.
+
+04:29.368 --> 04:35.533
+In 36k you write pick_next, the subject of the explainer Round Robin, by the Cursor.
+
+04:36.133 --> 04:39.845
+The test runs its own processes, then reads the run log.
+
+04:40.360 --> 04:45.011
+If the test prints wrong number of runs, the policy answered None too soon.
+
+04:45.611 --> 04:51.093
+If it prints run order is not round-robin, a process ran its turns back to back.
+
+04:51.600 --> 04:59.493
+The scheduler is a paused call like any other, waiting in SCHED_CTX, and every turn is two switches, out and back.
+
+05:00.093 --> 05:02.824
+Next: Friday's session, October 23.
