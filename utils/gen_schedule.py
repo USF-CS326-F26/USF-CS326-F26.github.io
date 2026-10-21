@@ -296,6 +296,8 @@ def sessions():
     add(9, 'tuesday', 'Oct 20', 'holiday', 'Fall Break — no class')
     add(9, 'thursday', 'Oct 22', 'exercise', '34k processes', exercises=['34k_processes'],
         links=L(*WEEK9_LECTURE,
+                # the hub is on the lecture's row too, but that row is a week back
+                ("Watch first · Week 9", "/videos/week09/"),
                 ("Video · The Process Table", "/videos/week09-process-table/")))
     add(9, 'friday', 'Oct 23', 'exercise', '35k context_switch · 36k scheduling',
         exercises=['35k_context_switch', '36k_scheduling'],

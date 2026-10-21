@@ -409,6 +409,8 @@ weeks:
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling/"
         - text: "Slides · given Oct 13"
           url: "lectures/09-cs326-2026-10-13-processes-context-switch-and-scheduling-slides.html"
+        - text: "Watch first · Week 9"
+          url: "videos/week09/"
         - text: "Video · The Process Table"
           url: "videos/week09-process-table/"
         - text: "Explainer · The Process Table"

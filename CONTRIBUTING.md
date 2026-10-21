@@ -285,7 +285,8 @@ So it may go up before its session, and it may be linked from four places:
 
 - its session's row: the explainer's `EXPLAINERS` line, and the film's `links=`
   entry as **Video · <title>**;
-- a hub page linked on the lecture's row;
+- a hub page linked on the lecture's row, and also on the first session's row
+  when the lecture is given a week early (Week 9's, before fall break);
 - that week's prep pages (Week 7's and Week 9's link the films, in the first
   row of "Read before class");
 - a button on the lecture page, `[Explainers](../videos/weekNN.md){ .md-button }`
@@ -579,18 +580,19 @@ rule holds unchanged.
 A **solution-free** explainer or film is not an exception, because it shows no
 solution: no Rust, assembly or pseudocode for anything a student writes, only
 machine state, given code and test output, in worked examples whose values are
-not the lecture's or a prep page's (the machine's fixed addresses and sizes are
-the same everywhere). It may show the state after each step of something a
+not the lecture's or a prep page's (the machine's fixed addresses and sizes
+are the same everywhere). It may show the state after each step of something a
 student writes, and so how many steps there are; no page may, its player page
 and the hub page included. So it may go up before its session, and it may be
-linked from its session's row, from a hub page linked on the lecture's row,
-from that week's prep pages, and by a button on the lecture page. The
-instructor vouches that it is solution-free, on the explainer's own leak
-checks, which are kept with its source in `~/sync/cs326/explainers/`, and, for
-a film, on the narration gate kept with its script in `~/sync/cs326/films/`.
-Week 7's four were the first and Week 9's four the next — see Explainers and
-videos. An explainer or film that shows a solution stays under the paragraph
-above, whatever else it shows.
+linked from its session's row, from a hub page linked on the lecture's row
+(and on the first session's row when the lecture is given a week early), from
+that week's prep pages, and by a button on the lecture page. The instructor
+vouches that it is solution-free, on the explainer's own leak checks, which
+are kept with its source in `~/sync/cs326/explainers/`, and, for a film, on
+the narration gate kept with its script in `~/sync/cs326/films/`. Week 7's
+four were the first and Week 9's four the next — see Explainers and videos. An
+explainer or film that shows a solution stays under the paragraph above,
+whatever else it shows.
 
 ## Spelling
 
