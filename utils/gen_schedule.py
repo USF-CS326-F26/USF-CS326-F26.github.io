@@ -83,9 +83,10 @@ RECORDINGS = {
 #   - Solution-free, like Week 7's and Week 9's: it shows no code for anything a
 #     student writes, only machine state, given code and test output, and the
 #     instructor vouches for that. Its line may go up before the session. It is
-#     also linked from the hub page on the lecture's row (docs/videos/week07.md
-#     for Week 7, docs/videos/week09.md for Week 9), and that week's prep pages
-#     link the film that walks through it, whose player page links it.
+#     also linked from the hub page on the lecture's row and the week's first
+#     session's row (docs/videos/week07.md for Week 7, docs/videos/week09.md
+#     for Week 9), and that week's prep pages link the film that walks
+#     through it, whose player page links it.
 # The ones that walk through only given `ulib` code are neither: their lines
 # may go up at any time, on the session's row alone.
 # A flat list rather than a dict keyed by date, so a second line for the same
@@ -278,7 +279,8 @@ def sessions():
                 ("Code and output", "/inclass/week07-examples.html")))
     add(7, 'thursday', 'Oct 8', 'exercise', '31k boot · 32k physical_memory',
         exercises=['31k_boot', '32k_physical_memory'],
-        links=L(("Video · Reset to Rust", "/videos/week07-reset-to-rust/"),
+        links=L(("Watch first · Week 7", "/videos/week07/"),
+                ("Video · Reset to Rust", "/videos/week07-reset-to-rust/"),
                 ("Video · The Free List", "/videos/week07-free-list/")))
     add(7, 'friday', 'Oct 9', 'exercise', '33k paging', exercises=['33k_paging'],
         links=L(("Sv39 Paging", "/guides/sv39-paging/"),
@@ -296,7 +298,6 @@ def sessions():
     add(9, 'tuesday', 'Oct 20', 'holiday', 'Fall Break — no class')
     add(9, 'thursday', 'Oct 22', 'exercise', '34k processes', exercises=['34k_processes'],
         links=L(*WEEK9_LECTURE,
-                # the hub is on the lecture's row too, but that row is a week back
                 ("Watch first · Week 9", "/videos/week09/"),
                 ("Video · The Process Table", "/videos/week09-process-table/")))
     add(9, 'friday', 'Oct 23', 'exercise', '35k context_switch · 36k scheduling',

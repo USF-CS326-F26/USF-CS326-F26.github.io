@@ -285,8 +285,7 @@ So it may go up before its session, and it may be linked from four places:
 
 - its session's row: the explainer's `EXPLAINERS` line, and the film's `links=`
   entry as **Video · <title>**;
-- a hub page linked on the lecture's row, and also on the first session's row
-  when the lecture is given a week early (Week 9's, before fall break);
+- a hub page linked on the lecture's row and on the week's first session's row;
 - that week's prep pages (Week 7's and Week 9's link the films, in the first
   row of "Read before class");
 - a button on the lecture page, `[Explainers](../videos/weekNN.md){ .md-button }`
@@ -296,10 +295,11 @@ A film's player page links the explainer it films, as it does for the other
 kind. The deck, the guides and the In Class pages still link neither kind.
 
 The hub page is `docs/videos/weekNN.md`; copy `week07.md`. Like a player page
-it is not in the nav. It is linked by hand on the lecture's row, with `links=`
-in `sessions()`, as **Watch first · Week N**, and it lists the week's films in
-watching order: each film's player page and length, the explainer it walks
-through, and the exercise and session it prepares.
+it is not in the nav. It is linked by hand on the lecture's row and on the
+week's first session's row, with `links=` in `sessions()`, as
+**Watch first · Week N**, and it lists the week's films in watching order:
+each film's player page and length, the explainer it walks through, and the
+exercise and session it prepares.
 
 The instructor vouches that an explainer or film is solution-free. Nothing in
 this repository can: no check here fetches an artifact or watches a film. What
@@ -584,15 +584,14 @@ not the lecture's or a prep page's (the machine's fixed addresses and sizes
 are the same everywhere). It may show the state after each step of something a
 student writes, and so how many steps there are; no page may, its player page
 and the hub page included. So it may go up before its session, and it may be
-linked from its session's row, from a hub page linked on the lecture's row
-(and on the first session's row when the lecture is given a week early), from
-that week's prep pages, and by a button on the lecture page. The instructor
-vouches that it is solution-free, on the explainer's own leak checks, which
-are kept with its source in `~/sync/cs326/explainers/`, and, for a film, on
-the narration gate kept with its script in `~/sync/cs326/films/`. Week 7's
-four were the first and Week 9's four the next — see Explainers and videos. An
-explainer or film that shows a solution stays under the paragraph above,
-whatever else it shows.
+linked from its session's row, from a hub page linked on the lecture's row and
+on the week's first session's row, from that week's prep pages, and by a
+button on the lecture page. The instructor vouches that it is solution-free,
+on the explainer's own leak checks, which are kept with its source in
+`~/sync/cs326/explainers/`, and, for a film, on the narration gate kept with
+its script in `~/sync/cs326/films/`. Week 7's four were the first and Week 9's
+four the next — see Explainers and videos. An explainer or film that shows a
+solution stays under the paragraph above, whatever else it shows.
 
 ## Spelling
 

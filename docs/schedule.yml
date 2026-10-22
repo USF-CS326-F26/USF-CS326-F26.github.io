@@ -323,6 +323,8 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/07-cs326-2026-10-08-prep-boot-and-physical-memory/"
+        - text: "Watch first · Week 7"
+          url: "videos/week07/"
         - text: "Video · Reset to Rust"
           url: "videos/week07-reset-to-rust/"
         - text: "Video · The Free List"
