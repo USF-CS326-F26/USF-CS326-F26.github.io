@@ -3,6 +3,9 @@
 **Thursday, October 15 — in class, full period.** No exercise session on
 Friday, October 16.
 
+**Solutions:** both sections' exams and keys, with a video for each problem,
+are on [Midterm 1 Solutions](midterm-1-solutions.md).
+
 ## Format
 
 Pencil and paper, closed book. One permitted reference: the

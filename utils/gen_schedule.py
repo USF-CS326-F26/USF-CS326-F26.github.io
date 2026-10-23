@@ -292,7 +292,8 @@ def sessions():
                 ("Exam Prep", "/guides/exam-prep/"),
                 ("Practice Set 1", "/assignments/practice-set-01/")))
     add(8, 'thursday', 'Oct 15', 'exam', 'MIDTERM 1 — Module 1 + kernel through 33k paging',
-        links=L(("Midterm 1", "/assignments/midterm-1/"), ("Exam Prep", "/guides/exam-prep/")))
+        links=L(("Midterm 1", "/assignments/midterm-1/"), ("Solutions", "/assignments/midterm-1-solutions/"),
+                ("Exam Prep", "/guides/exam-prep/")))
     add(8, 'friday', 'Oct 16', 'holiday', 'No class — exam week')
 
     add(9, 'tuesday', 'Oct 20', 'holiday', 'Fall Break — no class')

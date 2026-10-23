@@ -1,0 +1,436 @@
+WEBVTT
+
+00:00.000 --> 00:05.653
+Midterm 1, Section 01, Problem 4: Streaming with O(1) State.
+
+00:06.253 --> 00:11.691
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:12.291 --> 00:16.183
+A script reveals it, and this explainer was built with Claude.
+
+00:16.680 --> 00:20.145
+Problem 4 draws on two OSlings exercises.
+
+00:20.745 --> 00:25.631
+12c_wc, from week 5, on Friday, September 25:
+
+00:26.231 --> 00:31.508
+you filled in count_fd's for loop, which counts the bytes, the lines and the words.
+
+00:32.108 --> 00:35.701
+in_word itself was given, declared just above the loop.
+
+00:36.200 --> 00:37.917
+Part (c) draws on the other.
+
+00:38.517 --> 00:43.197
+11c_cat, from week 5 too, on Thursday, September 24:
+
+00:43.797 --> 00:45.503
+you wrote cat_fd's loop.
+
+00:46.103 --> 00:50.625
+Read a chunk, write exactly the bytes you got, and stop at end of file.
+
+00:51.720 --> 00:57.319
+Problem 4 opens with count_fd, from the 12c wc solution.
+
+00:58.319 --> 01:01.559
+ulib::read fills buf with up to buf.len() bytes,
+
+01:02.159 --> 01:06.361
+and returns the number it read, which may be fewer than asked for.
+
+01:06.961 --> 01:08.869
+And 0 means end of file.
+
+01:09.400 --> 01:13.100
+Counts holds three counters: lines, words and bytes.
+
+01:13.700 --> 01:16.769
+A call to is_space says whether a byte is whitespace:
+
+01:17.369 --> 01:20.842
+a space, a tab, a newline, and the others on its list.
+
+01:21.360 --> 01:23.983
+count_fd sets up its state above the loop:
+
+01:24.583 --> 01:29.627
+the counts, in_word, which starts false, and one 512-byte buffer.
+
+01:30.227 --> 01:32.598
+Then it loops. Each read returns n,
+
+01:33.198 --> 01:36.737
+and when n is 0, count_fd returns its counts.
+
+01:37.240 --> 01:40.141
+Otherwise, it takes each of the n bytes it got.
+
+01:40.741 --> 01:42.725
+c.bytes goes up by 1,
+
+01:43.325 --> 01:47.793
+and if the byte is a newline, c.lines goes up by 1 too.
+
+01:48.320 --> 01:50.282
+Words are counted where they start.
+
+01:50.882 --> 01:52.928
+Whitespace sets in_word to false.
+
+01:53.528 --> 01:56.449
+Any other byte, while in_word is false, starts a word:
+
+01:57.049 --> 02:00.867
+in_word becomes true, and c.words goes up by 1.
+
+02:01.400 --> 02:07.137
+So, besides the counts, in_word is all count_fd remembers about the bytes it has seen:
+
+02:07.737 --> 02:09.190
+are we inside a word?
+
+02:09.790 --> 02:14.440
+It is declared above the loop, so it carries over from one read to the next.
+
+02:15.960 --> 02:22.199
+Part (a). count_fd runs on standard input, and its calls to read return these bytes.
+
+02:22.799 --> 02:26.669
+Fill in the table with the values after each call has been handled,
+
+02:27.269 --> 02:31.322
+then give what count_fd returns. Call 1 is done for you.
+
+02:31.840 --> 02:34.899
+Call 1 reads 'hi', a space and 'th'.
+
+02:35.499 --> 02:39.395
+5 bytes, so n is 5, and c.bytes is 5.
+
+02:39.995 --> 02:42.839
+No newline, so c.lines is 0.
+
+02:43.360 --> 02:46.768
+'h' starts a word, and after the space, 't' starts another:
+
+02:47.368 --> 02:48.989
+c.words is 2.
+
+02:49.589 --> 02:53.011
+And in_word is true: the read ends inside a word.
+
+02:53.520 --> 02:57.007
+Call 2 reads 'ere', a newline and a space.
+
+02:58.007 --> 03:00.016
+5 bytes, so n is 5.
+
+03:01.016 --> 03:03.247
+The newline makes c.lines 1.
+
+03:03.760 --> 03:05.190
+Now the subtle part.
+
+03:05.790 --> 03:11.196
+The 'e' that starts call 2 is not whitespace, but in_word is still true from call 1,
+
+03:11.796 --> 03:13.491
+so no new word starts.
+
+03:14.091 --> 03:17.375
+'th' and 'ere' are two halves of one word.
+
+03:18.375 --> 03:20.134
+c.words stays 2.
+
+03:21.640 --> 03:24.103
+c.bytes is 10: 5 more.
+
+03:25.103 --> 03:28.471
+And in_word is false, because the read ends in a space.
+
+03:29.000 --> 03:31.455
+Call 3 reads 'ok' and a newline.
+
+03:32.455 --> 03:33.424
+n is 3,
+
+03:34.424 --> 03:36.834
+and the newline makes c.lines 2.
+
+03:37.434 --> 03:40.877
+in_word was false, so the 'o' of 'ok' starts a new word:
+
+03:41.877 --> 03:43.583
+c.words is 3.
+
+03:45.080 --> 03:47.735
+c.bytes is 13: 3 more.
+
+03:48.735 --> 03:52.018
+And a newline is whitespace, so in_word ends false.
+
+03:52.520 --> 03:54.482
+Call 4 finds end of file.
+
+03:55.482 --> 03:59.482
+n is 0, so count_fd returns before its for loop.
+
+04:00.982 --> 04:05.622
+End of file changes nothing: 2, 3, 13 and false carry down.
+
+04:06.120 --> 04:07.975
+What does count_fd return?
+
+04:08.575 --> 04:13.183
+Its return type is a Result, so the counts come back wrapped in Ok.
+
+04:14.683 --> 04:19.845
+It returns Ok, holding Counts with lines 2, words 3 and bytes 13.
+
+04:20.360 --> 04:22.450
+3 words: hi, there, and ok.
+
+04:23.050 --> 04:25.363
+'th' and 'ere' stayed one word,
+
+04:25.963 --> 04:29.129
+because in_word carried over from one read to the next.
+
+04:30.840 --> 04:34.332
+Part (b). A student moves let mut in_word = false
+
+04:34.932 --> 04:37.719
+from above the loop, to the first line inside it.
+
+04:38.319 --> 04:42.969
+Now in_word starts false at every read, wherever the last read ended.
+
+04:43.480 --> 04:48.282
+(i): for the input in part (a), what does the student's count_fd return?
+
+04:48.882 --> 04:50.737
+Newlines don't depend on in_word,
+
+04:51.737 --> 04:53.369
+so lines is still 2.
+
+04:53.880 --> 04:54.946
+Words do.
+
+04:55.546 --> 05:00.132
+Call 1 still counts 'hi' and 'th', and ends inside a word.
+
+05:00.732 --> 05:03.194
+But call 2 now starts with in_word false,
+
+05:03.794 --> 05:07.261
+so its 'e' starts a new word: 'ere' counts again.
+
+05:07.760 --> 05:10.760
+Call 3's 'ok' is a new word either way.
+
+05:11.760 --> 05:14.725
+So words is 4, one more than part (a)'s 3.
+
+05:16.240 --> 05:19.897
+And bytes is still 13: every byte is still counted.
+
+05:20.400 --> 05:23.598
+(ii): all five of wc's tests still pass.
+
+05:24.198 --> 05:31.511
+Their inputs are short, and the test harness answers each read with as many of the remaining bytes as fit in the buffer.
+
+05:32.111 --> 05:34.191
+Why do the tests not catch the bug?
+
+05:36.220 --> 05:41.668
+A: each test input arrives in one read, so no word is split across two reads.
+
+05:42.268 --> 05:46.779
+The student's reset comes only before the first byte, or at end of file,
+
+05:47.379 --> 05:50.889
+never inside a word, so both versions count the same.
+
+05:51.400 --> 05:52.988
+The other choices miss.
+
+05:53.588 --> 05:56.275
+B: wc's tests check the words too.
+
+05:56.875 --> 06:02.608
+C: a newline does set in_word to false, but a read can end in the middle of a word.
+
+06:03.208 --> 06:05.847
+D: a release build counts the same way.
+
+06:06.360 --> 06:10.337
+So only input that arrives in several reads can show the bug:
+
+06:10.937 --> 06:13.347
+a file bigger than the buffer, or a pipe.
+
+06:13.947 --> 06:17.786
+A read may stop short anywhere, even in the middle of a word.
+
+06:19.520 --> 06:23.594
+Part (c). This is cat_fd, from the 11c cat solution,
+
+06:24.194 --> 06:26.776
+and write_all writes every byte it is given.
+
+06:27.280 --> 06:33.125
+Each time through the loop, cat_fd reads into its one 512-byte buffer.
+
+06:33.725 --> 06:35.835
+It returns when read returns 0,
+
+06:36.435 --> 06:39.709
+and otherwise writes exactly the n bytes it got.
+
+06:40.240 --> 06:43.290
+cat_fd copies an 1100-byte file.
+
+06:43.890 --> 06:47.025
+How many calls does it make to read, and to write_all?
+
+06:47.560 --> 06:51.950
+(i): each read returns 512 bytes, or what remains.
+
+06:53.450 --> 07:01.333
+The reads return 512, 512, the 76 that remain, then 0 at end of file.
+
+07:02.333 --> 07:04.209
+That makes 4 calls to read.
+
+07:05.209 --> 07:08.719
+And 3 to write_all: the read of 0 writes nothing.
+
+07:09.240 --> 07:14.005
+(ii): each read returns 256 bytes, or what remains.
+
+07:15.505 --> 07:21.355
+4 reads of 256, then the 76 that remain, then 0.
+
+07:22.355 --> 07:24.210
+That makes 6 calls to read.
+
+07:25.210 --> 07:29.401
+And 5 to write_all: one for each read that returned bytes.
+
+07:29.920 --> 07:32.511
+Either way, read is called once more than write_all:
+
+07:33.111 --> 07:36.309
+the last read is the 0 that means end of file.
+
+07:36.909 --> 07:43.639
+And one 512-byte buffer is all the memory cat_fd needs, however big the file.
+
+07:45.360 --> 07:52.430
+Part (d). Using count_fd as a model, longest_line returns the length in bytes of the longest line,
+
+07:53.030 --> 07:54.695
+not counting its newline.
+
+07:55.295 --> 07:58.331
+A last line with no trailing newline still counts,
+
+07:58.931 --> 08:01.191
+and lines may be split across reads.
+
+08:01.720 --> 08:07.719
+For example, 'ab', a space, 'cdef', a newline, 'g' and a newline gives 7:
+
+08:08.319 --> 08:12.744
+the first line is 7 bytes long, and the line with 'g' is shorter.
+
+08:13.240 --> 08:17.386
+Like count_fd, longest_line sets up its state above the loop:
+
+08:17.986 --> 08:20.085
+one 512-byte buffer,
+
+08:20.685 --> 08:23.429
+cur, the length of the line we are in, so far,
+
+08:24.029 --> 08:27.567
+and longest, the longest seen. Both start at 0.
+
+08:28.080 --> 08:30.470
+The loop and the read are count_fd's too.
+
+08:31.070 --> 08:35.678
+But at end of file, a last line with no newline has not been compared yet,
+
+08:36.278 --> 08:39.487
+so if cur beats longest, longest becomes cur.
+
+08:40.087 --> 08:42.796
+Then it returns longest, wrapped in Ok.
+
+08:43.320 --> 08:45.557
+In the for loop, Box 1 is done for you:
+
+08:46.157 --> 08:50.053
+B: the test b == b'\n'. A newline ends a line,
+
+08:50.653 --> 08:54.189
+so first, if cur beats longest, longest takes cur.
+
+08:54.720 --> 08:57.285
+Box 2: what else must a newline do?
+
+08:58.785 --> 09:03.912
+A: cur = 0. The line has ended, so the next one starts at 0.
+
+09:04.512 --> 09:09.600
+Not C, longest = 0: that would throw away the longest line seen.
+
+09:10.120 --> 09:13.726
+Box 3 is the else: a byte that is not a newline.
+
+09:15.226 --> 09:20.182
+B: cur += 1. Any other byte makes the line one byte longer.
+
+09:20.680 --> 09:22.225
+Check it on the example.
+
+09:22.825 --> 09:26.173
+'ab', the space and 'cdef' make cur 7.
+
+09:26.773 --> 09:30.548
+The newline makes longest 7, and sets cur back to 0.
+
+09:31.148 --> 09:35.159
+The line with 'g' is shorter, so longest_line returns 7.
+
+09:37.180 --> 09:39.608
+The key adds why this works across reads:
+
+09:40.208 --> 09:42.660
+cur lives outside the loop, like in_word,
+
+09:43.260 --> 09:46.043
+so a line split across reads keeps counting.
+
+09:47.560 --> 09:49.010
+That's Problem 4.
+
+09:49.610 --> 09:52.313
+(a): in_word carries a word across reads.
+
+09:52.913 --> 09:56.455
+(b): reset it every read, and a split word counts again.
+
+09:57.055 --> 10:00.031
+(c): every read but the last gets a write_all.
+
+10:00.631 --> 10:03.819
+(d): what must survive a read lives outside the loop.

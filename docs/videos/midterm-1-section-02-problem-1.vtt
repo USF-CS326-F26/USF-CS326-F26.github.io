@@ -1,0 +1,460 @@
+WEBVTT
+
+00:00.000 --> 00:04.447
+Midterm 1, Section 02, Problem 1: Short Questions.
+
+00:05.047 --> 00:10.485
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.085 --> 00:14.977
+A script reveals it, and this explainer was built with Claude.
+
+00:15.480 --> 00:21.121
+Problem 1 draws on four OSlings exercises, here in the order you met them.
+
+00:21.721 --> 00:26.605
+01r_control_flow, from week 1, on Friday, August 28.
+
+00:27.205 --> 00:33.061
+You wrote pgroundup and checked_pgroundup, the page arithmetic of part (a).
+
+00:33.560 --> 00:38.418
+04r_structs_impl, from week 3, on Thursday, September 10.
+
+00:39.018 --> 00:43.817
+You built Pte, which derives Copy, and PageGuard, which cannot.
+
+00:44.417 --> 00:46.849
+PageGuard's empty release was given.
+
+00:47.449 --> 00:49.837
+Part (b) is about copies and moves.
+
+00:50.360 --> 00:55.467
+06r_collections, from week 4, on Thursday, September 17.
+
+00:56.067 --> 01:01.045
+You wrote alloc_slot and live_pids, for a process table of Option values.
+
+01:01.645 --> 01:04.599
+find_pid was given, and part (d) runs it.
+
+01:05.120 --> 01:10.071
+20a_asm_bridge, from week 6, on Thursday, October 1.
+
+01:10.671 --> 01:15.716
+You wrote bytecopy in assembly, and its extern "C" declaration was given.
+
+01:16.316 --> 01:18.641
+Part (c) changes that declaration.
+
+01:19.760 --> 01:23.432
+Part (a) is from 01r_control_flow, in week 1.
+
+01:24.432 --> 01:27.695
+01r rounds addresses up to a page boundary,
+
+01:28.295 --> 01:31.844
+and a page is PAGE_SIZE, 0x1000 bytes.
+
+01:32.360 --> 01:37.210
+pgroundup adds PAGE_SIZE - 1, one byte short of a page,
+
+01:37.810 --> 01:41.213
+then divides by PAGE_SIZE and multiplies back.
+
+01:41.813 --> 01:46.505
+The division drops the remainder, so adding first is what makes it round up.
+
+01:47.040 --> 01:50.719
+checked_pgroundup makes the same add with checked_add.
+
+01:51.319 --> 01:55.531
+That gives Some(bumped) when the add fits, and None when it would overflow.
+
+01:56.131 --> 01:59.843
+The Some arm rounds bumped, and the None arm returns None.
+
+02:00.360 --> 02:06.566
+(i): pgroundup of 0x8000_6FFF, the last byte of its page.
+
+02:08.066 --> 02:12.673
+It rounds up to the next boundary: 0x8000_7000.
+
+02:13.273 --> 02:19.225
+Adding one byte short of a page carries it past that boundary, and the division drops the rest.
+
+02:19.720 --> 02:22.471
+(ii): an address already on a page boundary.
+
+02:23.971 --> 02:28.003
+It comes back unchanged: 0x8000_3000.
+
+02:28.603 --> 02:33.317
+Adding one byte short of a page is never enough to reach the next boundary.
+
+02:33.840 --> 02:39.469
+Questions (iii) and (iv) both call pgroundup on usize::MAX - 2,
+
+02:40.069 --> 02:42.905
+an address in the last page of the address space.
+
+02:43.505 --> 02:48.857
+Adding one byte short of a page runs past usize::MAX: the add overflows.
+
+02:49.360 --> 02:51.210
+(iii): in a debug build.
+
+02:51.810 --> 02:58.051
+A debug build checks arithmetic for overflow, and stops the program at the line that caused it.
+
+02:59.551 --> 03:01.093
+So (A): it panics.
+
+03:02.000 --> 03:05.933
+(iv): the same call, in a release build with default settings.
+
+03:06.533 --> 03:12.472
+Release removes the check, so the add wraps around to a small number, just under one page.
+
+03:13.972 --> 03:19.027
+Dividing and multiplying round that down to 0: (B), returns 0.
+
+03:20.560 --> 03:26.085
+A function whose job is to round up returned address 0, below where it started.
+
+03:26.685 --> 03:29.258
+In debug you get a panic naming the line.
+
+03:29.858 --> 03:33.835
+In release you get a kernel that works for a while, and then doesn't.
+
+03:34.360 --> 03:37.742
+(v): checked_pgroundup, on the same address.
+
+03:39.242 --> 03:40.521
+It returns None.
+
+03:41.521 --> 03:44.433
+The key's note: checked_add, the add does not fit.
+
+03:45.033 --> 03:50.174
+So the None arm hands back None, instead of quietly returning a small number.
+
+03:51.800 --> 03:55.590
+Part (b) is from 04r_structs_impl, in week 3.
+
+03:56.590 --> 03:59.523
+As in 04r, Pte derives Copy,
+
+04:00.123 --> 04:01.497
+and Page does not.
+
+04:02.000 --> 04:03.912
+Assigning a Pte copies it.
+
+04:04.512 --> 04:05.984
+Assigning a Page moves it,
+
+04:06.584 --> 04:09.411
+and the function release takes the Page by value.
+
+04:09.920 --> 04:13.961
+Line 1 builds a Page, and line 3 passes it to release.
+
+04:14.561 --> 04:21.445
+Line 2 builds a Pte, and line 4 assigns it. Lines 5 and 6 read a field of each.
+
+04:22.045 --> 04:25.213
+Exactly one of the numbered lines does not compile.
+
+04:25.720 --> 04:27.068
+(i): which line?
+
+04:27.668 --> 04:34.757
+Line 3 passes p to release, which takes the Page by value. A Page is not Copy, so that moves it:
+
+04:35.357 --> 04:39.570
+the Page now belongs to release, and p no longer holds one.
+
+04:41.580 --> 04:47.493
+So line 5 does not compile: it reads the pa field of p, after the move.
+
+04:48.093 --> 04:48.873
+Why?
+
+04:50.373 --> 04:56.097
+(C): its Page was moved out of that variable, so the variable can no longer be used.
+
+04:57.000 --> 05:02.266
+Not (D): a Page's field can be read, while its variable still holds the Page.
+
+05:02.866 --> 05:06.247
+Line 5 fails, because of the move on line 3.
+
+05:06.760 --> 05:11.538
+(ii): why does line 6 compile, after line 4 assigned a to b?
+
+05:13.038 --> 05:16.073
+(A): Pte is Copy, so line 4 copied a,
+
+05:16.673 --> 05:23.811
+and a is still usable. A Pte is one u64, and behaves like the integer it is.
+
+05:24.320 --> 05:31.131
+(iii): suppose Page also derived Clone and Copy. Which numbered lines would then not compile?
+
+05:32.631 --> 05:33.943
+The answer is none.
+
+05:34.543 --> 05:42.167
+Line 3 would copy p into release instead of moving it, so line 5 reads a Page that p still holds.
+
+05:42.680 --> 05:47.509
+(iv): with line 5 deleted, during which line is the Page dropped?
+
+05:49.009 --> 05:50.097
+Line 3.
+
+05:50.697 --> 05:55.262
+The function release takes the Page by value, so line 3 moves it in,
+
+05:55.862 --> 06:00.030
+and it dies at release's closing brace, as the call returns.
+
+06:00.560 --> 06:06.564
+So line 3 is the move and the drop: the Page goes into release, and nothing comes back.
+
+06:07.164 --> 06:11.697
+The release given in 04r has the same shape: an empty body,
+
+06:12.297 --> 06:15.153
+and the value it takes dies at its closing brace.
+
+06:17.180 --> 06:26.689
+The key's note. (i): line 3 moved the Page from p into release, and line 5's use of p is error E0382.
+
+06:27.289 --> 06:29.411
+(iii): line 3 would copy p.
+
+06:30.911 --> 06:34.600
+(iv): the function release drops the Page when it returns.
+
+06:36.200 --> 06:39.889
+Part (c) is from 20a_asm_bridge, in week 6.
+
+06:40.889 --> 06:46.254
+20a calls one of its assembly routines, bytecopy, through this declaration.
+
+06:46.854 --> 06:53.467
+extern "C" passes the arguments in a0, a1, a2, in the order they are declared.
+
+06:54.000 --> 06:55.333
+You wrote the routine.
+
+06:55.933 --> 06:59.922
+If a2 is 0, beqz skips the loop entirely.
+
+07:00.522 --> 07:06.644
+Otherwise it loads a byte from the address in a1, and stores it at the address in a0.
+
+07:07.244 --> 07:10.583
+Then it steps both pointers, and counts a2 down.
+
+07:11.080 --> 07:15.057
+Now the Rust declaration changes, but the assembly does not:
+
+07:15.657 --> 07:22.001
+n is now second, and src third. The call matches it: bytecopy of dst, 12 and src.
+
+07:22.601 --> 07:32.838
+src is 0x8020_4000, dst is 0x8020_6000, and there is no memory below 0x1000.
+
+07:33.360 --> 07:38.751
+(i): what do a0, a1 and a2 hold at bytecopy's first instruction?
+
+07:39.351 --> 07:43.359
+Rust follows the new declaration: dst, then n, then src.
+
+07:44.359 --> 07:49.083
+So a0 is still dst, 0x8020_6000.
+
+07:50.083 --> 07:52.460
+a1 is n: 12, or 0xC.
+
+07:53.460 --> 07:57.513
+And a2 is src, 0x8020_4000.
+
+07:58.520 --> 07:59.852
+(ii): what happens?
+
+08:00.452 --> 08:07.089
+beqz tests a2, which now holds src. That is not 0, so the loop starts.
+
+08:07.689 --> 08:14.129
+Its first instruction, lb, loads from the address in a1. But a1 now holds 12.
+
+08:16.140 --> 08:20.137
+So (C): the first lb loads from a small address and faults.
+
+08:20.737 --> 08:25.172
+a1 holds 12, and there is no memory below 0x1000,
+
+08:25.772 --> 08:28.502
+so the load faults before anything is copied.
+
+08:29.000 --> 08:34.305
+Not (A): sb would store through a0, which holds dst, a valid address.
+
+08:34.905 --> 08:38.882
+And that sb never runs: the lb before it faults first.
+
+08:39.482 --> 08:43.866
+And not (B) or (D): no byte is copied, in either direction.
+
+08:44.400 --> 08:51.053
+(iii): the kernel builds with no error and no warning. Why can the compiler not catch the mistake?
+
+08:52.553 --> 08:55.942
+(B): rustc checks each call against the declaration,
+
+08:56.542 --> 08:59.592
+but nothing checks the declaration against the assembly.
+
+09:00.120 --> 09:04.065
+The call matches the new declaration, so every check passes.
+
+09:04.665 --> 09:10.602
+Not (C): unsafe keeps the type checks. It marks a promise the compiler cannot check.
+
+09:11.202 --> 09:15.381
+As 20a puts it, the signature is a promise you are making.
+
+09:17.000 --> 09:20.750
+Part (d) is from 06r_collections, in week 4.
+
+09:21.750 --> 09:26.793
+06r keeps a process table as an array of Option&lt;u32&gt;:
+
+09:27.393 --> 09:32.257
+None is a free slot, and Some(pid) is a slot that holds process pid.
+
+09:32.760 --> 09:35.149
+find_pid was given in 06r.
+
+09:35.749 --> 09:40.343
+It walks the table with enumerate, which pairs each slot with its index.
+
+09:40.943 --> 09:47.518
+If a slot holds Some(pid), it returns Some(index). If no slot does, it returns None.
+
+09:48.040 --> 09:53.379
+The table holds pids 4, 8 and 2, and its first and fourth slots are free.
+
+09:53.979 --> 09:56.496
+Keep the two numbers of 06r straight:
+
+09:57.096 --> 10:02.111
+a slot's index is its position in the table, and the pid is the process in it.
+
+10:02.640 --> 10:04.251
+(i): find_pid of 2.
+
+10:05.751 --> 10:07.360
+It returns Some(4).
+
+10:07.960 --> 10:10.571
+Some(2) is the last slot, index 4,
+
+10:11.171 --> 10:16.312
+so find_pid returns that index, in an Option: where the pid is, not the pid.
+
+10:16.840 --> 10:20.827
+The table also has a Some(4): the slot with pid 4.
+
+10:21.427 --> 10:26.599
+The Some(4) in the answer is not that slot. The answer's 4 is an index.
+
+10:27.120 --> 10:28.826
+(ii): find_pid of 3.
+
+10:30.326 --> 10:31.605
+It returns None.
+
+10:32.205 --> 10:38.029
+No slot holds Some(3), so the loop runs to its end, and find_pid returns None.
+
+10:38.560 --> 10:40.925
+(iii): a match on find_pid of 4.
+
+10:41.525 --> 10:47.219
+4 is in the second slot, so find_pid returns Some, holding that slot's index.
+
+10:48.719 --> 10:49.976
+The match gives 2:
+
+10:50.576 --> 10:54.640
+the Some arm binds i to the index, and gives i + 1.
+
+10:55.160 --> 10:57.696
+Both arms give a usize, not an Option,
+
+10:58.296 --> 11:00.642
+so the answer is 2, not Some(2).
+
+11:01.242 --> 11:04.558
+And it is the index plus 1, not the pid plus 1.
+
+11:05.080 --> 11:08.571
+(iv): let i be a usize, set to find_pid of 2.
+
+11:09.171 --> 11:11.825
+find_pid returns an Option&lt;usize&gt;.
+
+11:13.325 --> 11:15.121
+(A): it does not compile.
+
+11:15.721 --> 11:18.311
+An Option&lt;usize&gt; is not a usize.
+
+11:18.911 --> 11:23.625
+Not (B): find_pid of 2 is Some(4), and the 4 stays inside it.
+
+11:25.660 --> 11:31.472
+In question (iii), find_pid of 4 returns Some(1), the second slot's index.
+
+11:32.072 --> 11:36.541
+The key's note: Some(1) matches Some(i), with i = 1.
+
+11:37.141 --> 11:42.085
+For question (iv): error E0308, mismatched types.
+
+11:43.085 --> 11:46.103
+Take the value out with match, if let, or unwrap.
+
+11:47.120 --> 11:50.573
+(v): unwrap, on what find_pid returns for 3.
+
+11:51.173 --> 11:54.969
+That is None, from question (ii): no value to take out.
+
+11:56.469 --> 11:57.840
+(B): it panics.
+
+11:58.440 --> 12:03.878
+Not (C): the call to unwrap compiles, and the None is found only when it runs.
+
+12:05.400 --> 12:06.755
+That's Problem 1.
+
+12:07.355 --> 12:10.409
+(a): an add can overflow, and checked_add says so.
+
+12:11.009 --> 12:14.398
+(b): a Copy type copies, and anything else moves.
+
+12:14.998 --> 12:18.943
+(c): nothing checks an extern declaration against the assembly.
+
+12:19.543 --> 12:22.496
+(d): take the value out of an Option yourself.

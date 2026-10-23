@@ -382,6 +382,8 @@ weeks:
       links:
         - text: "Midterm 1"
           url: "assignments/midterm-1/"
+        - text: "Solutions"
+          url: "assignments/midterm-1-solutions/"
         - text: "Exam Prep"
           url: "guides/exam-prep/"
 

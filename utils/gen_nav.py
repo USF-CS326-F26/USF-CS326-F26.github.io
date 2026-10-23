@@ -28,6 +28,7 @@ ASSIGNMENT_ORDER = [
     ("setup.md", "Setup"),
     ("practice-set-01.md", "Practice Set 1"),
     ("midterm-1.md", "Midterm 1"),
+    ("midterm-1-solutions.md", "Midterm 1 Solutions"),
     ("practice-set-02.md", "Practice Set 2"),
     ("midterm-2.md", "Midterm 2"),
     ("practice-set-03.md", "Practice Set 3"),

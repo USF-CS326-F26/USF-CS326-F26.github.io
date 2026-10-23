@@ -1,0 +1,367 @@
+WEBVTT
+
+00:00.000 --> 00:05.759
+Midterm 1, Section 01, Problem 3: Scheduling Policies as Traits.
+
+00:06.359 --> 00:11.797
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:12.397 --> 00:16.289
+A script reveals it, and this explainer was built with Claude.
+
+00:16.800 --> 00:23.615
+Problem 3 draws on 07r_traits, from week 4, on Thursday, September 17.
+
+00:24.215 --> 00:27.734
+One of the pieces you wrote there was pick_next for RoundRobin:
+
+00:28.334 --> 00:33.965
+scan forward from a cursor, take the first Runnable slot, and move the cursor past it.
+
+00:34.480 --> 00:39.246
+The exercise gave you the trait Scheduler, with its default method run_for,
+
+00:39.846 --> 00:41.478
+and the Priority policy.
+
+00:42.078 --> 00:46.728
+And its README set out the two kinds of dispatch, static and dynamic.
+
+00:47.840 --> 00:51.850
+Problem 3 opens with the code of exercise 07r.
+
+00:52.850 --> 00:56.530
+It separates the scheduling policy from the loop that uses it.
+
+00:57.130 --> 01:00.692
+Each process slot is Unused, Runnable or Sleeping.
+
+01:01.200 --> 01:04.826
+The trait Scheduler names what every policy must provide.
+
+01:05.426 --> 01:10.294
+Its one required method is pick_next: the slot to run next, or None.
+
+01:10.894 --> 01:15.122
+run_for is a default method, written once, in the trait itself.
+
+01:15.640 --> 01:18.390
+Each turn, run_for calls pick_next once.
+
+01:18.990 --> 01:21.473
+It pushes each slot it is given onto picked,
+
+01:22.073 --> 01:25.900
+and the first None ends the loop early. Then it returns picked.
+
+01:26.400 --> 01:29.588
+RoundRobin is the policy whose pick_next you wrote.
+
+01:30.188 --> 01:34.551
+It keeps one cursor, next, and RoundRobin::new() starts it at 0.
+
+01:35.151 --> 01:36.943
+pick_next scans forward from it:
+
+01:37.543 --> 01:42.043
+slot is next plus off, mod n, which wraps the scan around the end.
+
+01:42.560 --> 01:45.995
+At the first Runnable slot, the cursor moves one past it,
+
+01:46.595 --> 01:50.071
+wrapping the same way, and pick_next returns Some(slot).
+
+01:50.671 --> 01:54.754
+If no slot is Runnable, the loop runs out, and it returns None.
+
+01:56.280 --> 02:02.590
+Part (a). This code runs RoundRobin for 5 turns, on these states, one for each slot.
+
+02:03.190 --> 02:06.091
+Fill in the table for the five calls to pick_next.
+
+02:06.691 --> 02:08.802
+Calls 1 and 2 are done for you.
+
+02:09.320 --> 02:12.487
+Call 1 starts with rr.next at 0.
+
+02:13.087 --> 02:16.476
+Slot 0 is Runnable, so the scan stops at once,
+
+02:17.076 --> 02:21.617
+and it returns Some(0). The cursor moves one past it, to 1.
+
+02:22.120 --> 02:23.729
+Call 2 starts at 1.
+
+02:24.329 --> 02:29.314
+Slot 1 is Sleeping, so the scan moves on to slot 2, which is Runnable.
+
+02:29.914 --> 02:33.742
+So it returns Some(2), and rr.next is 3.
+
+02:35.240 --> 02:38.703
+Call 3 starts where call 2 left the cursor, at 3.
+
+02:39.703 --> 02:43.039
+Slot 3 is Runnable, so the scan stops right there,
+
+02:44.039 --> 02:45.777
+and it returns Some(3).
+
+02:46.777 --> 02:49.194
+The cursor moves one past it, to 4.
+
+02:50.720 --> 02:52.500
+Call 4 starts at 4.
+
+02:53.500 --> 02:58.341
+Slot 4 is Unused, so the scan wraps around the end, to slot 0.
+
+02:59.341 --> 03:02.859
+Slot 0 is Runnable: it returns Some(0).
+
+03:03.859 --> 03:06.973
+And the cursor moves one past slot 0, to 1.
+
+03:08.480 --> 03:10.186
+Call 5 starts at 1.
+
+03:11.186 --> 03:16.171
+Slot 1 is Sleeping, so the scan moves on to slot 2, which is Runnable.
+
+03:17.171 --> 03:18.587
+It returns Some(2),
+
+03:19.587 --> 03:23.543
+and the cursor moves to 3. Call 5 repeats call 2.
+
+03:24.640 --> 03:27.828
+No call returned None, so all 5 turns ran.
+
+03:29.328 --> 03:31.815
+picked holds [0, 2, 3, 0, 2]:
+
+03:32.415 --> 03:37.096
+run_for pushes each slot that pick_next returns, in the order returned.
+
+03:38.200 --> 03:43.463
+Slots 0, 2 and 3 can run, and each ran once before any ran twice.
+
+03:44.063 --> 03:48.958
+The rotation always comes back around: round robin starves no slot.
+
+03:50.680 --> 03:51.736
+Part (b).
+
+03:52.736 --> 03:56.457
+The 07r file has a second policy, Priority,
+
+03:57.057 --> 04:02.795
+which runs the most urgent runnable slot. And these two functions run any policy.
+
+04:03.320 --> 04:04.865
+run_static is generic:
+
+04:05.465 --> 04:10.285
+S stands for any one type that implements Scheduler, chosen at each call.
+
+04:10.885 --> 04:13.763
+Its body runs that policy for 3 turns.
+
+04:14.280 --> 04:16.124
+run_dyn is not generic.
+
+04:16.724 --> 04:18.812
+It takes a reference to dyn Scheduler:
+
+04:19.412 --> 04:25.447
+a value of any type that implements Scheduler, though run_dyn itself is not told which.
+
+04:26.560 --> 04:33.513
+A program calls run_static three times: with a RoundRobin, a Priority, and another RoundRobin.
+
+04:34.113 --> 04:37.045
+It calls run_dyn twice: once with each.
+
+04:37.560 --> 04:41.644
+(i): how many copies of run_static does the compiler generate?
+
+04:43.144 --> 04:44.290
+(B), 2.
+
+04:45.290 --> 04:46.324
+One per type:
+
+04:46.924 --> 04:52.385
+one copy for each distinct type it is called with, RoundRobin and Priority.
+
+04:53.480 --> 04:59.933
+The second RoundRobin call reuses the first one's copy: (C), 3, would be one per call.
+
+05:00.533 --> 05:03.655
+This is monomorphization, or static dispatch:
+
+05:04.255 --> 05:09.150
+each copy knows its type, so its calls are resolved at compile time.
+
+05:09.680 --> 05:12.043
+(ii): how many copies of run_dyn?
+
+05:13.543 --> 05:14.481
+(A), 1.
+
+05:15.081 --> 05:20.657
+run_dyn is not generic, so there is exactly one copy, shared by both calls.
+
+05:21.160 --> 05:25.072
+(iii): then how does that one copy call the right type's methods?
+
+05:26.572 --> 05:27.959
+(B), at run time.
+
+05:28.559 --> 05:33.347
+The reference carries a pointer to a table of that type's methods, a vtable,
+
+05:33.947 --> 05:36.196
+and each call looks up its method there.
+
+05:37.320 --> 05:39.143
+That is dynamic dispatch.
+
+05:39.743 --> 05:46.353
+(A) is static dispatch, the way run_static works: a copy per type, chosen at compile time.
+
+05:46.953 --> 05:51.657
+run_dyn has only its one copy, so the choice waits for run time.
+
+05:53.360 --> 05:57.255
+Part (c). Backward is a policy that rotates the other way.
+
+05:57.855 --> 06:00.637
+Each call looks at the slots going down from next,
+
+06:01.237 --> 06:06.177
+wrapping from 0 around to the last slot, and takes the first Runnable one.
+
+06:06.680 --> 06:10.145
+Each time it looks at a slot, it steps the cursor down one,
+
+06:10.745 --> 06:12.899
+wrapping from 0 to the last slot.
+
+06:13.499 --> 06:16.111
+And Backward::new() starts with next at 0.
+
+06:16.640 --> 06:19.433
+In the code, the slot it looks at is next itself,
+
+06:20.033 --> 06:23.574
+and the cursor steps down first, before the slot is tested.
+
+06:24.174 --> 06:25.549
+Two boxes are blank:
+
+06:26.149 --> 06:30.557
+box 1, for when next is 0, and box 2, for any other next.
+
+06:31.080 --> 06:33.536
+(i): which option goes in each box?
+
+06:34.136 --> 06:38.839
+Box 1 runs when next is 0: the cursor wraps to the last slot.
+
+06:40.339 --> 06:42.427
+That is (C), n - 1.
+
+06:43.027 --> 06:46.907
+(A), n, is out of bounds: the last slot is n - 1.
+
+06:47.440 --> 06:50.245
+Box 2 runs whenever next is not 0.
+
+06:51.745 --> 06:54.539
+That is (D), self.next - 1:
+
+06:55.139 --> 06:59.949
+the cursor steps down one. (C) would jump to the last slot every time.
+
+07:00.480 --> 07:06.528
+(ii): why test whether next is 0, instead of always using self.next - 1?
+
+07:08.028 --> 07:11.406
+(A). When next is 0, subtracting 1 underflows:
+
+07:12.006 --> 07:16.622
+a usize has no value below 0, and a debug build panics.
+
+07:17.720 --> 07:21.729
+(C) is not the reason: subtraction works on a usize.
+
+07:22.329 --> 07:27.405
+Only taking 1 from 0 fails, and the test sends that case to box 1.
+
+07:28.005 --> 07:34.293
+Nor is (D): without the test, the cursor would still step down, by self.next - 1.
+
+07:36.000 --> 07:39.955
+(iii): run Backward for 4 turns, on the states from part (a),
+
+07:40.555 --> 07:45.065
+and show the work: for each call, the slots it looks at and the slot it takes.
+
+07:46.560 --> 07:50.687
+Call 1 starts with next at 0, and looks at slot 0.
+
+07:51.287 --> 07:55.445
+Since next is 0, box 1 wraps the cursor to the last slot.
+
+07:56.045 --> 07:57.761
+Slot 0 is Runnable.
+
+07:59.780 --> 08:03.181
+It takes 0, and next is now 4, the last slot.
+
+08:03.781 --> 08:08.335
+Call 2 looks at slot 4 first, and box 2 steps the cursor down.
+
+08:08.935 --> 08:14.090
+Slot 4 is Unused, so the scan goes on to slot 3, which is Runnable.
+
+08:15.600 --> 08:17.626
+It takes 3, and next is 2.
+
+08:18.626 --> 08:21.952
+Call 3 starts at 2, and slot 2 is Runnable.
+
+08:23.452 --> 08:27.629
+So it takes 2 at once, and next is 1, where call 4 begins.
+
+08:28.160 --> 08:34.206
+Call 4 starts at 1. Slot 1 is Sleeping, so the scan goes on, down to slot 0,
+
+08:34.806 --> 08:36.085
+which is Runnable.
+
+08:37.085 --> 08:40.349
+It takes 0, and next wraps around to 4 again.
+
+08:42.380 --> 08:47.609
+So run_for returns [0, 3, 2, 0]: the slots it took, in order.
+
+08:48.209 --> 08:53.435
+The same Runnable slots that RoundRobin took, visited the other way around.
+
+08:55.160 --> 08:56.631
+That's Problem 3.
+
+08:57.231 --> 09:01.079
+(a): RoundRobin moves its cursor one past the slot it takes.
+
+09:01.679 --> 09:07.467
+(b): generic code gets a copy per type used; dyn, one copy and a vtable.
+
+09:08.067 --> 09:12.160
+(c): on a usize, test for 0 before you subtract 1.

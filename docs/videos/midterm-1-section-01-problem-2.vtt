@@ -1,0 +1,415 @@
+WEBVTT
+
+00:00.000 --> 00:04.361
+Midterm 1, Section 01, Problem 2: Process States.
+
+00:04.961 --> 00:10.399
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:10.999 --> 00:14.891
+A script reveals it, and this explainer was built with Claude.
+
+00:15.400 --> 00:24.431
+Problem 2 draws on one OSlings exercise: 05r_enums_match, from week 3, on Friday, September 11.
+
+00:25.031 --> 00:29.388
+You wrote three functions: can_run, next_state and exit_status.
+
+00:29.920 --> 00:32.072
+Everything else came with the exercise:
+
+00:32.672 --> 00:34.918
+the two enums, ProcState and Event,
+
+00:35.518 --> 00:37.533
+the function apply, and the tests.
+
+00:38.640 --> 00:42.960
+Problem 2 opens with the solution to exercise 05r.
+
+00:43.960 --> 00:46.771
+It has one new event, Kill, for part (b).
+
+00:47.371 --> 00:49.546
+The numbered boxes are for part (b),
+
+00:50.146 --> 00:53.089
+and the blank line in can_run is for part (c).
+
+00:53.600 --> 00:56.681
+ProcState is everything a process can be doing.
+
+00:57.281 --> 00:59.875
+Unused is a slot with no process in it.
+
+01:00.475 --> 01:02.691
+A sleeping process waits on a channel,
+
+01:03.291 --> 01:06.352
+and a zombie keeps its exit status for its parent.
+
+01:06.880 --> 01:13.043
+Event is everything that can happen to a process, one variant per line, each with its comment.
+
+01:13.643 --> 01:17.833
+Sleep and Wake both name a channel, and Exit carries a status.
+
+01:18.433 --> 01:21.806
+The last one, Kill, is the event this exam adds.
+
+01:22.920 --> 01:28.467
+can_run asks whether a process can run now, or as soon as the scheduler reaches it.
+
+01:29.067 --> 01:32.735
+Runnable and Running give true, and the other three give false.
+
+01:33.335 --> 01:38.337
+Its match names every variant, with no catch-all. Remember that for part (c).
+
+01:38.840 --> 01:42.701
+next_state matches the state and the event together, as a pair.
+
+01:43.301 --> 01:47.076
+Each arm is one legal move, and gives Some of the new state.
+
+01:47.676 --> 01:50.379
+Unused, with Alloc, gives Some of Runnable.
+
+01:50.880 --> 01:54.294
+The wake arm has a guard: if c == w.
+
+01:54.894 --> 01:59.362
+It matches only when the wakeup names the channel the process sleeps on.
+
+01:59.962 --> 02:03.737
+If the guard is false, matching goes on to the arms below.
+
+02:04.240 --> 02:10.884
+Part (b) completes the Kill arm: box 1 for the states the arm matches, and box 2 for the new state.
+
+02:11.484 --> 02:14.479
+Last comes the underscore. It matches every pair,
+
+02:15.079 --> 02:17.329
+and its None means the move is illegal.
+
+02:17.840 --> 02:19.473
+apply calls next_state.
+
+02:20.073 --> 02:21.610
+Some gives the new state.
+
+02:22.210 --> 02:24.554
+None gives back the old state, untouched:
+
+02:25.154 --> 02:26.678
+the event is ignored.
+
+02:27.800 --> 02:33.028
+Part (a). Starting from Unused, the kernel applies each event below, in order.
+
+02:33.628 --> 02:40.114
+Give the state after each call, and say whether apply ignored the event because next_state returned None.
+
+02:40.714 --> 02:42.847
+Steps 1 and 4 are done for you.
+
+02:43.360 --> 02:44.927
+Step 1 shows the way.
+
+02:45.527 --> 02:50.795
+Alloc, from Unused, matches the first arm: Runnable, and no, not ignored.
+
+02:51.395 --> 02:56.225
+No event in this table is Kill, so the empty boxes play no part here.
+
+02:56.760 --> 02:59.005
+Step 2: Schedule, from Runnable.
+
+02:59.605 --> 03:01.225
+The second arm matches.
+
+03:02.225 --> 03:03.046
+Running.
+
+03:04.046 --> 03:06.799
+And no, not ignored: the pair has an arm.
+
+03:07.320 --> 03:09.937
+Step 3: Sleep, on channel 0x30.
+
+03:10.537 --> 03:14.109
+A running process can sleep, and the arm keeps the channel.
+
+03:15.609 --> 03:17.603
+Sleeping, on channel 0x30.
+
+03:18.603 --> 03:20.053
+And no, not ignored.
+
+03:20.560 --> 03:22.330
+Step 4 was done for you.
+
+03:22.930 --> 03:26.897
+Preempt only moves a running process, and this one is asleep.
+
+03:27.497 --> 03:31.145
+Only the catch-all matches, so next_state returns None.
+
+03:32.240 --> 03:34.052
+So apply keeps the old state:
+
+03:34.652 --> 03:36.977
+still Sleeping, on channel 0x30.
+
+03:37.577 --> 03:39.545
+And yes, the event was ignored.
+
+03:40.040 --> 03:42.679
+Step 5: Wake, on channel 0x30.
+
+03:43.279 --> 03:48.333
+The wake arm fits, with c and w both 0x30, so the guard holds.
+
+03:49.333 --> 03:50.229
+Runnable.
+
+03:51.229 --> 03:53.828
+And no, not ignored: the channels match.
+
+03:54.360 --> 03:56.787
+Step 6: Exit, with status 5.
+
+03:57.387 --> 04:01.942
+The Exit arm wants a running process, and this one is only runnable.
+
+04:02.542 --> 04:06.455
+So only the catch-all matches, and next_state returns None.
+
+04:07.960 --> 04:10.083
+The state after the call is Runnable.
+
+04:10.683 --> 04:14.287
+Not None: apply returns a ProcState, never an Option.
+
+04:15.287 --> 04:18.505
+Ignored: yes, because the process is not running.
+
+04:19.040 --> 04:20.677
+Step 7: Schedule.
+
+04:21.277 --> 04:25.041
+The process is runnable again, so the second arm matches.
+
+04:26.041 --> 04:26.862
+Running.
+
+04:27.862 --> 04:29.312
+And no, not ignored.
+
+04:29.840 --> 04:32.549
+Step 8: Exit, with status 5, again.
+
+04:33.149 --> 04:39.379
+Now the process is running, so the Exit arm matches, and carries the status into the zombie.
+
+04:40.879 --> 04:45.225
+Zombie, with exit status 5: the final state, underlined.
+
+04:46.225 --> 04:47.675
+And no, not ignored.
+
+04:48.800 --> 04:51.028
+So steps 4 and 6 were ignored.
+
+04:51.628 --> 04:54.779
+Each time, next_state found no arm but the catch-all,
+
+04:55.379 --> 04:57.574
+and apply left the state as it was.
+
+04:59.280 --> 05:06.870
+Part (b). Killing a process that is Runnable, Running, or Sleeping makes it a zombie, with exit status -1.
+
+05:07.470 --> 05:10.543
+Killing an unused slot or a zombie is illegal.
+
+05:11.040 --> 05:15.670
+(i): write the letter of the right option in boxes 1 and 2 of the listing.
+
+05:16.270 --> 05:18.488
+Box 1 is the pattern for the state.
+
+05:19.088 --> 05:22.522
+It must match every state that can be killed, and no other.
+
+05:24.540 --> 05:26.927
+D: Runnable, or Running, or Sleeping.
+
+05:27.527 --> 05:29.989
+The bars make one or-pattern of all three,
+
+05:30.589 --> 05:34.065
+and the two dots match a sleeping process on any channel.
+
+05:35.160 --> 05:39.506
+The underscore, (A), would also kill an unused slot and a zombie.
+
+05:40.106 --> 05:43.189
+(B) covers only Running, and (C) only Sleeping.
+
+05:43.720 --> 05:46.281
+Box 2 is the new state, inside Some.
+
+05:47.781 --> 05:50.811
+B: a zombie, with exit status -1.
+
+05:51.411 --> 05:53.607
+(A) and (D) are not zombies at all.
+
+05:54.720 --> 06:01.794
+And (C)? It writes the field exit_status with no value, and that needs a variable named exit_status.
+
+06:02.394 --> 06:06.437
+In the Exit arm, the pattern Exit(exit_status) binds one.
+
+06:07.037 --> 06:12.423
+The Kill arm binds no exit_status, and its status is always -1.
+
+06:12.920 --> 06:16.152
+(ii): with the arm in place, what does apply return?
+
+06:16.752 --> 06:23.677
+The first is done for you: a sleeping process, killed, becomes a zombie, with exit status -1.
+
+06:24.277 --> 06:27.609
+The second kills a zombie whose exit status is 5.
+
+06:28.720 --> 06:34.684
+Zombie is not in box 1's pattern, so Kill on a zombie reaches the catch-all: None.
+
+06:36.184 --> 06:40.733
+So apply keeps the state: still a zombie, with exit status 5.
+
+06:41.840 --> 06:46.567
+Not exit status -1: the Kill arm never matches a zombie.
+
+06:47.167 --> 06:51.373
+And not None: apply hands back the old state, as in part (a).
+
+06:51.880 --> 06:55.738
+(iii): suppose the Kill arm were written below the catch-all instead.
+
+06:56.338 --> 07:00.752
+Arms are tried from top to bottom, and the first that matches wins.
+
+07:02.252 --> 07:06.220
+B: it compiles, with a warning, and every Kill is ignored.
+
+07:07.320 --> 07:13.279
+The underscore matches every pair, Kill included, so an arm below it can never be reached.
+
+07:13.879 --> 07:18.254
+An unreachable arm is a warning, not an error, so (A) is wrong.
+
+07:18.854 --> 07:21.595
+Every Kill gets None, and apply ignores it.
+
+07:23.320 --> 07:29.400
+Part (c) adds a state, Stopped: a process paused by the user, as with Ctrl-Z.
+
+07:30.000 --> 07:33.455
+And two events: Stop moves a running process to Stopped,
+
+07:34.055 --> 07:37.103
+and Continue moves a stopped process to Runnable.
+
+07:37.600 --> 07:42.421
+(i): you add just the three new variants to the two enums, and recompile.
+
+07:43.021 --> 07:45.015
+Which functions stop compiling?
+
+07:46.515 --> 07:48.037
+B: can_run only.
+
+07:48.560 --> 07:52.411
+can_run's match lists the states by name, with no catch-all.
+
+07:53.011 --> 07:56.923
+Stopped now has no arm, and a match must cover every value,
+
+07:57.523 --> 07:59.603
+so can_run stops compiling.
+
+08:00.720 --> 08:06.981
+next_state still compiles: its underscore arm matches any pair at all, the new ones included.
+
+08:07.581 --> 08:13.382
+That is the danger: the compiler cannot remind you that Stop and Continue need arms.
+
+08:13.982 --> 08:17.459
+Until someone adds them, both are silently illegal.
+
+08:17.960 --> 08:22.260
+(ii): write the one line can_run needs, on the blank line in the listing.
+
+08:23.760 --> 08:25.732
+ProcState::Stopped =&gt; false.
+
+08:26.332 --> 08:29.925
+A stopped process cannot run until it gets a Continue.
+
+08:30.440 --> 08:34.897
+(iii): circle the two arms next_state needs for Stop and Continue.
+
+08:35.497 --> 08:40.739
+They go above the catch-all: below it, as in part (b), they could never be reached.
+
+08:42.740 --> 08:44.921
+A: Running, with Stop, gives Stopped.
+
+08:46.421 --> 08:49.337
+And D: Stopped, with Continue, gives Runnable.
+
+08:49.937 --> 08:53.702
+Each one is a sentence of the statement, written as an arm.
+
+08:54.800 --> 08:57.507
+(B) runs Stop backward, from Stopped to Running,
+
+08:58.107 --> 09:01.945
+and (C) has Continue take a runnable process to Stopped.
+
+09:02.545 --> 09:08.142
+And Continue gives Runnable, not Running: the scheduler still has to pick the process.
+
+09:10.140 --> 09:12.817
+The key's note explains parts (i) and (ii).
+
+09:13.417 --> 09:21.907
+can_run lists its states by name, with no catch-all, so it fails with error E0004: Stopped not covered.
+
+09:22.507 --> 09:26.517
+next_state's underscore arm silently covers every new pair.
+
+09:27.640 --> 09:31.621
+And a catch-all that gives false, in can_run, would also compile,
+
+09:32.221 --> 09:34.055
+but it would hide the next new state.
+
+09:34.655 --> 09:39.805
+Name every variant, and each new state gets a real decision, not a default.
+
+09:40.920 --> 09:42.369
+That's Problem 2.
+
+09:42.969 --> 09:46.901
+(a): when next_state returns None, apply keeps the old state.
+
+09:47.501 --> 09:51.616
+(b): the first match wins, so nothing below the catch-all runs.
+
+09:52.216 --> 09:57.065
+(c): name every variant, and a new state makes the compiler hand you the list.

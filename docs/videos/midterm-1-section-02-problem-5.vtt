@@ -1,0 +1,454 @@
+WEBVTT
+
+00:00.000 --> 00:05.531
+Midterm 1, Section 02, Problem 5: The Free List and a Page Table.
+
+00:06.131 --> 00:11.569
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:12.169 --> 00:16.061
+A script reveals it, and this explainer was built with Claude.
+
+00:16.560 --> 00:22.549
+For part (a): 32k_physical_memory, from week 7, on Thursday, October 8.
+
+00:23.149 --> 00:25.055
+You wrote kfree and kalloc:
+
+00:25.655 --> 00:28.672
+push a page onto the free list, and pop one off.
+
+00:29.200 --> 00:36.003
+For parts (b), (c) and (d): 33k_paging, from week 7, on Friday, October 9.
+
+00:36.603 --> 00:39.907
+You wrote Pte::new, Pte::pa and walk,
+
+00:40.507 --> 00:46.691
+which goes down the tables and, when asked to, makes a new, zeroed table wherever one is missing.
+
+00:47.800 --> 00:57.037
+Problem 5 opens with exercise 32k's page allocator, and the page-table entries of exercise 33k.
+
+00:58.037 --> 01:03.916
+A page is PGSIZE bytes: 4096, or 0x1000.
+
+01:04.516 --> 01:09.337
+And the four flags, V, R, W and X, are 1, 2, 4 and 8.
+
+01:09.840 --> 01:11.854
+A Run is a single pointer, next:
+
+01:12.454 --> 01:14.553
+a free page's first 8 bytes.
+
+01:15.153 --> 01:21.017
+The variable FREELIST is the head of the list: the first free page, or null when there is none.
+
+01:21.520 --> 01:24.580
+kfree pushes a page onto the front of the list.
+
+01:25.180 --> 01:27.769
+It writes the current head into the page's next,
+
+01:28.369 --> 01:30.096
+then makes that page the head.
+
+01:30.600 --> 01:32.775
+kalloc pops one off the front.
+
+01:33.375 --> 01:38.503
+It takes the head, and if that is not null, the head moves on to that page's next.
+
+01:39.103 --> 01:42.431
+It returns the page, or null when the list is empty.
+
+01:42.960 --> 01:46.990
+A Pte is one page-table entry, a single number.
+
+01:47.590 --> 01:50.211
+Pte::new packs an address and its flags:
+
+01:50.811 --> 01:55.019
+shift right by 12, then left by 10, and OR in the flags.
+
+01:55.520 --> 02:02.346
+Pte::pa undoes the shifts: right by 10, which drops the flags, then left by 12.
+
+02:02.946 --> 02:05.617
+And a call to is_valid tests the V bit.
+
+02:06.120 --> 02:12.765
+An Sv39 virtual address is three 9-bit indices over a 12-bit offset.
+
+02:13.365 --> 02:18.099
+And a PTE packs a physical page number above ten bits of flags.
+
+02:18.699 --> 02:23.677
+The lowest four are X, W, R and V, worth 8, 4, 2 and 1.
+
+02:25.200 --> 02:33.774
+A page table is one 4096-byte page, holding 512 PTEs of 8 bytes each.
+
+02:34.374 --> 02:37.551
+VPN[2] picks an entry of the root table,
+
+02:38.151 --> 02:45.679
+VPN[1] an entry of a level-1 table, and VPN[0] an entry of a level-0 table.
+
+02:46.200 --> 02:48.269
+Two kinds of valid PTE.
+
+02:48.869 --> 02:54.393
+With R, W and X all clear, it is a branch: its address is the next table.
+
+02:54.993 --> 02:59.362
+With any of them set, it is a leaf: its address is the mapped page.
+
+02:59.880 --> 03:03.706
+For a page-aligned pa, the low 12 bits are zeros,
+
+03:04.306 --> 03:08.785
+so the two shifts of Pte::new are just a divide by 4.
+
+03:09.385 --> 03:16.373
+For example, 0x8000_4000 divided by 4 is 0x2000_1000.
+
+03:16.880 --> 03:22.136
+map_page maps one virtual page, as 33k's mappages does.
+
+03:22.736 --> 03:24.432
+It starts at the root table.
+
+03:25.032 --> 03:30.331
+At level 2, and then at level 1, it looks at the entry that level's index picks.
+
+03:30.840 --> 03:36.875
+If that entry is not valid, it takes a page with kalloc, and fills it with zeros.
+
+03:37.475 --> 03:40.835
+Then it writes a branch into the entry, with only V.
+
+03:41.435 --> 03:44.869
+Either way, it follows the entry down to the next table.
+
+03:45.400 --> 03:52.893
+At level 0, it writes the leaf, Pte::new of pa, with perm and V, into entry VPN[0].
+
+03:53.493 --> 03:58.570
+In 33k, walk went down the tables and mappages wrote the leaf.
+
+03:59.170 --> 04:00.694
+map_page does both.
+
+04:02.200 --> 04:05.913
+Part (a). The free list starts with four pages, then null.
+
+04:06.513 --> 04:09.360
+The kernel runs the four lines below, in order.
+
+04:09.960 --> 04:15.250
+For each: what it returns, and FREELIST afterwards. The first line is done for you.
+
+04:15.760 --> 04:17.231
+kalloc takes the head:
+
+04:17.831 --> 04:21.831
+the first line returns 0x8040_C000.
+
+04:22.431 --> 04:30.012
+And FREELIST moves on to that page's next, 0x8040_8000, the second page on the list.
+
+04:30.520 --> 04:32.953
+The second line runs kalloc again.
+
+04:33.953 --> 04:36.457
+It returns the head, page 8000.
+
+04:37.457 --> 04:44.546
+And FREELIST moves on to the page after it on the list: 0x8041_0000.
+
+04:45.080 --> 04:48.219
+The third line, kfree(a), returns nothing.
+
+04:48.819 --> 04:52.799
+It gives back page C000, the page the first line took.
+
+04:53.399 --> 04:59.294
+kfree writes the head, 0x8041_0000, into that page's next,
+
+05:00.294 --> 05:05.297
+then makes it the head: FREELIST is 0x8040_C000.
+
+05:05.800 --> 05:08.486
+The fourth line runs kalloc once more.
+
+05:09.486 --> 05:11.938
+It pops the head, page C000 again:
+
+05:12.538 --> 05:15.746
+the page freed last is the first one handed out.
+
+05:16.746 --> 05:25.055
+And FREELIST moves on to that page's next: 0x8041_0000, the link kfree saved there.
+
+05:25.960 --> 05:30.769
+Right after kfree(a), what do the first 8 bytes of page a hold?
+
+05:32.269 --> 05:35.135
+0x8041_0000.
+
+05:35.735 --> 05:40.479
+Those 8 bytes are the page's next, where kfree stored the old FREELIST:
+
+05:41.079 --> 05:46.455
+the head before page C000 went back on, not page C000 itself.
+
+05:48.160 --> 05:50.560
+Part (b) continues from part (a).
+
+05:51.160 --> 05:55.617
+The kernel fills page b with zeros, and makes it the root table.
+
+05:56.217 --> 06:02.125
+Page b is 0x8040_8000, the page the second line returned.
+
+06:02.640 --> 06:04.990
+And the free list is as part (a) left it.
+
+06:05.590 --> 06:09.140
+FREELIST is 0x8041_0000,
+
+06:09.740 --> 06:16.705
+and the next page after it is still 0x8040_4000, as at the start. Then null.
+
+06:17.240 --> 06:19.041
+Then the kernel calls map_page,
+
+06:19.641 --> 06:29.143
+to map the virtual page 0x0080_5000 to the physical page 0x8030_0000, readable and executable.
+
+06:29.743 --> 06:37.511
+Its indices are given: VPN[2] is 0, VPN[1] is 4, and VPN[0] is 5.
+
+06:38.640 --> 06:43.684
+Fill in the three PTEs the call writes. The first row is done for you.
+
+06:44.284 --> 06:51.648
+Each row gives the table the entry is in, its index, the value written, branch or leaf, and what it points at.
+
+06:52.760 --> 06:59.321
+The first row is level 2: the root, at 0x8040_8000, index 0.
+
+06:59.921 --> 07:03.622
+The root was just zeroed, so that entry is not valid.
+
+07:04.222 --> 07:11.448
+map_page takes a page with kalloc, the head of the list: 0x8041_0000.
+
+07:11.960 --> 07:16.117
+It fills that page with zeros, and writes a branch into the entry:
+
+07:16.717 --> 07:19.511
+Pte::new of the page, with only V.
+
+07:20.111 --> 07:28.547
+The page's address divided by 4, with V ORed in: the 0x2010_4001 printed in the row.
+
+07:29.080 --> 07:31.887
+Either way, map_page follows the entry down.
+
+07:32.487 --> 07:37.223
+So the second row is at level 1, in the table the root entry points at:
+
+07:38.223 --> 07:42.175
+0x8041_0000, at index 4.
+
+07:42.680 --> 07:47.169
+That table was just zeroed too, so its entry 4 is not valid.
+
+07:47.769 --> 07:50.210
+kalloc takes the next page on the list:
+
+07:51.210 --> 07:53.863
+0x8040_4000.
+
+07:54.463 --> 08:00.810
+Not 0x8041_0000 again: the root's kalloc already took that one.
+
+08:01.320 --> 08:05.053
+The entry gets Pte::new of that page, with only V:
+
+08:06.053 --> 08:08.537
+0x2010_1001,
+
+08:09.137 --> 08:12.797
+which is that address divided by 4, with V ORed in.
+
+08:13.797 --> 08:17.337
+A branch: V is set, and R, W and X are clear.
+
+08:18.240 --> 08:21.737
+Then level 0, in the table the second row points at:
+
+08:22.737 --> 08:26.513
+0x8040_4000, at index 5.
+
+08:27.513 --> 08:33.346
+At level 0, map_page writes the leaf: Pte::new of pa, with perm and V.
+
+08:33.880 --> 08:36.631
+A leaf points at the mapped page itself, pa:
+
+08:37.631 --> 08:40.261
+0x8030_0000.
+
+08:40.861 --> 08:45.939
+Its value is that address divided by 4, with R, X and V ORed in:
+
+08:46.939 --> 08:50.663
+0x200C_000B.
+
+08:51.263 --> 08:53.581
+And it is a leaf: R and X are set.
+
+08:54.080 --> 08:56.031
+After the call, what is FREELIST?
+
+08:57.531 --> 08:58.299
+null.
+
+08:59.799 --> 09:09.819
+map_page called kalloc twice on the way down, for 0x8041_0000 and then page 4000: the rest of the list.
+
+09:10.920 --> 09:18.160
+The key's note also works out the leaf's value: 0x8030_0000 divided by 4.
+
+09:19.160 --> 09:22.583
+That is 0x200C_0000.
+
+09:23.183 --> 09:26.797
+Then OR in R plus X plus V, which is 0xB.
+
+09:28.520 --> 09:31.271
+Part (c) uses the tables of part (b).
+
+09:31.871 --> 09:38.201
+(i): where does the virtual address 0x0080_5123 translate to?
+
+09:38.720 --> 09:43.049
+Its low 12 bits are the offset, its last three hex digits.
+
+09:43.649 --> 09:51.023
+The bits above them name the page that part (b) mapped, 0x0080_5000, with the same three indices.
+
+09:51.623 --> 09:53.680
+So the walk ends at the same leaf.
+
+09:55.700 --> 09:59.433
+0x8030_0123.
+
+10:00.433 --> 10:04.387
+The leaf's page, plus the offset, 0x123.
+
+10:04.987 --> 10:10.971
+The 5 before the offset is part of VPN[0]: it is translated, not copied.
+
+10:11.480 --> 10:19.020
+(ii): a program uses the virtual address 0x0080_6000. Its indices are 0, 4 and 6.
+
+10:19.620 --> 10:21.326
+What happens? Circle one.
+
+10:21.840 --> 10:24.835
+The walk follows the same two branches as before,
+
+10:25.435 --> 10:28.858
+to the same level-0 table, and looks at entry 6.
+
+10:29.458 --> 10:34.023
+map_page filled that table with zeros, and wrote only entry 5.
+
+10:34.520 --> 10:38.167
+So entry 6 is still 0, and its V bit is clear.
+
+10:39.167 --> 10:44.569
+(C): a page fault. The entry is not valid, so there is nothing to translate.
+
+10:45.480 --> 10:51.547
+Not (A) or (D): entry 6 is an entry of its own, and nothing maps it to any page.
+
+10:52.147 --> 10:55.675
+And not (B): the MMU never calls kalloc.
+
+10:56.275 --> 10:59.057
+Only the kernel does, as map_page did.
+
+11:00.560 --> 11:02.741
+Part (d): work these by hand.
+
+11:03.341 --> 11:11.209
+(i): a PTE holds 0x2001_0007. Circle every flag that is set.
+
+11:11.720 --> 11:13.702
+The flags are the low 10 bits.
+
+11:14.302 --> 11:17.681
+Here, only the last hex digit has any of them set.
+
+11:18.281 --> 11:21.255
+The 2 and the 1 sit higher, in the page number.
+
+11:21.760 --> 11:23.318
+So which flags are set?
+
+11:24.818 --> 11:26.436
+V, R and W.
+
+11:27.436 --> 11:31.665
+0x7 is 4 plus 2 plus 1: W, R and V.
+
+11:32.265 --> 11:34.110
+X, which is 8, is clear.
+
+11:34.640 --> 11:37.069
+(ii): that PTE's address, pa.
+
+11:37.669 --> 11:44.681
+pa shifts right by 10, which drops the flags, then left by 12, which makes it an address again.
+
+11:46.181 --> 11:48.633
+0x8004_0000.
+
+11:49.233 --> 11:53.967
+Its low 12 bits are zero: pa always gives the start of a page.
+
+11:54.480 --> 11:56.545
+(iii): is it a branch or a leaf?
+
+11:57.545 --> 11:59.635
+A leaf: R and W are set.
+
+12:00.160 --> 12:08.471
+(iv): a table is at 0x8040_6000, and each PTE is 8 bytes. Where is entry 5?
+
+12:09.971 --> 12:13.159
+0x8040_6028.
+
+12:14.159 --> 12:19.576
+Entry 5 is 5 times 8, 0x28 bytes, past the start of the table.
+
+12:20.680 --> 12:22.235
+That's Problem 5.
+
+12:22.835 --> 12:26.566
+(a): kfree pushes, kalloc pops, both at the front.
+
+12:27.166 --> 12:30.663
+(b): a missing table is a fresh page from kalloc.
+
+12:31.263 --> 12:33.744
+(c): a zeroed entry is not valid.
+
+12:34.344 --> 12:37.777
+(d): a PTE is a page number above its flags.

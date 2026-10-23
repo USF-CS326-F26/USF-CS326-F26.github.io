@@ -26,4 +26,6 @@ wrote, and the difference is the lesson.
 
 ## Exams
 
-*Posted after each exam is returned.*
+**[Midterm 1](../assignments/midterm-1-solutions.md)**, Thursday, October 15:
+both sections' exams and keys, and a video for each problem that works the key
+on the exam's own pages.
