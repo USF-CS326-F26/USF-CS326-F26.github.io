@@ -222,12 +222,17 @@ The first moves the index to the front of the file, so playback starts before
 the download finishes, and drops the embedded `mov_text` subtitle stream,
 which Chrome and Firefox ignore and Safari would list beside the `<track>` as a
 second English track; the second makes the WebVTT that `<track>` needs (it does not take
-SRT). The ten Midterm 1 solution films are the exception: at about 40 MB each the
-masters would have brought the site near GitHub Pages' 1 GB, so their copies are
-re-encoded (`-c:v libx264 -preset medium -tune stillimage -crf 28 -c:a copy`,
-with the same `-map` and `-movflags +faststart`), about 2.2 MB a minute; CRF 28
-measured SSIM 0.998 against the master, and full-size stills of the smallest code
-and handwriting were indistinguishable from it. The player page is
+SRT). The exam films and `babyswtch` are the exception: the ten Midterm 1 solution
+films, the ten Midterm 1 practice films and `babyswtch` run 3 to 4 MB a minute
+as masters, which would bring the site near GitHub Pages' 1 GB, so their copies
+are re-encoded (`-c:v libx264 -preset medium -tune stillimage -crf 28 -c:a copy`,
+with the same `-map` and `-movflags +faststart`), about 2.1 to 2.6 MB a minute.
+CRF 28 measured SSIM 0.997 to 0.998 against the master (`babyswtch`, dark and
+colored, 0.995), and full-size stills of the smallest code and handwriting were
+indistinguishable from it. The practice films and `babyswtch` were re-encoded on
+Oct 26 from their earlier copies, which held the masters' own streams; that
+freed about 156 MB. The explainer films stay plain copies: at about 2.8 MB a
+minute they are small already. The player page is
 `docs/videos/babyswtch.md`; copy it. Two things in it matter:
 
 - The page is served at `videos/NAME/`, and MkDocs does not rewrite a raw

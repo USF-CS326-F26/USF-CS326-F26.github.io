@@ -14,4 +14,4 @@ Worked on pages 14 to 16: (a) `count_fd`'s state after each read; (b) what goes 
   <track kind="captions" src="../midterm-1-practice-problem-4.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-problem-4.mp4){ download="midterm-1-practice-problem-4.mp4" } (MP4, 24 MB) · [Captions](midterm-1-practice-problem-4.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)
+[Download the video](midterm-1-practice-problem-4.mp4){ download="midterm-1-practice-problem-4.mp4" } (MP4, 15 MB) · [Captions](midterm-1-practice-problem-4.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)

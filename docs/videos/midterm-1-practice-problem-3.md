@@ -14,4 +14,4 @@ Worked on pages 10 to 13: (a) `RoundRobin`'s `run_for` traced slot by slot; (b) 
   <track kind="captions" src="../midterm-1-practice-problem-3.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-problem-3.mp4){ download="midterm-1-practice-problem-3.mp4" } (MP4, 28 MB) · [Captions](midterm-1-practice-problem-3.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)
+[Download the video](midterm-1-practice-problem-3.mp4){ download="midterm-1-practice-problem-3.mp4" } (MP4, 17 MB) · [Captions](midterm-1-practice-problem-3.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)

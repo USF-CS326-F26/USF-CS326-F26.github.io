@@ -14,4 +14,4 @@ Worked on pages 7 to 9, with the `05r_enums_match` code beside each part: (a) ni
   <track kind="captions" src="../midterm-1-practice-problem-2.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-problem-2.mp4){ download="midterm-1-practice-problem-2.mp4" } (MP4, 31 MB) · [Captions](midterm-1-practice-problem-2.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)
+[Download the video](midterm-1-practice-problem-2.mp4){ download="midterm-1-practice-problem-2.mp4" } (MP4, 19 MB) · [Captions](midterm-1-practice-problem-2.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)

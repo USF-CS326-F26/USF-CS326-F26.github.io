@@ -14,4 +14,4 @@ Four parts, worked on the exam's pages 2 to 5: (a) which line of a `write_reg` t
   <track kind="captions" src="../midterm-1-practice-2-problem-1.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-2-problem-1.mp4){ download="midterm-1-practice-2-problem-1.mp4" } (MP4, 45 MB) · [Captions](midterm-1-practice-2-problem-1.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos-2)
+[Download the video](midterm-1-practice-2-problem-1.mp4){ download="midterm-1-practice-2-problem-1.mp4" } (MP4, 28 MB) · [Captions](midterm-1-practice-2-problem-1.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos-2)

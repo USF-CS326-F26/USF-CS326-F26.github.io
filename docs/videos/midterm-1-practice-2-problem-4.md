@@ -14,4 +14,4 @@ Worked on pages 15 to 18, with the allocator's code beside each part: (a) `pgrou
   <track kind="captions" src="../midterm-1-practice-2-problem-4.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-2-problem-4.mp4){ download="midterm-1-practice-2-problem-4.mp4" } (MP4, 34 MB) · [Captions](midterm-1-practice-2-problem-4.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos-2)
+[Download the video](midterm-1-practice-2-problem-4.mp4){ download="midterm-1-practice-2-problem-4.mp4" } (MP4, 22 MB) · [Captions](midterm-1-practice-2-problem-4.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos-2)

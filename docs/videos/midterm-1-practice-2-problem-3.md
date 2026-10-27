@@ -14,4 +14,4 @@ Worked on pages 11 to 14, with the kernel's layout kept beside the work: (a) the
   <track kind="captions" src="../midterm-1-practice-2-problem-3.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-2-problem-3.mp4){ download="midterm-1-practice-2-problem-3.mp4" } (MP4, 43 MB) · [Captions](midterm-1-practice-2-problem-3.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos-2)
+[Download the video](midterm-1-practice-2-problem-3.mp4){ download="midterm-1-practice-2-problem-3.mp4" } (MP4, 27 MB) · [Captions](midterm-1-practice-2-problem-3.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos-2)

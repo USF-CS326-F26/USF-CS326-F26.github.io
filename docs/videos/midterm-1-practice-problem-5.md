@@ -14,4 +14,4 @@ Worked on pages 17 to 20: (a) adding `-n` to `echo`; (b) why a `cat_fd` without 
   <track kind="captions" src="../midterm-1-practice-problem-5.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-problem-5.mp4){ download="midterm-1-practice-problem-5.mp4" } (MP4, 30 MB) · [Captions](midterm-1-practice-problem-5.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)
+[Download the video](midterm-1-practice-problem-5.mp4){ download="midterm-1-practice-problem-5.mp4" } (MP4, 19 MB) · [Captions](midterm-1-practice-problem-5.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)

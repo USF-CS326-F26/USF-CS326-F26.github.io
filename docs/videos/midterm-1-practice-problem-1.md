@@ -14,4 +14,4 @@ Four parts, worked on the exam's pages 2 to 6: (a) `pgroundup` and `count_pages`
   <track kind="captions" src="../midterm-1-practice-problem-1.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-practice-problem-1.mp4){ download="midterm-1-practice-problem-1.mp4" } (MP4, 41 MB) · [Captions](midterm-1-practice-problem-1.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)
+[Download the video](midterm-1-practice-problem-1.mp4){ download="midterm-1-practice-problem-1.mp4" } (MP4, 26 MB) · [Captions](midterm-1-practice-problem-1.vtt) (WebVTT) · [All five problems](../assignments/practice-set-01.md#solution-videos)
