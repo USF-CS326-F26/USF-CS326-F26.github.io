@@ -458,6 +458,8 @@ weeks:
           url: "lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on/"
         - text: "Slides"
           url: "lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on-slides.html"
+        - text: "Watch first · Week 10"
+          url: "videos/week10/"
 
     thursday:
       date: "Oct 29"
@@ -468,6 +470,20 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores/"
+        - text: "Watch first · Week 10"
+          url: "videos/week10/"
+        - text: "Video · One Atomic Step"
+          url: "videos/week10-atomic-step/"
+        - text: "Video · The Guard Holds It"
+          url: "videos/week10-guard/"
+        - text: "Video · Two Counts on One Page"
+          url: "videos/week10-two-counts/"
+        - text: "Explainer · One Atomic Step"
+          url: "https://claude.ai/artifact/R7FQ5qGPtLLYMmANurEaDJ"
+        - text: "Explainer · The Guard Holds It"
+          url: "https://claude.ai/artifact/4AGctGPCFZQM4SLvpv16tK"
+        - text: "Explainer · Two Counts on One Page"
+          url: "https://claude.ai/artifact/EXGs5GbbrrPuzfrsdy2fhx"
 
     friday:
       date: "Oct 30"
@@ -480,6 +496,14 @@ weeks:
           url: "prep/10-cs326-2026-10-30-prep-virtual-memory/"
         - text: "QEMU and GDB"
           url: "guides/qemu-gdb/"
+        - text: "Video · The Identity Map"
+          url: "videos/week10-identity-map/"
+        - text: "Video · Packing satp"
+          url: "videos/week10-satp/"
+        - text: "Explainer · The Identity Map"
+          url: "https://claude.ai/artifact/KyhnBTLZ8d97SXBw7Jwqd8"
+        - text: "Explainer · Packing satp"
+          url: "https://claude.ai/artifact/4Kx6PtPXmr9tegvpH7VUyz"
 
 
 # === WEEK 11 ===

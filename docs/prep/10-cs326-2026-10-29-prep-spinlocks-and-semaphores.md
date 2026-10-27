@@ -1,6 +1,6 @@
 # Prep: Spinlocks and Semaphores — 37k · 38k
 
-**Session:** Thu Oct 29, 1h45 · **Exercises:** `37k_spinlocks`, `38k_semaphores` · **Prep time:** ~30 min · **Lecture:** [Week 10 · Locks, Semaphores, and Turning the MMU On](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md)
+**Session:** Thu Oct 29, 1h45 · **Exercises:** `37k_spinlocks`, `38k_semaphores` · **Prep time:** ~45 min · **Lecture:** [Week 10 · Locks, Semaphores, and Turning the MMU On](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md)
 
 ## What you will build
 
@@ -19,6 +19,7 @@ Two layers of synchronization, bottom up. First a spinlock: an `AtomicBool` besi
 
 | What | Time |
 |---|---|
+| Watch the videos [One Atomic Step](../videos/week10-atomic-step.md) (5:31), then [The Guard Holds It](../videos/week10-guard.md) (5:26) and [Two Counts on One Page](../videos/week10-two-counts.md) (5:13). Each video's page links the explainer page it walks through | 16 min |
 | [Week 10 · This week](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#this-week), then [Thursday · `37k` Spinlocks](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#thu-37k) through [One indivisible step](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cas) | 4 min |
 | [Week 10 · Shared, yet mutable: `UnsafeCell`, `Send` and `Sync`](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-cell), [The guard unlocks for you](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-guard) and [Interrupts off while you hold it](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#37k-interrupts) | 4 min |
 | [Week 10 · Thursday · `38k` Semaphores and the heap](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#thu-38k), all three sections | 4 min |

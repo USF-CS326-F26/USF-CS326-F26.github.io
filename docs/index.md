@@ -123,10 +123,10 @@ hide:
 
     An **Explainer** on an exercise row is an interactive page, on claude.ai,
     about what that session works with: its exercise, or the `ulib` code it
-    builds on. Through Week 6 they walk through code, for review; Week 7's and
-    Week 9's show the machine's state and no solution code, and are for before
-    the session (Week 7's before the lecture too), in the order **Watch first**
-    gives on the lecture's row. An explainer opens without a Claude account,
+    builds on. Through Week 6 they walk through code, for review; Week 7's,
+    Week 9's and Week 10's show the machine's state and no solution code, and
+    are for before the session (Week 7's before the lecture too), in the order
+    **Watch first** gives on the lecture's row. An explainer opens without a Claude account,
     and it is for use outside a session: the **cs326** network does not reach
     it. A **Video** is a narrated walk through an explainer, served from this
     site, but it too is for use outside a session.

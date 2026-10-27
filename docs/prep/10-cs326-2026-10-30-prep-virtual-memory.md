@@ -1,6 +1,6 @@
 # Prep: Turning the MMU On — 39k
 
-**Session:** Fri Oct 30, 1h30 · **Exercises:** `39k_virtual_memory` · **Prep time:** ~20 min · **Lecture:** [Week 10 · Locks, Semaphores, and Turning the MMU On](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md)
+**Session:** Fri Oct 30, 1h30 · **Exercises:** `39k_virtual_memory` · **Prep time:** ~30 min · **Lecture:** [Week 10 · Locks, Semaphores, and Turning the MMU On](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md)
 
 ## What you will build
 
@@ -19,6 +19,7 @@ The kernel's address space, handed to the hardware. Using `mappages` from `33k_p
 
 | What | Time |
 |---|---|
+| Watch the videos [The Identity Map](../videos/week10-identity-map.md) (5:50), then [Packing satp](../videos/week10-satp.md) (5:25). Each video's page links the explainer page it walks through | 11 min |
 | [Week 10 · Friday · `39k` Turning the MMU on](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#fri-39k) through [`satp` by hand](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#39k-satp), with its recap of `33k` | 3 min |
 | [Week 10 · Two instructions, and the TLB](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#39k-tlb) and [Silence, and checking first](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#39k-verify) | 3 min |
 | [Week 10 · For the exam: Megapages, and 66 pages](../lectures/10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on.md#exam-megapages). Not needed today; on Midterm 2 | 1 min |

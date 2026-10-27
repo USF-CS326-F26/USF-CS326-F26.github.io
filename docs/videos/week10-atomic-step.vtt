@@ -1,0 +1,178 @@
+WEBVTT
+
+00:00.000 --> 00:05.940
+Week 10: One Atomic Step, the explainer for exercise 37k_spinlocks.
+
+00:06.540 --> 00:12.945
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:13.480 --> 00:16.391
+This follows the October 27 lecture.
+
+00:16.991 --> 00:21.169
+On Thursday, October 29, you write lock and try_lock.
+
+00:21.769 --> 00:25.790
+No solution code here: only what the machine must look like.
+
+00:26.320 --> 00:29.625
+A spinlock is one word beside the data it guards.
+
+00:30.225 --> 00:38.372
+A guard is the value the lock hands to whoever gets in, and the word, locked, reads true only while a guard is alive.
+
+00:38.972 --> 00:41.314
+The given method, new, leaves it false.
+
+00:41.840 --> 00:45.135
+The data sits in an UnsafeCell, which checks nothing.
+
+00:45.735 --> 00:56.240
+Here the data is a record called LAST: the pid and the process table slot of the last process given the CPU. It starts at pid 5, slot 1.
+
+00:56.760 --> 01:00.450
+The hardware gives one step on the word that nothing can split.
+
+01:01.050 --> 01:08.553
+On a free lock, it finds false, leaves true, and answers changed it: whoever took the step now holds the lock.
+
+01:09.080 --> 01:13.901
+On a held lock, it finds true, changes nothing, and answers already set.
+
+01:14.501 --> 01:16.931
+The step is called compare-and-exchange.
+
+01:17.531 --> 01:22.395
+Whether try_lock gets the lock, and how long lock waits, hang on its answer.
+
+01:22.920 --> 01:27.718
+Two harts share LAST: a hart is RISC-V's word for a hardware thread.
+
+01:28.318 --> 01:33.659
+Hart A means to write pid 7, slot 4; hart B, pid 9, slot 2.
+
+01:34.259 --> 01:38.749
+These are pictures, not runs: the course's test runs on one hart.
+
+01:39.280 --> 01:47.108
+The case called one atomic step. Each hart's flow, the code it runs, has a track: outside, trying, inside.
+
+01:48.108 --> 01:49.931
+Both reach the lock at once.
+
+01:50.931 --> 01:57.019
+Hart A's step finds false and leaves true: changed it. A is inside, its guard alive.
+
+01:58.520 --> 02:03.861
+Then hart B's step. It finds true, and leaves the word as it was: already set.
+
+02:04.461 --> 02:05.837
+B is still trying.
+
+02:06.437 --> 02:09.187
+Once B gets in, what will it find in LAST?
+
+02:12.200 --> 02:16.669
+Hart A writes pid 7, while B's step answers already set again.
+
+02:17.669 --> 02:24.793
+Then slot 4. LAST holds A's pid and slot. B's steps have answered already set 3 times.
+
+02:26.320 --> 02:31.956
+Hart A's guard drops: its drop calls the given unlock, one store of false.
+
+02:32.956 --> 02:38.366
+B's next step finds false: changed it. B is inside, its guard alive.
+
+02:39.880 --> 02:43.718
+B reads LAST: pid 7, slot 4, hart A's writes.
+
+02:44.718 --> 02:48.445
+B writes pid 9: half written, but B holds the lock.
+
+02:49.960 --> 02:53.447
+Then slot 2. LAST holds B's pid and slot.
+
+02:54.447 --> 02:59.165
+B's guard drops, and the word reads false: the record is one writer's.
+
+02:59.680 --> 03:06.763
+Now the case called check, then set: a read of the word, then a separate write. Again, a picture, not a run.
+
+03:07.763 --> 03:09.254
+Hart A reads false.
+
+03:10.254 --> 03:14.041
+Hart B reads while A is still trying, and finds false too.
+
+03:15.560 --> 03:17.447
+Hart A writes true and goes in.
+
+03:18.447 --> 03:22.841
+Hart B writes true over it, and goes in too: both are inside.
+
+03:24.360 --> 03:26.023
+Hart A writes pid 7.
+
+03:27.023 --> 03:28.973
+Hart B writes pid 9 over it,
+
+03:29.973 --> 03:32.863
+then slot 2: for now, B's whole record.
+
+03:34.360 --> 03:42.173
+Then hart A writes slot 4. LAST reads pid 9, slot 4: torn, a process in a slot not its own.
+
+03:43.173 --> 03:48.319
+Both guards drop, and the word reads false again, but the record is still torn.
+
+03:48.840 --> 03:58.363
+The case called one hart and a handler: an interrupt handler is code the hart jumps to when an interrupt arrives. Again, a picture, not a run.
+
+03:59.363 --> 04:02.233
+Kernel code's step finds false: changed it.
+
+04:03.233 --> 04:04.662
+It writes pid 7.
+
+04:06.160 --> 04:16.559
+An interrupt arrives before kernel code writes its slot: LAST still reads slot 1. The hart stops kernel code, guard alive, and runs the handler.
+
+04:17.559 --> 04:19.735
+Its step finds true: already set.
+
+04:21.240 --> 04:21.954
+Again,
+
+04:22.954 --> 04:23.882
+and again.
+
+04:24.882 --> 04:28.871
+It has answered already set 4 times: a spin with no end.
+
+04:29.400 --> 04:37.863
+The word goes back to false only when kernel code gives it back, and kernel code runs again only once the handler returns.
+
+04:38.463 --> 04:45.864
+The same spin is recorded on one hart: the case called a try that waits, on the explainer, The Guard Holds It.
+
+04:46.360 --> 04:52.183
+You write two methods in spinlock.rs, lock and try_lock; the rest is given.
+
+04:52.783 --> 05:00.397
+Both stand on the one step: a flow that gets in holds a guard, and the word reads true until that guard drops.
+
+05:00.920 --> 05:08.060
+When try_lock returns, it took exactly one step, and has the lock only if that step answered changed it.
+
+05:08.660 --> 05:11.109
+When lock returns, it holds the lock.
+
+05:11.709 --> 05:16.411
+The next explainer, The Guard Holds It, shows the line each mistake prints.
+
+05:16.920 --> 05:25.070
+A lock is a word that reads true only while one flow holds a guard, and one step nothing can split decides which flow.
+
+05:25.670 --> 05:29.774
+Next: the explainer, The Guard Holds It. Then Thursday's session.

@@ -1,0 +1,172 @@
+WEBVTT
+
+00:00.000 --> 00:05.307
+Week 10: Packing satp, for exercise 39k_virtual_memory.
+
+00:05.907 --> 00:12.313
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.840 --> 00:15.751
+This follows the October 27 lecture.
+
+00:16.351 --> 00:25.514
+On Friday, October 30, you write make_satp, which builds the value that names a root table, the top of a page-table tree.
+
+00:26.114 --> 00:29.281
+No solution code here: only the machine's state.
+
+00:29.800 --> 00:32.486
+satp is one 64-bit register.
+
+00:33.086 --> 00:37.381
+The MMU, the translation hardware, reads three fields from it.
+
+00:37.981 --> 00:45.633
+MODE, bits 63 to 60: 8 is Sv39, the scheme of 33k, and 0 is off.
+
+00:46.160 --> 00:51.529
+ASID, bits 59 to 44, is 0 in rv6.
+
+00:52.129 --> 00:59.051
+PPN, bits 43 to 0, is the root table's page number: which page of memory holds it.
+
+00:59.651 --> 01:03.313
+SATP_SV39, given, is MODE 8 alone.
+
+01:03.840 --> 01:12.234
+In the stepper, a drawing you can step through, the upper row is a root table's address: 0x87C9_3000.
+
+01:12.834 --> 01:14.695
+satp, below, is empty.
+
+01:15.695 --> 01:18.937
+The address's bits 11 to 0 read 0x000.
+
+01:19.440 --> 01:27.431
+Those bits are its offset, where a byte sits inside its page. They read zero, so the table starts where a page starts.
+
+01:28.431 --> 01:35.209
+What is left, bits 55 to 12, is the root's page number: 0x8_7C93.
+
+01:37.220 --> 01:41.316
+The page number now sits in bits 43 to 0 of satp:
+
+01:41.916 --> 01:44.709
+the same 44 bits, in the same order.
+
+01:45.309 --> 01:47.665
+The offset has no place in satp.
+
+01:49.160 --> 01:55.825
+Bits 59 to 44, the ASID, hold 0, as rv6 leaves them.
+
+01:56.825 --> 01:59.769
+And MODE 8 sits in bits 63 to 60.
+
+02:01.280 --> 02:03.273
+That is the whole value for this root:
+
+02:03.873 --> 02:09.325
+0x8000_0000_0008_7C93.
+
+02:10.840 --> 02:12.759
+Then the test's two checks, in order.
+
+02:13.359 --> 02:16.547
+Bits 63 to 60 must read 8: they do.
+
+02:17.147 --> 02:21.415
+Bits 43 to 0 must hold the root's page number: they do.
+
+02:21.920 --> 02:29.759
+A second root, at 0x8027_4000, has the page number 0x8_0274.
+
+02:30.759 --> 02:33.126
+It goes into bits 43 to 0.
+
+02:34.126 --> 02:37.836
+MODE 8 is the same: only the page number changes.
+
+02:38.360 --> 02:45.385
+Now a broken case, mode left out. Up to ASID, it repeats the first root's correct run.
+
+02:46.885 --> 02:51.888
+Then nothing is placed in MODE: bits 63 to 60 still read 0.
+
+02:53.400 --> 02:59.152
+The test checks bits 63 to 60 first: 0, not 8, so check 1 fails,
+
+02:59.752 --> 03:02.461
+and the right page number is never compared.
+
+03:03.061 --> 03:09.641
+For this mistake, the test prints: [fail] make_satp: mode field is not Sv39 (8)
+
+03:10.160 --> 03:13.082
+Another broken case, address left unshifted.
+
+03:14.582 --> 03:19.659
+This time bits 43 to 0 hold the address itself, offset and all.
+
+03:20.659 --> 03:24.603
+ASID 0 and MODE 8 go in as before.
+
+03:26.120 --> 03:27.419
+Check 1 holds.
+
+03:28.019 --> 03:37.441
+Check 2 fails: bits 43 to 0 must hold 0x8_7C93; they hold 0x87C9_3000.
+
+03:38.041 --> 03:43.054
+For this mistake, the test prints: [fail] make_satp: wrong root page number
+
+03:43.560 --> 03:53.276
+The given kvminithart writes the value into satp, then runs sfence.vma, which discards cached translations.
+
+03:53.876 --> 04:03.367
+In 39k nothing changes: the hart, RISC-V's word for a hardware thread, runs in machine mode, untouched by translation.
+
+04:03.880 --> 04:08.032
+From 43k on, every fetch, load and store is looked up:
+
+04:08.632 --> 04:14.508
+in the TLB first, a cache of recent translations, else by a walk of the table.
+
+04:15.508 --> 04:19.198
+The first load misses, and the TLB keeps a copy.
+
+04:19.720 --> 04:22.819
+The leaf, the entry naming the page, is rewritten.
+
+04:23.419 --> 04:29.357
+From 43k on, the same load may hit the old copy, reaching the old page.
+
+04:30.357 --> 04:35.945
+After sfence.vma the TLB is emptied; a walk finds the new page.
+
+04:36.440 --> 04:37.955
+You write make_satp.
+
+04:38.555 --> 04:43.012
+Given the root table's address, it returns the value the stepper builds.
+
+04:43.612 --> 04:53.791
+The test reaches it only after every check of the table's regions: the untouched skeleton stops at the first, the UART page, where the kernel prints.
+
+04:54.320 --> 04:57.424
+Then come two checks, in order, each with its line.
+
+04:58.024 --> 05:01.115
+The mode line: the top four bits do not read 8.
+
+05:01.715 --> 05:06.929
+The page-number line: the low 44 bits do not hold the root's page number.
+
+05:07.440 --> 05:09.976
+satp is three fields in one register:
+
+05:10.576 --> 05:17.677
+MODE 8 at the top, ASID 0, and the root's page number in the low 44 bits.
+
+05:18.277 --> 05:23.429
+On Friday, you write make_satp, and kvmmake from The Identity Map.

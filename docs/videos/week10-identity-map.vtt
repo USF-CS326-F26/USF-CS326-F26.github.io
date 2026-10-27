@@ -1,0 +1,208 @@
+WEBVTT
+
+00:00.000 --> 00:05.259
+Week 10: The Identity Map, for exercise 39k_virtual_memory.
+
+00:05.859 --> 00:12.264
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.760 --> 00:15.671
+This follows the October 27 lecture.
+
+00:16.271 --> 00:25.221
+On Friday, October 30, you write kvmmake's mappings: the kernel's identity map, where each page maps to itself.
+
+00:25.821 --> 00:28.987
+No solution code here: only the machine's state.
+
+00:29.520 --> 00:31.556
+The kernel touches three places.
+
+00:32.156 --> 00:38.203
+The test finisher, a QEMU device, and the UART, the serial port, one page each;
+
+00:38.803 --> 00:41.447
+and RAM, from KERNBASE up to PHYSTOP.
+
+00:42.047 --> 00:43.561
+The gaps stay unmapped.
+
+00:44.080 --> 00:49.054
+Inside RAM: the kernel's code, from KERNBASE up, data and the boot stack,
+
+00:49.654 --> 00:52.714
+the free pages, and among them the page tables.
+
+00:53.314 --> 01:00.021
+The kernel's table maps all of RAM, so the pages it is made of stay reachable once it is in use.
+
+01:00.520 --> 01:05.541
+The test walks your table, entry by entry, before the switch that installs it.
+
+01:06.141 --> 01:08.337
+Each address it looks up is a probe.
+
+01:08.937 --> 01:15.797
+Its leaf, the entry its walk ends on, must be valid, name the probe's own page, and allow what it needs.
+
+01:16.320 --> 01:17.717
+An example table.
+
+01:18.317 --> 01:20.944
+Its root, the top table, is drawn alone.
+
+01:21.944 --> 01:23.691
+Probe 1, the UART page.
+
+01:24.291 --> 01:30.284
+Its address splits into three indexes, one per level, and an offset the walk never reads.
+
+01:31.800 --> 01:34.391
+Index 0 picks the root's entry 0.
+
+01:34.991 --> 01:39.659
+It is valid, and names a level-1 table, which the picture now draws.
+
+01:40.659 --> 01:47.497
+There, index 128 picks entry 128, naming a level-0 table.
+
+01:49.000 --> 01:54.818
+Entry 0 of the level-0 table is the leaf: it names a page, not a table.
+
+01:55.418 --> 01:58.479
+V R W: valid, readable, writable,
+
+01:59.079 --> 02:00.933
+naming the UART's own page.
+
+02:02.433 --> 02:05.867
+The answer equals the question. Check 1 passes.
+
+02:07.400 --> 02:13.399
+Probe 2, the test-finisher page: indexes 0, 0 and 256.
+
+02:14.399 --> 02:19.069
+Its root index is 0 again, so the walk reads the same root entry,
+
+02:19.669 --> 02:21.461
+to the same level-1 table.
+
+02:22.960 --> 02:29.349
+There, index 0 picks a different entry, which names a level-0 table of the finisher's own.
+
+02:30.349 --> 02:36.833
+Its entry 256 is the leaf, V R W, naming the finisher's own page.
+
+02:37.433 --> 02:38.797
+Check 2 passes.
+
+02:40.320 --> 02:42.046
+Probe 3 is KERNBASE.
+
+02:42.646 --> 02:46.848
+The check needs R W X: code must be executable.
+
+02:47.848 --> 02:51.737
+Root index 2: another entry, another level-1 table.
+
+02:53.240 --> 02:57.931
+Its entry 0 names the level-0 table for RAM's first pages.
+
+02:58.931 --> 03:04.486
+Entry 0 there reads V R W X, and names KERNBASE's own page.
+
+03:05.086 --> 03:06.515
+Check 3 passes.
+
+03:08.040 --> 03:10.395
+Probe 4 is an address in the boot stack:
+
+03:10.995 --> 03:13.720
+an example, with offset 0xD48.
+
+03:14.720 --> 03:19.518
+Its upper two indexes are KERNBASE's: the same level-0 table.
+
+03:21.040 --> 03:26.191
+Index 11 picks entry 11, the leaf for the stack address's own page.
+
+03:26.791 --> 03:30.809
+It allows more than R W, which is all the check asks.
+
+03:31.809 --> 03:36.171
+All four region checks pass, and the test prints its ok line.
+
+03:36.680 --> 03:41.027
+Now a broken case, RAM without X, back at KERNBASE's walk.
+
+03:42.027 --> 03:47.723
+KERNBASE's leaf is valid and names its own page, but reads V R W.
+
+03:48.323 --> 03:50.215
+No X: check 3 fails.
+
+03:51.720 --> 03:56.039
+The test stops at its first failed check: check 4 is not run.
+
+03:56.639 --> 04:03.058
+The test prints [fail] kernel RAM (KERNBASE) not identity-mapped R+W+X.
+
+04:03.560 --> 04:07.565
+Another broken case, RAM one page long, at the stack's probe.
+
+04:08.165 --> 04:11.863
+KERNBASE's leaf is there: RAM's first page is mapped.
+
+04:12.863 --> 04:18.765
+The stack sits several pages higher, and entry 11 is not valid. Check 4 fails.
+
+04:20.280 --> 04:25.793
+Checks 1 to 3 passed: only the stack's probe reaches past RAM's first page.
+
+04:26.393 --> 04:30.071
+The test prints [fail] kernel stack page is not mapped.
+
+04:30.600 --> 04:35.419
+39k runs in machine mode: no access goes through the table.
+
+04:36.019 --> 04:44.538
+The test walks the table in memory. The switch writes satp, the register naming the root, and the next fetch goes straight to memory.
+
+04:45.138 --> 04:47.879
+Nothing the ok line needed used the table.
+
+04:48.400 --> 04:52.581
+From 43k on, the kernel runs in supervisor mode.
+
+04:53.181 --> 05:00.983
+The fetch after the switch goes through the hardware's walk, to a valid leaf with X. With none, nothing after it runs.
+
+05:01.583 --> 05:03.331
+A picture, not a recording.
+
+05:03.931 --> 05:05.575
+So the test checks first.
+
+05:06.080 --> 05:11.936
+You write kvmmake's mappings, and make_satp, the subject of Packing satp.
+
+05:12.536 --> 05:18.774
+When kvmmake returns, the table must map every page the kernel touches to itself,
+
+05:19.374 --> 05:22.359
+so each probe finds a leaf like the example's.
+
+05:22.880 --> 05:28.850
+Before you write anything, expect [fail] UART page not identity-mapped read+write.
+
+05:29.450 --> 05:34.295
+Each row loads its case: look where the walk stopped, or what the leaf lacks.
+
+05:34.895 --> 05:38.713
+After the four come the satp checks, then the ok line.
+
+05:39.240 --> 05:43.569
+An identity map answers every lookup with the address that was asked.
+
+05:44.169 --> 05:48.035
+Next: the explainer Packing satp, then Friday's session.

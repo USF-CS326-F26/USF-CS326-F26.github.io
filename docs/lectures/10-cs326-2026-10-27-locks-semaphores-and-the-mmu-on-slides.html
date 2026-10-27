@@ -975,7 +975,7 @@ Notes:
 
 ## [Before Thursday](../prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores/): check yourself
 
-You build a spinlock and a semaphore on it; the kernel gets its heap. Prep: about 30 minutes.
+You build a spinlock and a semaphore on it; the kernel gets its heap. Prep: about 45 minutes.
 
 **1.** `if !busy { busy = true; }` guards a critical section on rv6's single hart, interrupts enabled. Why can it still fail?
 
@@ -984,7 +984,7 @@ You build a spinlock and a semaphore on it; the kernel gets its heap. Prep: abou
 **3.** After `let b = Arc::clone(&a);`, how many copies of the value exist, and how can either mutate it?
 
 Notes:
-- Walk the prep page (about 30 minutes). What you build: a spinlock claimed by compare-and-exchange and reached only through a guard that unlocks in `Drop`; then a semaphore on that lock that refuses at zero, with a page-per-allocation heap that makes `Box`, `Vec` and `Arc` work. Green is `OSLINGS:PASS` for each.
+- Walk the prep page (about 45 minutes). What you build: a spinlock claimed by compare-and-exchange and reached only through a guard that unlocks in `Drop`; then a semaphore on that lock that refuses at zero, with a page-per-allocation heap that makes `Box`, `Vec` and `Arc` work. Green is `OSLINGS:PASS` for each.
 - The three questions are the prep's own Check yourself (thu-37k, 37k-cell, 38k-arc); answers are on the prep page.
 - **Q:** "Why two exercises in one session?" `38k` stands on `37k`: the semaphore's count lives behind your lock. Finish `37k` first.
 
@@ -994,7 +994,7 @@ Notes:
 
 ## [Before Friday](../prep/10-cs326-2026-10-30-prep-virtual-memory/): check yourself
 
-You identity-map the kernel and pack its `satp`. Prep: about 20 minutes.
+You identity-map the kernel and pack its `satp`. Prep: about 30 minutes.
 
 **1.** GDB shows `satp = 0x8000_0000_0008_7FFF`. Is paging on, and where is the root table?
 
@@ -1003,7 +1003,7 @@ You identity-map the kernel and pack its `satp`. Prep: about 20 minutes.
 **3.** Right after the switch, `scause` reads 1, not 12. Do you suspect a mapping or `satp`?
 
 Notes:
-- Walk the prep page (about 20 minutes). What you build: the kernel's identity-mapped page table and the `satp` value that names it; green is `OSLINGS:PASS`.
+- Walk the prep page (about 30 minutes). What you build: the kernel's identity-mapped page table and the `satp` value that names it; green is `OSLINGS:PASS`.
 - The three questions are the prep's own Check yourself (39k-satp, fri-39k, 39k-one-thing); answers are on the prep page. Questions 2 and 3 picture a kernel already in supervisor mode, as from `43k`: in `39k` a missing region prints a `[fail]` line before the switch. On question 3 the spec's answer is `satp`, but QEMU 10 reports 12 for that case too (↓ under 39k-verify). On question 2, runner.rs looks for `OSLINGS:PASS` first, so that run is green after a 10-second wait; the symptom is the wait, not a red.
 - **Q:** "Do I need Thursday's locks on Friday?" No. `39k` stands on `33k`'s tree and `32k`'s allocator; the locks come back in `40k`.
 

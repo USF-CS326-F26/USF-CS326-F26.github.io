@@ -1,0 +1,187 @@
+WEBVTT
+
+00:00.000 --> 00:05.393
+Week 10: Two Counts on One Page, for exercise 38k_semaphores.
+
+00:05.993 --> 00:12.408
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.920 --> 00:15.318
+After the October 27 lecture:
+
+00:15.918 --> 00:23.838
+on Thursday, October 29, you write try_wait for a semaphore, a count of permits that never goes below zero.
+
+00:24.438 --> 00:26.090
+No solution code here.
+
+00:26.600 --> 00:28.690
+The heap is the page allocator.
+
+00:29.290 --> 00:38.893
+Box, Vec and Arc, the alloc crate's types, go to KernelHeap. Each request that fits gets a whole page from kalloc, your free list.
+
+00:39.493 --> 00:44.462
+This Arc asks for 32 bytes; 4,064 stay idle.
+
+00:44.960 --> 00:48.916
+Arc::new puts its value behind a strong count and a weak count.
+
+00:49.516 --> 00:54.016
+The Semaphore is one SpinLock, the lock you build in 37k:
+
+00:54.616 --> 00:59.853
+its data, the permit count, and its lock byte, which says whether the lock is held.
+
+01:00.360 --> 01:04.785
+So the block holds three counts, and this explainer's title names two.
+
+01:05.385 --> 01:10.472
+The strong count says how many owners hold the block: each owner is one Arc.
+
+01:11.072 --> 01:14.229
+The permit count says how many waits can still succeed.
+
+01:14.760 --> 01:21.113
+The page starts on the free list: the head names it, and its first word links to the next free page.
+
+01:22.113 --> 01:25.675
+Arc::new asks for 32 bytes. The head moves on.
+
+01:26.200 --> 01:28.621
+Its first word still holds the old link.
+
+01:29.621 --> 01:35.521
+Then the block is written: strong count 1, weak 1, permit count 4, lock byte false.
+
+01:36.121 --> 01:40.437
+An owner named first, a word on the stack, holds the block's address.
+
+01:41.960 --> 01:46.781
+Arc::clone makes another owner, named second, and the strong count reads 2.
+
+01:47.781 --> 01:49.167
+Then third: 3.
+
+01:50.167 --> 01:53.289
+Then fourth: 4, one for each owner on the stack.
+
+01:54.800 --> 01:58.539
+A wait is under way: one call of try_wait, through first.
+
+01:59.139 --> 02:04.139
+The lock byte reads true: the lock is held. The permit count still reads 4.
+
+02:05.139 --> 02:09.319
+It answers true: the count reads 3, the lock byte false again.
+
+02:10.840 --> 02:13.997
+A wait through second: true, and the count reads 2.
+
+02:14.997 --> 02:16.858
+Through third: it reads 1.
+
+02:17.858 --> 02:19.859
+Through fourth: it reads 0.
+
+02:21.860 --> 02:25.943
+One more wait, through first, answers false, and nothing changes.
+
+02:26.543 --> 02:31.022
+The count still reads 0: the permit count never goes below zero.
+
+02:32.520 --> 02:36.765
+A post through second gives one permit back: the count reads 1.
+
+02:37.765 --> 02:42.201
+A wait through third takes it: true, and the count reads 0 again.
+
+02:43.720 --> 02:49.174
+Now the owners drop: the owner named fourth goes, and the strong count reads 3.
+
+02:50.174 --> 02:51.880
+Then third: it reads 2.
+
+02:52.400 --> 03:00.419
+One more owner drops: second goes, and only first is left. Does the page go back to the free list when second drops?
+
+03:01.919 --> 03:03.445
+Watch the strong count.
+
+03:04.445 --> 03:08.069
+It reads 1, so not yet: first still holds the block.
+
+03:09.600 --> 03:12.266
+Then first: the strong count reads 0.
+
+03:13.266 --> 03:16.793
+The weak count, all the owners as one, reads 0 too.
+
+03:17.793 --> 03:24.616
+The heap gives the page back: the head names it again. The console: what the test prints for a correct kernel.
+
+03:25.120 --> 03:29.278
+Back to the count at 0, with one mistake: no zero check.
+
+03:30.278 --> 03:33.441
+One more wait, through first, answers true anyway.
+
+03:34.041 --> 03:36.803
+The count reads -1, below zero.
+
+03:38.320 --> 03:43.850
+For this mistake the test prints: [fail] no permits should remain after taking both,
+
+03:44.450 --> 03:45.964
+then OSLINGS:FAIL.
+
+03:46.480 --> 03:50.318
+Back to the first wait, with another mistake: locks it twice.
+
+03:51.318 --> 03:54.527
+Still inside the wait, the count's lock is asked for again,
+
+03:55.127 --> 03:59.317
+while the lock byte reads true: the wait asking is the one holding it.
+
+04:00.840 --> 04:04.145
+The request still waits, and the byte never reads false.
+
+04:04.745 --> 04:07.068
+The test prints its banner, then hangs.
+
+04:07.600 --> 04:09.621
+You write one method, try_wait.
+
+04:10.221 --> 04:18.684
+When it answers true, one permit has come off the count; when the count reads 0, it answers false, and the count stays 0.
+
+04:19.284 --> 04:23.550
+The count is read and changed only while the lock byte reads true.
+
+04:24.080 --> 04:29.524
+Before you write anything, expect this line: [fail] first permit should be available.
+
+04:30.124 --> 04:33.183
+If a wait never returns, only the banner prints.
+
+04:33.783 --> 04:41.685
+In the recorded run, the wait holds the count's lock and calls available, which locks it too, so the wait waits for itself.
+
+04:42.200 --> 04:44.651
+Check 6 has one line for two mistakes:
+
+04:45.251 --> 04:53.429
+no zero check, where the picture's count reads -1, and counted but not taken, where it still reads 4, its start.
+
+04:54.029 --> 04:56.045
+Only the pictures tell them apart.
+
+04:56.560 --> 05:05.395
+One page, two counts: the page goes back only when the strong count reads 0, and the permit count never goes below zero.
+
+05:05.995 --> 05:07.675
+Next: Thursday's session.
+
+05:08.275 --> 05:11.325
+Friday's explainers start with The Identity Map.

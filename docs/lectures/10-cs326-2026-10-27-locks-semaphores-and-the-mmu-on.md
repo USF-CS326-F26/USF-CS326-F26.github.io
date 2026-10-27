@@ -8,6 +8,7 @@
 [Slides](10-cs326-2026-10-27-locks-semaphores-and-the-mmu-on-slides.html){ .md-button }
 [Thursday prep](../prep/10-cs326-2026-10-29-prep-spinlocks-and-semaphores.md){ .md-button }
 [Friday prep](../prep/10-cs326-2026-10-30-prep-virtual-memory.md){ .md-button }
+[Explainers](../videos/week10.md){ .md-button }
 
 ## This week { #this-week }
 

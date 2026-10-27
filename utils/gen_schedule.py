@@ -80,13 +80,13 @@ RECORDINGS = {
 #   - Solution-bearing: it walks through that day's reference solution. Its
 #     line goes up only once that solution has shipped, on the session's row,
 #     and no page read before the session links it.
-#   - Solution-free, like Week 7's and Week 9's: it shows no code for anything a
-#     student writes, only machine state, given code and test output, and the
+#   - Solution-free, like Weeks 7's, 9's and 10's: it shows no code for anything
+#     a student writes, only machine state, given code and test output, and the
 #     instructor vouches for that. Its line may go up before the session. It is
 #     also linked from the hub page on the lecture's row and the week's first
 #     session's row (docs/videos/week07.md for Week 7, docs/videos/week09.md
-#     for Week 9), and that week's prep pages link the film that walks
-#     through it, whose player page links it.
+#     for Week 9, docs/videos/week10.md for Week 10), and that week's prep
+#     pages link the film that walks through it, whose player page links it.
 # The ones that walk through only given `ulib` code are neither: their lines
 # may go up at any time, on the session's row alone.
 # A flat list rather than a dict keyed by date, so a second line for the same
@@ -109,6 +109,11 @@ EXPLAINERS = [
     ("Oct 23", "Save Here, Load There", "6egDZD6t2RrmoDoen2YuaJ"),
     ("Oct 23", "Round Robin, by the Cursor", "VxxxuK5B3AEeHFCZdZGfFL"),
     ("Oct 23", "The Double Switch", "WZFaf1My4MZTrudwutMTEy"),
+    ("Oct 29", "One Atomic Step", "R7FQ5qGPtLLYMmANurEaDJ"),
+    ("Oct 29", "The Guard Holds It", "4AGctGPCFZQM4SLvpv16tK"),
+    ("Oct 29", "Two Counts on One Page", "EXGs5GbbrrPuzfrsdy2fhx"),
+    ("Oct 30", "The Identity Map", "KyhnBTLZ8d97SXBw7Jwqd8"),
+    ("Oct 30", "Packing satp", "4Kx6PtPXmr9tegvpH7VUyz"),
 ]
 
 
@@ -308,12 +313,19 @@ def sessions():
                 ("Video · Round Robin, by the Cursor", "/videos/week09-round-robin/"),
                 ("Video · The Double Switch", "/videos/week09-double-switch/")))
 
-    add(10, 'tuesday', 'Oct 27', 'lecture', 'Locks, Semaphores, and Turning the MMU On')
+    add(10, 'tuesday', 'Oct 27', 'lecture', 'Locks, Semaphores, and Turning the MMU On',
+        links=L(("Watch first · Week 10", "/videos/week10/")))
     add(10, 'thursday', 'Oct 29', 'exercise', '37k spinlocks · 38k semaphores',
-        exercises=['37k_spinlocks', '38k_semaphores'])
+        exercises=['37k_spinlocks', '38k_semaphores'],
+        links=L(("Watch first · Week 10", "/videos/week10/"),
+                ("Video · One Atomic Step", "/videos/week10-atomic-step/"),
+                ("Video · The Guard Holds It", "/videos/week10-guard/"),
+                ("Video · Two Counts on One Page", "/videos/week10-two-counts/")))
     add(10, 'friday', 'Oct 30', 'exercise', '39k virtual_memory',
         exercises=['39k_virtual_memory'],
-        links=L(("QEMU and GDB", "/guides/qemu-gdb/")))
+        links=L(("QEMU and GDB", "/guides/qemu-gdb/"),
+                ("Video · The Identity Map", "/videos/week10-identity-map/"),
+                ("Video · Packing satp", "/videos/week10-satp/")))
 
     add(11, 'tuesday', 'Nov 3', 'lecture', 'Files, Boot Order, and Traps')
     add(11, 'thursday', 'Nov 5', 'exercise', '40k filesystem',
