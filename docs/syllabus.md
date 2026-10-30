@@ -125,10 +125,11 @@ exercises is still one grade.
 Each day is worth 100 points, in two halves.
 
 **Being there — 50 points.** The class server records how long your registered
-laptop was connected to **cs326** during that day's session. 75 minutes earns
-the full 50 on Thursdays, 70 minutes on Fridays; less than that earns
-proportionally less, and more earns no extra. Either section's session on that
-day counts, and two of your own devices count once.
+laptop was connected to **cs326** during that day's session. 30 minutes earns
+the full 50; less than that earns proportionally less, and more earns no extra.
+(Before October 30 the requirement was 75 minutes on Thursdays and 70 on
+Fridays.) Either section's session on that day counts, and two of your own
+devices count once.
 
 **The exercises — 50 points.** Your work is graded by re-running each
 exercise's real test against what you committed. Grading rebuilds and reboots
