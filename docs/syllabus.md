@@ -116,6 +116,7 @@ to it.
 | **Midterm 2** — Thursday, November 19 | 15% |
 | **Final exam** — Tuesday, December 8 | 20% |
 | *Extra credit* (`14c`, `41k`, `47k`, `54k`, `55k`) | *up to +3%* |
+| *Extra credit: [OSlings practice problems](assignments/extra-credit.md#practice)* | *up to +2%* |
 
 Each exercise **day** is one grade in Canvas, out of 100. A day with three
 exercises is still one grade.

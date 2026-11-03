@@ -1,7 +1,8 @@
 # Extra Credit
 
-Up to **+3%** on the final grade. None of this is required, and none of it is
-graded on a curve — if you do the work, you get the points. The work usually
+Up to **+3%** on the final grade from the exercises below, and up to **+2%**
+more from the [OSlings practice problems](#practice). None of this is required,
+and none of it is graded on a curve — if you do the work, you get the points. The work usually
 outweighs the points; do it because you want the thing to exist.
 
 Extra credit is released on ordinary exercise days, alongside the core
@@ -21,6 +22,23 @@ the end of the semester.
 | [`55k_pipes`](#55k) | design-only, no starter | +1.0 | A bounded ring buffer behind two file descriptors, so `a \| b` works |
 
 3.5 points are available; the total is capped at 3.
+
+<a id="practice"></a>
+
+## OSlings practice problems
+
+The short paper problem sets on the exercises are extra credit too: up to
+**+2%** on the final grade in all, on top of the +3% above.
+
+- **Credit is for trying.** A set earns its credit if you make a real try at
+  half or more of its parts, right or wrong.
+- **Every set is an equal share of the +2%.** There's no drop rule.
+- **You get your paper back on Canvas,** marked up in red to show what to fix.
+
+A set you didn't hand in stays blank in Canvas during the term, and blanks
+become zeros after the last set. So your bonus is 2% times the share of sets
+you got credit for. Until then Canvas counts only the sets you handed in, so
+the number you see can run a little high.
 
 ---
 
