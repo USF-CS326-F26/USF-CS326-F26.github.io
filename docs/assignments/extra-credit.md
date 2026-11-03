@@ -34,6 +34,8 @@ The short paper problem sets on the exercises are extra credit too: up to
   half or more of its parts, right or wrong.
 - **Every set is an equal share of the +2%.** There's no drop rule.
 - **You get your paper back on Canvas,** marked up in red to show what to fix.
+- **Each set's answer key is posted** on [OSlings Practice](oslings-practice.md),
+  with a video for each problem.
 
 A set you didn't hand in stays blank in Canvas during the term, and blanks
 become zeros after the last set. So your bonus is 2% times the share of sets

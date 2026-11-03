@@ -164,6 +164,7 @@ nav:
       - "Practice Set 3": assignments/practice-set-03.md
       - "Final Exam": assignments/final.md
       - "Extra Credit": assignments/extra-credit.md
+      - "OSlings Practice": assignments/oslings-practice.md
   - Exercise Prep:
       - "Aug 27 · Prep: Setup and Hello, Rust — 00r": prep/01-cs326-2026-08-27-prep-setup-and-hello-rust.md
       - "Aug 28 · Prep: Control Flow — 01r": prep/01-cs326-2026-08-28-prep-control-flow.md

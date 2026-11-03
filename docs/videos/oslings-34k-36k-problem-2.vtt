@@ -1,0 +1,223 @@
+WEBVTT
+
+00:00.000 --> 00:05.977
+OSlings Practice 34k-36k, Problem 2: Context Switch.
+
+00:06.577 --> 00:12.367
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.967 --> 00:16.859
+A script reveals it, and this explainer was built with Claude.
+
+00:17.360 --> 00:26.935
+Problem 2 draws on one OSlings exercise: 35k_context_switch, from week 9, on Friday, October 23.
+
+00:27.535 --> 00:31.715
+You wrote the restore half of swtch: 14 loads, through a1.
+
+00:32.315 --> 00:37.316
+The save half was given, with the Context struct, init_context and the test.
+
+00:38.920 --> 00:41.755
+Problem 2 opens with the Context struct.
+
+00:42.355 --> 00:49.510
+It is repr(C), with 14 usize fields, in order: ra, sp, then s0 to s11.
+
+00:50.040 --> 00:57.469
+A call to swtch, from old to new, stores each of those registers into old, through a0, with sd.
+
+00:58.069 --> 01:01.743
+Then it loads each one from new, through a1, with ld,
+
+01:02.343 --> 01:03.793
+and then its ret runs.
+
+01:04.320 --> 01:05.471
+Then the test.
+
+01:06.071 --> 01:10.059
+The call to init_context sets up TASK_CTX for a task:
+
+01:10.659 --> 01:17.504
+its ra is task_entry, and its sp is stack plus PGSIZE, the top of the task's stack.
+
+01:18.000 --> 01:21.347
+Then a swtch, from SCHED_CTX to TASK_CTX.
+
+01:21.947 --> 01:30.175
+The comment says what comes next: task_entry sets TASK_RAN, then switches back, from TASK_CTX to SCHED_CTX.
+
+01:30.775 --> 01:34.620
+Last, the test checks that TASK_RAN is 0xABCD.
+
+01:35.720 --> 01:39.935
+Part (a). At what byte offset in a Context is s7 stored?
+
+01:40.535 --> 01:44.812
+And why does swtch save ra, sp and s0 to s11,
+
+01:45.412 --> 01:49.411
+but not t0 to t6, or a0 to a7?
+
+01:50.920 --> 01:56.387
+ra is at 0, and sp at 8: each field is a usize, 8 bytes.
+
+01:56.987 --> 02:01.956
+Then s0 at 16, and each s register after it 8 bytes on:
+
+02:02.556 --> 02:06.310
+the one numbered k is at 16 plus 8 times k.
+
+02:07.840 --> 02:11.071
+For s7, 8 times its number is 56.
+
+02:12.571 --> 02:19.321
+And 16 plus 56 is 72: s7 is stored at byte offset 72.
+
+02:19.921 --> 02:27.287
+Not 56: ra and sp come first, at 0 and 8, so the s registers start at 16.
+
+02:28.400 --> 02:30.169
+Now, why those registers?
+
+02:31.669 --> 02:34.793
+A call to swtch is an ordinary function call.
+
+02:36.293 --> 02:44.995
+And the calling convention says the caller has already saved any caller-saved registers it still needs: the t and a registers.
+
+02:47.020 --> 02:53.419
+A function only has to preserve the callee-saved ones: sp and s0 to s11.
+
+02:54.019 --> 02:57.708
+When the call returns, each must hold what it held before.
+
+02:59.240 --> 03:02.917
+ra is saved too, because it is where the task resumes:
+
+03:03.517 --> 03:07.494
+when a later swtch loads it back, that swtch's ret jumps there.
+
+03:08.094 --> 03:11.312
+Those 14 are exactly what "paused here" means.
+
+03:12.440 --> 03:14.416
+Part (b), with the test above it.
+
+03:15.016 --> 03:20.025
+When the ret of kmain's swtch runs, which code runs next, and on which stack?
+
+03:20.625 --> 03:25.105
+And when does that call to swtch finally return into kmain, and how?
+
+03:26.640 --> 03:30.724
+The ret jumps to the ra just loaded from TASK_CTX.
+
+03:32.224 --> 03:34.803
+That is the first instruction of task_entry,
+
+03:35.403 --> 03:41.674
+because the call to init_context put the address of task_entry in TASK_CTX's ra.
+
+03:42.200 --> 03:43.438
+And on which stack?
+
+03:44.038 --> 03:45.798
+The task's own fresh stack.
+
+03:46.398 --> 03:56.174
+sp was loaded from TASK_CTX too, and the call to init_context set it to stack plus PGSIZE: the top of the task's stack.
+
+03:56.680 --> 04:00.039
+When does that first call to swtch return into kmain?
+
+04:01.539 --> 04:08.604
+Only when task_entry calls swtch, from TASK_CTX to SCHED_CTX, not when the task finishes.
+
+04:10.104 --> 04:13.097
+That saves the task, and loads SCHED_CTX.
+
+04:15.100 --> 04:22.791
+SCHED_CTX holds kmain's ra, sp and s0 to s11: the first swtch saved them there.
+
+04:23.391 --> 04:27.036
+So its ra holds the address just after kmain's call,
+
+04:27.636 --> 04:30.187
+and its sp points into kmain's stack.
+
+04:30.720 --> 04:38.142
+So the ret of task_entry's swtch lands back in kmain, just after the first call, on kmain's own stack.
+
+04:38.742 --> 04:44.564
+And kmain then sees TASK_RAN equal to 0xABCD, as the check wants.
+
+04:45.680 --> 04:49.652
+Part (c): three mistakes, and for each, what happens, and why.
+
+04:50.252 --> 04:54.337
+Part (i): the restore half loads from a0 instead of a1,
+
+04:54.937 --> 04:58.456
+starting with ra, at offset 0 of a0.
+
+05:00.460 --> 05:08.677
+This swtch loads back the values it just saved: a0 still names the old context, which the stores have just filled.
+
+05:09.277 --> 05:13.041
+So every register keeps what it held, and nothing is switched.
+
+05:14.560 --> 05:18.889
+So its ret goes straight back to kmain, and the task never runs.
+
+05:20.389 --> 05:22.882
+TASK_RAN is never set, so the check fails,
+
+05:23.482 --> 05:26.297
+and the test prints [fail] task never ran.
+
+05:26.800 --> 05:32.457
+Part (ii): init_context is passed stack, instead of stack plus PGSIZE.
+
+05:33.957 --> 05:38.000
+Then sp starts at the bottom of the page, not at its top.
+
+05:38.520 --> 05:42.877
+Stacks grow down: a push moves sp lower first, then stores.
+
+05:44.377 --> 05:50.137
+So the task's very first push writes into the memory below the page, which it does not own,
+
+05:50.737 --> 05:53.008
+and corrupts whatever happens to be there.
+
+05:53.520 --> 05:56.737
+Part (iii): repr(C) is removed from Context.
+
+05:58.237 --> 06:03.531
+Then Rust may reorder the fields: without repr(C), it promises no order.
+
+06:04.131 --> 06:09.446
+But the assembly still uses fixed offsets: 0, 8, 16, and on up.
+
+06:11.460 --> 06:18.333
+So the load of ra, from offset 0 of a1, may get some other field: sp, or a 0.
+
+06:18.933 --> 06:23.509
+The call to init_context zeroed every field but ra and sp.
+
+06:24.509 --> 06:27.717
+Then ret jumps to garbage, and the kernel faults.
+
+06:28.240 --> 06:29.689
+That's Problem 2.
+
+06:30.289 --> 06:35.757
+Part (a): callee-saved registers are saved, and ra, where the task resumes.
+
+06:36.357 --> 06:39.599
+Part (b): the call returns only on a switch back.
+
+06:40.199 --> 06:45.993
+Part (c): the task never runs, pushes land below the page, ret jumps to garbage.

@@ -24,6 +24,10 @@ wrote, and the difference is the lesson.
 
 *Posted after each is reviewed in class.*
 
+**[OSlings Practice 34k-36k](../assignments/oslings-practice.md#34k-36k)**:
+processes, context switch and scheduling. The set, its key, and a video for
+each problem that works the key on the set's own pages.
+
 ## Exams
 
 **[Midterm 1](../assignments/midterm-1-solutions.md)**, Thursday, October 15:

@@ -34,6 +34,7 @@ ASSIGNMENT_ORDER = [
     ("practice-set-03.md", "Practice Set 3"),
     ("final.md", "Final Exam"),
     ("extra-credit.md", "Extra Credit"),
+    ("oslings-practice.md", "OSlings Practice"),
 ]
 
 

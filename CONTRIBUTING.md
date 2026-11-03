@@ -223,7 +223,7 @@ the download finishes, and drops the embedded `mov_text` subtitle stream,
 which Chrome and Firefox ignore and Safari would list beside the `<track>` as a
 second English track; the second makes the WebVTT that `<track>` needs (it does not take
 SRT). The exam films and `babyswtch` are the exception: the ten Midterm 1 solution
-films, the ten Midterm 1 practice films and `babyswtch` run 3 to 4 MB a minute
+films, the ten Midterm 1 practice films, the OSlings practice films and `babyswtch` run 3 to 4 MB a minute
 as masters, which would bring the site near GitHub Pages' 1 GB, so their copies
 are re-encoded (`-c:v libx264 -preset medium -tune stillimage -crf 28 -c:a copy`,
 with the same `-map` and `-movflags +faststart`), about 2.1 to 2.6 MB a minute.
@@ -249,7 +249,8 @@ Link the page from its session row by hand, with `links=` in `sessions()`, as
 beside that key's link instead: Practice Set 1 links the five Midterm 1 practice
 films, `videos/midterm-1-practice-problem-N`, after its Solutions PDF, and Midterm 1
 Solutions links each section's five, `videos/midterm-1-section-0S-problem-N`, after
-that section's Solutions PDF. Escape `&`,
+that section's Solutions PDF. OSlings Practice links each set's films,
+`videos/oslings-SET-problem-N`, after that set's Solutions PDF. Escape `&`,
 `<` and `>` in a `.vtt` made from an SRT (`&amp;`, `&lt;`, `&gt;`); WebVTT reads
 them as markup, so a caption like "wc < b.txt" loses the rest of its cue. Remove
 any markdown backticks the script's captions carry, too: WebVTT shows them as

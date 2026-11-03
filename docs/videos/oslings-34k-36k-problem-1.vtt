@@ -1,0 +1,247 @@
+WEBVTT
+
+00:00.000 --> 00:05.630
+OSlings Practice 34k-36k, Problem 1: Processes.
+
+00:06.230 --> 00:12.019
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.619 --> 00:16.511
+A script reveals it, and this explainer was built with Claude.
+
+00:17.040 --> 00:26.441
+Problem 1 draws on one OSlings exercise: 34k_processes, from week 9, on Thursday, October 22.
+
+00:27.041 --> 00:29.280
+You wrote allocproc and freeproc.
+
+00:29.880 --> 00:37.265
+Everything else came with the exercise: the table PROCS, the counter NEXTPID, the helpers they call, and the test.
+
+00:38.400 --> 00:44.981
+Problem 1 opens with two functions, as the solution to exercise 34k writes them:
+
+00:45.581 --> 00:46.561
+allocproc,
+
+00:47.161 --> 00:48.323
+and freeproc.
+
+00:48.923 --> 00:55.483
+A call to alloc_pid returns NEXTPID and increments it. After init, NEXTPID starts at 1.
+
+00:56.000 --> 01:02.629
+Inside allocproc, the loop walks the table from the first slot, to the first one that is Unused.
+
+01:03.229 --> 01:05.452
+There it sets the pid, from alloc_pid,
+
+01:06.052 --> 01:07.455
+then the state, Runnable,
+
+01:08.055 --> 01:09.718
+then makes the page table.
+
+01:10.840 --> 01:13.074
+Next, it checks the new page table.
+
+01:13.674 --> 01:16.392
+If it is null, the function returns right there;
+
+01:16.992 --> 01:21.631
+if not, it returns the slot. Part (b) is about that early return.
+
+01:22.160 --> 01:25.402
+The second function, freeproc, gives a slot back.
+
+01:26.002 --> 01:28.997
+It frees the page table, then nulls the field,
+
+01:29.597 --> 01:31.014
+sets the pid to 0,
+
+01:31.614 --> 01:33.917
+and last, sets the state to Unused.
+
+01:35.040 --> 01:38.800
+Below it, NPROC is 4: the table has four slots.
+
+01:39.400 --> 01:45.319
+After init, the kernel runs these seven lines, in order, each numbered in its comment.
+
+01:45.919 --> 01:49.279
+Line 4 frees b, which line 2 allocated.
+
+01:50.400 --> 01:57.278
+Part (a). For d, e and f, give the table slot and pid each one refers to, or say it is null.
+
+01:57.878 --> 02:01.781
+Then give the state and pid of all four slots after line 7.
+
+02:02.280 --> 02:06.162
+After init, every slot is Unused, and NEXTPID is 1.
+
+02:07.662 --> 02:12.769
+Lines 1 to 3 fill slots 0, 1 and 2, with pids 1, 2 and 3.
+
+02:13.369 --> 02:17.453
+Line 4 frees slot 1: Unused again, with pid 0.
+
+02:18.960 --> 02:20.505
+NEXTPID is 4 now.
+
+02:21.105 --> 02:25.636
+Freeing a slot does not lower it, and nothing in these seven lines does.
+
+02:26.236 --> 02:28.615
+So pid 2 is not handed out again.
+
+02:29.120 --> 02:35.258
+Line 5, d: the call takes the first Unused slot, and a new pid from alloc_pid.
+
+02:36.758 --> 02:38.942
+d gets slot 1, with pid 4.
+
+02:39.942 --> 02:43.023
+The first Unused slot, the one line 4 freed,
+
+02:43.623 --> 02:46.159
+and a new pid: pids are not reused.
+
+02:46.680 --> 02:50.588
+Line 6, e: the scan starts from the first slot again.
+
+02:52.088 --> 02:54.295
+e gets slot 3, with pid 5.
+
+02:54.895 --> 03:00.281
+Slots 0, 1 and 2 are in use, so the first Unused slot is the last one.
+
+03:00.800 --> 03:05.033
+Line 7, f: the scan starts from the first slot once more.
+
+03:06.533 --> 03:07.569
+f is null.
+
+03:08.569 --> 03:10.415
+All 4 slots are taken.
+
+03:11.015 --> 03:15.823
+NPROC is 4, so the slots stop at 3, and none of them is Unused.
+
+03:16.920 --> 03:21.325
+So the loop ends with no match, and the function reaches its last line.
+
+03:21.925 --> 03:26.938
+It returns null there, before any call to alloc_pid, so f takes no pid.
+
+03:28.040 --> 03:31.955
+Last, the state and pid of all four slots after line 7.
+
+03:32.955 --> 03:37.535
+Slot 0: Runnable, pid 1. Slot 1: Runnable, pid 4.
+
+03:38.535 --> 03:43.024
+Slot 2: Runnable, pid 3. Slot 3: Runnable, pid 5.
+
+03:44.120 --> 03:50.069
+All four are Runnable: that is the state each claim sets, and no line here runs a process.
+
+03:50.669 --> 03:53.907
+Read across, the pids go 1, 4, 3, 5.
+
+03:54.507 --> 03:58.079
+A slot is where a process is; its pid is who it is.
+
+03:59.200 --> 04:07.389
+Part (b). Now suppose instead the kernel is out of memory at line 6, so a call to create_pagetable returns null.
+
+04:07.989 --> 04:10.612
+Lines 1 to 5 run just as before.
+
+04:11.720 --> 04:15.973
+What does allocproc return, and what is left in the slot it chose?
+
+04:16.573 --> 04:19.282
+Why is that a problem for the rest of the kernel?
+
+04:19.882 --> 04:21.387
+And fix allocproc.
+
+04:21.920 --> 04:24.796
+On line 6, the call claims an Unused slot,
+
+04:25.396 --> 04:28.415
+then asks for a page table, and gets back null.
+
+04:29.915 --> 04:35.418
+So the call on line 6 returns null, and the caller thinks nothing was allocated.
+
+04:36.018 --> 04:38.085
+But slot 3 was already claimed.
+
+04:38.600 --> 04:39.677
+Claimed how?
+
+04:40.277 --> 04:46.079
+Before the call to create_pagetable, the slot had already been given its pid and its state.
+
+04:47.579 --> 04:52.079
+So it is left with state Runnable, pid 5, and a null page table.
+
+04:52.600 --> 04:54.114
+Why is that a problem?
+
+04:55.614 --> 04:59.100
+The caller got null, so it has no pointer to slot 3,
+
+04:59.700 --> 05:03.645
+and nothing will ever hand the slot to freeproc: it is leaked.
+
+05:05.145 --> 05:08.182
+The table can now hold only 3 processes.
+
+05:08.680 --> 05:14.010
+Worse, it says Runnable: a scheduler looking for Runnable processes would pick it.
+
+05:15.510 --> 05:18.560
+It would try to run a process with no page table.
+
+05:19.160 --> 05:24.545
+Pid 5 is used up too, which is harmless: the next process gets the next pid.
+
+05:26.580 --> 05:29.244
+The fix: undo the claim before returning null,
+
+05:29.844 --> 05:32.884
+or create the page table before touching the slot.
+
+05:33.484 --> 05:36.289
+The key does the first, inside the null check.
+
+05:37.800 --> 05:39.443
+Inside that same null check,
+
+05:40.443 --> 05:42.061
+set the pid back to 0,
+
+05:43.061 --> 05:44.915
+and the state back to Unused.
+
+05:45.915 --> 05:47.217
+Then return null.
+
+05:48.320 --> 05:56.127
+Now a failed call gives the slot back, as a call to freeproc would: Unused, pid 0, and no page table.
+
+05:56.727 --> 05:59.543
+The next call to allocproc can take it again.
+
+06:00.040 --> 06:01.395
+That's Problem 1.
+
+06:01.995 --> 06:08.330
+Part (a): a claim takes the first Unused slot, and freeing a slot does not lower NEXTPID.
+
+06:08.930 --> 06:13.462
+Part (b): a call that returns null must leave the slot as it found it.
