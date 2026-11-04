@@ -1,0 +1,184 @@
+WEBVTT
+
+00:00.000 --> 00:05.188
+Week 11: Step Past the Breakpoint, for exercise 43k_traps.
+
+00:05.788 --> 00:12.193
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.720 --> 00:15.033
+This follows the November 3 lecture.
+
+00:15.633 --> 00:23.285
+On Friday, November 6, you write init and kerneltrap, and the kernel survives its first trap, a breakpoint.
+
+00:23.885 --> 00:27.051
+No solution code here: only the machine's state.
+
+00:27.560 --> 00:30.311
+A trap is the hardware's jump into the kernel.
+
+00:30.911 --> 00:37.141
+The hardware runs in one of three modes: M, machine, S, supervisor, and U, user.
+
+00:37.741 --> 00:40.101
+Down is a return. Up is a trap.
+
+00:40.600 --> 00:42.222
+At reset the mode is M.
+
+00:42.822 --> 00:47.364
+start, the given machine-mode routine, ends with mret, a return.
+
+00:47.964 --> 00:53.231
+Before the mret runs, MPP, the mode it returns into, holds 1, S.
+
+00:53.760 --> 00:57.224
+mepc, where mret lands, names kmain.
+
+00:58.224 --> 01:03.501
+mret goes down into the mode MPP names: kmain runs in S.
+
+01:04.000 --> 01:09.961
+The stepper runs the given self-check, the test, in an example build, in supervisor mode.
+
+01:10.561 --> 01:17.913
+stvec, where a trap goes, holds 0x8000_0A60, the given vector's address.
+
+01:18.513 --> 01:20.155
+The trap count is 0.
+
+01:21.680 --> 01:23.056
+Check 1 passes.
+
+01:23.656 --> 01:26.919
+The test has read the trap count into before: 0.
+
+01:27.519 --> 01:34.461
+pc is at 0x8000_3B2C, an ebreak, a 4-byte instruction that traps.
+
+01:36.460 --> 01:39.047
+The ebreak traps, and the mode stays S.
+
+01:39.647 --> 01:42.360
+scause, which says why, reads 0x0000_0000_0000_0003.
+
+01:42.960 --> 01:50.561
+sepc, the saved pc, holds the ebreak's address; so does stval, a detail of the trap.
+
+01:51.080 --> 01:55.292
+pc holds stvec's value, and sp has not moved.
+
+01:55.892 --> 01:58.952
+SPP reads 1: the trap came from S.
+
+01:59.952 --> 02:03.107
+How many general registers has the hardware saved?
+
+02:06.620 --> 02:09.702
+None: these 16 stores are the vector's own.
+
+02:10.302 --> 02:13.563
+It moves sp down; they fill the frame it opens:
+
+02:14.163 --> 02:21.335
+ra, t0 to t6, and a0 to a7, each slot holding its value at the trap.
+
+02:22.840 --> 02:28.274
+The vector calls kerneltrap, your handler, on the same stack, just below the frame.
+
+02:28.874 --> 02:34.495
+scause and sepc are as the trap left them, and the count is still 0.
+
+02:36.000 --> 02:44.005
+kerneltrap has returned: the count reads 1, and sepc holds 0x8000_3B30.
+
+02:45.005 --> 02:49.965
+The vector reads its 16 slots back, and sp is where it was at the trap.
+
+02:51.480 --> 02:55.695
+sret, the return from a trap, takes pc from sepc:
+
+02:56.295 --> 03:00.012
+the line after the ebreak, back in the self-check, in S.
+
+03:00.612 --> 03:02.489
+SPP now reads 0.
+
+03:04.000 --> 03:10.025
+The test reads the count again: after is 1, one more than before, so check 2 passes.
+
+03:11.025 --> 03:18.382
+For the correct case, the test prints: [ok] trap vector installed, breakpoint handled, execution resumed
+
+03:18.880 --> 03:25.811
+Now a broken case, sepc left where it was: the same as the correct case up to its handler.
+
+03:27.311 --> 03:33.633
+At its first sret, the count reads 1, and sepc still holds the ebreak's address.
+
+03:34.160 --> 03:41.685
+At its next sret, the count reads 2, and sepc still holds 0x8000_3B2C.
+
+03:42.685 --> 03:45.047
+For this mistake, the test prints the banner,
+
+03:45.647 --> 03:47.117
+then nothing: it hangs.
+
+03:47.640 --> 03:49.889
+The figure shows where sret resumes.
+
+03:50.489 --> 03:58.159
+For this breakpoint, sret resumes at the next instruction, 0x8000_3B30, 4 bytes on.
+
+03:58.759 --> 04:02.609
+For a fault the kernel repaired, it resumes at the same load.
+
+04:03.120 --> 04:08.026
+toy is a made-up 8-bit control and status register, a CSR.
+
+04:08.626 --> 04:10.695
+A read copies it into t1.
+
+04:11.295 --> 04:13.939
+Replacing it makes it a copy of t0.
+
+04:14.539 --> 04:18.987
+Setting or clearing touches only the bits that are 1 in t0.
+
+04:19.520 --> 04:28.134
+You write the bodies of init, which the kernel calls once at boot, and kerneltrap, in trap.rs; everything else is given.
+
+04:28.734 --> 04:34.175
+kerneltrap runs once per trap, on the stack directly below the vector's frame.
+
+04:34.680 --> 04:38.669
+The test's first check: stvec holds the vector's address.
+
+04:39.269 --> 04:47.979
+The skeleton, the code you receive, fails it, and the test prints: [fail] stvec is not pointing at the trap vector (trap::init)
+
+04:48.579 --> 04:51.341
+Expect that line before you have written anything.
+
+04:51.840 --> 04:54.571
+The second: the count rose by exactly one.
+
+04:55.171 --> 05:01.009
+In the case not counted, the self-check resumes past the ebreak, with the count still 0,
+
+05:01.609 --> 05:06.362
+and the test prints: [fail] the breakpoint was not handled (check kerneltrap)
+
+05:06.880 --> 05:14.091
+For sepc left where it was, after 10 s of silence, oslings prints its timeout line.
+
+05:14.691 --> 05:18.575
+Its hint about the stack setup does not apply: kmain ran.
+
+05:19.080 --> 05:24.838
+A trap saves almost nothing, and sret resumes wherever sepc points.
+
+05:25.438 --> 05:30.060
+Next: the explainer Three Gates and a Pending Bit, then Friday's session.

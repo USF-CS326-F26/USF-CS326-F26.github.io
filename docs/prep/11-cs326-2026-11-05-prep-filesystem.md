@@ -1,6 +1,6 @@
 # Prep: An In-Memory Filesystem — 40k
 
-**Session:** Thu Nov 5, 1h45 · **Exercises:** `40k_filesystem` · **Prep time:** ~20 min · **Lecture:** [Week 11 · Files, Boot Order, and Traps](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md)
+**Session:** Thu Nov 5, 1h45 · **Exercises:** `40k_filesystem` · **Prep time:** ~30 min · **Lecture:** [Week 11 · Files, Boot Order, and Traps](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md)
 
 ## What you will build
 
@@ -20,6 +20,7 @@ The heart of a Unix filesystem, in RAM, behind one spinlock: a fixed table of in
 
 | What | Time |
 |---|---|
+| Watch the videos [Names Live in Directories](../videos/week11-names.md) (5:23), then [Errors Are Values](../videos/week11-errors.md) (5:50). Each video's page links the explainer page it walks through | 11 min |
 | [Week 11 · This week](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#this-week), then [Thursday · `40k` Files and directories](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#thu-40k), all three sections | 6 min |
 | [Week 11 · For the exam](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam): [Devices](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam-devices) and [Hard links and link counts](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#exam-links). Not needed today; on Midterm 2 | 2 min |
 | [Rust for Systems: `Result`, `?`, error enums](../guides/rust-for-systems.md#7-result-error-enums), through "The `?` operator" (a refresher) | 4 min |

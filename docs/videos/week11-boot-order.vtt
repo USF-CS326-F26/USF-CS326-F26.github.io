@@ -1,0 +1,166 @@
+WEBVTT
+
+00:00.000 --> 00:04.863
+Week 11: Needs This First, for exercise 42k_boot_to_life.
+
+00:05.463 --> 00:11.879
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.400 --> 00:14.255
+After the November 3 lecture:
+
+00:14.855 --> 00:21.647
+on Friday, November 6, you write kinit, which brings each part up after everything it uses.
+
+00:22.247 --> 00:25.807
+No solution code here: only what the machine holds.
+
+00:26.320 --> 00:31.651
+The boot as a graph of needs: an arrow from A to B means B needs A first.
+
+00:32.251 --> 00:38.304
+Dotted arrows are policy: the console is up first, so later failures can be reported.
+
+00:38.800 --> 00:50.143
+A solid arrow is a call that fails without its target: from the page allocator to the kernel page table, a root and its tables, and on to the MMU switch.
+
+00:50.743 --> 00:54.338
+There satp, the register that names the root, is written.
+
+00:54.840 --> 01:05.399
+The stepper boots an example machine. Its hart, RISC-V's word for a hardware thread, is in machine mode, the hart's most privileged mode, at every step.
+
+01:05.999 --> 01:08.908
+The marker is on kmain's call of kinit.
+
+01:09.440 --> 01:17.423
+Nothing is up: the console is not set up, the head, where the free list starts, is null, and satp reads 0x0000_0000_0000_0000.
+
+01:18.423 --> 01:23.357
+Inside kinit, whose body is not listed, the console is set up.
+
+01:24.880 --> 01:30.414
+The page allocator is set up: the head names 0x87E5_9000,
+
+01:31.014 --> 01:36.165
+and every page down to the page just above the kernel image is on the free list.
+
+01:37.680 --> 01:42.265
+The kernel page table is built: its root is the table's first page.
+
+01:42.865 --> 01:44.912
+satp still reads 0x0000_0000_0000_0000.
+
+01:46.440 --> 01:53.291
+satp is written: its MODE field reads 8, which is Sv39, the page-table scheme.
+
+01:53.891 --> 01:57.345
+Its PPN, the page-number field, names the root.
+
+01:57.945 --> 01:59.853
+The hart is still in machine mode.
+
+02:01.360 --> 02:09.468
+The process table is set up: every slot reads Unused, and the next pid, the next process number, is 1, as before.
+
+02:10.468 --> 02:13.966
+kinit has returned, and kmain prints the banner.
+
+02:15.480 --> 02:25.948
+The self-check, the given test, makes three checks, one step each. Check 1: kalloc, the allocator's call for a page, hands back a page. It passes.
+
+02:26.948 --> 02:30.637
+Check 2: satp's mode field reads 8. It passes.
+
+02:32.160 --> 02:40.850
+Check 3: allocproc, the process table's call for a slot, hands back slot 0, now Runnable with pid 1. It passes.
+
+02:41.850 --> 02:45.368
+The test prints its ok line, then OSLINGS:PASS.
+
+02:45.880 --> 02:51.239
+Now the case kinit empty: kinit as you receive it, which sets up nothing.
+
+02:51.839 --> 02:53.407
+Which check fails first?
+
+02:54.907 --> 02:56.355
+Watch the three checks.
+
+02:57.880 --> 03:02.243
+kinit returns at once, and kmain prints the banner anyway.
+
+03:03.243 --> 03:08.367
+Check 1: kalloc hands back null, and the check fails. The test stops there.
+
+03:08.967 --> 03:14.145
+The test prints [fail] kalloc is not initialized, then OSLINGS:FAIL.
+
+03:14.640 --> 03:17.999
+One broken case: the table before the allocator.
+
+03:18.999 --> 03:20.514
+The root comes back null.
+
+03:21.514 --> 03:25.588
+satp is written all the same: its MODE field reads 8.
+
+03:27.120 --> 03:30.948
+Only now are the allocator and the process table set up.
+
+03:31.948 --> 03:41.145
+The three verdicts are drawn muted, and the test prints the same ok line, under the page's muted badge, harness: pass, wrong order.
+
+03:41.745 --> 03:44.027
+A wrong order the self-check cannot see.
+
+03:44.560 --> 03:53.749
+From 43k on: the same order runs in the 43k kernel, in supervisor mode, the mode below machine mode.
+
+03:54.349 --> 04:02.433
+The hart takes an instruction page fault, and no trap vector, where a trap lands, is installed yet: it faults over and over.
+
+04:02.960 --> 04:04.739
+The two recorded consoles:
+
+04:05.339 --> 04:09.540
+in 42k, the same ok line, under its muted badge.
+
+04:10.140 --> 04:20.353
+From 43k on, nothing is printed, 0 bytes, and after 10 s, oslings, the course's test runner, prints only its timeout line.
+
+04:20.880 --> 04:25.796
+In the harness build, the one oslings runs, the test prints OSLINGS:PASS.
+
+04:26.396 --> 04:30.575
+A plain cargo run prints the banner and the idle line, then waits:
+
+04:31.175 --> 04:33.445
+working as intended, not a failure.
+
+04:33.960 --> 04:38.546
+You write the body of one function in main.rs: kinit.
+
+04:39.146 --> 04:46.035
+When it returns, every part in the graph is up, and each came up after every part its arrows say it needs.
+
+04:46.560 --> 04:51.617
+Each row is a check, what the test prints if it fails, and the picture to look at.
+
+04:52.217 --> 05:00.222
+If the test prints [fail] the MMU is not on, look at the case called no switch: satp still reads 0x0000_0000_0000_0000.
+
+05:00.720 --> 05:07.733
+What the self-check cannot see: it reads only three facts at the end, a page, a mode field and a slot.
+
+05:08.333 --> 05:17.042
+A kinit that skips the console's setup, or the process table's, prints the reference's bytes exactly, in QEMU.
+
+05:17.560 --> 05:24.921
+Boot brings each part up after everything it uses: when kinit returns, every part in the graph is up.
+
+05:25.521 --> 05:28.329
+Next: the explainer Step Past the Breakpoint.
+
+05:28.929 --> 05:31.257
+Then Friday's session, November 6.

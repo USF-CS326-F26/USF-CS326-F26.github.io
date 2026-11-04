@@ -1,0 +1,187 @@
+WEBVTT
+
+00:00.000 --> 00:04.787
+Week 11: Errors Are Values, for exercise 40k_filesystem.
+
+00:05.387 --> 00:14.888
+A script steps this explainer, it was built with Claude, and its names and numbers come from the given test and the lab's runs of it, not from the lecture.
+
+00:15.400 --> 00:17.255
+After the November 3 lecture:
+
+00:17.855 --> 00:22.408
+on Thursday, November 5, you write two methods, dirlookup and write.
+
+00:23.008 --> 00:27.890
+No solution code here: the machine's state, not the lines that make it so.
+
+00:28.400 --> 00:32.174
+A call that can fail answers a Result, one of two shapes.
+
+00:32.774 --> 00:34.267
+Ok holds a number.
+
+00:34.867 --> 00:38.066
+Err holds one FsError, which fact went wrong.
+
+00:38.666 --> 00:41.061
+Of the eight errors, this test meets four.
+
+00:41.560 --> 00:47.780
+A ? after a call hands an Err up at once, to the caller of the function it is in.
+
+00:48.380 --> 00:53.589
+A match looks at which shape came back, and which variant, and gives each its own arm.
+
+00:54.120 --> 01:01.579
+The test's first create of "hello" runs the given dircreate; its code is below, the marker on the line it is at.
+
+01:02.579 --> 01:05.649
+Before it creates anything, it asks its own lookup:
+
+01:06.249 --> 01:09.175
+Err(NotFound), the answer a create wants.
+
+01:10.680 --> 01:18.206
+The root directory is inode 1, one record of the table, and its first entry, slot 0, is unused.
+
+01:19.206 --> 01:24.613
+alloc hands out a free inode: Ok(2). Inode 2's kind is now File.
+
+01:26.120 --> 01:35.502
+Slot 0 of the root now holds "hello", naming inode 2. As stored: hello and nine zero bytes, length 5, used true.
+
+01:36.502 --> 01:38.591
+dircreate answers Ok(2).
+
+01:39.120 --> 01:43.887
+The test and its seven checks, on the case called correct: the reference kernel.
+
+01:44.487 --> 01:49.948
+The untouched skeleton, the code you receive, also runs it: which check fails first?
+
+01:51.448 --> 01:52.622
+Keep your answer.
+
+01:53.622 --> 01:57.697
+The given init makes inode 1 the root, an empty directory.
+
+01:59.200 --> 02:05.789
+The create of "hello" answers Ok(2), kept in the test's local hello: check 1 passes.
+
+02:06.789 --> 02:11.501
+The lookup of "hello" answers the same Ok(2): check 2 passes.
+
+02:13.000 --> 02:17.595
+The lookup of "missing" answers Err(NotFound): check 3 passes.
+
+02:18.595 --> 02:26.121
+The second create of "hello" answers Err(AlreadyExists), and alloc is never called: check 4 passes.
+
+02:27.640 --> 02:33.121
+The write of "world!" into inode 2 answers Ok(6), and its size reads 6.
+
+02:34.121 --> 02:40.781
+The given read answers Ok(6), and the test's buffer, buf, holds "world!": check 5 passes.
+
+02:42.280 --> 02:48.163
+Directories nest: the create of "sub" answers Ok(3), inode 3, a directory.
+
+02:49.163 --> 02:53.461
+The create of "inner", inside inode 3, answers Ok(4).
+
+02:54.960 --> 02:59.075
+The lookup of "inner" answers Ok(4): check 6 passes.
+
+03:00.075 --> 03:10.315
+The write of the byte "x" into inode 3, a directory, answers Err(IsADirectory), and inode 3 still holds no data: check 7 passes.
+
+03:11.840 --> 03:21.569
+Every check passes. The test prints its banner, then [ok] inodes, directories, files, and Result errors all correct, then OSLINGS:PASS.
+
+03:22.080 --> 03:24.167
+Now the skeleton, and your answer.
+
+03:25.167 --> 03:31.058
+Its first create answers Ok(2): dircreate is given, and check 1 passes.
+
+03:32.058 --> 03:36.773
+Its lookup of "hello" answers Err(NotFound), though the entry is there.
+
+03:38.280 --> 03:45.820
+Check 2 fails, and the test stops. The test prints: [fail] lookup of /hello returned the wrong inode.
+
+03:46.420 --> 03:49.139
+Expect this line before you have written anything.
+
+03:49.640 --> 03:53.339
+Next, a broken case: it compares all 14 bytes.
+
+03:54.339 --> 03:57.559
+Its lookup of "hello" answers Err(NotFound).
+
+03:58.159 --> 04:01.657
+Under the stored name field are the five bytes asked for.
+
+04:03.160 --> 04:04.461
+Check 2 fails.
+
+04:05.061 --> 04:12.259
+The test prints the skeleton's line, word for word: [fail] lookup of /hello returned the wrong inode.
+
+04:12.760 --> 04:15.406
+One more broken case: size never set.
+
+04:16.406 --> 04:21.599
+Its write answers Ok(6), and the bytes of "world!" are in inode 2's data,
+
+04:22.199 --> 04:24.097
+but its size still reads 0.
+
+04:25.600 --> 04:29.781
+The given read answers Ok(0), and buf gets no byte.
+
+04:30.781 --> 04:38.269
+Check 5 fails, though the bytes are in the inode. The test prints: [fail] read did not return what we wrote.
+
+04:38.800 --> 04:41.407
+You write two methods, dirlookup and write.
+
+04:42.007 --> 04:49.130
+A lookup refuses to search a file, and answers Ok only when the whole name matches an entry in use.
+
+04:49.640 --> 04:55.555
+A write refuses a Free inode, a directory, and more than 128 bytes.
+
+04:56.155 --> 04:59.964
+Otherwise it leaves the file holding exactly the bytes given.
+
+05:00.480 --> 05:01.781
+Three of its rows.
+
+05:02.381 --> 05:05.537
+Each row: a check, its [fail] line, the picture.
+
+05:06.137 --> 05:11.643
+For [fail] write to /hello failed, look at the case called write still the skeleton.
+
+05:12.243 --> 05:17.542
+Two rows print the same line: the line alone does not say which lookup it was.
+
+05:18.040 --> 05:25.958
+What the test cannot see: every lookup and create it makes searches a directory, so it never asks a file for an entry,
+
+05:26.558 --> 05:29.244
+and a lookup that skips the kind check passes.
+
+05:29.844 --> 05:33.342
+A lookup that compares unused slots too passes as well.
+
+05:33.840 --> 05:41.113
+Every call that can fail answers with a value: an Ok must hold the right number, an Err the right fact.
+
+05:41.713 --> 05:44.385
+Next: Thursday's session, November 5.
+
+05:44.985 --> 05:47.991
+Friday's explainers start with Needs This First.

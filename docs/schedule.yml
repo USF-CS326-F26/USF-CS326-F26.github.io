@@ -517,6 +517,8 @@ weeks:
           url: "lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps/"
         - text: "Slides"
           url: "lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps-slides.html"
+        - text: "Watch first · Week 11"
+          url: "videos/week11/"
 
     thursday:
       date: "Nov 5"
@@ -530,6 +532,16 @@ weeks:
           url: "prep/11-cs326-2026-11-05-prep-filesystem/"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
+        - text: "Watch first · Week 11"
+          url: "videos/week11/"
+        - text: "Video · Names Live in Directories"
+          url: "videos/week11-names/"
+        - text: "Video · Errors Are Values"
+          url: "videos/week11-errors/"
+        - text: "Explainer · Names Live in Directories"
+          url: "https://claude.ai/artifact/RSj4CPZFpb9qJHD6USUH8P"
+        - text: "Explainer · Errors Are Values"
+          url: "https://claude.ai/artifact/Cb9F5ZqKSTVrQN4U1mxwBP"
 
     friday:
       date: "Nov 6"
@@ -542,6 +554,18 @@ weeks:
           url: "prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/"
         - text: "Withdraw deadline"
           url: "syllabus/"
+        - text: "Video · Needs This First"
+          url: "videos/week11-boot-order/"
+        - text: "Video · Step Past the Breakpoint"
+          url: "videos/week11-step-past/"
+        - text: "Video · Three Gates and a Pending Bit"
+          url: "videos/week11-three-gates/"
+        - text: "Explainer · Needs This First"
+          url: "https://claude.ai/artifact/4Ca1P5C4ww4eG7tfNp628U"
+        - text: "Explainer · Step Past the Breakpoint"
+          url: "https://claude.ai/artifact/1DoaeiwFVGQfNmPjucggQz"
+        - text: "Explainer · Three Gates and a Pending Bit"
+          url: "https://claude.ai/artifact/TUYjAEYqa8g7VbRJKFk5mr"
 
 
 # === WEEK 12 ===

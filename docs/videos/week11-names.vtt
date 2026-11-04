@@ -1,0 +1,202 @@
+WEBVTT
+
+00:00.000 --> 00:05.417
+Week 11: Names Live in Directories, for exercise 40k_filesystem.
+
+00:06.017 --> 00:12.422
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.920 --> 00:15.233
+This follows the November 3 lecture.
+
+00:15.833 --> 00:20.557
+On Thursday, November 5, you write two functions, dirlookup and write.
+
+00:21.157 --> 00:24.324
+No solution code here: only the machine's state.
+
+00:24.840 --> 00:29.095
+An inode is the kernel's record of one file or one directory.
+
+00:29.695 --> 00:33.665
+Each has a kind, Free, File or Dir, a size, and contents:
+
+00:34.265 --> 00:36.971
+a file's bytes, or a directory's entries.
+
+00:37.480 --> 00:43.003
+The table holds 64 inodes; an inode number is its place in the table.
+
+00:43.603 --> 00:45.928
+Inode 1 is the root directory.
+
+00:46.528 --> 00:50.763
+Inode 0 is never handed out; from 8 up, all are Free.
+
+00:51.280 --> 00:55.014
+Look along the records for a name: there is no field for one.
+
+00:55.614 --> 01:00.795
+Every name sits in a directory's entry, beside the number of the inode it names:
+
+01:01.395 --> 01:06.478
+slot 0 of inode 1, its first entry, holds "games", beside 6.
+
+01:07.000 --> 01:11.751
+One entry up close: slot 0 of inode 6, which holds "chess".
+
+01:12.351 --> 01:14.866
+Its name field is always 14 bytes:
+
+01:15.466 --> 01:17.991
+the letters of the name, then zero bytes.
+
+01:18.520 --> 01:20.498
+Beside it, the length: 5.
+
+01:21.098 --> 01:26.497
+The length says where the name ends: the nine zero bytes after it are not part of it.
+
+01:27.097 --> 01:31.625
+Then the inode number, 7, and used: true, the entry is in use.
+
+01:32.160 --> 01:33.897
+A path is a list of names.
+
+01:34.497 --> 01:39.105
+Each lookup asks one inode for one name: one call of dirlookup.
+
+01:39.705 --> 01:42.761
+The paths ahead are example walks, not runs.
+
+01:43.361 --> 01:48.607
+The test's own, smaller tree is walked in the next explainer, Errors Are Values.
+
+01:49.120 --> 01:54.400
+The case called found resolves /games/chess, from the root, inode 1.
+
+01:55.000 --> 01:57.121
+The path's names sit on the arrows.
+
+01:57.721 --> 02:01.804
+How many directories does resolving /games/chess search?
+
+02:04.800 --> 02:08.061
+Lookup 1 asks inode 1, a Dir, for "games".
+
+02:09.061 --> 02:12.546
+Slot 0 holds "games": the whole name matches.
+
+02:13.146 --> 02:18.318
+The lookup answers Ok(6): an Ok carries the next inode to ask.
+
+02:19.840 --> 02:22.442
+Lookup 2 asks inode 6 for "chess".
+
+02:23.042 --> 02:26.753
+Nothing in the path says 6: it came from the root's entry.
+
+02:27.753 --> 02:32.126
+Slot 0 holds "chess", and the lookup answers Ok(7).
+
+02:33.640 --> 02:38.784
+The path ends with Ok(7): inode 7, a File of 9 bytes.
+
+02:39.384 --> 02:41.889
+Directories searched: 2, one per name.
+
+02:42.400 --> 02:46.079
+Now the case called not there: /games/go.
+
+02:46.679 --> 02:51.451
+Lookup 1 went as before. Lookup 2 asks inode 6 for "go".
+
+02:52.451 --> 02:55.383
+Slot 0 holds "chess": not this name.
+
+02:56.880 --> 02:59.597
+No other slot of inode 6 is in use.
+
+03:00.197 --> 03:05.457
+The lookup answers Err(NotFound), and the chain across the top ends in none.
+
+03:06.457 --> 03:08.761
+The path ends with Err(NotFound).
+
+03:09.280 --> 03:13.609
+Now the case called asks a file: /recipe/chess.
+
+03:14.209 --> 03:20.475
+Lookup 1 asks inode 1 for "recipe"; slot 0 holds "games", not this name.
+
+03:21.475 --> 03:25.751
+Slot 1 holds "recipe": the lookup answers Ok(5).
+
+03:27.280 --> 03:29.902
+Lookup 2 asks inode 5 for "chess".
+
+03:30.502 --> 03:33.623
+Inode 5 is a File: flour, eggs, milk.
+
+03:34.223 --> 03:38.989
+The lookup answers Err(NotADirectory), and reads none of its slots.
+
+03:40.520 --> 03:45.221
+The path ends with Err(NotADirectory), one directory searched.
+
+03:45.821 --> 03:50.332
+Inode 6 holds "chess", but this path never asks inode 6.
+
+03:50.840 --> 03:53.505
+The given dircreate changes two records.
+
+03:54.105 --> 03:57.783
+The name goes into the parent directory's first unused slot,
+
+03:58.383 --> 04:04.226
+and the given alloc scans from inode 1 up and hands back the first Free inode it reaches.
+
+04:04.760 --> 04:07.532
+Before and after creating /games/go:
+
+04:08.132 --> 04:11.095
+slot 1 of inode 6 now names inode 4,
+
+04:11.695 --> 04:13.977
+the lowest Free number the scan reaches.
+
+04:14.577 --> 04:16.880
+Inode 8 is Free too, and stays so.
+
+04:17.400 --> 04:20.066
+You write two functions, dirlookup and write.
+
+04:20.666 --> 04:28.559
+dirlookup answers Ok with the entry's inode number only when an entry in use holds the whole name asked for.
+
+04:29.080 --> 04:33.463
+It answers Err(NotFound) when no entry in use holds that name,
+
+04:34.063 --> 04:42.843
+and it never asks a file for an entry: asked to search an inode that is not a directory, it answers Err(NotADirectory).
+
+04:43.360 --> 04:49.053
+And write refuses a Free inode, a directory, and more than 128 bytes,
+
+04:49.653 --> 04:54.495
+and leaves the file holding exactly the bytes given, its size their count.
+
+04:55.000 --> 04:58.989
+The test stops at its first wrong answer, with one [fail] line.
+
+04:59.589 --> 05:07.493
+One thing the test cannot see: it never asks a file for an entry, so it passes a lookup that searches a file anyway.
+
+05:08.093 --> 05:10.790
+Hold yours to the case called asks a file.
+
+05:11.320 --> 05:17.239
+A path is one lookup per name, from the root, each asking the inode the last one answered.
+
+05:17.839 --> 05:21.921
+Next: the explainer Errors Are Values, then Thursday's session.

@@ -965,7 +965,7 @@ Notes:
 
 ## [Before Thursday](../prep/11-cs326-2026-11-05-prep-filesystem/): check yourself
 
-You finish the core of an in-RAM filesystem of inodes and directories, behind one spinlock. Prep: about 20 minutes.
+You finish the core of an in-RAM filesystem of inodes and directories, behind one spinlock. Prep: about 30 minutes.
 
 **1.** Why does an inode have no name field, and what does that buy?
 
@@ -974,7 +974,7 @@ You finish the core of an in-RAM filesystem of inodes and directories, behind on
 **3.** A helper returns `Result<usize, FsError>`. What does `?` do, and when is `match` better?
 
 Notes:
-- Walk the prep page (about 20 minutes). What you build: the heart of a Unix filesystem in RAM. Green is `OSLINGS:PASS`; a red run prints one `[fail]` line saying what went wrong.
+- Walk the prep page (about 30 minutes). What you build: the heart of a Unix filesystem in RAM. Green is `OSLINGS:PASS`; a red run prints one `[fail]` line saying what went wrong.
 - The three questions are the prep's own Check yourself (thu-40k, 40k-paths, 40k-errors); answers are on the prep page. Extra credit `41k_devices` goes out the same day.
 - **Q:** "Do I need `41k` done to start Friday?" No. `42k` builds on `40k` and earlier; `41k` is extra credit on its own track.
 
@@ -984,7 +984,7 @@ Notes:
 
 ## [Before Friday](../prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts/): check yourself
 
-You assemble rv6 into a kernel that boots and idles, then give it a trap path and timer ticks. Prep: about 30 minutes.
+You assemble rv6 into a kernel that boots and idles, then give it a trap path and timer ticks. Prep: about 45 minutes.
 
 **1.** Why must the page allocator come up before the MMU is switched on?
 
@@ -993,7 +993,7 @@ You assemble rv6 into a kernel that boots and idles, then give it a trap path an
 **3.** The timer ticks once, then the kernel hangs. Which gate is closed?
 
 Notes:
-- Walk the prep page (about 30 minutes). What you build: three few-line pieces, a boot, a trap path and a tick; the reading is the work.
+- Walk the prep page (about 45 minutes). What you build: three few-line pieces, a boot, a trap path and a tick; the reading is the work.
 - The questions map to fri-42k, 43k-sepc and 44k-gates. For question 3: none. One tick arrived, so all three gates were open; the pending bit was left set, and the storm looks like a hang (44k-one-thing).
 - **Q:** "Three exercises in 90 minutes?" Yes, because each is a few lines. Read the Essentials for `43k` and `44k` twice; that is where the time goes.
 

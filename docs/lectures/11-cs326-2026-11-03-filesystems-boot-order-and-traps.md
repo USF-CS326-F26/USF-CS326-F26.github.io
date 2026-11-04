@@ -8,6 +8,7 @@
 [Slides](11-cs326-2026-11-03-filesystems-boot-order-and-traps-slides.html){ .md-button }
 [Thursday prep](../prep/11-cs326-2026-11-05-prep-filesystem.md){ .md-button }
 [Friday prep](../prep/11-cs326-2026-11-06-prep-boot-to-life-traps-and-interrupts.md){ .md-button }
+[Explainers](../videos/week11.md){ .md-button }
 
 ## This week { #this-week }
 

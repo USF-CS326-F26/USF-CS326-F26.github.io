@@ -80,13 +80,14 @@ RECORDINGS = {
 #   - Solution-bearing: it walks through that day's reference solution. Its
 #     line goes up only once that solution has shipped, on the session's row,
 #     and no page read before the session links it.
-#   - Solution-free, like Weeks 7's, 9's and 10's: it shows no code for anything
-#     a student writes, only machine state, given code and test output, and the
-#     instructor vouches for that. Its line may go up before the session. It is
-#     also linked from the hub page on the lecture's row and the week's first
-#     session's row (docs/videos/week07.md for Week 7, docs/videos/week09.md
-#     for Week 9, docs/videos/week10.md for Week 10), and that week's prep
-#     pages link the film that walks through it, whose player page links it.
+#   - Solution-free, like Weeks 7's, 9's, 10's and 11's: it shows no code for
+#     anything a student writes, only machine state, given code and test
+#     output, and the instructor vouches for that. Its line may go up before
+#     the session. It is also linked from the hub page on the lecture's row and
+#     the week's first session's row (docs/videos/week07.md for Week 7,
+#     docs/videos/week09.md for Week 9, docs/videos/week10.md for Week 10,
+#     docs/videos/week11.md for Week 11), and that week's prep pages link the
+#     film that walks through it, whose player page links it.
 # The ones that walk through only given `ulib` code are neither: their lines
 # may go up at any time, on the session's row alone.
 # A flat list rather than a dict keyed by date, so a second line for the same
@@ -114,6 +115,11 @@ EXPLAINERS = [
     ("Oct 29", "Two Counts on One Page", "EXGs5GbbrrPuzfrsdy2fhx"),
     ("Oct 30", "The Identity Map", "KyhnBTLZ8d97SXBw7Jwqd8"),
     ("Oct 30", "Packing satp", "4Kx6PtPXmr9tegvpH7VUyz"),
+    ("Nov 5", "Names Live in Directories", "RSj4CPZFpb9qJHD6USUH8P"),
+    ("Nov 5", "Errors Are Values", "Cb9F5ZqKSTVrQN4U1mxwBP"),
+    ("Nov 6", "Needs This First", "4Ca1P5C4ww4eG7tfNp628U"),
+    ("Nov 6", "Step Past the Breakpoint", "1DoaeiwFVGQfNmPjucggQz"),
+    ("Nov 6", "Three Gates and a Pending Bit", "TUYjAEYqa8g7VbRJKFk5mr"),
 ]
 
 
@@ -327,13 +333,20 @@ def sessions():
                 ("Video · The Identity Map", "/videos/week10-identity-map/"),
                 ("Video · Packing satp", "/videos/week10-satp/")))
 
-    add(11, 'tuesday', 'Nov 3', 'lecture', 'Files, Boot Order, and Traps')
+    add(11, 'tuesday', 'Nov 3', 'lecture', 'Files, Boot Order, and Traps',
+        links=L(("Watch first · Week 11", "/videos/week11/")))
     add(11, 'thursday', 'Nov 5', 'exercise', '40k filesystem',
         exercises=['40k_filesystem'], extra=['41k_devices'],
-        links=L(("Extra Credit", "/assignments/extra-credit/")))
+        links=L(("Extra Credit", "/assignments/extra-credit/"),
+                ("Watch first · Week 11", "/videos/week11/"),
+                ("Video · Names Live in Directories", "/videos/week11-names/"),
+                ("Video · Errors Are Values", "/videos/week11-errors/")))
     add(11, 'friday', 'Nov 6', 'exercise', '42k boot_to_life · 43k traps · 44k interrupts',
         exercises=['42k_boot_to_life', '43k_traps', '44k_interrupts'],
-        links=L(("Withdraw deadline", "/syllabus/")))
+        links=L(("Withdraw deadline", "/syllabus/"),
+                ("Video · Needs This First", "/videos/week11-boot-order/"),
+                ("Video · Step Past the Breakpoint", "/videos/week11-step-past/"),
+                ("Video · Three Gates and a Pending Bit", "/videos/week11-three-gates/")))
 
     add(12, 'tuesday', 'Nov 10', 'lecture', 'The Console, the Shell, and User Mode',
         links=L(("rv6 Architecture", "/guides/rv6-architecture/"),

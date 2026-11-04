@@ -1,6 +1,6 @@
 # Prep: Boot to Life, Traps, and Interrupts — 42k · 43k · 44k
 
-**Session:** Fri Nov 6, 1h30 · **Exercises:** `42k_boot_to_life`, `43k_traps`, `44k_interrupts` · **Prep time:** ~30 min · **Lecture:** [Week 11 · Files, Boot Order, and Traps](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md)
+**Session:** Fri Nov 6, 1h30 · **Exercises:** `42k_boot_to_life`, `43k_traps`, `44k_interrupts` · **Prep time:** ~45 min · **Lecture:** [Week 11 · Files, Boot Order, and Traps](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md)
 
 ## What you will build
 
@@ -19,6 +19,7 @@ Three few-line pieces; the reading is the work. First, the boot sequence: four s
 
 | What | Time |
 |---|---|
+| Watch the videos [Needs This First](../videos/week11-boot-order.md) (5:33), then [Step Past the Breakpoint](../videos/week11-step-past.md) (5:32) and [Three Gates and a Pending Bit](../videos/week11-three-gates.md) (5:33). Each video's page links the explainer page it walks through | 17 min |
 | [Week 11 · Friday · `42k` Boot to life](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#fri-42k), both sections | 3 min |
 | [Week 11 · Friday · `43k` Traps](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#fri-43k), all four sections | 6 min |
 | [Week 11 · Friday · `44k` The timer](../lectures/11-cs326-2026-11-03-filesystems-boot-order-and-traps.md#fri-44k), all three sections | 5 min |

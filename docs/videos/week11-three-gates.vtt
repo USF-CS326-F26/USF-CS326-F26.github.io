@@ -1,0 +1,187 @@
+WEBVTT
+
+00:00.000 --> 00:05.512
+Week 11: Three Gates and a Pending Bit, for exercise 44k_interrupts.
+
+00:06.112 --> 00:12.527
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:13.040 --> 00:15.353
+This follows the November 3 lecture.
+
+00:15.953 --> 00:21.199
+On Friday, November 6, you write intr_on and kerneltrap's interrupt branch.
+
+00:21.799 --> 00:24.966
+No solution code here: only the machine's state.
+
+00:25.480 --> 00:27.068
+The timer is the CLINT.
+
+00:27.668 --> 00:32.319
+Its counter is mtime, and mtimecmp holds the next deadline.
+
+00:32.919 --> 00:38.642
+While mtime is past it, MTIP, the machine timer's pending bit, reads 1.
+
+00:39.160 --> 00:40.759
+Each tick takes a detour.
+
+00:41.359 --> 00:49.710
+Machine mode, the most privileged, takes the timer's interrupt at timervec, which raises SSIP, a pending bit.
+
+00:50.310 --> 00:57.115
+After timervec returns with mret, the kernel sees a supervisor software interrupt: the tick.
+
+00:57.640 --> 01:05.164
+In scause, the cause register, bit 63 says which kind: 1 for an interrupt, 0 for an exception.
+
+01:05.764 --> 01:08.845
+The tick and exception code 1 hold the same code:
+
+01:09.445 --> 01:13.825
+one code, two meanings, told apart by bit 63 alone.
+
+01:14.320 --> 01:17.743
+The stepper runs the given test on an example clock.
+
+01:18.343 --> 01:25.384
+Three gates: SSIP, pending; SSIE, the source enable; SIE, the global switch.
+
+01:25.984 --> 01:29.734
+All three 1, or no trap: here all three read 0.
+
+01:30.240 --> 01:32.334
+A band marks the line the test is at.
+
+01:33.334 --> 01:39.627
+intr_on has returned: SSIE and SIE read 1, and SSIP 0.
+
+01:40.227 --> 01:43.170
+t0 is the test's first read of the clock.
+
+01:44.680 --> 01:47.874
+The loop waits for the count, TICKS, to rise by 3.
+
+01:48.874 --> 01:54.979
+mtime passes the deadline: MTIP reads 1, and the mode is M, machine.
+
+01:55.579 --> 01:58.618
+A dashed outline marks where the loop was interrupted.
+
+02:00.120 --> 02:05.992
+At timervec's mret, mtimecmp has moved on, and SSIP reads 1.
+
+02:06.592 --> 02:11.237
+All three gates hold, but the mode is still M: taken after mret.
+
+02:12.760 --> 02:17.305
+In the kernel's supervisor mode, kernelvec, its vector, takes the tick.
+
+02:17.905 --> 02:23.037
+scause reads 0x8000_0000_0000_0001.
+
+02:23.637 --> 02:28.311
+SIE reads 0, and SPIE 1, the old SIE.
+
+02:29.840 --> 02:35.537
+At kernelvec's return, sret, SSIP reads 0, and the count reads 1.
+
+02:36.537 --> 02:43.331
+sret resumes the loop at sepc, where it was interrupted, and SIE reads 1 again.
+
+02:43.840 --> 02:45.674
+When is the next trap taken?
+
+02:47.174 --> 02:48.027
+Watch.
+
+02:49.027 --> 02:51.728
+The loop runs again, and reads a count of 1.
+
+02:52.728 --> 02:56.792
+mtime passes the new deadline, and the next trap is taken.
+
+02:58.320 --> 03:00.999
+timervec moves mtimecmp on again.
+
+03:01.999 --> 03:13.713
+By the last step, the rest goes the same way: the count reads 3. Both checks pass, and the test prints: [ok] timer interrupts fire, are paced, and preempt running code
+
+03:14.240 --> 03:17.005
+Now the skeleton, the code as you receive it.
+
+03:17.605 --> 03:25.615
+Its intr_on opens neither the source gate nor the global gate: SSIE and SIE still read 0.
+
+03:26.615 --> 03:28.405
+The detour runs as before.
+
+03:29.920 --> 03:33.664
+SSIP reads 1, but kernelvec does not run.
+
+03:34.664 --> 03:39.842
+Two seconds on, timervec has run 20 times; the count is still 0.
+
+03:40.442 --> 03:45.562
+The test prints: [fail] no timer ticks — interrupts not enabled or not handled
+
+03:46.080 --> 03:48.713
+One more case: pending bit never lowered.
+
+03:49.313 --> 03:51.978
+Up to the first trap, it is the correct case.
+
+03:52.978 --> 03:57.510
+At the sret, the count reads 1, and SSIP still reads 1.
+
+03:58.040 --> 03:59.458
+What a storm looks like:
+
+04:00.058 --> 04:08.535
+every trap has the same scause and sepc. SSIP is still 1 after each, and the count climbs.
+
+04:09.135 --> 04:12.103
+The listing's marker stays where the first tick left it.
+
+04:12.600 --> 04:14.797
+The test prints the banner, then nothing.
+
+04:15.397 --> 04:25.176
+After 10 seconds, oslings, the course's runner, prints a line that begins: QEMU timed out without printing OSLINGS:PASS.
+
+04:25.776 --> 04:28.751
+The line that would report a storm is never reached.
+
+04:29.280 --> 04:34.815
+Yours are intr_on and kerneltrap's interrupt branch, under the given top-bit test.
+
+04:35.415 --> 04:39.672
+When intr_on returns, SSIE and SIE both read 1.
+
+04:40.272 --> 04:45.241
+Each tick is counted, and SSIP lowered, before the handler returns.
+
+04:45.760 --> 04:50.691
+Each row: what the test asks, what it prints if not, and the picture to look at.
+
+04:51.291 --> 04:55.439
+The skeleton's line is the one to expect before you write anything.
+
+04:56.039 --> 05:00.795
+These four rows print the same line; the stepper's picture tells them apart.
+
+05:01.320 --> 05:09.516
+What the test cannot see: it raises no exception, so a kernel whose handler dropped the given top-bit test would pass too.
+
+05:10.116 --> 05:17.655
+A whole-register write to sip passes here: SSIP is the only bit pending whenever the handler runs.
+
+05:18.160 --> 05:25.302
+A tick reaches the kernel by a detour through machine mode, and is taken only while all three gates hold.
+
+05:25.902 --> 05:28.549
+It stays pending until the handler lowers it.
+
+05:29.149 --> 05:31.707
+Next: Friday's session, November 6.

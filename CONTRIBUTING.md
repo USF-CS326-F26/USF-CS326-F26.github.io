@@ -231,8 +231,9 @@ CRF 28 measured SSIM 0.997 to 0.998 against the master (`babyswtch`, dark and
 colored, 0.995), and full-size stills of the smallest code and handwriting were
 indistinguishable from it. The practice films and `babyswtch` were re-encoded on
 Oct 26 from their earlier copies, which held the masters' own streams; that
-freed about 156 MB. The explainer films stay plain copies: at about 2.8 MB a
-minute they are small already. The player page is
+freed about 156 MB. The explainer films of Weeks 7 to 10 stay plain copies: at
+about 2.8 MB a minute they are small already. Week 11's are re-encoded like the
+exam films, to leave room on Pages. The player page is
 `docs/videos/babyswtch.md`; copy it. Two things in it matter:
 
 - The page is served at `videos/NAME/`, and MkDocs does not rewrite a raw
@@ -277,8 +278,8 @@ the instructor's choice. After finals, unshare the solution-bearing artifacts
 on claude.ai.
 
 A **solution-free** one shows no solution at all, and is made for before the
-session (Week 7's for before the lecture too; Week 9's and Week 10's came after
-it). All three of these hold, of what it shows and of what it says:
+session (Week 7's for before the lecture too; Week 9's, Week 10's and Week 11's
+came after it). All three of these hold, of what it shows and of what it says:
 
 - no Rust, assembly or pseudocode for anything a student writes;
 - only the machine's state (registers, memory words, bit fields, table slots),
@@ -299,8 +300,8 @@ So it may go up before its session, and it may be linked from four places:
 - its session's row: the explainer's `EXPLAINERS` line, and the film's `links=`
   entry as **Video · <title>**;
 - a hub page linked on the lecture's row and on the week's first session's row;
-- that week's prep pages (Week 7's, Week 9's and Week 10's link the films, in
-  the first row of "Read before class");
+- that week's prep pages (Week 7's, Week 9's, Week 10's and Week 11's link the
+  films, in the first row of "Read before class");
 - a button on the lecture page, `[Explainers](../videos/weekNN.md){ .md-button }`
   after the prep buttons, which opens the hub page.
 
@@ -318,18 +319,21 @@ The instructor vouches that an explainer or film is solution-free. Nothing in
 this repository can: no check here fetches an artifact or watches a film. What
 the instructor goes on is the explainer's own leak checks, which are kept with
 its source in `~/sync/cs326/explainers/` (Week 7's are in `week07/gates/`, Week
-9's in `week09/gates/`, Week 10's in `week10/gates/`), and, for a film, the
-narration gate kept with its script in `~/sync/cs326/films/`
-(`w7-narration-gate.mjs`, which takes Week 9's and Week 10's films too), which
-reads every caption and every spoken line. Until the instructor has said so, an
-explainer or film is not solution-free, and the rules for the other kind apply
-to it. Week 7's four are the first: the explainers Reset to Rust; The Free List;
-Sv39, Field by Field; and Sv39, Level by Level, each with a film of the same
-title. Week 9's four are next: the explainers The Process Table; Save Here, Load
-There; Round Robin, by the Cursor; and The Double Switch, each with a film of
-the same title. Week 10's five follow: the explainers One Atomic Step; The Guard
-Holds It; Two Counts on One Page; The Identity Map; and Packing satp, each with
-a film of the same title.
+9's in `week09/gates/`, Week 10's in `week10/gates/`, Week 11's in
+`week11/gates/`), and, for a film, the narration gate kept with its script in
+`~/sync/cs326/films/` (`w7-narration-gate.mjs`, which takes Week 9's, Week 10's
+and Week 11's films too), which reads every caption and every spoken line. Until
+the instructor has said so, an explainer or film is not solution-free, and the
+rules for the other kind apply to it. Week 7's four are the first: the
+explainers Reset to Rust; The Free List; Sv39, Field by Field; and Sv39, Level
+by Level, each with a film of the same title. Week 9's four are next: the
+explainers The Process Table; Save Here, Load There; Round Robin, by the Cursor;
+and The Double Switch, each with a film of the same title. Week 10's five
+follow: the explainers One Atomic Step; The Guard Holds It; Two Counts on One
+Page; The Identity Map; and Packing satp, each with a film of the same title.
+Week 11's five follow: the explainers Names Live in Directories; Errors Are
+Values; Needs This First; Step Past the Breakpoint; and Three Gates and a
+Pending Bit, each with a film of the same title.
 
 ## Lecture pages
 
