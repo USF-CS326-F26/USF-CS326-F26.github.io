@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>OSlingo Support</title>
+<link rel="icon" href="favicon.ico">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1d1d1f; --muted: #5a5a5f; --accent: #00543c;
+    --rule: #e3e3e6; --card: #f4f7f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111312; --fg: #e6e6e6; --muted: #a3a3a8; --accent: #fdbb30;
+      --rule: #2c2f2d; --card: #1a1d1b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+         system-ui, sans-serif; max-width: 640px; margin: 0 auto;
+         padding: 32px 20px 48px; background: var(--bg); color: var(--fg);
+         overflow-wrap: break-word; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 0 0 4px; }
+  h2 { font-size: 19px; line-height: 1.3; margin: 28px 0 6px; }
+  h3 { font-size: 17px; margin: 18px 0 4px; }
+  p, ul, ol { margin: 0 0 12px; }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); }
+  .lead { font-size: 18px; }
+  .notice { background: var(--card); border-left: 4px solid var(--accent);
+            padding: 12px 16px; border-radius: 6px; margin: 16px 0; }
+  footer { margin-top: 36px; padding-top: 12px; border-top: 1px solid var(--rule);
+           color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<h1>OSlingo Support</h1>
+<p class="lead">Operating-systems puzzles for CS 326 at USF, one small problem
+per screen. Free, with no account.</p>
+
+<h2>What OSlingo is</h2>
+<p>OSlingo is a study app built for CS 326 (Operating Systems) at USF. It is
+not an official university app. It follows the course week by week. Each week
+has short lessons and puzzles you answer with taps: pick an answer, fix a line
+of Rust, split an address into its bit fields, fill in a scheduler's timeline,
+or put the steps of a system in order. Every puzzle explains its answer once you
+solve it. Skills brings back the concepts you have met for a quick review.</p>
+<p>All weeks are open from the start. Within a week, decks open one after
+another.</p>
+
+<p class="notice"><strong>OSlingo never shows an OSlings solution.</strong> Its
+puzzles sit beside the OSlings exercises. They do not replace them.</p>
+
+<h2>Install it</h2>
+<p>OSlingo runs on iPhone, on Android and in your browser. The phone app is a
+test build for the students of CS 326.</p>
+
+<h3>iPhone (iOS 16.4 or later)</h3>
+<ol>
+  <li>Install <a href="https://apps.apple.com/app/testflight/id899247664">TestFlight</a>
+      from the App Store.</li>
+  <li>On your iPhone, open the TestFlight public link. It is posted on Canvas
+      or Zulip.</li>
+  <li>Tap View in TestFlight (or Start Testing), then Accept, then
+      Install.</li>
+</ol>
+<p>TestFlight lists the app as CS 326 OSlingo. On your home screen it is
+OSlingo. A TestFlight build works for 90 days. TestFlight offers each newer
+build when it comes out.</p>
+
+<h3>Android (7.0 or later)</h3>
+<ol>
+  <li>Use a personal Google account, such as a Gmail account, not your USF
+      account. University accounts may be blocked from testing
+      programs.</li>
+  <li>With that account, join the Google Group
+      <a href="https://groups.google.com/g/cs-326-oslingo-testers">cs-326-oslingo-testers</a>
+      (tap Join group).</li>
+  <li>Open the Google Play testing opt-in link while you are signed in to the
+      same account, and tap Become a tester. The link is posted on Canvas or
+      Zulip.</li>
+  <li>From that page, follow the link to Google Play and install CS 326
+      OSlingo.</li>
+</ol>
+<p>If Google Play says the app is not available, check that the Play Store
+uses the same personal account (tap your profile picture to switch). Joining
+the group can also take a few minutes to reach Google Play.</p>
+
+<h3>The web version</h3>
+<p>On the course site, click OSlingo in the top bar, or open
+<a href="./">cs326-f26.cs.usfca.edu/oslingo/</a>. It runs in your browser and
+keeps your progress in that browser. Use Safari or Chrome, not another app's
+built-in browser.</p>
+
+<h2>Back up and move your progress</h2>
+<p>Your progress stays where you made it: on that phone, or in that browser.
+Nothing syncs on its own. A backup file is how you keep it and move it.</p>
+<ul>
+  <li><strong>Back up:</strong> Settings › Progress › Back up. In the phone
+      app, the share sheet opens. Save the file to your phone's files, or send
+      it to yourself. On the web, the browser downloads the file.</li>
+  <li><strong>Restore:</strong> on the other phone or browser, Settings ›
+      Progress › Restore from a file, and pick the file. It adds the file's
+      progress to what is already there. Nothing there is lost, and restoring
+      the same file again changes nothing.</li>
+  <li><strong>Between the phone and the web:</strong> the same file works in
+      both.</li>
+  <li><strong>Start over:</strong> Settings › Progress › Delete progress on
+      this device. Back up first if you may want your progress again.</li>
+</ul>
+<p>OSlingo never sends your backup file anywhere. You choose where it goes.</p>
+
+<h2>Questions and answers</h2>
+<ul>
+  <li><strong>Does it need the internet?</strong> The phone app does not.
+      Everything is inside the app, and it works in airplane mode. The web
+      version needs the course site to load.</li>
+  <li><strong>Do I need an account?</strong> No. There is nothing to sign in
+      to.</li>
+  <li><strong>Can the course staff see my progress?</strong> No. OSlingo sends
+      nothing anywhere. The <a href="privacy.html">privacy policy</a> has the
+      details.</li>
+</ul>
+
+<h2>Report a problem</h2>
+<p>Found a bug, a puzzle that seems wrong, or a confusing explanation? Write to
+<a href="mailto:gdb.gena1@gmail.com">gdb.gena1@gmail.com</a>. On iPhone, you
+can also take a screenshot in the app and send it as TestFlight feedback. It
+helps to include:</p>
+<ul>
+  <li>the puzzle's title and its week;</li>
+  <li>the app version (Settings, then About);</li>
+  <li>your phone or browser, and its version;</li>
+  <li>what you expected, and what happened instead.</li>
+</ul>
+<p>Please do not send your own code for a course exercise. Bring exercise
+questions to office hours or the course forum.</p>
+
+<footer>
+  OSlingo, built for CS 326 at USF.
+  <a href="privacy.html">Privacy policy</a> ·
+  <a href="./">OSlingo on the course site</a>
+</footer>
+</body>
+</html>
