@@ -32,6 +32,7 @@ docs/
   guides/                   the reference layer
   lectures/                 one page per week, WW-cs326-<Tuesday>-topic.md + matching -slides.html
   notes/                    CS326-SS YYYY-MM-DD Topic.pdf, the handwritten class notes
+  oslingo/                  GENERATED: the OSlingo web app, by the OSlingo repo's export. Never hand-edit.
   prep/                     WW-cs326-YYYY-MM-DD-prep-slug.md, one per exercise session
   solutions/                exam + practice-set solutions ONLY (never exercise code)
   summaries/                cs326-SS-YYYY-MM-DD-summary.md, one per section per meeting
@@ -39,6 +40,7 @@ docs/
   stylesheets/extra.css     USF palette + the schedule table
   javascripts/              schedule.js, mermaid-init.js, mathjax.js
 overrides/                  the external-links header bar and the footer
+  .icons/oslingo/           GENERATED: oslingo.svg, the header bar's OSlingo icon. Never hand-edit.
 utils/
   gen_schedule.py           the calendar → docs/schedule.yml
   gen_exercises.py          cs326-oslings/info.toml + the calendar → docs/assignments/exercises.md
@@ -612,6 +614,74 @@ on the explainer's own leak checks, which are kept with its source in
 its script in `~/sync/cs326/films/`. Week 7's four were the first and Week 9's
 four the next — see Explainers and videos. An explainer or film that shows a
 solution stays under the paragraph above, whatever else it shows.
+
+## Posting OSlingo
+
+OSlingo is the course's study app. Its web version is served from this site at
+`/oslingo/`, and the header bar links it as **OSlingo**, between **OSlings** and
+**Inclass**. The link is internal, so it opens in the same tab, and
+`overrides/main.html` passes it through MkDocs' `url` filter, which keeps it
+`/oslingo/` on every page, the 404 page included.
+
+Two parts of this repository are written by the OSlingo repo
+(`~/sync/cs326/dev/git/cs326-oslingo`). Never hand-edit either one:
+
+- `docs/oslingo/`, the exported app. MkDocs copies it through as static files.
+  The export lists what it wrote in a dotfile manifest there (MkDocs skips
+  dotfiles), and it refuses to run if the folder holds a file it did not write.
+  It keeps the previous export's hashed `_expo/` and `assets/` files for one
+  more export, so open tabs and the 10-minute Pages cache keep working.
+- `overrides/.icons/oslingo/oslingo.svg`, the header icon.
+
+To post a new version, run the export and then the preview from the OSlingo
+repo. Neither one commits or pushes:
+
+```bash
+cd ~/sync/cs326/dev/git/cs326-oslingo && source tools/env.sh
+npm run site:export    # tests, gates, the web build, its scan and e2e, then docs/oslingo/
+npm run site:preview   # mkdocs build --strict, the check_*.py scripts and e2e on site/
+```
+
+`site:preview` builds with `.venv/` in this repository, a local virtualenv
+(gitignored) made from `requirements.txt`, so it uses the same pinned versions
+as CI:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
+Then review `git status` and `git diff --stat` here, and push only with the
+instructor's OK. The header link and the first export go up in the same push,
+so the link never points at a missing app. The full runbook is
+`docs/site-publish.md` in the OSlingo repo.
+
+To take a file down, fix it in the OSlingo repo, then run
+`npm run site:export -- --purge`. The purge also drops the previous export's
+kept files at once. Preview it and push with the instructor's OK. Pages lets
+browsers cache a file for 10 minutes, so a removed file can still be served
+from a cache for that long after the deploy.
+The takedown steps are in `docs/leak-runbook.md` in the OSlingo repo.
+
+Three things hold outside the build:
+
+- **Keep Pages on the Actions deploy.** Settings › Pages › Source stays
+  **GitHub Actions**, which runs `.github/workflows/deploy.yml`. A branch
+  deploy runs Jekyll first, and Jekyll drops every folder whose name starts
+  with `_`. The app would lose `_expo/` and all of its scripts.
+- **Enforce HTTPS** in the Pages settings. Progress lives in browser storage,
+  which belongs to one origin, so `http://` and `https://` would keep separate
+  progress. `site_url` is `https://` to match.
+- **The export stays in public git history.** Every pushed export, its
+  unreviewed puzzles included, remains in this repository's history after a
+  later export or a takedown replaces it. A takedown removes a file from the
+  site, not from git.
+
+Neither the app nor this site says anything about drafts (the instructor's
+decision of 2026-11-06, in the OSlingo repo's `docs/leak-policy.md`). The
+puzzles the instructor has not reviewed yet ship unmarked, so treat each one
+as published. OSlingo's review and approval steps are unchanged. The
+TestFlight and Play test builds carry the same puzzles as this site, and a
+public store release takes approved puzzles only.
 
 ## Spelling
 

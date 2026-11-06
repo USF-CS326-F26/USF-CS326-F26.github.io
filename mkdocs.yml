@@ -5,7 +5,7 @@
 site_name: CS 326 Operating Systems Fall 2026
 site_description: USFCS Undergraduate Operating Systems — build a RISC-V kernel in Rust
 site_author: Greg Benson
-site_url: http://cs326-f26.cs.usfca.edu
+site_url: https://cs326-f26.cs.usfca.edu
 
 repo_url: https://github.com/USF-CS326-F26/USF-CS326-F26.github.io
 edit_uri: edit/main/docs/
@@ -96,6 +96,9 @@ extra:
     - name: OSlings
       url: https://github.com/USF-CS326-F26/oslings-course
       icon: fontawesome/solid/code
+    - name: OSlingo
+      url: /oslingo/
+      icon: oslingo/oslingo
     - name: Inclass
       url: https://github.com/USF-CS326-F26/inclass
       icon: fontawesome/solid/chalkboard-user
