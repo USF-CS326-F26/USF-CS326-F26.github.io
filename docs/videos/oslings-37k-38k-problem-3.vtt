@@ -1,0 +1,274 @@
+WEBVTT
+
+00:00.000 --> 00:05.808
+OSlings Practice 37k-38k, Problem 3: The Kernel Heap.
+
+00:06.408 --> 00:12.197
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.797 --> 00:16.689
+A script reveals it, and this explainer was built with Claude.
+
+00:17.200 --> 00:26.285
+Problem 3 draws on one OSlings exercise: 38k_semaphores, from week 10, on Thursday, October 29.
+
+00:26.885 --> 00:30.179
+You wrote one method there, try_wait for the Semaphore.
+
+00:30.779 --> 00:37.166
+The heap was given: KernelHeap, on top of kalloc, the page allocator from 32k.
+
+00:38.680 --> 00:42.103
+Problem 3 is the kernel heap, from 38k.
+
+00:42.703 --> 00:48.803
+Its GlobalAlloc serves every Box, Vec and Arc from the 32k page allocator.
+
+00:49.320 --> 00:54.129
+A call to alloc is handed a layout: the size and the alignment asked for.
+
+00:54.729 --> 01:00.815
+If either is more than PGSIZE, 4096 bytes, it returns null.
+
+01:01.415 --> 01:05.661
+Otherwise it calls kalloc: one whole page per allocation.
+
+01:06.160 --> 01:09.998
+A call to dealloc hands the page straight back, to kfree.
+
+01:10.598 --> 01:13.382
+Under it is the free list from 32k.
+
+01:13.982 --> 01:19.325
+Each free page starts with a link to the next, and the variable FREELIST is the head.
+
+01:19.840 --> 01:23.753
+A call to kfree pushes a page onto the front of the list.
+
+01:24.353 --> 01:26.464
+The link in the page takes the old head,
+
+01:27.064 --> 01:29.153
+then FREELIST is set to the page.
+
+01:29.680 --> 01:32.400
+A call to kalloc pops the page at the head.
+
+01:33.000 --> 01:35.865
+If there is one, FREELIST moves on to its link,
+
+01:36.465 --> 01:40.337
+and the call returns the page, or null if the list is empty.
+
+01:40.840 --> 01:42.023
+Then the rules.
+
+01:42.623 --> 01:48.947
+Box::new and Vec::with_capacity: one alloc each, with a dealloc when the value is dropped.
+
+01:49.547 --> 01:54.537
+Arc::new: one alloc, holding the value and its owner count, which starts at 1.
+
+01:55.040 --> 02:01.473
+A call to Arc::clone makes another owner of the same value, with no copy: owners + 1.
+
+02:02.073 --> 02:05.079
+And for an Arc, a drop means one fewer owner.
+
+02:05.679 --> 02:08.367
+The dealloc comes when the owners reach 0.
+
+02:09.880 --> 02:22.237
+Right after kalloc::init(), the free list starts 0x87fff000, then 0x87ffe000, then 0x87ffd000, and so on.
+
+02:22.837 --> 02:29.127
+From here on, a page goes by its last digits: f000, e000, d000.
+
+02:30.240 --> 02:31.935
+Part (a). Fill in the table.
+
+02:32.535 --> 02:37.407
+For each line, give the page it allocates or frees, or none if it does neither,
+
+02:38.007 --> 02:40.938
+and the page at the head of the free list afterwards.
+
+02:41.440 --> 02:46.608
+Line 1 makes a Box: one alloc, so a call to kalloc pops the head.
+
+02:47.608 --> 02:49.675
+It allocates page f000.
+
+02:50.675 --> 02:51.805
+It frees none.
+
+02:52.805 --> 02:55.199
+And the head moves on, to e000.
+
+02:55.720 --> 03:00.867
+Line 2 makes an Arc: one alloc, holding the Semaphore and its owner count.
+
+03:01.867 --> 03:04.351
+It allocates the new head, e000.
+
+03:05.351 --> 03:06.481
+It frees none.
+
+03:07.481 --> 03:09.921
+And the head moves on, to d000.
+
+03:10.440 --> 03:15.787
+Line 3 clones the Arc: another owner of the same value, with no copy.
+
+03:16.787 --> 03:18.215
+So it allocates none,
+
+03:19.215 --> 03:20.409
+and it frees none.
+
+03:21.409 --> 03:26.132
+The head stays at d000: the clone only adds 1 to the owners.
+
+03:26.640 --> 03:31.833
+Line 4 drops the Box from line 1, and a dropped Box gets a dealloc.
+
+03:32.833 --> 03:34.165
+It allocates none.
+
+03:35.165 --> 03:38.396
+It frees the page that line 1 got, f000.
+
+03:39.396 --> 03:43.971
+A call to kfree pushes it onto the front: the head is f000.
+
+03:44.480 --> 03:47.507
+Line 5 makes another Box: one alloc.
+
+03:48.507 --> 03:53.345
+It pops the head: f000 again, the page that line 4 just freed.
+
+03:54.345 --> 03:55.475
+It frees none.
+
+03:56.475 --> 04:02.031
+And the head goes back to d000, the link that line 4 wrote into f000.
+
+04:02.560 --> 04:07.593
+Line 6 drops s, but s2 is another owner of the same Semaphore.
+
+04:08.593 --> 04:09.925
+It allocates none.
+
+04:10.925 --> 04:13.932
+It frees none: the owners have not reached 0.
+
+04:14.932 --> 04:16.861
+The head stays at d000.
+
+04:17.360 --> 04:21.807
+Line 7 drops s2, the last owner: the owners reach 0.
+
+04:22.807 --> 04:24.139
+It allocates none.
+
+04:25.139 --> 04:28.421
+So the dealloc frees the page of the Arc, e000,
+
+04:29.421 --> 04:31.137
+and the head is e000.
+
+04:31.640 --> 04:35.255
+Line 8 makes a Vec with room for 4: one alloc.
+
+04:36.255 --> 04:40.807
+It pops the head, e000, the page that line 7 just freed.
+
+04:41.807 --> 04:42.937
+It frees none.
+
+04:43.937 --> 04:46.377
+And the head moves on, to d000.
+
+04:46.880 --> 04:48.522
+The key sums up the table.
+
+04:50.022 --> 04:55.310
+The free list is last in, first out, so a freed page is the next one handed out:
+
+04:56.310 --> 04:58.709
+lines 4 to 5, and 7 to 8.
+
+05:00.740 --> 05:04.023
+Line 3 copies no data: it bumps the count.
+
+05:04.623 --> 05:07.567
+Line 6 only drops the count from 2 to 1.
+
+05:09.067 --> 05:12.690
+The page goes back when the last owner drops, on line 7.
+
+05:13.200 --> 05:14.563
+And one more note.
+
+05:15.163 --> 05:20.100
+The Semaphore itself sits at 0x87ffe010:
+
+05:20.700 --> 05:25.797
+the two counts of the Arc take the first 16 bytes of its page, e000.
+
+05:26.920 --> 05:29.957
+Part (b). What happens, and why, in each case?
+
+05:30.557 --> 05:40.337
+Part (i): Vec::&lt;u64&gt;::with_capacity(512), and then Vec::&lt;u64&gt;::with_capacity(513).
+
+05:42.340 --> 05:51.180
+512 times 8 is 4096 bytes, since a u64 is 8 bytes: exactly one page.
+
+05:52.680 --> 06:02.883
+That works. 4096 is not more than PGSIZE, so the size check passes, kalloc is called, and the Vec gets a whole page.
+
+06:03.400 --> 06:11.576
+The second Vec asks for 513 times 8: 4104 bytes, more than PGSIZE.
+
+06:13.076 --> 06:20.275
+So the call to alloc returns null, and for Vec::with_capacity, Rust treats a failed allocation as fatal.
+
+06:21.775 --> 06:23.095
+The kernel panics.
+
+06:24.200 --> 06:29.373
+Part (ii): kmain forgets to call kalloc::init() before the first Arc::new.
+
+06:30.873 --> 06:35.127
+The free list is still empty: the variable FREELIST starts out null,
+
+06:35.727 --> 06:40.463
+so a call to kalloc returns null, for the very first allocation.
+
+06:42.460 --> 06:45.021
+That is the same panic as in part (i).
+
+06:46.521 --> 06:52.643
+The heap is built on top of the page allocator, so the page allocator has to be set up first.
+
+06:53.760 --> 07:00.639
+Part (iii): how many bytes of its page does line 1's Box use? That Box holds a u64.
+
+07:02.139 --> 07:04.046
+A u64 is 8 bytes,
+
+07:05.546 --> 07:12.573
+out of the 4096 in its page. One page per allocation wastes the rest of the page.
+
+07:13.080 --> 07:14.551
+That's Problem 3.
+
+07:15.151 --> 07:18.126
+Part (a): the free list is last in, first out.
+
+07:18.726 --> 07:25.759
+Part (b): if a request is too big, or init never runs, the allocation fails and the kernel panics.
+
+07:26.359 --> 07:28.853
+And each allocation takes a whole page.

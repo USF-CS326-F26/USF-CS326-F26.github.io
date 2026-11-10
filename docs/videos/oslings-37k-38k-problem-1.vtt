@@ -1,0 +1,238 @@
+WEBVTT
+
+00:00.000 --> 00:05.576
+OSlings Practice 37k-38k, Problem 1: Spinlocks.
+
+00:06.176 --> 00:11.965
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.565 --> 00:16.457
+A script reveals it, and this explainer was built with Claude.
+
+00:16.960 --> 00:26.066
+Problem 1 draws on one OSlings exercise: 37k_spinlocks, from week 10, on Thursday, October 29.
+
+00:26.666 --> 00:28.489
+You wrote lock and try_lock.
+
+00:29.089 --> 00:37.436
+Everything else was given: the SpinLock struct, new and unlock, the guard with Deref, DerefMut and Drop, and the test.
+
+00:38.560 --> 00:42.847
+Problem 1 opens with the core of the 37k SpinLock.
+
+00:43.447 --> 00:49.773
+It has two fields: locked, an AtomicBool, and data, which holds the value the lock protects.
+
+00:50.373 --> 00:55.524
+At the bottom, COUNTER is a SpinLock around a u64, starting at 0.
+
+00:56.040 --> 00:58.375
+A call to lock spins until it wins.
+
+00:58.975 --> 01:03.400
+Each try is one compare_exchange on locked, from false to true.
+
+01:04.000 --> 01:06.544
+As long as a try fails, it tries again.
+
+01:07.144 --> 01:09.703
+Once one succeeds, it returns a guard.
+
+01:10.200 --> 01:13.741
+A call to try_lock makes one attempt, with no spinning.
+
+01:14.341 --> 01:18.413
+In one atomic step: if locked is false, it sets it to true.
+
+01:19.013 --> 01:23.009
+If that worked, the lock is ours, and the call hands back a guard.
+
+01:24.120 --> 01:28.988
+If not, locked was already true: the lock is held, and the answer is None.
+
+01:29.588 --> 01:31.688
+A call to unlock stores false.
+
+01:32.288 --> 01:36.628
+And dropping a guard releases the lock: its Drop calls unlock.
+
+01:37.760 --> 01:42.125
+Part (a). This version of try_lock does without compare_exchange.
+
+01:42.725 --> 01:48.769
+Step A asks if the lock is free: it loads locked, and goes on only if it reads false.
+
+01:49.369 --> 01:53.123
+Step B claims it: it stores true, then returns a guard.
+
+01:54.240 --> 01:58.091
+Two CPUs call try_lock on COUNTER at the same time.
+
+01:58.691 --> 02:03.905
+Give an order of steps A and B on the two CPUs in which both get a guard.
+
+02:04.505 --> 02:08.123
+What can go wrong then, and why does compare_exchange fix it?
+
+02:09.640 --> 02:14.341
+First, CPU 1 runs step A: it loads locked, and sees false.
+
+02:15.341 --> 02:22.738
+Then CPU 2 runs step A, and also sees false, since CPU 1 has not stored true yet.
+
+02:24.240 --> 02:27.600
+Then CPU 1 runs step B, and stores true.
+
+02:29.100 --> 02:36.886
+Then CPU 2 runs step B, and stores true as well. Both saw the lock free, so both return a guard.
+
+02:38.000 --> 02:40.537
+The check and the claim are two separate steps.
+
+02:41.137 --> 02:47.646
+CPU 2 ran its check in the gap: after CPU 1 checked, and before it claimed.
+
+02:48.160 --> 02:50.559
+What can go wrong once both hold a guard?
+
+02:52.059 --> 03:01.152
+Each CPU can get a mutable reference to the data in COUNTER through its guard, both at once: no mutual exclusion, a race.
+
+03:02.280 --> 03:06.553
+For example, COUNTER holds 5, and both CPUs add 1.
+
+03:07.553 --> 03:10.036
+Both read 5, then both write 6.
+
+03:11.536 --> 03:16.619
+Each added 1, but COUNTER went up by just one in all: one update is lost.
+
+03:17.120 --> 03:19.211
+Why does compare_exchange fix it?
+
+03:20.711 --> 03:26.556
+The compare_exchange checks that locked is false and sets it to true, as one atomic step.
+
+03:27.156 --> 03:31.987
+Nothing the other CPU does to locked can land between the check and the set.
+
+03:33.520 --> 03:42.985
+So only one CPU can win, from false to true. The other finds true, its attempt fails, and its call to try_lock returns None.
+
+03:43.585 --> 03:46.730
+That is the else branch: the lock was already held.
+
+03:47.840 --> 03:55.657
+Part (b). In 34k, alloc_pid handed out process ids from a counter, NEXTPID, a static mut.
+
+03:56.257 --> 04:03.434
+Two CPUs creating processes at the same moment could both read the same value, and get the same pid.
+
+04:04.560 --> 04:08.804
+So the code here moves the counter into a SpinLock, starting at 1,
+
+04:09.404 --> 04:14.223
+and rewrites alloc_pid, which allocproc calls for every new process.
+
+04:14.720 --> 04:19.699
+The first line locks the counter, and keeps the guard in a variable named next.
+
+04:20.299 --> 04:23.667
+The second reserves a pid, by adding 1 through next.
+
+04:24.267 --> 04:29.779
+The third calls lock on NEXTPID, and returns the value it reads, minus 1.
+
+04:30.880 --> 04:34.419
+What happens the first time alloc_pid is called, and why?
+
+04:35.019 --> 04:38.222
+Fix it, so it returns 1, then 2, and so on.
+
+04:38.822 --> 04:43.535
+And why does a one-statement update like this work fine, even in a loop?
+
+04:45.540 --> 04:52.302
+It hangs forever on the first call, so allocproc never returns, and no process is ever created.
+
+04:53.802 --> 05:01.164
+Why? The guard next still holds the lock: a guard unlocks only when it is dropped, at the end of alloc_pid.
+
+05:02.280 --> 05:09.235
+So the second lock, on the third line, spins: locked is still true, and every compare_exchange fails.
+
+05:10.735 --> 05:16.547
+It waits for a release that can only come from next, so it waits for itself: a self-deadlock.
+
+05:18.080 --> 05:22.281
+The fix: use the guard you already hold; never lock it twice.
+
+05:23.281 --> 05:27.297
+Read the pid through next, add 1 through next, and return the pid.
+
+05:28.297 --> 05:33.699
+Or add 1 through next, and return next minus 1. Both give 1, then 2.
+
+05:35.700 --> 05:41.468
+In the one-statement update, the guard is a temporary: it is dropped at the end of that statement.
+
+05:42.468 --> 05:45.049
+So each statement locks and unlocks once.
+
+05:45.649 --> 05:49.390
+In a loop, each pass locks, adds 1, and unlocks again.
+
+05:50.520 --> 05:56.862
+Part (c). The method lock takes self by shared reference, yet alloc_pid writes through the guard.
+
+05:57.462 --> 06:00.265
+The guard reaches the data through its DerefMut,
+
+06:00.865 --> 06:04.278
+whose method returns a mutable reference to the data.
+
+06:05.400 --> 06:09.676
+Which field of SpinLock makes writing through a shared reference possible?
+
+06:10.276 --> 06:16.195
+And why is that safe here: what stops two CPUs from writing the data at the same time?
+
+06:18.220 --> 06:27.827
+The field data, an UnsafeCell. Its method get hands out a raw mutable pointer, even from a shared reference: interior mutability.
+
+06:28.827 --> 06:30.895
+UnsafeCell itself checks nothing.
+
+06:32.000 --> 06:37.289
+Here is the chain. The guard keeps the shared reference the call to lock was given.
+
+06:37.889 --> 06:41.947
+Through it, a call to get on data gives a raw mutable pointer,
+
+06:42.547 --> 06:46.565
+and the unsafe block turns that pointer into a mutable reference.
+
+06:47.080 --> 06:48.423
+Why is that safe?
+
+06:49.923 --> 06:57.995
+The lock makes it safe. A guard exists only after its CPU wins the compare_exchange, from false to true.
+
+07:00.020 --> 07:06.525
+And no other CPU can win until that guard is dropped, and a call to unlock stores false.
+
+07:07.525 --> 07:13.307
+So at most one mutable reference to the data exists at a time: mutual exclusion.
+
+07:13.840 --> 07:15.195
+That's Problem 1.
+
+07:15.795 --> 07:22.887
+Part (a): a check, then a claim, can let both CPUs in; compare_exchange is one atomic step.
+
+07:23.487 --> 07:26.209
+Part (b): never lock what you already hold.
+
+07:26.809 --> 07:31.019
+Part (c): UnsafeCell allows the write; the lock makes it safe.

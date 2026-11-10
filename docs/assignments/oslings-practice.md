@@ -29,12 +29,22 @@ own pages: [Problem 1 · Processes](../videos/oslings-34k-36k-problem-1.md)
 on `37k_spinlocks` and `38k_semaphores` (the spinlock, the semaphore built on
 it, and the kernel heap), and their answer key.
 
+**Solution videos**, one per problem, each working the answer key on the set's
+own pages: [Problem 1 · Spinlocks](../videos/oslings-37k-38k-problem-1.md)
+(7:33) · [Problem 2 · Semaphores and Arc](../videos/oslings-37k-38k-problem-2.md)
+(6:58) · [Problem 3 · The Kernel Heap](../videos/oslings-37k-38k-problem-3.md)
+(7:30).
+
 ## 39k: Virtual Memory { #39k }
 
 **[OSlings Practice 39k](oslings-39k.pdf)** (PDF, 4 pages) ·
 **[Solutions](oslings-39k-solutions.pdf)** (PDF, 4 pages): one problem, in
 three parts, on `39k_virtual_memory` (building the kernel's page table and
 turning on translation), and its answer key.
+
+**Solution video**, working the answer key on the set's own pages:
+[Problem 1 · Turning on Virtual Memory](../videos/oslings-39k-problem-1.md)
+(9:34).
 
 ## 40k-41k: Filesystem, Devices { #40k-41k }
 

@@ -29,10 +29,12 @@ processes, context switch and scheduling. The set, its key, and a video for
 each problem that works the key on the set's own pages.
 
 **[OSlings Practice 37k-38k](../assignments/oslings-practice.md#37k-38k)**:
-spinlocks, semaphores and the kernel heap. The set and its key.
+spinlocks, semaphores and the kernel heap. The set, its key, and a video for
+each problem that works the key on the set's own pages.
 
 **[OSlings Practice 39k](../assignments/oslings-practice.md#39k)**: virtual
-memory. The set and its key.
+memory. The set, its key, and a video that works the key on the set's own
+pages.
 
 ## Exams
 

@@ -1,0 +1,268 @@
+WEBVTT
+
+00:00.000 --> 00:06.205
+OSlings Practice 37k-38k, Problem 2: Semaphores and Arc.
+
+00:06.805 --> 00:12.594
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:13.194 --> 00:17.086
+A script reveals it, and this explainer was built with Claude.
+
+00:17.600 --> 00:26.527
+Problem 2 draws on the OSlings exercise 38k_semaphores, from week 10, on Thursday, October 29.
+
+00:27.127 --> 00:31.706
+You wrote one method there, try_wait; the rest came with the exercise.
+
+00:32.306 --> 00:37.553
+The count sits in the SpinLock from 37k_spinlocks, the same session.
+
+00:39.080 --> 00:42.844
+Problem 2 opens with the semaphore from 38k.
+
+00:43.444 --> 00:45.821
+Its permit count sits in your SpinLock.
+
+00:46.421 --> 00:48.703
+A call to try_wait locks the count.
+
+00:49.303 --> 00:54.696
+If the count is above 0, it takes a permit and returns true; otherwise, false.
+
+00:55.200 --> 00:59.583
+A call to post locks the count and adds 1, to give a permit back.
+
+01:00.183 --> 01:03.489
+A call to available locks it and returns the count.
+
+01:04.089 --> 01:09.144
+They all take a shared reference to self, yet waits and posts change the count.
+
+01:09.640 --> 01:13.735
+Several parts of the kernel can share one semaphore through an Arc.
+
+01:14.335 --> 01:18.101
+A call to Arc::new puts a value on the heap, with 1 owner.
+
+01:18.701 --> 01:23.799
+A call to Arc::clone makes another owner of the same value, with no copy.
+
+01:24.920 --> 01:30.722
+Dropping an Arc leaves one fewer owner, and the value is freed when the owners reach 0.
+
+01:31.322 --> 01:35.106
+And a call to strong_count gives the current number of owners.
+
+01:36.240 --> 01:42.641
+Part (a). Fill in the table for this code, and leave the returns column blank for lines that return nothing.
+
+01:43.241 --> 01:47.359
+Then: what is unusual after line 6, and does any code stop it?
+
+01:48.480 --> 01:50.537
+Each row is one line of the code.
+
+01:51.137 --> 01:53.253
+The columns: what the line returns,
+
+01:53.853 --> 01:56.690
+the count, as a call to available would return it,
+
+01:57.290 --> 01:59.224
+and the owners, the strong count.
+
+01:59.720 --> 02:03.450
+Line 1 makes a semaphore inside a new Arc, named sem.
+
+02:04.450 --> 02:09.919
+It starts with 1 permit, so the count is 1: a call to available would return 1.
+
+02:10.919 --> 02:12.753
+And a new Arc has 1 owner.
+
+02:13.280 --> 02:15.434
+Line 2 clones sem into s2.
+
+02:16.434 --> 02:18.692
+The count is untouched: still 1.
+
+02:19.692 --> 02:25.382
+And s2 is another owner of the same semaphore: the owners go up by one, to 2.
+
+02:25.880 --> 02:29.901
+Line 3 waits through sem. The count is 1, above 0.
+
+02:30.901 --> 02:33.715
+So the call takes the permit and returns true.
+
+02:34.715 --> 02:36.336
+The count drops to 0.
+
+02:37.336 --> 02:40.972
+And the owners stay at 2: a wait never changes them.
+
+02:41.480 --> 02:44.977
+Line 4 waits through s2, on the same semaphore.
+
+02:45.577 --> 02:47.752
+Line 3 left the count at 0.
+
+02:48.752 --> 02:51.951
+So it returns false: there is no permit to take.
+
+02:52.951 --> 02:54.251
+The count stays 0,
+
+02:55.251 --> 02:56.915
+and the owners stay at 2.
+
+02:57.440 --> 02:59.573
+Line 5 posts through s2.
+
+03:00.173 --> 03:04.471
+A call to post returns nothing, so its returns cell stays blank.
+
+03:05.471 --> 03:08.618
+It adds 1: the count goes from 0 to 1.
+
+03:09.618 --> 03:11.175
+The owners stay at 2.
+
+03:12.680 --> 03:16.775
+Line 6 posts through s2 again: the count goes up to 2.
+
+03:17.775 --> 03:19.332
+The owners stay at 2.
+
+03:20.840 --> 03:26.312
+Line 7 waits through sem. The count is 2, so it takes one and returns true.
+
+03:27.312 --> 03:28.869
+The count drops to 1.
+
+03:29.869 --> 03:31.425
+The owners stay at 2.
+
+03:31.960 --> 03:36.152
+Line 8 drops s2, and a call to drop returns nothing.
+
+03:37.152 --> 03:39.410
+The count is untouched: still 1.
+
+03:40.410 --> 03:44.005
+But one owner is gone: the strong count falls to 1.
+
+03:44.605 --> 03:47.889
+The owners have not reached 0, so nothing is freed.
+
+03:49.400 --> 03:55.463
+Line 9 waits through sem, the owner that is left. The count is 1, so it returns true.
+
+03:56.463 --> 03:58.083
+The count drops to 0.
+
+03:59.083 --> 04:00.673
+And the owners stay at 1.
+
+04:02.200 --> 04:04.383
+Under the table, the key sums it up.
+
+04:05.883 --> 04:12.921
+sem and s2 are two owners of one semaphore, so every try_wait and post works on the same count.
+
+04:13.521 --> 04:17.657
+Only calls to Arc::new, clone and drop change the owner count.
+
+04:18.760 --> 04:22.214
+Now the question: what is unusual after line 6?
+
+04:23.714 --> 04:27.532
+After line 6 there are 2 permits, though it started with 1.
+
+04:28.132 --> 04:31.821
+A call to post just adds 1, and nothing caps the count.
+
+04:33.320 --> 04:36.768
+A semaphore meant to let one user in now lets two in.
+
+04:37.368 --> 04:41.785
+Lines 7 and 9 both get a permit, with no post in between.
+
+04:42.385 --> 04:46.894
+And no code stops it: a call to post never checks the count first.
+
+04:48.600 --> 04:50.761
+Part (b). Does this compile?
+
+04:51.361 --> 04:56.723
+The first line makes c, a new Arc holding a number, and c2 is a clone of it.
+
+04:57.323 --> 05:00.521
+The last line adds 1 to the value, through c2.
+
+05:01.040 --> 05:07.011
+And why can a post through s2 change a count shared through an Arc, when this increment can't?
+
+05:07.611 --> 05:16.102
+Then, with the SpinLock below, from 37k, change the type of c to make the increment work, and write the new increment.
+
+05:17.600 --> 05:18.336
+No.
+
+05:19.836 --> 05:26.331
+The compiler stops it with error E0594: cannot assign to data in an Arc.
+
+05:26.931 --> 05:30.747
+To modify through this dereference, Rust needs DerefMut,
+
+05:31.347 --> 05:34.748
+and an Arc implements Deref, but not DerefMut.
+
+05:35.880 --> 05:40.603
+So through a dereference, an Arc gives only a shared reference to its value,
+
+05:41.603 --> 05:43.618
+because other owners may exist.
+
+05:45.620 --> 05:52.455
+A post takes a shared reference to self too. It can change the count because the count sits in a SpinLock:
+
+05:53.455 --> 05:58.309
+its UnsafeCell gives interior mutability, and the lock makes that safe.
+
+05:59.440 --> 06:04.527
+A call to lock needs only a shared reference to the lock, and returns a guard.
+
+06:05.127 --> 06:07.865
+Through the guard, the value can be read or written,
+
+06:08.465 --> 06:11.193
+and the lock is released when the guard is dropped.
+
+06:13.220 --> 06:20.499
+The fix: put the value in a lock. sem uses the same pattern: an Arc around something that holds a lock.
+
+06:21.499 --> 06:25.881
+Now c becomes an Arc holding a SpinLock, which holds the number.
+
+06:26.881 --> 06:28.687
+And c2 is a clone of it.
+
+06:30.200 --> 06:35.319
+The new increment locks the SpinLock through c2, and adds 1 through the guard.
+
+06:35.919 --> 06:40.120
+The guard is dropped at the end of the statement, which releases the lock.
+
+06:40.720 --> 06:42.991
+Through c, the value now reads 6.
+
+06:44.720 --> 06:46.169
+That's Problem 2.
+
+06:46.769 --> 06:51.453
+Part (a): two owners of one semaphore share one count, and nothing caps it.
+
+06:52.053 --> 06:56.242
+Part (b): the fix puts the value in a lock, and writes through the guard.
