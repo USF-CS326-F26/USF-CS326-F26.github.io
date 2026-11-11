@@ -1,6 +1,6 @@
 # Prep: The Console and the Kernel Shell — 45k · 46k
 
-**Session:** Thu Nov 12, 1h45 · **Exercises:** `45k_console`, `46k_shell` · **Prep time:** ~20 min · **Lecture:** [Week 12 · The Console, the Shell, and User Mode](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md)
+**Session:** Thu Nov 12, 1h45 · **Exercises:** `45k_console`, `46k_shell` · **Prep time:** ~40 min · **Lecture:** [Week 12 · The Console, the Shell, and User Mode](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md)
 
 ## What you will build
 
@@ -19,6 +19,7 @@ A keypress makes the UART raise source 10 and the PLIC deliver a supervisor exte
 
 | What | Time |
 |---|---|
+| Watch the videos [Four Bytes, One Claim](../videos/week12-ring.md) (6:20), then [The First Word Decides](../videos/week12-words.md) (6:02) and, for the extra credit, [Each Command Decides](../videos/week12-facts.md) (5:51). Each video's page links the explainer page it walks through | 18 min |
 | [Week 12 · This week](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#this-week), then [Thursday · `45k` The console](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#thu-45k) through [Claim, service, complete](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#45k-claim) | 4 min |
 | [Week 12 · A ring between two worlds](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#45k-ring), with its four-slot trace | 3 min |
 | [Week 12 · Thursday · `46k` The kernel shell](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#thu-46k), both sections and the [`47k` extra-credit box](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#ec-47k) | 3 min |

@@ -1,0 +1,178 @@
+WEBVTT
+
+00:00.000 --> 00:05.262
+Week 12: Four Bytes, One Claim, for exercise 45k_console.
+
+00:05.862 --> 00:12.277
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.800 --> 00:14.602
+After the November 10 lecture:
+
+00:15.202 --> 00:21.761
+on Thursday, November 12, you write one step of console::intr, the console's interrupt handler.
+
+00:22.361 --> 00:27.243
+No solution code here: the machine's state, not the lines that make it so.
+
+00:27.760 --> 00:32.919
+The console's input waits in BUF, an array of 256 bytes.
+
+00:33.519 --> 00:40.364
+TAIL is the handler's counter: the given push stores a byte in the slot TAIL names, and moves TAIL on.
+
+00:40.964 --> 00:42.733
+HEAD is the reader's counter.
+
+00:43.240 --> 00:51.445
+The reader takes the byte at HEAD, or, when nothing waits, sleeps in wfi, an instruction that waits for an interrupt.
+
+00:52.045 --> 00:54.455
+Each side writes only its own counter.
+
+00:55.055 --> 00:58.456
+TAIL minus HEAD, here 3, is how many bytes wait.
+
+00:58.960 --> 01:07.022
+The stepper's example: pwd and Enter, pasted in one write under cargo run, on an example ring of its own.
+
+01:07.622 --> 01:15.483
+HEAD and TAIL both read 1,021: the ring is empty, and the reader is asleep in wfi.
+
+01:17.000 --> 01:23.614
+Hex 70 is in the receive register of the UART, the serial port; three bytes are on the way in.
+
+01:24.214 --> 01:32.564
+DR, the data-ready bit, reads 1. At the PLIC, the interrupt router, the UART's source, 10, is Pending.
+
+01:34.080 --> 01:44.966
+The hart, the processor, takes the trap: the reader stops, just past its wfi, and the hart heads for the handler, in supervisor mode, the kernel's mode.
+
+01:45.566 --> 01:48.353
+SIE, the interrupt switch, reads 0.
+
+01:49.880 --> 01:58.053
+The handler, console::intr, runs. Its claim, a read of the PLIC, answers 10: source 10 is Claimed.
+
+01:59.560 --> 02:05.874
+Slot 253 now holds hex 70, and TAIL reads 1,022.
+
+02:06.874 --> 02:13.411
+Slot 254 holds hex 77, and TAIL reads 1,023.
+
+02:14.011 --> 02:18.023
+HEAD stays at 1,021: the reader has not run.
+
+02:19.520 --> 02:27.161
+Slot 255 holds hex 64, and TAIL reads 1,024: slot 0.
+
+02:28.161 --> 02:34.646
+Slot 0 holds 0D, TAIL reads 1,025, and DR reads 0.
+
+02:36.146 --> 02:38.193
+One claim, four bytes in the ring.
+
+02:39.720 --> 02:45.117
+The completion has written 10 back to the PLIC, and a second trap has come.
+
+02:46.117 --> 02:54.629
+Its claim answers 10. Nothing is at the UART, and nothing goes into the ring: TAIL still reads 1,025.
+
+02:56.160 --> 03:00.969
+The second completion leaves source 10 Idle, and the hart is back in the reader.
+
+03:01.969 --> 03:08.863
+The reader has taken the bytes, and each was echoed: HEAD reads 1,025, the same as TAIL.
+
+03:10.360 --> 03:14.391
+The ring is empty, and the reader sleeps in wfi again.
+
+03:14.991 --> 03:24.513
+Beside the drawing is a recording. These keys were typed into cargo run: fog and Enter, one key at a time, then the paste, in one write.
+
+03:25.040 --> 03:30.598
+Now the test's world, the course's own test: a fresh ring, and SIE 0.
+
+03:31.598 --> 03:41.679
+Through loopback, the UART handing the test's own byte back in, the test sends h, hex 68. Source 10 is Pending, but no trap is taken.
+
+03:43.200 --> 03:47.348
+So the test calls the handler itself, and the claim answers 10.
+
+03:48.348 --> 03:53.840
+Slot 0 now holds hex 68, TAIL reads 1, and DR reads 0.
+
+03:55.360 --> 04:04.635
+By the last step, the letter i, hex 69, has gone the same way, and the test's reader, try_getc, has taken it: HEAD reads 2.
+
+04:05.235 --> 04:10.803
+The test prints: [ok] a UART interrupt is claimed, read, and buffered by the handler
+
+04:11.320 --> 04:14.085
+Now the skeleton, the code as you receive it.
+
+04:14.685 --> 04:17.089
+Up to the claim, it is the test's world.
+
+04:18.089 --> 04:26.745
+Its handler returns with nothing taken: the byte is still in the receive register, DR reads 1, and TAIL reads 0.
+
+04:28.280 --> 04:34.807
+try_getc finds nothing, and the test prints: [fail] the interrupt handler did not buffer the byte.
+
+04:35.407 --> 04:39.186
+Predict, for read but not buffered: what does the test print?
+
+04:41.200 --> 04:44.015
+Now read but not buffered, at the same claim.
+
+04:45.015 --> 04:49.815
+Its handler returns, and the byte has left the UART: DR reads 0.
+
+04:50.415 --> 04:53.880
+But TAIL still reads 0: the byte is in no slot.
+
+04:56.880 --> 05:01.264
+try_getc finds nothing, and the test prints the skeleton's line.
+
+05:02.764 --> 05:06.561
+Same line, a different machine: here DR reads 0.
+
+05:07.080 --> 05:10.790
+A slot is its counter modulo 256.
+
+05:11.390 --> 05:15.109
+In a full ring, TAIL minus HEAD is 256:
+
+05:15.709 --> 05:20.561
+the next byte is dropped, and TAIL stays 2,566.
+
+05:21.080 --> 05:28.301
+What the test cannot see: it sends one byte per call, so a handler that takes one byte per claim passes too.
+
+05:28.901 --> 05:34.839
+It is still wrong: on the example's paste, its first claim leaves three bytes still at the UART.
+
+05:35.360 --> 05:40.256
+Yours is the service step of intr, between the given claim and completion.
+
+05:40.856 --> 05:48.043
+After one claim, the ring holds every byte that was still at the UART, in order, and DR reads 0.
+
+05:48.643 --> 05:50.391
+And the handler never waits.
+
+05:50.920 --> 05:55.851
+Each row: what the test asks, what it prints if not, and the picture to look at.
+
+05:56.451 --> 06:00.812
+The skeleton's line is the one to expect before you have written anything.
+
+06:01.412 --> 06:05.856
+For read but not buffered, the test prints it too, from a different machine.
+
+06:06.360 --> 06:12.481
+After one claim, every byte that was at the UART is in the ring, and the handler never waits.
+
+06:13.081 --> 06:18.786
+Next: the explainer The First Word Decides, then Thursday's session, November 12.

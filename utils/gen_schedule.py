@@ -80,14 +80,15 @@ RECORDINGS = {
 #   - Solution-bearing: it walks through that day's reference solution. Its
 #     line goes up only once that solution has shipped, on the session's row,
 #     and no page read before the session links it.
-#   - Solution-free, like Weeks 7's, 9's, 10's and 11's: it shows no code for
-#     anything a student writes, only machine state, given code and test
+#   - Solution-free, like Weeks 7's, 9's, 10's, 11's and 12's: it shows no code
+#     for anything a student writes, only machine state, given code and test
 #     output, and the instructor vouches for that. Its line may go up before
 #     the session. It is also linked from the hub page on the lecture's row and
 #     the week's first session's row (docs/videos/week07.md for Week 7,
 #     docs/videos/week09.md for Week 9, docs/videos/week10.md for Week 10,
-#     docs/videos/week11.md for Week 11), and that week's prep pages link the
-#     film that walks through it, whose player page links it.
+#     docs/videos/week11.md for Week 11, docs/videos/week12.md for Week 12),
+#     and that week's prep pages link the film that walks through it, whose
+#     player page links it.
 # The ones that walk through only given `ulib` code are neither: their lines
 # may go up at any time, on the session's row alone.
 # A flat list rather than a dict keyed by date, so a second line for the same
@@ -120,6 +121,9 @@ EXPLAINERS = [
     ("Nov 6", "Needs This First", "4Ca1P5C4ww4eG7tfNp628U"),
     ("Nov 6", "Step Past the Breakpoint", "1DoaeiwFVGQfNmPjucggQz"),
     ("Nov 6", "Three Gates and a Pending Bit", "TUYjAEYqa8g7VbRJKFk5mr"),
+    ("Nov 12", "Four Bytes, One Claim", "TYhow86F3N4K4R9cAqY7SH"),
+    ("Nov 12", "The First Word Decides", "JD4PbgeJoyTEqSwFRSW6RW"),
+    ("Nov 12", "Each Command Decides", "69tjrJXenApSEWYXf8Vxdx"),
 ]
 
 
@@ -350,10 +354,15 @@ def sessions():
 
     add(12, 'tuesday', 'Nov 10', 'lecture', 'The Console, the Shell, and User Mode',
         links=L(("rv6 Architecture", "/guides/rv6-architecture/"),
-                ("Practice Set 2", "/assignments/practice-set-02/")))
+                ("Practice Set 2", "/assignments/practice-set-02/"),
+                ("Watch first · Week 12", "/videos/week12/")))
     add(12, 'thursday', 'Nov 12', 'exercise', '45k console · 46k shell',
         exercises=['45k_console', '46k_shell'], extra=['47k_file_commands'],
-        links=L(("Extra Credit", "/assignments/extra-credit/")))
+        links=L(("Extra Credit", "/assignments/extra-credit/"),
+                ("Watch first · Week 12", "/videos/week12/"),
+                ("Video · Four Bytes, One Claim", "/videos/week12-ring/"),
+                ("Video · The First Word Decides", "/videos/week12-words/"),
+                ("Video · Each Command Decides", "/videos/week12-facts/")))
     add(12, 'friday', 'Nov 13', 'exercise', '48k user_mode', exercises=['48k_user_mode'])
 
     add(13, 'tuesday', 'Nov 17', 'lecture', 'Midterm 2 Review',

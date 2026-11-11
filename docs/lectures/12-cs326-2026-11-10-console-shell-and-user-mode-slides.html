@@ -964,7 +964,7 @@ Notes:
 
 ## [Before Thursday](../prep/12-cs326-2026-11-12-prep-console-and-shell/): check yourself
 
-You make the kernel hear a key by interrupt, then write the shell's evaluate step, both in QEMU. Prep: about 20 minutes.
+You make the kernel hear a key by interrupt, then write the shell's evaluate step, both in QEMU. Prep: about 40 minutes.
 
 **1.** Your handler buffers the byte but never writes the source number back to the PLIC. What do you see?
 
@@ -973,7 +973,7 @@ You make the kernel hear a key by interrupt, then write the shell's evaluate ste
 **3.** The tokenizer yields `&str` slices into the line buffer. What stops the REPL from clearing the line too early?
 
 Notes:
-- Walk the prep page (about 20 minutes). What you build: the UART's interrupt path into the ring, then the evaluate step of a kernel shell. Green is `OSLINGS:PASS`; then `cargo run` echoes your typing and boots to `rv6$`.
+- Walk the prep page (about 40 minutes). What you build: the UART's interrupt path into the ring, then the evaluate step of a kernel shell. Green is `OSLINGS:PASS`; then `cargo run` echoes your typing and boots to `rv6$`.
 - The three questions are the prep's own Check yourself (45k-claim, 45k-one-thing, thu-46k); answers are on the prep page. `47k` is released in the same session, for +0.5.
 - **Q:** "Can the test press a key for me?" It does: it simulates the keypress and checks that the byte reached the ring. `cargo run` is where you type for real.
 

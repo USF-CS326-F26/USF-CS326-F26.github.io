@@ -1,0 +1,205 @@
+WEBVTT
+
+00:00.000 --> 00:06.709
+Week 12: Each Command Decides, for exercise 47k_file_commands, extra credit.
+
+00:07.309 --> 00:13.725
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:14.240 --> 00:16.042
+After the November 10 lecture:
+
+00:16.642 --> 00:23.210
+on Thursday, November 12, for extra credit, you write three commands: touch, cat and rm.
+
+00:23.810 --> 00:28.692
+No solution code here: the machine's state, not the lines that make it so.
+
+00:29.200 --> 00:36.237
+A call that can fail answers with a Result: Ok, or Err with one of FsError's eight variants.
+
+00:36.837 --> 00:38.574
+Read the variants as facts.
+
+00:39.174 --> 00:41.903
+What to do about one is each command's choice.
+
+00:42.400 --> 00:44.969
+Each row is everything that call can answer.
+
+00:45.569 --> 00:49.333
+dircreate reports AlreadyExists when the name is taken.
+
+00:49.933 --> 00:53.323
+Solid answers decide the commands we step through next.
+
+00:53.923 --> 00:58.465
+Two calls, is_dir and dir_is_empty, answer a plain true or false.
+
+00:59.000 --> 01:01.899
+The case called the reference is the finished kernel.
+
+01:02.499 --> 01:04.760
+Its keys were typed into cargo run.
+
+01:05.360 --> 01:09.263
+The table: each inode describes one file or directory.
+
+01:09.863 --> 01:14.887
+Inode 1, the root, is an empty directory, and every other inode is Free.
+
+01:16.400 --> 01:17.466
+touch sketch.
+
+01:18.066 --> 01:22.214
+Its one deciding fact: dircreate reports Ok(2).
+
+01:22.814 --> 01:26.611
+The root's slot 0 names inode 2, an empty File.
+
+01:27.211 --> 01:32.420
+Its verdict, what it did with that fact, is silent: it did its work and printed nothing.
+
+01:33.920 --> 01:35.221
+touch sketch again.
+
+01:35.821 --> 01:41.301
+This time dircreate reports Err(AlreadyExists): sketch already exists.
+
+01:41.901 --> 01:45.143
+Its verdict is not drawn yet. What does touch do?
+
+01:46.643 --> 01:47.817
+Keep your answer.
+
+01:49.320 --> 01:52.933
+Nothing is printed, and no byte of the table changes.
+
+01:53.533 --> 01:56.295
+The verdict is a no-op: it changed nothing.
+
+01:56.895 --> 01:59.534
+For touch, AlreadyExists is not an error.
+
+02:00.134 --> 02:03.457
+When this ran, sketch was still empty, size 0.
+
+02:04.960 --> 02:13.214
+The given echo, not yours, fills sketch: write reports Ok(12), and inode 2 holds first light, size 12.
+
+02:14.214 --> 02:18.533
+cat sketch: read reports Ok(12), and it prints first light.
+
+02:20.040 --> 02:23.623
+cat nothere: dirlookup reports Err(NotFound).
+
+02:24.223 --> 02:28.265
+For cat that fact is an error: it prints cat: no such file.
+
+02:29.265 --> 02:35.441
+The given mkdir shelf: dircreate reports Ok(3). Inode 3 is a directory.
+
+02:36.960 --> 02:42.201
+cat shelf: read reports Err(IsADirectory), and cat prints its message.
+
+02:43.201 --> 02:48.010
+rm shelf: the fact the shell asked about is that shelf is a directory.
+
+02:48.610 --> 02:52.077
+It prints rm: is a directory, and removes nothing.
+
+02:53.600 --> 03:00.441
+rm nothere: dirlookup reports the same Err(NotFound), and rm prints its message.
+
+03:01.441 --> 03:09.743
+cd shelf meets the fact that stopped rm, shelf is a directory, and enters: the current directory is /shelf.
+
+03:11.240 --> 03:20.635
+Inside shelf, touch card: dircreate reports Ok(4), and slot 0 of inode 3 names inode 4, an empty File.
+
+03:21.635 --> 03:27.524
+cd .. asks the filesystem nothing, and the current directory is the root again.
+
+03:29.040 --> 03:36.967
+rmdir shelf: the fact the shell asked about, shelf is not empty. The given rmdir prints its message.
+
+03:37.967 --> 03:45.515
+rm sketch: unlink reports Ok(()). Slot 0 of the root is unused, and inode 2 is Free.
+
+03:46.040 --> 03:48.379
+Each row is a fact, and its verdicts.
+
+03:48.979 --> 03:52.014
+NotFound: cat and rm each print a message.
+
+03:52.614 --> 03:56.783
+shelf is a directory: rm refuses, and cd enters.
+
+03:57.383 --> 04:01.766
+Unix's rm, given -f, prints nothing for a missing name.
+
+04:02.280 --> 04:06.131
+The case called touch, with one change, at the second touch sketch:
+
+04:06.731 --> 04:09.257
+the same fact, Err(AlreadyExists).
+
+04:10.257 --> 04:15.607
+No byte of the table changes, but this touch prints touch: cannot create file.
+
+04:16.207 --> 04:18.575
+These keys were typed into cargo run.
+
+04:19.080 --> 04:26.960
+The test never touches a name twice, never gives rm a directory, and never asks cat for a name that is not there.
+
+04:27.560 --> 04:30.813
+So each of these three passes it, and each is wrong.
+
+04:31.413 --> 04:33.781
+These keys were typed into cargo run.
+
+04:34.280 --> 04:38.172
+The other two, each typed into cargo run beside the reference.
+
+04:38.772 --> 04:45.547
+rm removes a directory: rm shelf prints nothing, and the next ls lists only sketch.
+
+04:46.147 --> 04:51.031
+cat prints nothing for a missing name: after cat nothere comes the next prompt.
+
+04:51.560 --> 04:55.525
+You write the bodies of three commands: touch, cat and rm.
+
+04:56.125 --> 04:58.790
+touch leaves a new, empty File under the name;
+
+04:59.390 --> 05:03.794
+a name that already exists is left alone, and nothing is printed.
+
+05:04.320 --> 05:08.307
+cat prints the file's bytes, exactly those, and nothing more.
+
+05:08.907 --> 05:12.054
+rm leaves the name gone and its inode Free.
+
+05:12.654 --> 05:18.997
+A name that is not there, or a directory, gets a message from each, and rm removes nothing.
+
+05:19.520 --> 05:24.703
+The test stops at its first failed check: one [fail] line, then OSLINGS:FAIL.
+
+05:25.303 --> 05:28.703
+Before you write anything, check 1 fails, and the test prints:
+
+05:29.303 --> 05:34.857
+[fail] 'touch a.txt' then 'ls' did not list a.txt.
+
+05:35.360 --> 05:42.571
+The filesystem answers the same way for every command; a fact is an error only where a command makes it one.
+
+05:43.171 --> 05:45.991
+Next: Thursday's session, November 12.
+
+05:46.591 --> 05:49.802
+Friday's explainers start with One Bit Is the Wall.

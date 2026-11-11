@@ -1,0 +1,175 @@
+WEBVTT
+
+00:00.000 --> 00:05.001
+Week 12: The First Word Decides, for exercise 46k_shell.
+
+00:05.601 --> 00:12.017
+A script steps this explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.520 --> 00:14.322
+After the November 10 lecture:
+
+00:14.922 --> 00:21.788
+on Thursday, November 12, you write one method in shell.rs, exec, the evaluate step.
+
+00:22.388 --> 00:27.270
+No solution code here: the machine's state, not the lines that make it so.
+
+00:27.800 --> 00:34.379
+The given read loop takes one key at a time: it writes back each key it keeps, and adds it to its line.
+
+00:34.979 --> 00:37.399
+At Enter, it hands the line to exec.
+
+00:37.999 --> 00:42.657
+The kernel's console code writes nothing back; only the read loop does.
+
+00:43.160 --> 00:48.562
+These keys were typed into cargo run: p, w, e, Backspace, d, Enter.
+
+00:49.162 --> 00:55.391
+Each letter came back as itself; Backspace came back as cursor left, a space, cursor left.
+
+00:55.991 --> 01:01.069
+exec receives "pwd", 3 bytes. The erased e never reaches it.
+
+01:01.600 --> 01:04.868
+The reference, the page's script typed into cargo run.
+
+01:05.468 --> 01:08.313
+exec receives mkdir maps, 10 bytes.
+
+01:08.913 --> 01:17.733
+A word is a run of bytes that are not spaces, drawn as start and length: zero and five for the first, six and four for the second.
+
+01:19.240 --> 01:26.140
+The first word picks mkdir among the given handlers: that is the dispatch. Its argument is "maps".
+
+01:26.740 --> 01:33.936
+The filesystem's records, its inodes: maps is now inode 2, in slot 0 of the root, inode 1.
+
+01:35.440 --> 01:42.415
+Next line: cd, three spaces, maps. A run of spaces is no word, so word 2 starts at 5.
+
+01:43.415 --> 01:51.193
+cd runs, with "maps" as its argument. The stack, the shell's path from the root, now holds maps, inode 2.
+
+01:52.720 --> 01:58.527
+Now mkdir coast inland: 18 bytes, and three words, at 0, 6 and 12.
+
+01:59.127 --> 02:01.729
+How many directories does this line create?
+
+02:03.229 --> 02:04.403
+Keep your answer.
+
+02:05.920 --> 02:11.412
+One. The first word picks mkdir, and the second, "coast", is its only argument.
+
+02:12.012 --> 02:13.876
+"inland" reaches no handler.
+
+02:14.476 --> 02:18.561
+coast is now inode 3, in slot 0 of inode 2.
+
+02:20.080 --> 02:29.838
+pwd takes no argument. Every handler writes through Out, and pwd writes /maps there: the path the stack holds.
+
+02:30.838 --> 02:35.517
+ls lists the current directory, inode 2, and writes coast/.
+
+02:37.040 --> 02:44.118
+cd .. gets ".." as its argument, and the stack is empty again: the root, inode 1.
+
+02:45.118 --> 02:51.549
+tree names none of the handlers. No handler runs, and the shell prints tree: command not found.
+
+02:53.080 --> 02:59.403
+A line of three spaces is 3 bytes and no words: nothing runs, and the next prompt follows.
+
+03:00.403 --> 03:09.341
+The keys p, w, e, Backspace, d arrive as "pwd", 3 bytes, and pwd prints /: the root.
+
+03:10.840 --> 03:14.903
+l, s, s, Backspace arrive as "ls", which prints maps/.
+
+03:15.903 --> 03:17.405
+That is the whole script.
+
+03:18.920 --> 03:23.683
+A broken case, drawn on the page's script: the whole line as the command.
+
+03:24.683 --> 03:30.969
+Its exec looks up the whole line, "mkdir maps", which names no handler, and nothing is created.
+
+03:31.569 --> 03:35.098
+Its Out text would read mkdir: command not found.
+
+03:36.600 --> 03:42.546
+For this mistake, the test prints: [fail] 'mkdir docs' then 'ls' did not list docs.
+
+03:43.146 --> 03:46.034
+Its names are the test's own, not the example's.
+
+03:46.560 --> 03:54.205
+The course's test types nothing. It calls exec itself, eight times, with an Out called BufOut that keeps the text.
+
+03:54.805 --> 03:59.305
+It reads the buffer four times, and stops at the first check that fails.
+
+03:59.800 --> 04:04.373
+Check 1 wants docs in BufOut after mkdir docs, then ls.
+
+04:04.973 --> 04:15.724
+Three cases fail it: the skeleton, the code you receive; the whole line as the command; and the argument taken late, where mkdir ran with an empty argument.
+
+04:16.240 --> 04:22.863
+Then the test sends cd docs and pwd, and BufOut must be exactly /docs.
+
+04:23.463 --> 04:30.559
+cd without its argument fails here. Its cd got an empty argument, and the shell stayed at the root.
+
+04:31.080 --> 04:32.893
+You write one method, exec.
+
+04:33.493 --> 04:45.630
+When it returns, the first word has picked the handler by its exact name: pwd, ls, cd or mkdir. Any other first word gets the not-found message.
+
+04:46.160 --> 04:54.316
+Only the second word reaches cd or mkdir, as its argument, and it is empty when the line has no second word.
+
+04:54.916 --> 04:56.729
+A third word reaches nothing.
+
+04:57.240 --> 04:58.973
+The test's checks, in order.
+
+04:59.573 --> 05:08.553
+Check 1's [fail] line comes from three cases, and in two of them a handler ran: the line alone cannot tell you which mistake it was.
+
+05:09.153 --> 05:12.203
+The lines of checks 3 and 4 were not recorded.
+
+05:12.720 --> 05:20.873
+What the test cannot see: it never sends a blank line, a run of spaces between words, or a word that names no command.
+
+05:21.473 --> 05:27.735
+Three wrong kernels pass it, each shown by its own run: these keys were typed into cargo run.
+
+05:28.240 --> 05:34.038
+Enter at an empty prompt prints OSLINGS:FAIL (panic), and the kernel ends the run.
+
+05:34.638 --> 05:39.757
+With two spaces after mkdir, the line prints mkdir: missing operand.
+
+05:40.357 --> 05:42.234
+And tree prints nothing at all.
+
+05:43.360 --> 05:50.025
+A line becomes words, and the first word decides: it picks the handler, and only the second reaches it.
+
+05:50.625 --> 05:56.918
+Next, the explainer Each Command Decides, for 47k_file_commands, extra credit.
+
+05:57.518 --> 06:00.097
+Then Thursday's session, November 12.

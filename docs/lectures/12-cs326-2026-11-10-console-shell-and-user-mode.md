@@ -8,6 +8,7 @@
 [Slides](12-cs326-2026-11-10-console-shell-and-user-mode-slides.html){ .md-button }
 [Thursday prep](../prep/12-cs326-2026-11-12-prep-console-and-shell.md){ .md-button }
 [Friday prep](../prep/12-cs326-2026-11-13-prep-user-mode.md){ .md-button }
+[Explainers](../videos/week12.md){ .md-button }
 
 ## This week { #this-week }
 

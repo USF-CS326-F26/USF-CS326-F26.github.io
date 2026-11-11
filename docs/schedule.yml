@@ -583,6 +583,8 @@ weeks:
           url: "guides/rv6-architecture/"
         - text: "Practice Set 2"
           url: "assignments/practice-set-02/"
+        - text: "Watch first · Week 12"
+          url: "videos/week12/"
 
     thursday:
       date: "Nov 12"
@@ -596,6 +598,20 @@ weeks:
           url: "prep/12-cs326-2026-11-12-prep-console-and-shell/"
         - text: "Extra Credit"
           url: "assignments/extra-credit/"
+        - text: "Watch first · Week 12"
+          url: "videos/week12/"
+        - text: "Video · Four Bytes, One Claim"
+          url: "videos/week12-ring/"
+        - text: "Video · The First Word Decides"
+          url: "videos/week12-words/"
+        - text: "Video · Each Command Decides"
+          url: "videos/week12-facts/"
+        - text: "Explainer · Four Bytes, One Claim"
+          url: "https://claude.ai/artifact/TYhow86F3N4K4R9cAqY7SH"
+        - text: "Explainer · The First Word Decides"
+          url: "https://claude.ai/artifact/JD4PbgeJoyTEqSwFRSW6RW"
+        - text: "Explainer · Each Command Decides"
+          url: "https://claude.ai/artifact/69tjrJXenApSEWYXf8Vxdx"
 
     friday:
       date: "Nov 13"
