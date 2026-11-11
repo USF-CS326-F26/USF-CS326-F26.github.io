@@ -1,6 +1,6 @@
 # Prep: User Mode — 48k
 
-**Session:** Fri Nov 13, 1h30 · **Exercises:** `48k_user_mode` · **Prep time:** ~25 min · **Lecture:** [Week 12 · The Console, the Shell, and User Mode](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md)
+**Session:** Fri Nov 13, 1h30 · **Exercises:** `48k_user_mode` · **Prep time:** ~45 min · **Lecture:** [Week 12 · The Console, the Shell, and User Mode](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md)
 
 ## What you will build
 
@@ -20,6 +20,7 @@ rv6 runs its first user program: a dozen lines of assembly in a private address 
 
 | What | Time |
 |---|---|
+| Watch the videos [One Bit Is the Wall](../videos/week12-wall.md) (5:56), then [Parked in the Trapframe](../videos/week12-trapframe.md) (6:22) and [A Number in a7](../videos/week12-a7.md) (5:56). Each video's page links the explainer page it walks through | 18 min |
 | [Week 12 · Friday · `48k` User mode](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#fri-48k) through [A private address space](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#48k-address-space) | 3 min |
 | [Week 12 · The trapframe, and why not the user's stack](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#48k-trapframe) and [The trampoline](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#48k-trampoline) | 3 min |
 | [Week 12 · The system-call ABI](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#48k-abi) and [Done versus retry](../lectures/12-cs326-2026-11-10-console-shell-and-user-mode.md#48k-retry) | 3 min |

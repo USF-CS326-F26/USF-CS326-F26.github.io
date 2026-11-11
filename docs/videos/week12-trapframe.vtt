@@ -1,0 +1,205 @@
+WEBVTT
+
+00:00.000 --> 00:05.192
+Week 12: Parked in the Trapframe, for exercise 48k_user_mode.
+
+00:05.792 --> 00:12.197
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.720 --> 00:15.119
+This follows the November 10 lecture.
+
+00:15.719 --> 00:27.485
+On Friday, November 13, you write one branch of usertrap, the kernel's handler for traps from user mode: the branch that answers a system call, a program's request.
+
+00:28.085 --> 00:31.251
+No solution code here: only the machine's state.
+
+00:31.760 --> 00:36.623
+For the length of a system call, the program's registers wait in its trapframe:
+
+00:37.223 --> 00:42.251
+a page of the process's own, at the address TRAPFRAME, not the program's stack.
+
+00:42.760 --> 00:49.356
+Three notes for the trip in come first, then the program's pc, at +24: where it resumes.
+
+00:49.956 --> 00:52.963
+After an unused slot, every register has one:
+
+00:53.563 --> 00:58.959
+a0 at +112, a7 at +168.
+
+00:59.480 --> 01:01.751
+The example process is pid 3.
+
+01:02.351 --> 01:07.246
+Its program has set up a getpid, a call that asks for the process id:
+
+01:07.846 --> 01:13.264
+a7 holds 11, and the ecall, the instruction that traps, is at 0x08.
+
+01:13.760 --> 01:16.112
+The stepper starts in user mode, U.
+
+01:16.712 --> 01:22.793
+stvec, where a trap goes, holds the address TRAMPOLINE: uservec, the given way in.
+
+01:23.393 --> 01:30.194
+sscratch, a spare register, holds the address TRAPFRAME, and satp holds pid 3's page table.
+
+01:32.220 --> 01:33.669
+The ecall traps.
+
+01:34.269 --> 01:37.885
+The hart, the processor, is in supervisor mode, S.
+
+01:38.485 --> 01:41.023
+scause, which says why, holds 0x0000_0000_0000_0008.
+
+01:41.623 --> 01:46.928
+sepc, the saved pc, holds 0x08, the ecall's own address.
+
+01:48.440 --> 01:54.909
+uservec runs on the trampoline, a page of given code: a0 and sscratch have swapped.
+
+01:55.909 --> 01:59.780
+Now every register of the program is parked in its own slot.
+
+02:01.280 --> 02:09.477
+uservec reads the three notes: sp now holds 0x87C4_5000, from kernel_sp.
+
+02:10.477 --> 02:12.876
+Then satp holds the kernel's table.
+
+02:14.400 --> 02:16.951
+A jump lands on usertrap's first line.
+
+02:17.951 --> 02:24.750
+stvec holds 0x8000_2C70: kernelvec, for the kernel's own traps.
+
+02:25.350 --> 02:30.394
+The registers are the kernel's: the program's values are only in the trapframe.
+
+02:31.920 --> 02:35.641
+SPP reads 0: the trap came from user mode.
+
+02:36.241 --> 02:42.409
+The epc slot, at +24, now holds 0x08, as sepc does.
+
+02:43.009 --> 02:44.906
+Your ecall branch is next.
+
+02:46.940 --> 02:48.795
+Your ecall branch has run.
+
+02:49.395 --> 02:58.191
+The epc slot holds 0x0C, the instruction after the ecall, and the a0 slot holds 3, the pid.
+
+02:59.191 --> 03:02.361
+When does the program's a0 register hold it?
+
+03:05.360 --> 03:10.853
+usertrapret, given, starts the way back: stvec holds TRAMPOLINE again.
+
+03:11.853 --> 03:16.629
+sepc holds 0x0C, the epc slot's value.
+
+03:17.229 --> 03:20.257
+sret, the return from a trap, will resume there.
+
+03:21.760 --> 03:26.537
+usertrapret jumps to userret, the given way out, on the trampoline.
+
+03:27.537 --> 03:30.043
+satp holds pid 3's table again.
+
+03:30.643 --> 03:32.903
+The hart is still in supervisor mode.
+
+03:34.400 --> 03:37.834
+sscratch now holds 3, from the a0 slot.
+
+03:38.834 --> 03:46.255
+The other registers are reloaded: sp holds 0x1FF0 again, and a7 holds 11.
+
+03:46.855 --> 03:49.040
+a0 still holds TRAPFRAME.
+
+03:51.060 --> 03:56.669
+Now a0 holds 3, and sscratch holds TRAPFRAME, ready for the next trap.
+
+03:57.269 --> 04:02.856
+So the program's a0 holds 3 once userret reloads it, before sret.
+
+04:04.360 --> 04:08.455
+Back in user mode at 0x0C, with 3 in a0.
+
+04:09.055 --> 04:17.578
+For the reference, the finished kernel, the course's test prints: [ok] a user program ran at user privilege and the kernel served it
+
+04:18.080 --> 04:24.061
+Now a broken case, the one called two bytes on, the same as the reference until your branch.
+
+04:25.561 --> 04:28.526
+Here the epc slot holds 0x0A.
+
+04:29.526 --> 04:33.321
+sret lands there: inside the ecall, in user mode.
+
+04:34.840 --> 04:38.220
+The fetch there is an illegal instruction, and it traps.
+
+04:39.220 --> 04:43.964
+scause names it, so the ecall branch does not run, and the run ends.
+
+04:44.564 --> 04:49.277
+For this mistake, the test prints that the program faulted instead of finishing.
+
+04:49.800 --> 04:51.805
+stvec moves twice per call.
+
+04:52.405 --> 04:56.684
+While the program runs, it holds TRAMPOLINE, uservec's address.
+
+04:57.284 --> 05:02.601
+From usertrap's first line, kernelvec's: a trap then would be the kernel's own.
+
+05:03.201 --> 05:06.539
+From usertrapret's first lines, TRAMPOLINE again.
+
+05:07.040 --> 05:13.119
+If the answer never reaches the a0 slot, the program resumes with its old a0.
+
+05:13.719 --> 05:20.415
+The test cannot see it: its program has 1 in a0 before its write, and runs as pid 1.
+
+05:21.015 --> 05:23.479
+That branch passes the test and is wrong.
+
+05:24.000 --> 05:29.381
+These keys were typed into cargo run, for both kernels: run and Enter, twice.
+
+05:29.981 --> 05:34.083
+On the left, the reference; on the right, the answer never written back.
+
+05:35.083 --> 05:38.568
+The second run's status is one less than the reference's.
+
+05:39.080 --> 05:45.651
+You write the body of usertrap's ecall branch; everything else in the stepper's code window is given.
+
+05:46.251 --> 05:55.219
+When your branch is right, the program resumes after its ecall, with the call's answer in a0 and every other register as it was.
+
+05:55.720 --> 06:05.682
+Past stage 1, the address-space check, with the branch as you receive it, the test prints: [fail] the program ran, but its system calls were never answered
+
+06:06.282 --> 06:11.333
+With the pc left at the ecall: the same line, though every call is answered.
+
+06:11.840 --> 06:15.945
+For the length of a system call, the program is a page of memory.
+
+06:16.545 --> 06:20.777
+Next: the explainer A Number in a7, then Friday's session.

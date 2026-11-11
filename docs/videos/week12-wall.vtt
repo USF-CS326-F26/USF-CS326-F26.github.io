@@ -1,0 +1,181 @@
+WEBVTT
+
+00:00.000 --> 00:05.215
+Week 12: One Bit Is the Wall, for exercise 48k_user_mode.
+
+00:05.815 --> 00:12.220
+A script steps the explainer, it was built with Claude, and its numbers are examples, not the lecture's.
+
+00:12.720 --> 00:15.119
+This follows the November 10 lecture.
+
+00:15.719 --> 00:23.893
+On Friday, November 13, you write map_user_pages, and a program runs in user mode behind its page table.
+
+00:24.493 --> 00:27.660
+No solution code here: only the machine's state.
+
+00:28.160 --> 00:30.889
+Two locks keep a user program in its place.
+
+00:31.489 --> 00:40.618
+Privilege levels decide which instructions run: the kernel runs in S, supervisor mode, and the program in U, user mode.
+
+00:41.218 --> 00:44.171
+Page tables decide which addresses exist.
+
+00:44.680 --> 00:49.839
+An access from U, a fetch, load or store, walks the table satp names.
+
+00:50.439 --> 00:56.991
+It needs a valid leaf, the entry naming its page, with its U bit set; otherwise, a page fault.
+
+00:57.591 --> 00:59.735
+Each lock closes the other's gap.
+
+01:01.240 --> 01:03.468
+pid 3 has its own page table.
+
+01:04.068 --> 01:10.924
+Its four leaves name pages in RAM: USER_CODE at 0x00, USER_STACK at 0x1000.
+
+01:11.524 --> 01:18.959
+At the top, TRAPFRAME, where the program's registers wait during a trap, and TRAMPOLINE, given kernel code.
+
+01:19.480 --> 01:22.675
+Every leaf is valid: V, bit 0, is 1.
+
+01:23.275 --> 01:31.362
+U, bit 4, decides whether user mode may touch the page: 1 on the code and stack leaves, 0 on the top two.
+
+01:31.962 --> 01:35.139
+The kernel's TRAMPOLINE leaf names the same page.
+
+01:35.640 --> 01:40.515
+The stepper walks pid 3 and its example program down into user mode.
+
+01:41.115 --> 01:45.732
+It starts in usertrapret, given kernel code, in supervisor mode.
+
+01:46.332 --> 01:52.959
+satp names the kernel's table; stvec, the trap vector, holds kernelvec, the kernel's own.
+
+01:54.480 --> 01:56.603
+stvec now holds TRAMPOLINE.
+
+01:57.603 --> 02:00.833
+Notes for the kernel fill three slots of the trapframe.
+
+02:01.433 --> 02:02.882
+The mode is still S.
+
+02:04.400 --> 02:12.505
+SPP is now 0 and SPIE 1: the mode and interrupt bit for sret, the return from a trap.
+
+02:13.505 --> 02:18.805
+sepc, the saved pc, holds 0x00, where the program starts.
+
+02:20.320 --> 02:28.575
+usertrapret has jumped to userret, the given code that ends the trip, with pid 3's satp value in a0.
+
+02:29.575 --> 02:34.332
+userret has written it to satp, which now names pid 3's table.
+
+02:35.840 --> 02:46.677
+userret has read the trapframe, at the address a0 holds: sp is 0x2000, and sscratch, a scratch register, holds the program's 0.
+
+02:47.677 --> 02:52.572
+The two trade: a0 holds 0, and sscratch holds TRAPFRAME.
+
+02:54.580 --> 03:01.452
+sret runs. The mode is U, user, and pc is 0x00, the address sepc held.
+
+03:02.052 --> 03:04.728
+No instruction of the program has run yet.
+
+03:06.240 --> 03:11.099
+The first fetch, at 0x00, reaches the code leaf: V 1, U 1.
+
+03:11.699 --> 03:14.291
+It has V and U, and the fetch goes through.
+
+03:14.891 --> 03:17.759
+sp moves down to 0x1FF0.
+
+03:18.280 --> 03:26.183
+pc is 0x02. The instruction there stores a register at 0x1FF0, where sp now points.
+
+03:26.783 --> 03:31.677
+The walk for that address goes through pid 3's table. Which leaf does it reach?
+
+03:35.180 --> 03:37.343
+The stack leaf: V 1, U 1.
+
+03:37.943 --> 03:43.412
+It has V and U, and the program's first store goes through. pc is 0x04.
+
+03:44.920 --> 03:49.334
+The fetch at 0x06 reaches the code leaf; a7 holds 11.
+
+03:49.934 --> 03:54.841
+pc is 0x08: an ecall, a call to the kernel; the stepper stops.
+
+03:55.441 --> 04:00.259
+The reference, the finished kernel, runs the test's own program, and passes.
+
+04:00.760 --> 04:05.019
+Now a broken case, code without U, after the same trip down.
+
+04:05.619 --> 04:08.403
+Here the code leaf reads V 1, U 0.
+
+04:09.403 --> 04:12.886
+The first fetch, at 0x00, walks to the code leaf.
+
+04:14.400 --> 04:18.257
+No U bit, in user mode: an instruction page fault.
+
+04:18.857 --> 04:28.153
+The test's first stage, before its program runs, prints: [fail] the code page has no PTE_U — user mode is not allowed to touch it
+
+04:28.680 --> 04:31.325
+Another broken case: stack without U.
+
+04:31.925 --> 04:36.350
+The stack leaf reads V 1, U 0. The first fetch went through.
+
+04:37.350 --> 04:40.965
+The store at 0x1FF0 walks to the stack leaf.
+
+04:42.480 --> 04:50.311
+No U bit: a store page fault, the stepper's picture, not a recording, since the test's program never touches its stack.
+
+04:50.911 --> 04:57.481
+The test prints: [fail] the stack page has no PTE_U — user mode is not allowed to touch it
+
+04:58.000 --> 05:00.525
+You write the body of map_user_pages.
+
+05:01.125 --> 05:11.352
+When it returns, valid leaves at 0x00 and 0x1000 must name the code and stack pages, both reachable from user mode, so both with U.
+
+05:11.952 --> 05:14.403
+The README gives the exact permissions.
+
+05:14.920 --> 05:21.149
+Each check asks something of one leaf; with every leaf as asked, stage 2 runs the program.
+
+05:21.749 --> 05:31.107
+Before you write anything, expect: [fail] the code page is not mapped (va 0x0) — check map_user_pages in vm.rs
+
+05:31.640 --> 05:37.905
+Each row loads its case: look for the access that faulted, and the leaf it reached, if there is one.
+
+05:38.505 --> 05:45.966
+When all is right, the test prints [ok] code + stack mapped for user, trampoline + trapframe for the kernel
+
+05:46.480 --> 05:49.683
+One bit, U, decides what user mode may touch.
+
+05:50.283 --> 05:54.468
+Next: the explainer Parked in the Trapframe, then Friday's session.

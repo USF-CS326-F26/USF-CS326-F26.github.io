@@ -124,6 +124,9 @@ EXPLAINERS = [
     ("Nov 12", "Four Bytes, One Claim", "TYhow86F3N4K4R9cAqY7SH"),
     ("Nov 12", "The First Word Decides", "JD4PbgeJoyTEqSwFRSW6RW"),
     ("Nov 12", "Each Command Decides", "69tjrJXenApSEWYXf8Vxdx"),
+    ("Nov 13", "One Bit Is the Wall", "D7rgr68HdWzKV2cADtnAg2"),
+    ("Nov 13", "Parked in the Trapframe", "UtJxmBPPaTWJvHHdxymvo2"),
+    ("Nov 13", "A Number in a7", "GEDojfRveMi5jn7Sm7sXuG"),
 ]
 
 
@@ -363,7 +366,10 @@ def sessions():
                 ("Video · Four Bytes, One Claim", "/videos/week12-ring/"),
                 ("Video · The First Word Decides", "/videos/week12-words/"),
                 ("Video · Each Command Decides", "/videos/week12-facts/")))
-    add(12, 'friday', 'Nov 13', 'exercise', '48k user_mode', exercises=['48k_user_mode'])
+    add(12, 'friday', 'Nov 13', 'exercise', '48k user_mode', exercises=['48k_user_mode'],
+        links=L(("Video · One Bit Is the Wall", "/videos/week12-wall/"),
+                ("Video · Parked in the Trapframe", "/videos/week12-trapframe/"),
+                ("Video · A Number in a7", "/videos/week12-a7/")))
 
     add(13, 'tuesday', 'Nov 17', 'lecture', 'Midterm 2 Review',
         links=L(("Exam Prep", "/guides/exam-prep/"),

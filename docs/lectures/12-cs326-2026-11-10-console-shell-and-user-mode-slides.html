@@ -983,7 +983,7 @@ Notes:
 
 ## [Before Friday](../prep/12-cs326-2026-11-13-prep-user-mode/): check yourself
 
-rv6 runs its first user program, and you finish the crossing both ways. Prep: about 25 minutes.
+rv6 runs its first user program, and you finish the crossing both ways. Prep: about 45 minutes.
 
 **1.** A program passes `buf = 0x3F_FFFF_E000`, its own trapframe, to `write`. What happens, and which check stops it?
 
@@ -992,7 +992,7 @@ rv6 runs its first user program, and you finish the crossing both ways. Prep: ab
 **3.** The trampoline sits inside the user's address space. Why is it mapped without `PTE_U`, and how does the CPU ever get there?
 
 Notes:
-- Walk the prep page (about 25 minutes). What you build: the first user program's trip through the wall and back. Green is `hello from user mode` and exit status 42 from pid 1. Then type `run` at `rv6$` a few times: each run is a new process, with a new pid.
+- Walk the prep page (about 45 minutes). What you build: the first user program's trip through the wall and back. Green is `hello from user mode` and exit status 42 from pid 1. Then type `run` at `rv6$` a few times: each run is a new process, with a new pid.
 - The three questions are the prep's own Check yourself (48k-program, 48k-retry, 48k-trampoline); answers are on the prep page.
 - **Q:** "Is Friday's material on the midterm?" All of it. Midterm 2, six days later, ends at `48k`, and "trace the trap" is one of its question shapes.
 

@@ -1,0 +1,178 @@
+WEBVTT
+
+00:00.000 --> 00:05.528
+Week 12: A Number in a7, for exercise 48k_user_mode.
+
+00:06.128 --> 00:12.493
+A script steps this explainer, which was built with Claude; its numbers are examples, not the lecture's.
+
+00:13.000 --> 00:15.399
+This follows the November 10 lecture.
+
+00:15.999 --> 00:23.517
+On Friday, November 13, you write dispatch, the function that picks a system call's handler by its number.
+
+00:24.117 --> 00:27.284
+No solution code here: only the machine's state.
+
+00:27.800 --> 00:39.135
+A program in user mode, the weakest privilege level, cannot reach the console. To ask the kernel, it makes a system call, ending in ecall, the instruction that traps.
+
+00:39.735 --> 00:41.813
+Every call but exit comes back.
+
+00:42.320 --> 00:50.227
+In the example program's write, a7 holds 16; a0 to a2 hold 1, 0x3C and 13.
+
+00:50.827 --> 00:53.301
+In the kernel, a7 picks the handler.
+
+00:54.301 --> 00:59.649
+Back in user mode, of the four, only a0 changed: 13, the answer.
+
+01:00.160 --> 01:08.679
+rv6 knows three numbers, taken from xv6: SYS_EXIT 2, SYS_GETPID 11 and SYS_WRITE 16.
+
+01:09.279 --> 01:14.152
+sys_write takes only fd 1, file descriptor 1: the console.
+
+01:14.680 --> 01:22.695
+The stepper runs an example program as process 3, in user mode: its registers on the left, this call on the right.
+
+01:23.295 --> 01:27.294
+Its first ecall is at 0x08, and a7 holds 11.
+
+01:28.800 --> 01:38.275
+The ecall trapped into supervisor mode, the kernel's. The program's registers are parked in its trapframe, the page a trap keeps them in.
+
+01:38.875 --> 01:41.763
+11 picked sys_getpid, which answered 3.
+
+01:42.363 --> 01:44.807
+The program resumes at 0x0C.
+
+01:46.320 --> 01:51.044
+Back in user mode at 0x0C, a0 holds 3, the answer.
+
+01:51.644 --> 01:54.886
+a7, a1 and a2 came back as they were.
+
+01:56.400 --> 02:03.646
+The next ecall, at 0x26: a7 holds 30, a0 5, and s0 63.
+
+02:04.246 --> 02:07.060
+What is in a0 when the program resumes?
+
+02:10.580 --> 02:11.892
+No handler ran.
+
+02:12.492 --> 02:17.535
+a0's slot holds -1, every bit set: 0xFFFF_FFFF_FFFF_FFFF.
+
+02:18.135 --> 02:22.678
+The program resumes at 0x2A, the instruction after its ecall.
+
+02:24.200 --> 02:28.743
+Back in user mode at 0x2A, with -1 in a0.
+
+02:29.743 --> 02:35.757
+The next ecall, at 0x2E: a7 holds 16, and a0 holds 1.
+
+02:37.280 --> 02:38.999
+16 picked sys_write.
+
+02:39.599 --> 02:43.587
+The write delivered its 13 bytes, and its answer is 13.
+
+02:44.187 --> 02:50.979
+Below, in the given handlers, two lines are marked: where the bytes go out, and the line the answer comes from.
+
+02:52.480 --> 02:55.827
+Back at 0x32, with 13 in a0.
+
+02:56.827 --> 03:04.958
+The last ecall, at 0x36: a7 holds 2, and a0 holds 63, copied from s0.
+
+03:06.480 --> 03:10.497
+2 picked sys_exit, which never returns: the run is over.
+
+03:11.097 --> 03:13.859
+Process 3 exited with status 63.
+
+03:14.459 --> 03:23.044
+For the reference, the case with nothing broken, the test prints: [ok] a user program ran at user privilege and the kernel served it
+
+03:23.560 --> 03:27.971
+Now a broken case: dispatch still the skeleton, the code you receive.
+
+03:28.971 --> 03:32.287
+At the first ecall, 11 reaches no handler.
+
+03:32.887 --> 03:38.766
+a0's slot holds -1, and the program resumes at 0x0C with it.
+
+03:40.280 --> 03:44.660
+Three calls, each answered -1; the write delivered nothing.
+
+03:45.660 --> 03:51.191
+The exit, number 2, came back: the program is at 0x3A, jumping to itself.
+
+03:51.791 --> 03:56.825
+The test prints: [fail] the program ran, but its system calls were never answered
+
+03:57.360 --> 04:02.671
+The test prints that line for four cases. The cards show the example program.
+
+04:03.271 --> 04:12.953
+usertrap, the kernel's handler for traps from user mode, with its ecall branch still the skeleton: at 0x08, the same ecall, none answered.
+
+04:13.480 --> 04:16.497
+The second card: the pc left at the ecall.
+
+04:17.097 --> 04:20.111
+At 0x08, the same ecall, each one answered.
+
+04:20.640 --> 04:28.617
+dispatch still the skeleton, and no exit, both at 0x3A, jumping to itself; dispatch answered all four calls.
+
+04:29.217 --> 04:32.029
+In one of the four, no call is ever answered.
+
+04:32.629 --> 04:37.735
+In the other three, every call was answered, and the program still did not finish.
+
+04:38.240 --> 04:44.416
+You write the body of dispatch, in syscall.rs; its comment and signature are given.
+
+04:45.016 --> 04:53.321
+When it is done, each of the three numbers reaches its handler, and any other number answers -1, rather than crashing the kernel.
+
+04:53.840 --> 04:58.136
+The test's stage 2 runs its own program, which makes three calls.
+
+04:58.736 --> 05:01.678
+Stage 2 stops at the first check that fails.
+
+05:02.278 --> 05:10.141
+One row asks that the program finish before the test stops waiting. Four cases fail it, with the never-answered line.
+
+05:10.640 --> 05:13.285
+No write: no handler takes write's number.
+
+05:13.885 --> 05:18.919
+The test prints: [fail] the write syscall did not deliver the program's message
+
+05:19.519 --> 05:27.210
+The hint at its end points at copyin in vm.rs, which is given and was not changed in this run.
+
+05:27.720 --> 05:36.411
+No getpid: getpid answers -1 instead of the pid, so the status the program computes is two less than the test expects.
+
+05:37.011 --> 05:42.914
+What the test cannot see: its program makes only its three calls, never an unknown one.
+
+05:43.440 --> 05:49.487
+A system call is a number and up to three arguments in, and one answer out, in a0.
+
+05:50.087 --> 05:54.389
+Next: Friday's session, November 13, where you write dispatch.

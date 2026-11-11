@@ -622,6 +622,18 @@ weeks:
       links:
         - text: "Prep"
           url: "prep/12-cs326-2026-11-13-prep-user-mode/"
+        - text: "Video · One Bit Is the Wall"
+          url: "videos/week12-wall/"
+        - text: "Video · Parked in the Trapframe"
+          url: "videos/week12-trapframe/"
+        - text: "Video · A Number in a7"
+          url: "videos/week12-a7/"
+        - text: "Explainer · One Bit Is the Wall"
+          url: "https://claude.ai/artifact/D7rgr68HdWzKV2cADtnAg2"
+        - text: "Explainer · Parked in the Trapframe"
+          url: "https://claude.ai/artifact/UtJxmBPPaTWJvHHdxymvo2"
+        - text: "Explainer · A Number in a7"
+          url: "https://claude.ai/artifact/GEDojfRveMi5jn7Sm7sXuG"
 
 
 # === WEEK 13 ===

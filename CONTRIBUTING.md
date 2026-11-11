@@ -336,9 +336,10 @@ the same title. Week 10's five follow: the explainers One Atomic Step; The Guard
 Holds It; Two Counts on One Page; The Identity Map; and Packing satp, each with a
 film of the same title. Week 11's five follow: the explainers Names Live in
 Directories; Errors Are Values; Needs This First; Step Past the Breakpoint; and
-Three Gates and a Pending Bit, each with a film of the same title. Week 12's
-Thursday three follow: the explainers Four Bytes, One Claim; The First Word
-Decides; and Each Command Decides, each with a film of the same title.
+Three Gates and a Pending Bit, each with a film of the same title. Week 12's six
+follow: the explainers Four Bytes, One Claim; The First Word Decides; Each
+Command Decides; One Bit Is the Wall; Parked in the Trapframe; and A Number in
+a7, each with a film of the same title.
 
 ## Lecture pages
 
