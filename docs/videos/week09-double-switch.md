@@ -23,4 +23,4 @@ addresses that are examples, not the lecture's.
   <track kind="captions" src="../week09-double-switch.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week09-double-switch.mp4){ download="week09-double-switch.mp4" } (MP4, 15 MB) · [Captions](week09-double-switch.vtt) (WebVTT) · [All four Week 9 videos](week09.md)
+[Download the video](week09-double-switch.mp4){ download="week09-double-switch.mp4" } (MP4, 11 MB) · [Captions](week09-double-switch.vtt) (WebVTT) · [All four Week 9 videos](week09.md)

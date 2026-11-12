@@ -23,4 +23,4 @@ examples, not the lecture's.
   <track kind="captions" src="../week07-reset-to-rust.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week07-reset-to-rust.mp4){ download="week07-reset-to-rust.mp4" } (MP4, 12 MB) · [Captions](week07-reset-to-rust.vtt) (WebVTT) · [All four Week 7 videos](week07.md)
+[Download the video](week07-reset-to-rust.mp4){ download="week07-reset-to-rust.mp4" } (MP4, 10 MB) · [Captions](week07-reset-to-rust.vtt) (WebVTT) · [All four Week 7 videos](week07.md)

@@ -233,9 +233,10 @@ CRF 28 measured SSIM 0.997 to 0.998 against the master (`babyswtch`, dark and
 colored, 0.995), and full-size stills of the smallest code and handwriting were
 indistinguishable from it. The practice films and `babyswtch` were re-encoded on
 Oct 26 from their earlier copies, which held the masters' own streams; that
-freed about 156 MB. The explainer films of Weeks 7 to 10 stay plain copies: at
-about 2.8 MB a minute they are small already. Week 11's and Week 12's are
-re-encoded like the exam films, to leave room on Pages. The player page is
+freed about 156 MB. Week 11's and Week 12's explainer films are re-encoded like
+the exam films, to leave room on Pages, and on Nov 12 the explainer films of
+Weeks 7 to 10, until then plain copies, were re-encoded the same way from their
+masters (SSIM 0.997 to 0.998), which freed about 38 MB. The player page is
 `docs/videos/babyswtch.md`; copy it. Two things in it matter:
 
 - The page is served at `videos/NAME/`, and MkDocs does not rewrite a raw

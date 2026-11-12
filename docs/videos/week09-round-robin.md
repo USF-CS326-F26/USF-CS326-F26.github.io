@@ -23,4 +23,4 @@ around each call, with numbers that are examples, not the lecture's.
   <track kind="captions" src="../week09-round-robin.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week09-round-robin.mp4){ download="week09-round-robin.mp4" } (MP4, 13 MB) · [Captions](week09-round-robin.vtt) (WebVTT) · [All four Week 9 videos](week09.md)
+[Download the video](week09-round-robin.mp4){ download="week09-round-robin.mp4" } (MP4, 10 MB) · [Captions](week09-round-robin.vtt) (WebVTT) · [All four Week 9 videos](week09.md)
