@@ -14,4 +14,4 @@ Four parts, worked on the exam's pages 2 and 3: (a) `pgroundup` and `checked_pgr
   <track kind="captions" src="../midterm-1-section-01-problem-1.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-section-01-problem-1.mp4){ download="midterm-1-section-01-problem-1.mp4" } (MP4, 26 MB) · [Captions](midterm-1-section-01-problem-1.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-01)
+[Download the video](midterm-1-section-01-problem-1.mp4){ download="midterm-1-section-01-problem-1.mp4" } (MP4, 20 MB) · [Captions](midterm-1-section-01-problem-1.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-01)

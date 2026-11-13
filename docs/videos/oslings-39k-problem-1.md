@@ -14,4 +14,4 @@ Three parts, worked on all four of the set's pages: (a) what `make_satp` returns
   <track kind="captions" src="../oslings-39k-problem-1.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-39k-problem-1.mp4){ download="oslings-39k-problem-1.mp4" } (MP4, 22 MB) · [Captions](oslings-39k-problem-1.vtt) (WebVTT) · [The set](../assignments/oslings-practice.md#39k)
+[Download the video](oslings-39k-problem-1.mp4){ download="oslings-39k-problem-1.mp4" } (MP4, 17 MB) · [Captions](oslings-39k-problem-1.vtt) (WebVTT) · [The set](../assignments/oslings-practice.md#39k)

@@ -22,4 +22,4 @@ owners and the free list, with numbers that are examples, not the lecture's.
   <track kind="captions" src="../week10-two-counts.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week10-two-counts.mp4){ download="week10-two-counts.mp4" } (MP4, 10 MB) · [Captions](week10-two-counts.vtt) (WebVTT) · [All five Week 10 videos](week10.md)
+[Download the video](week10-two-counts.mp4){ download="week10-two-counts.mp4" } (MP4, 7 MB) · [Captions](week10-two-counts.vtt) (WebVTT) · [All five Week 10 videos](week10.md)

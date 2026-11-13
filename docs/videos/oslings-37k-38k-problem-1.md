@@ -14,4 +14,4 @@ Three parts, worked on the set's pages 1 and 2: (a) a `try_lock` that checks the
   <track kind="captions" src="../oslings-37k-38k-problem-1.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-37k-38k-problem-1.mp4){ download="oslings-37k-38k-problem-1.mp4" } (MP4, 16 MB) · [Captions](oslings-37k-38k-problem-1.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#37k-38k)
+[Download the video](oslings-37k-38k-problem-1.mp4){ download="oslings-37k-38k-problem-1.mp4" } (MP4, 12 MB) · [Captions](oslings-37k-38k-problem-1.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#37k-38k)

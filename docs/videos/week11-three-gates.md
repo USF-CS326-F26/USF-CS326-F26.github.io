@@ -23,4 +23,4 @@ the trap registers at each step, with example numbers.
   <track kind="captions" src="../week11-three-gates.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week11-three-gates.mp4){ download="week11-three-gates.mp4" } (MP4, 11 MB) · [Captions](week11-three-gates.vtt) (WebVTT) · [All five Week 11 videos](week11.md)
+[Download the video](week11-three-gates.mp4){ download="week11-three-gates.mp4" } (MP4, 8 MB) · [Captions](week11-three-gates.vtt) (WebVTT) · [All five Week 11 videos](week11.md)

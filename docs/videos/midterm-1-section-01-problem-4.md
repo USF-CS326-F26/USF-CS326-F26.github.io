@@ -14,4 +14,4 @@ Four parts, worked on pages 8 and 9: (a) `count_fd` traced over three reads; (b)
   <track kind="captions" src="../midterm-1-section-01-problem-4.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-section-01-problem-4.mp4){ download="midterm-1-section-01-problem-4.mp4" } (MP4, 21 MB) · [Captions](midterm-1-section-01-problem-4.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-01)
+[Download the video](midterm-1-section-01-problem-4.mp4){ download="midterm-1-section-01-problem-4.mp4" } (MP4, 15 MB) · [Captions](midterm-1-section-01-problem-4.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-01)

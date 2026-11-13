@@ -24,4 +24,4 @@ names, or the test's own.
   <track kind="captions" src="../week12-words.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week12-words.mp4){ download="week12-words.mp4" } (MP4, 11 MB) · [Captions](week12-words.vtt) (WebVTT) · [All six Week 12 videos](week12.md)
+[Download the video](week12-words.mp4){ download="week12-words.mp4" } (MP4, 7 MB) · [Captions](week12-words.vtt) (WebVTT) · [All six Week 12 videos](week12.md)

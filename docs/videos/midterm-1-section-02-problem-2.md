@@ -14,4 +14,4 @@ Three parts, worked on pages 4 and 5: (a) a sequence of events traced through `a
   <track kind="captions" src="../midterm-1-section-02-problem-2.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-section-02-problem-2.mp4){ download="midterm-1-section-02-problem-2.mp4" } (MP4, 23 MB) · [Captions](midterm-1-section-02-problem-2.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-02)
+[Download the video](midterm-1-section-02-problem-2.mp4){ download="midterm-1-section-02-problem-2.mp4" } (MP4, 18 MB) · [Captions](midterm-1-section-02-problem-2.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-02)

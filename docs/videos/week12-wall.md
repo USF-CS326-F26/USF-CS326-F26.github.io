@@ -26,4 +26,4 @@ registers and the pc at each step, with example addresses.
   <track kind="captions" src="../week12-wall.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week12-wall.mp4){ download="week12-wall.mp4" } (MP4, 11 MB) · [Captions](week12-wall.vtt) (WebVTT) · [All six Week 12 videos](week12.md)
+[Download the video](week12-wall.mp4){ download="week12-wall.mp4" } (MP4, 8 MB) · [Captions](week12-wall.vtt) (WebVTT) · [All six Week 12 videos](week12.md)

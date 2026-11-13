@@ -14,4 +14,4 @@ Two parts, worked on the set's pages 1 and 2: (a) `allocproc` and `freeproc` tra
   <track kind="captions" src="../oslings-34k-36k-problem-1.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-34k-36k-problem-1.mp4){ download="oslings-34k-36k-problem-1.mp4" } (MP4, 13 MB) · [Captions](oslings-34k-36k-problem-1.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#34k-36k)
+[Download the video](oslings-34k-36k-problem-1.mp4){ download="oslings-34k-36k-problem-1.mp4" } (MP4, 10 MB) · [Captions](oslings-34k-36k-problem-1.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#34k-36k)

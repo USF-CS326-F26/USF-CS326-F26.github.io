@@ -14,4 +14,4 @@ Three parts, worked on the set's pages 2 and 3: (a) the byte offset of `s7` in a
   <track kind="captions" src="../oslings-34k-36k-problem-2.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-34k-36k-problem-2.mp4){ download="oslings-34k-36k-problem-2.mp4" } (MP4, 14 MB) · [Captions](oslings-34k-36k-problem-2.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#34k-36k)
+[Download the video](oslings-34k-36k-problem-2.mp4){ download="oslings-34k-36k-problem-2.mp4" } (MP4, 10 MB) · [Captions](oslings-34k-36k-problem-2.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#34k-36k)

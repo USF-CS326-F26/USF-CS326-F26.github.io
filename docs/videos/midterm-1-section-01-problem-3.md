@@ -14,4 +14,4 @@ Three parts, worked on pages 6 and 7: (a) `RoundRobin`'s `pick_next` traced for 
   <track kind="captions" src="../midterm-1-section-01-problem-3.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-section-01-problem-3.mp4){ download="midterm-1-section-01-problem-3.mp4" } (MP4, 20 MB) · [Captions](midterm-1-section-01-problem-3.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-01)
+[Download the video](midterm-1-section-01-problem-3.mp4){ download="midterm-1-section-01-problem-3.mp4" } (MP4, 15 MB) · [Captions](midterm-1-section-01-problem-3.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-01)

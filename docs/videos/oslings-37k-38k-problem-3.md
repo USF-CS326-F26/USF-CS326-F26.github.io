@@ -14,4 +14,4 @@ Two parts, worked on the set's pages 5 and 6: (a) eight lines of code run agains
   <track kind="captions" src="../oslings-37k-38k-problem-3.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-37k-38k-problem-3.mp4){ download="oslings-37k-38k-problem-3.mp4" } (MP4, 17 MB) · [Captions](oslings-37k-38k-problem-3.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#37k-38k)
+[Download the video](oslings-37k-38k-problem-3.mp4){ download="oslings-37k-38k-problem-3.mp4" } (MP4, 13 MB) · [Captions](oslings-37k-38k-problem-3.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#37k-38k)

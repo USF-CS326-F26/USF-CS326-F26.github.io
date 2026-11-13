@@ -213,30 +213,41 @@ off the **cs326** network, so explainers are for use outside a session.
 A **video** is served from this site, so the **cs326** network reaches it, but
 like an explainer it is for use outside a session. It lives in `docs/videos/` as three files: the MP4, its captions, and a
 player page reached from the schedule row (not in the nav, like summaries).
-Prepare the media from the film's output without re-encoding:
+Prepare the media from the film's output:
 
 ```bash
-ffmpeg -i NAME.mp4 -map 0:v -map 0:a -c copy -movflags +faststart docs/videos/NAME.mp4
+ffmpeg -i NAME.mp4 -map 0:v -map 0:a -c:v libx264 -preset medium -tune stillimage -crf 28 \
+  -c:a copy -movflags +faststart docs/videos/NAME.mp4
 ffmpeg -i NAME.srt docs/videos/NAME.vtt
 ```
 
-The first moves the index to the front of the file, so playback starts before
-the download finishes, and drops the embedded `mov_text` subtitle stream,
-which Chrome and Firefox ignore and Safari would list beside the `<track>` as a
-second English track; the second makes the WebVTT that `<track>` needs (it does not take
-SRT). The exam films and `babyswtch` are the exception: the ten Midterm 1 solution
-films, the ten Midterm 1 practice films, the OSlings practice films and `babyswtch` run 3 to 4 MB a minute
-as masters, which would bring the site near GitHub Pages' 1 GB, so their copies
-are re-encoded (`-c:v libx264 -preset medium -tune stillimage -crf 28 -c:a copy`,
-with the same `-map` and `-movflags +faststart`), about 2.1 to 2.6 MB a minute.
-CRF 28 measured SSIM 0.997 to 0.998 against the master (`babyswtch`, dark and
-colored, 0.995), and full-size stills of the smallest code and handwriting were
-indistinguishable from it. The practice films and `babyswtch` were re-encoded on
-Oct 26 from their earlier copies, which held the masters' own streams; that
-freed about 156 MB. Week 11's and Week 12's explainer films are re-encoded like
-the exam films, to leave room on Pages, and on Nov 12 the explainer films of
-Weeks 7 to 10, until then plain copies, were re-encoded the same way from their
-masters (SSIM 0.997 to 0.998), which freed about 38 MB. The player page is
+The first re-encodes the picture, moves the index to the front of the file, so
+playback starts before the download finishes, and drops the embedded `mov_text`
+subtitle stream, which Chrome and Firefox ignore and Safari would list beside the
+`<track>` as a second English track; the second makes the WebVTT that `<track>`
+needs (it does not take SRT). The picture is re-encoded because the masters run
+3 to 4 MB a minute, which would bring the site near GitHub Pages' 1 GB. CRF 28
+measured SSIM 0.997 to 0.998 against the master (`babyswtch`, dark and colored,
+0.995), and full-size stills of the smallest code and handwriting were
+indistinguishable from it. The Midterm 1 solution films, the OSlings practice
+films and Week 11's and Week 12's explainer films were re-encoded when posted;
+the Midterm 1 practice films and `babyswtch` were re-encoded on Oct 26 from their
+earlier copies, which held the masters' own streams, freeing about 156 MB; and on
+Nov 12 the explainer films of Weeks 7
+to 10, until then plain copies, were re-encoded from their masters, freeing about
+38 MB.
+
+The sound is copied: films cut from Nov 13 on carry mono AAC at 64 kb/s, since
+the narration is one voice. On Nov 13 the sound of all 52 videos then on the
+site, until then the masters' stereo AAC at about 130 kb/s, was re-encoded that
+way with the picture stream copied unchanged, which freed about 209 MB. Mono is
+the mean of the two channels, which carried the same narration, so each speaker
+plays the level it did; every video kept -16.0 LUFS (measured as dual mono) and a
+true peak of -0.9 dBTP or lower. A master cut before Nov 13 still has stereo
+sound: for it, replace `-c:a copy` with
+`-af "pan=mono|c0=0.5*c0+0.5*c1" -c:a aac_at -b:a 64k -ar 48000` and check the
+true peak. `aac_at` is Apple's encoder, in macOS builds of ffmpeg; ffmpeg's own
+`aac` at 64 kb/s overshot a few consonants past full scale. The player page is
 `docs/videos/babyswtch.md`; copy it. Two things in it matter:
 
 - The page is served at `videos/NAME/`, and MkDocs does not rewrite a raw

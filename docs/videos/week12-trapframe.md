@@ -28,4 +28,4 @@ numbers.
   <track kind="captions" src="../week12-trapframe.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week12-trapframe.mp4){ download="week12-trapframe.mp4" } (MP4, 13 MB) · [Captions](week12-trapframe.vtt) (WebVTT) · [All six Week 12 videos](week12.md)
+[Download the video](week12-trapframe.mp4){ download="week12-trapframe.mp4" } (MP4, 9 MB) · [Captions](week12-trapframe.vtt) (WebVTT) · [All six Week 12 videos](week12.md)

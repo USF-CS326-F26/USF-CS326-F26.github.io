@@ -26,4 +26,4 @@ with example names, or the test's own.
   <track kind="captions" src="../week12-facts.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week12-facts.mp4){ download="week12-facts.mp4" } (MP4, 11 MB) · [Captions](week12-facts.vtt) (WebVTT) · [All six Week 12 videos](week12.md)
+[Download the video](week12-facts.mp4){ download="week12-facts.mp4" } (MP4, 7 MB) · [Captions](week12-facts.vtt) (WebVTT) · [All six Week 12 videos](week12.md)

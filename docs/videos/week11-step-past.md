@@ -23,4 +23,4 @@ the stack frame and the pc at each step, with example addresses.
   <track kind="captions" src="../week11-step-past.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week11-step-past.mp4){ download="week11-step-past.mp4" } (MP4, 11 MB) · [Captions](week11-step-past.vtt) (WebVTT) · [All five Week 11 videos](week11.md)
+[Download the video](week11-step-past.mp4){ download="week11-step-past.mp4" } (MP4, 8 MB) · [Captions](week11-step-past.vtt) (WebVTT) · [All five Week 11 videos](week11.md)

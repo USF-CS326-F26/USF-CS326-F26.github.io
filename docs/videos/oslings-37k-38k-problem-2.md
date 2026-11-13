@@ -14,4 +14,4 @@ Two parts, worked on the set's pages 3 and 4: (a) nine lines on a semaphore made
   <track kind="captions" src="../oslings-37k-38k-problem-2.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-37k-38k-problem-2.mp4){ download="oslings-37k-38k-problem-2.mp4" } (MP4, 15 MB) · [Captions](oslings-37k-38k-problem-2.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#37k-38k)
+[Download the video](oslings-37k-38k-problem-2.mp4){ download="oslings-37k-38k-problem-2.mp4" } (MP4, 12 MB) · [Captions](oslings-37k-38k-problem-2.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#37k-38k)

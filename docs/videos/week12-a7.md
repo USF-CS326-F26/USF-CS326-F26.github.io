@@ -26,4 +26,4 @@ answer at each step, with example numbers.
   <track kind="captions" src="../week12-a7.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week12-a7.mp4){ download="week12-a7.mp4" } (MP4, 11 MB) · [Captions](week12-a7.vtt) (WebVTT) · [All six Week 12 videos](week12.md)
+[Download the video](week12-a7.mp4){ download="week12-a7.mp4" } (MP4, 8 MB) · [Captions](week12-a7.vtt) (WebVTT) · [All six Week 12 videos](week12.md)

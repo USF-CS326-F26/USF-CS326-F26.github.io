@@ -24,4 +24,4 @@ holds after each step, with numbers that are examples, not the lecture's.
   <track kind="captions" src="../week09-process-table.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week09-process-table.mp4){ download="week09-process-table.mp4" } (MP4, 11 MB) · [Captions](week09-process-table.vtt) (WebVTT) · [All four Week 9 videos](week09.md)
+[Download the video](week09-process-table.mp4){ download="week09-process-table.mp4" } (MP4, 8 MB) · [Captions](week09-process-table.vtt) (WebVTT) · [All four Week 9 videos](week09.md)

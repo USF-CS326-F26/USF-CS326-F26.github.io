@@ -22,4 +22,4 @@ examples, not the lecture's.
   <track kind="captions" src="../week07-sv39-walk.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week07-sv39-walk.mp4){ download="week07-sv39-walk.mp4" } (MP4, 12 MB) · [Captions](week07-sv39-walk.vtt) (WebVTT) · [All four Week 7 videos](week07.md)
+[Download the video](week07-sv39-walk.mp4){ download="week07-sv39-walk.mp4" } (MP4, 8 MB) · [Captions](week07-sv39-walk.vtt) (WebVTT) · [All four Week 7 videos](week07.md)

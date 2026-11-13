@@ -22,4 +22,4 @@ given test's own numbers.
   <track kind="captions" src="../week10-guard.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week10-guard.mp4){ download="week10-guard.mp4" } (MP4, 11 MB) · [Captions](week10-guard.vtt) (WebVTT) · [All five Week 10 videos](week10.md)
+[Download the video](week10-guard.mp4){ download="week10-guard.mp4" } (MP4, 8 MB) · [Captions](week10-guard.vtt) (WebVTT) · [All five Week 10 videos](week10.md)

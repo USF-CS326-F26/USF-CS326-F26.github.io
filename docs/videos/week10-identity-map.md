@@ -22,4 +22,4 @@ that are examples, not the lecture's.
   <track kind="captions" src="../week10-identity-map.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week10-identity-map.mp4){ download="week10-identity-map.mp4" } (MP4, 12 MB) · [Captions](week10-identity-map.vtt) (WebVTT) · [All five Week 10 videos](week10.md)
+[Download the video](week10-identity-map.mp4){ download="week10-identity-map.mp4" } (MP4, 8 MB) · [Captions](week10-identity-map.vtt) (WebVTT) · [All five Week 10 videos](week10.md)

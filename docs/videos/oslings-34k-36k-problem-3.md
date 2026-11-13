@@ -14,4 +14,4 @@ Three parts, worked on the set's pages 4 and 5: (a) seven turns of the round-rob
   <track kind="captions" src="../oslings-34k-36k-problem-3.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](oslings-34k-36k-problem-3.mp4){ download="oslings-34k-36k-problem-3.mp4" } (MP4, 13 MB) · [Captions](oslings-34k-36k-problem-3.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#34k-36k)
+[Download the video](oslings-34k-36k-problem-3.mp4){ download="oslings-34k-36k-problem-3.mp4" } (MP4, 10 MB) · [Captions](oslings-34k-36k-problem-3.vtt) (WebVTT) · [All three problems](../assignments/oslings-practice.md#34k-36k)

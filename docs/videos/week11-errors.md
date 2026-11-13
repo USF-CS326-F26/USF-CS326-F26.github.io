@@ -23,4 +23,4 @@ table and each call's `Result`, with the given test's own names.
   <track kind="captions" src="../week11-errors.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week11-errors.mp4){ download="week11-errors.mp4" } (MP4, 12 MB) · [Captions](week11-errors.vtt) (WebVTT) · [All five Week 11 videos](week11.md)
+[Download the video](week11-errors.mp4){ download="week11-errors.mp4" } (MP4, 9 MB) · [Captions](week11-errors.vtt) (WebVTT) · [All five Week 11 videos](week11.md)

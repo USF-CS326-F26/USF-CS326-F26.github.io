@@ -14,4 +14,4 @@ Four parts, worked on pages 10 and 11: (a) four `kalloc` and `kfree` calls trace
   <track kind="captions" src="../midterm-1-section-02-problem-5.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](midterm-1-section-02-problem-5.mp4){ download="midterm-1-section-02-problem-5.mp4" } (MP4, 29 MB) · [Captions](midterm-1-section-02-problem-5.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-02)
+[Download the video](midterm-1-section-02-problem-5.mp4){ download="midterm-1-section-02-problem-5.mp4" } (MP4, 23 MB) · [Captions](midterm-1-section-02-problem-5.vtt) (WebVTT) · [All five problems](../assignments/midterm-1-solutions.md#section-02)

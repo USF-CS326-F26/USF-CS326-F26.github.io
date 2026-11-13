@@ -22,4 +22,4 @@ entries at each lookup, with example names and numbers, not the lecture's.
   <track kind="captions" src="../week11-names.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week11-names.mp4){ download="week11-names.mp4" } (MP4, 10 MB) · [Captions](week11-names.vtt) (WebVTT) · [All five Week 11 videos](week11.md)
+[Download the video](week11-names.mp4){ download="week11-names.mp4" } (MP4, 7 MB) · [Captions](week11-names.vtt) (WebVTT) · [All five Week 11 videos](week11.md)

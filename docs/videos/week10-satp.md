@@ -21,4 +21,4 @@ register's bits, with numbers that are examples, not the lecture's.
   <track kind="captions" src="../week10-satp.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week10-satp.mp4){ download="week10-satp.mp4" } (MP4, 10 MB) · [Captions](week10-satp.vtt) (WebVTT) · [All five Week 10 videos](week10.md)
+[Download the video](week10-satp.mp4){ download="week10-satp.mp4" } (MP4, 7 MB) · [Captions](week10-satp.vtt) (WebVTT) · [All five Week 10 videos](week10.md)

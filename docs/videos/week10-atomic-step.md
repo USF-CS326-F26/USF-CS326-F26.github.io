@@ -22,4 +22,4 @@ its numbers are examples, not the lecture's.
   <track kind="captions" src="../week10-atomic-step.vtt" srclang="en" label="English" default>
 </video>
 
-[Download the video](week10-atomic-step.mp4){ download="week10-atomic-step.mp4" } (MP4, 10 MB) · [Captions](week10-atomic-step.vtt) (WebVTT) · [All five Week 10 videos](week10.md)
+[Download the video](week10-atomic-step.mp4){ download="week10-atomic-step.mp4" } (MP4, 7 MB) · [Captions](week10-atomic-step.vtt) (WebVTT) · [All five Week 10 videos](week10.md)
