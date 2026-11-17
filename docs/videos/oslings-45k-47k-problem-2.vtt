@@ -1,0 +1,190 @@
+WEBVTT
+
+00:00.000 --> 00:05.301
+OSlings Practice 45k-47k, Problem 2: The Shell.
+
+00:05.901 --> 00:11.691
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.291 --> 00:16.183
+A script reveals it, and this explainer was built with Claude.
+
+00:16.680 --> 00:25.213
+Problem 2 draws on one OSlings exercise: 46k_shell, from week 12, on Thursday, November 12.
+
+00:25.813 --> 00:28.403
+You wrote exec, the shell's evaluate step.
+
+00:29.003 --> 00:35.541
+Everything else came with the exercise: the read loop, the command handlers, the Out trait, and the test.
+
+00:37.040 --> 00:44.714
+Problem 2: in 46k, exec splits one command line into words, and calls the matching command handler.
+
+00:45.314 --> 00:51.442
+The four handlers came with the exercise: pwd, ls, cd and mkdir.
+
+00:52.042 --> 00:55.591
+cd and mkdir also take an argument, arg.
+
+00:56.720 --> 00:58.149
+Then exec itself.
+
+00:58.749 --> 01:03.513
+First, the line's words come from split_whitespace, with the spaces dropped.
+
+01:04.113 --> 01:09.541
+Each call to next gives the next word inside a Some, or a None when the words run out.
+
+01:10.640 --> 01:13.347
+cmd comes from the first call to next.
+
+01:13.947 --> 01:19.157
+If that call returns None, the line is blank: exec returns, and does nothing.
+
+01:19.757 --> 01:25.397
+Then arg comes from the next call: the 2nd word, or an empty string if there isn't one.
+
+01:26.520 --> 01:29.014
+Then a match on cmd picks the handler.
+
+01:29.614 --> 01:36.076
+pwd and ls are called with just out; cd and mkdir also get arg.
+
+01:36.676 --> 01:41.943
+Any other word takes the last arm: it prints the word, and then command not found.
+
+01:43.440 --> 01:51.385
+Part (a). For each line passed to exec, give the value of cmd, the value of arg, and what exec does with the line.
+
+01:51.985 --> 01:53.850
+The first row is done for you.
+
+01:54.360 --> 01:56.864
+The first row passes "mkdir docs".
+
+01:57.464 --> 01:59.339
+Its words are mkdir and docs,
+
+01:59.939 --> 02:03.191
+so cmd is "mkdir", and arg is "docs".
+
+02:03.791 --> 02:06.977
+And exec calls cmd_mkdir, with "docs".
+
+02:07.480 --> 02:10.559
+Next, ls, with spaces before and after it.
+
+02:11.559 --> 02:16.335
+cmd is "ls": a call to split_whitespace drops the spaces.
+
+02:17.335 --> 02:21.035
+arg is the empty string: the line has no other word.
+
+02:22.035 --> 02:25.458
+So exec calls cmd_ls, with just out.
+
+02:25.960 --> 02:27.453
+Next, the empty line.
+
+02:28.453 --> 02:34.437
+cmd never gets a value: there are no words, so the first call to next returns None.
+
+02:35.437 --> 02:36.663
+arg is never set,
+
+02:37.663 --> 02:42.004
+because exec takes the None arm and returns at once: it does nothing.
+
+02:42.520 --> 02:44.487
+Then "cd docs notes".
+
+02:45.487 --> 02:48.099
+cmd is "cd", the first word.
+
+02:49.099 --> 02:50.975
+arg is "docs", the next one.
+
+02:51.975 --> 02:55.354
+So exec calls cmd_cd, with "docs".
+
+02:55.954 --> 02:59.964
+And "notes" is ignored: exec never asks for another word.
+
+03:00.480 --> 03:02.054
+Last, "make docs".
+
+03:03.054 --> 03:04.429
+cmd is "make",
+
+03:05.429 --> 03:06.912
+and arg is "docs".
+
+03:07.512 --> 03:11.607
+No arm of the match is "make", so the match takes its last arm.
+
+03:12.607 --> 03:15.145
+exec prints "make: command not found".
+
+03:17.180 --> 03:26.293
+Under the table, the key adds: a call to split_whitespace skips any run of spaces, so the extra spaces around ls don't matter.
+
+03:27.293 --> 03:30.268
+And exec only ever reads the first two words.
+
+03:32.400 --> 03:39.159
+Part (b). In this version, the first lines of exec use unwrap, which panics if it is called on None.
+
+03:39.759 --> 03:42.476
+Both cmd and arg are taken with unwrap,
+
+03:43.076 --> 03:45.647
+in place of these lines of the exec above.
+
+03:46.760 --> 03:54.195
+Which of these lines crash the kernel: "mkdir docs", "pwd", or the empty line, just pressing Enter?
+
+03:54.795 --> 03:58.401
+Why? And how does the exec shown above avoid each crash?
+
+03:59.920 --> 04:02.052
+The key circles "pwd",
+
+04:03.552 --> 04:04.918
+and the empty line.
+
+04:05.918 --> 04:12.181
+Both crash. "mkdir docs" is fine: it has both words, so each unwrap gets a word.
+
+04:12.680 --> 04:17.661
+Why "pwd"? Its first unwrap gets the word "pwd".
+
+04:19.161 --> 04:23.277
+But it has no 2nd word, so the second unwrap is called on None,
+
+04:24.777 --> 04:25.917
+and that panics.
+
+04:27.040 --> 04:29.183
+The empty line has no words at all,
+
+04:30.183 --> 04:33.381
+so the first unwrap panics, before arg is reached.
+
+04:35.380 --> 04:37.992
+The exec above handles both None cases.
+
+04:38.592 --> 04:42.615
+For a blank line, the None arm returns, and exec does nothing.
+
+04:43.615 --> 04:49.821
+For a missing argument, the unwrap_or call gives the empty string instead, and nothing panics.
+
+04:51.520 --> 04:52.969
+That's Problem 2.
+
+04:53.569 --> 04:59.402
+Part (a): the split skips any run of spaces, and exec reads only the first two words.
+
+05:00.002 --> 05:08.768
+Part (b): an unwrap on None panics: "pwd" and the empty line crash; the exec above handles both None cases.

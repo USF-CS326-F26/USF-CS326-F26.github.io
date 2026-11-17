@@ -1,0 +1,214 @@
+WEBVTT
+
+00:00.000 --> 00:05.973
+OSlings Practice 45k-47k, Problem 1: Console Input.
+
+00:06.573 --> 00:12.362
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.962 --> 00:16.854
+A script reveals it, and this explainer was built with Claude.
+
+00:17.360 --> 00:26.199
+Problem 1 draws on the OSlings exercise 45k_console, from week 12, on Thursday, November 12.
+
+00:26.799 --> 00:31.065
+You wrote one step of intr: draining the UART into the ring buffer.
+
+00:31.665 --> 00:35.277
+The buffer, the claim, the completion and the test were given.
+
+00:36.400 --> 00:44.149
+Problem 1: console input, from 45k. When a key is pressed, the UART raises a device interrupt,
+
+00:44.749 --> 00:47.169
+and the trap handler calls console::intr.
+
+00:48.280 --> 00:53.436
+The UART keeps its interrupt raised as long as a received byte sits unread in it.
+
+00:54.036 --> 00:56.967
+Both parts of the problem rest on that sentence.
+
+00:58.080 --> 01:02.110
+In 45k, the received bytes go into a ring buffer.
+
+01:02.710 --> 01:06.729
+BUF is an array of BUF_LEN bytes, 256.
+
+01:07.329 --> 01:10.731
+HEAD is the next index the reader, try_getc, will read;
+
+01:11.331 --> 01:14.568
+TAIL is the next index the interrupt handler will write.
+
+01:15.680 --> 01:18.225
+From intr, a call to push adds a byte.
+
+01:18.825 --> 01:22.738
+If there is room left, it stores the byte in the slot TAIL names,
+
+01:23.338 --> 01:25.173
+then moves TAIL on by 1.
+
+01:25.773 --> 01:28.192
+If the buffer is full, the byte is dropped.
+
+01:29.320 --> 01:35.334
+A call to try_getc, the reader, returns the next byte from the buffer, or None if it is empty.
+
+01:36.440 --> 01:43.053
+A call to uart::getc returns Some, holding a byte, if the UART has a received byte waiting.
+
+01:43.653 --> 01:45.912
+Reading it removes it from the UART.
+
+01:46.512 --> 01:49.724
+Once the UART is empty, the call returns None.
+
+01:50.840 --> 01:55.659
+Then intr. Its claim asks the PLIC which device interrupted.
+
+01:56.259 --> 02:02.285
+For the UART, the while let loop reads every byte it holds, and pushes each into the ring buffer.
+
+02:02.885 --> 02:07.043
+Last, the completion tells the PLIC the handler is done.
+
+02:08.160 --> 02:11.130
+Part (a). Start with HEAD and TAIL both 0.
+
+02:11.730 --> 02:18.556
+The key 'h' is typed, then the key 'i', and both bytes wait in the UART when one interrupt runs intr.
+
+02:19.156 --> 02:22.185
+Each row is the state right after that one call.
+
+02:23.280 --> 02:26.734
+The first row is intr as shown, with its while let loop.
+
+02:27.334 --> 02:31.013
+For the second row, suppose the loop were written as if let instead:
+
+02:31.613 --> 02:33.957
+the same call and push, with no loop.
+
+02:35.080 --> 02:38.171
+Each row gives how many times the loop body runs,
+
+02:38.771 --> 02:41.159
+the characters at BUF[0] and BUF[1],
+
+02:41.759 --> 02:42.824
+the TAIL value,
+
+02:43.424 --> 02:45.481
+and the bytes remaining in the UART.
+
+02:46.000 --> 02:47.194
+The first row.
+
+02:47.794 --> 02:53.733
+The while let loop runs its body once for each byte a call to uart::getc returns.
+
+02:54.733 --> 02:58.818
+So the body runs 2 times: once for 'h', and once for 'i'.
+
+03:00.320 --> 03:05.375
+'h' comes first, so a call to push stores it at BUF[0], where TAIL started.
+
+03:06.375 --> 03:08.532
+Then the letter 'i' goes in at BUF[1].
+
+03:10.040 --> 03:13.261
+Each push moves TAIL on by 1, so TAIL is 2.
+
+03:14.261 --> 03:18.195
+And none remain in the UART: the loop has read both bytes.
+
+03:18.720 --> 03:20.373
+The second row, with if let.
+
+03:20.973 --> 03:26.755
+An if let runs its body only if the call returns a byte, and does not go around again.
+
+03:27.755 --> 03:29.461
+So the body runs 1 time,
+
+03:30.461 --> 03:32.508
+and 'h' still goes into BUF[0].
+
+03:34.040 --> 03:38.818
+BUF[1]: none written. It still holds 0, the value BUF starts with.
+
+03:39.818 --> 03:42.457
+TAIL moved on just once, so it is 1.
+
+03:43.457 --> 03:46.348
+And the letter 'i' is left in the UART, unread.
+
+03:47.480 --> 03:52.969
+Under the table, two questions. Why does the while let loop stop after two times?
+
+03:53.569 --> 03:59.606
+And with if let, what happens to the letter 'i', still in the UART, and how does it get into the buffer?
+
+04:01.620 --> 04:04.501
+The while let loop stops when the UART is empty.
+
+04:05.101 --> 04:08.938
+After the second byte, a call to uart::getc returns None,
+
+04:09.938 --> 04:12.197
+so one interrupt moves both bytes.
+
+04:14.220 --> 04:16.256
+An if let reads only one byte.
+
+04:16.856 --> 04:23.077
+The letter 'i' is still unread, so the UART keeps its interrupt raised, as the problem says.
+
+04:25.100 --> 04:28.981
+So once the first call completes, a second interrupt comes.
+
+04:30.481 --> 04:34.545
+It runs intr, and that call pushes the letter 'i': TAIL is 2.
+
+04:35.145 --> 04:37.957
+It still works, but it takes one interrupt per byte.
+
+04:39.080 --> 04:46.523
+Part (b). This version of intr leaves out the while let loop entirely, so it never reads any byte from the UART.
+
+04:47.123 --> 04:49.753
+What happens after a key is pressed, and why?
+
+04:51.780 --> 04:54.766
+The byte is never read, so it stays in the UART.
+
+04:55.366 --> 05:01.583
+And by the problem's premise, the UART keeps its interrupt raised as long as the byte sits unread.
+
+05:03.580 --> 05:11.099
+So each time a call to intr completes, the interrupt is still raised, and the PLIC hands it straight back.
+
+05:11.699 --> 05:14.302
+The kernel is interrupted again and again.
+
+05:16.300 --> 05:18.549
+And the key never reaches the buffer.
+
+05:19.149 --> 05:21.697
+A call to try_getc keeps returning None,
+
+05:22.697 --> 05:25.579
+so whatever is waiting for input never sees it.
+
+05:26.080 --> 05:27.435
+That's Problem 1.
+
+05:28.035 --> 05:35.073
+Part (a): a while let loop moves every waiting byte in one interrupt; an if let takes one interrupt per byte.
+
+05:35.673 --> 05:40.493
+Part (b): if the handler never reads the UART, the key never reaches the buffer.

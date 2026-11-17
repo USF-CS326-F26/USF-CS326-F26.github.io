@@ -1,0 +1,283 @@
+WEBVTT
+
+00:00.000 --> 00:06.078
+OSlings Practice 45k-47k, Problem 3: File Commands.
+
+00:06.678 --> 00:12.467
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:13.067 --> 00:16.959
+A script reveals it, and this explainer was built with Claude.
+
+00:17.480 --> 00:26.881
+Problem 3 draws on one OSlings exercise: 47k_file_commands, from week 12, on Thursday, November 12.
+
+00:27.481 --> 00:29.696
+You wrote touch, cat and rm there.
+
+00:30.296 --> 00:36.353
+Everything else came with the exercise: the filesystem, the shell's other commands, and the test.
+
+00:37.880 --> 00:42.517
+Problem 3: 47k adds touch, cat and rm to the shell.
+
+00:43.117 --> 00:45.259
+They use these filesystem methods.
+
+00:46.360 --> 00:50.114
+A call to dircreate makes a new entry in a directory.
+
+00:50.714 --> 00:54.754
+If the name is already taken, it returns AlreadyExists.
+
+00:55.354 --> 00:59.118
+A call to dirlookup turns a name into an inode number.
+
+01:00.240 --> 01:07.097
+A call to read copies a file's bytes into a buffer, and returns Ok with how many bytes it copied.
+
+01:07.697 --> 01:11.611
+And a call to is_dir tells whether an inode is a directory.
+
+01:12.720 --> 01:16.175
+For the last method, unlink, the page prints its code.
+
+01:16.775 --> 01:21.767
+It scans the directory's entries, for one that is used and holds this name.
+
+01:22.880 --> 01:28.125
+There, it replaces the inode the entry names with a new one, whose kind is Free.
+
+01:28.725 --> 01:31.796
+It marks the entry unused, and returns Ok.
+
+01:32.396 --> 01:35.489
+If no entry matches, it returns NotFound.
+
+01:37.000 --> 01:38.342
+The three commands.
+
+01:38.942 --> 01:41.767
+The touch command calls dircreate, for a File.
+
+01:42.367 --> 01:45.278
+If the create returns Ok, nothing happens.
+
+01:46.400 --> 01:51.355
+If it returns AlreadyExists, nothing happens either: already there, fine.
+
+01:51.955 --> 01:56.814
+On any other error, the touch command prints touch: cannot create file.
+
+01:57.920 --> 01:59.637
+The cat command looks the name up,
+
+02:00.237 --> 02:04.435
+and if that fails, it prints cat: no such file, and returns.
+
+02:05.035 --> 02:08.779
+Then it calls read, with a buffer as big as a file can be.
+
+02:09.880 --> 02:14.193
+With Ok and a count n, it prints the first n bytes, as text.
+
+02:14.793 --> 02:17.659
+With an error, it prints cat: is a directory.
+
+02:18.760 --> 02:24.662
+The rm command looks the name up, and prints rm: no such file if that fails.
+
+02:25.262 --> 02:30.635
+If the inode is a directory, it prints rm: is a directory, and returns.
+
+02:31.235 --> 02:35.050
+Otherwise it calls unlink, and ignores what that returns.
+
+02:37.160 --> 02:42.303
+Part (a). Starting from an empty root, a user types these commands, in order.
+
+02:42.903 --> 02:46.475
+What does each one print? Write "nothing" if it prints nothing.
+
+02:47.600 --> 02:51.209
+Step 1 is done for you: touch notes, in an empty root.
+
+02:51.809 --> 02:56.097
+The name is not there, so the create goes ahead, and returns Ok.
+
+02:56.697 --> 03:00.492
+The touch command does nothing for an Ok. It prints nothing.
+
+03:01.000 --> 03:03.063
+Step 2: touch notes, again.
+
+03:03.663 --> 03:07.959
+Now the name is taken, so the create returns AlreadyExists.
+
+03:08.559 --> 03:11.119
+The touch command has an arm for that error.
+
+03:12.119 --> 03:14.359
+It does nothing there, so it prints nothing.
+
+03:14.880 --> 03:16.499
+Step 3: cat notes.
+
+03:17.099 --> 03:20.481
+The lookup finds notes, and the cat command calls read.
+
+03:21.481 --> 03:23.933
+It prints nothing: the file is empty.
+
+03:24.533 --> 03:27.636
+Step 1 made it, and nothing has written to it since.
+
+03:28.160 --> 03:30.747
+Under the table, the key gives its reasons.
+
+03:32.247 --> 03:37.125
+Step 2: the create returns AlreadyExists, which touch treats as fine.
+
+03:37.725 --> 03:42.459
+Step 3: the read returns Ok(0), so it prints 0 bytes.
+
+03:44.560 --> 03:46.495
+Step 4: rm notes.
+
+03:47.095 --> 03:50.935
+The lookup finds notes, and notes is a File, not a directory.
+
+03:51.535 --> 03:57.368
+So the rm command calls unlink, which removes the entry and frees the inode.
+
+03:58.368 --> 03:59.595
+It prints nothing.
+
+04:00.120 --> 04:02.296
+Step 5: cat notes, again.
+
+04:02.896 --> 04:06.531
+Step 4 removed the entry, so now the lookup fails.
+
+04:07.531 --> 04:13.165
+The cat command takes its error arm: it prints cat: no such file, and returns.
+
+04:13.680 --> 04:15.487
+Step 6: mkdir d.
+
+04:16.087 --> 04:19.831
+The given mkdir command calls dircreate, for a directory.
+
+04:20.431 --> 04:23.609
+The root holds no d, so the create goes ahead.
+
+04:24.609 --> 04:29.577
+With a name, it prints a message only when the create fails, so it prints nothing.
+
+04:30.080 --> 04:31.988
+Step 7: rm d.
+
+04:32.588 --> 04:36.257
+The lookup finds d, the directory that step 6 made.
+
+04:36.857 --> 04:38.681
+So the is_dir check is true.
+
+04:39.681 --> 04:46.194
+The rm command prints rm: is a directory, and returns before it reaches unlink.
+
+04:46.720 --> 04:48.373
+The key's reasons go on.
+
+04:49.873 --> 04:53.744
+Step 5: rm removed the entry, so the lookup fails.
+
+04:54.344 --> 04:58.174
+Step 7: d is a directory, so rm refuses.
+
+04:58.774 --> 05:00.245
+That fills in the table.
+
+05:02.360 --> 05:07.080
+Part (b). In this version, the rm command leaves out the is_dir check.
+
+05:07.680 --> 05:08.916
+This line is gone,
+
+05:09.516 --> 05:16.204
+so the rm command calls unlink with any name the lookup finds, even the name of a directory.
+
+05:17.320 --> 05:24.781
+From an empty root, a user runs mkdir d, cd d, touch x, cd .., then rm d.
+
+05:25.381 --> 05:28.466
+What happens to d, and to the file x inside it?
+
+05:29.066 --> 05:30.580
+Why is that a problem?
+
+05:31.680 --> 05:36.596
+mkdir d creates the directory d, with an entry for it in the root.
+
+05:37.196 --> 05:42.391
+cd d enters it, and touch x creates the file x there, inside d.
+
+05:42.991 --> 05:45.667
+Then cd .. returns to the root.
+
+05:46.800 --> 05:48.176
+Then rm d.
+
+05:48.776 --> 05:50.715
+The lookup finds d in the root.
+
+05:51.315 --> 05:56.027
+With no is_dir check, the rm command calls unlink, with the name d.
+
+05:57.560 --> 06:00.919
+Here is unlink again, called with the name d, in the root.
+
+06:02.419 --> 06:07.847
+In the key's words: unlink removes d's entry from the root, and frees d's inode.
+
+06:08.847 --> 06:13.261
+d is gone: ls in the root lists nothing, and cd d fails.
+
+06:14.360 --> 06:19.208
+The call replaces d's inode with a new one: Free, with no entries.
+
+06:19.808 --> 06:24.053
+Then it marks d's entry in the root unused, and returns Ok.
+
+06:25.160 --> 06:26.535
+And what about x?
+
+06:28.035 --> 06:31.905
+In the key's words: x's inode is still allocated, a File.
+
+06:32.505 --> 06:35.150
+The call freed d's inode, and no other.
+
+06:36.280 --> 06:39.373
+The only entry that named x was inside d.
+
+06:39.973 --> 06:45.013
+And d's inode is a new one now, with no entries, so that entry is gone.
+
+06:46.520 --> 06:51.564
+So nothing points to x any more: it can never be found, read or removed.
+
+06:53.064 --> 06:54.578
+It is a leaked inode.
+
+06:55.578 --> 06:58.200
+That's why rm refuses directories.
+
+06:59.920 --> 07:01.391
+That's Problem 3.
+
+07:01.991 --> 07:10.105
+Part (a): a taken name is fine for touch, cat prints nothing for an empty file, and rm refuses a directory.
+
+07:10.705 --> 07:17.141
+Part (b): without that refusal, rm d frees d's inode, and x's inode is leaked.

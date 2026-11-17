@@ -68,3 +68,26 @@ answer key.
 own pages: [Problem 1 · Boot Order](../videos/oslings-42k-44k-problem-1.md)
 (4:58) · [Problem 2 · Traps](../videos/oslings-42k-44k-problem-2.md) (5:23) ·
 [Problem 3 · Interrupts](../videos/oslings-42k-44k-problem-3.md) (5:34).
+
+## 45k-47k: Console Input, the Shell, File Commands { #45k-47k }
+
+**[OSlings Practice 45k-47k](oslings-45k-47k.pdf)** (PDF, 6 pages) ·
+**[Solutions](oslings-45k-47k-solutions.pdf)** (PDF, 6 pages): three
+problems on `45k_console`, `46k_shell` and `47k_file_commands`, and their
+answer key. Problem 3 (47k) is optional extra credit.
+
+**Solution videos**, one per problem, each working the answer key on the set's
+own pages: [Problem 1 · Console Input](../videos/oslings-45k-47k-problem-1.md)
+(5:43) · [Problem 2 · The Shell](../videos/oslings-45k-47k-problem-2.md) (5:11) ·
+[Problem 3 · File Commands](../videos/oslings-45k-47k-problem-3.md) (7:19).
+
+## 48k: User Mode and System Calls { #48k }
+
+**[OSlings Practice 48k](oslings-48k.pdf)** (PDF, 4 pages) ·
+**[Solutions](oslings-48k-solutions.pdf)** (PDF, 4 pages): one problem, in
+three parts, on `48k_user_mode` (running a program in user mode and answering
+its system calls), and its answer key.
+
+**Solution video**, working the answer key on the set's own pages:
+[Problem 1 · User Mode and System Calls](../videos/oslings-48k-problem-1.md)
+(8:29).

@@ -1,0 +1,250 @@
+WEBVTT
+
+00:00.000 --> 00:05.414
+OSlings Practice 48k, Problem 1: User Mode and System Calls.
+
+00:06.014 --> 00:11.803
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.403 --> 00:16.295
+A script reveals it, and this explainer was built with Claude.
+
+00:16.800 --> 00:25.955
+Problem 1 draws on one OSlings exercise: 48k_user_mode, from week 12, on Friday, November 13.
+
+00:26.555 --> 00:31.097
+You wrote map_user_pages, usertrap's ecall branch, and dispatch.
+
+00:31.697 --> 00:40.042
+The rest came with the exercise: the trampoline, usertrapret, the handlers, proc_pagetable, the program, and the test.
+
+00:41.160 --> 00:46.157
+Problem 1. In 48k, the kernel runs its first user program.
+
+00:46.757 --> 00:51.673
+The program can't print by itself, so it asks the kernel with a system call.
+
+00:52.800 --> 00:59.422
+It puts the call's number in a7, and up to three arguments in a0, a1 and a2,
+
+01:00.022 --> 01:04.298
+then executes ecall, the instruction that traps into the kernel.
+
+01:04.898 --> 01:08.439
+The kernel's answer comes back to the program in a0.
+
+01:09.560 --> 01:13.452
+The program makes three calls, and its process has pid 1.
+
+01:14.052 --> 01:19.100
+First, a write of a 21-byte string, at user address 0x24;
+
+01:19.700 --> 01:20.744
+then getpid;
+
+01:21.344 --> 01:23.739
+then exit, with pid plus 41.
+
+01:24.840 --> 01:28.027
+The kernel routes each call with dispatch, by its number:
+
+01:28.627 --> 01:32.065
+exit is 2, getpid is 11, and write is 16.
+
+01:32.665 --> 01:37.027
+Any other number reaches the last arm, which returns -1.
+
+01:38.160 --> 01:43.001
+The handler sys_exit ends the program with its status, and never returns.
+
+01:43.601 --> 01:47.460
+A call to sys_getpid returns the calling process's pid.
+
+01:48.560 --> 01:55.517
+A call to sys_write checks fd first: if it isn't 1, the console, the call returns -1.
+
+01:56.117 --> 02:00.425
+Otherwise it copies len bytes from the user's address buf, prints them,
+
+02:01.025 --> 02:03.693
+and returns len, the number of bytes written.
+
+02:04.800 --> 02:13.869
+Part (a). For each set of register values at an ecall: which handler does dispatch call, and what does the program get back in a0?
+
+02:14.469 --> 02:19.915
+Rows 1, 2 and 4 are its three calls; row 3 passes an unknown number.
+
+02:21.040 --> 02:22.905
+The first row is done for you.
+
+02:23.505 --> 02:30.839
+a7 holds 16, the number for write, so the handler is sys_write, with 1, 0x24 and 21.
+
+02:31.439 --> 02:35.620
+It prints the 21 bytes, and the program gets back 21.
+
+02:36.120 --> 02:38.369
+Row 2: a7 holds 11.
+
+02:39.869 --> 02:44.851
+11 is the number for getpid, so dispatch's match calls sys_getpid.
+
+02:45.851 --> 02:47.451
+The program gets back 1:
+
+02:48.051 --> 02:53.065
+the call returns the calling process's pid, and this process has pid 1.
+
+02:53.560 --> 02:56.153
+Row 3: a7 holds 99.
+
+02:57.653 --> 03:04.754
+No handler: none of the three numbers is 99, so the last arm, the catch-all, returns -1.
+
+03:05.754 --> 03:08.069
+And the program gets back -1.
+
+03:08.600 --> 03:12.939
+Row 4: a7 holds 2, and a0 holds 42.
+
+03:13.939 --> 03:19.319
+2 is the number for exit, so dispatch's match calls sys_exit, with 42.
+
+03:20.819 --> 03:27.865
+What the program gets back: none. The handler never returns, and the program ends with status 42.
+
+03:29.860 --> 03:36.179
+Under the table, the key explains step 2: the call to getpid returns the process's pid, 1,
+
+03:36.779 --> 03:43.647
+so the program computes pid plus 41, which is 42, and passes it to exit in step 4.
+
+03:45.660 --> 03:51.412
+And step 3: no number matches 99, so the catch-all arm returns -1.
+
+03:52.412 --> 03:55.984
+A bad number fails the call, instead of crashing the kernel.
+
+03:57.080 --> 04:06.269
+Part (b). On an ecall, the hardware sets scause to 8, and puts the address of the ecall instruction itself in sepc.
+
+04:06.869 --> 04:10.995
+The handler, usertrap, saves it in the trapframe's epc.
+
+04:11.595 --> 04:14.283
+An ecall instruction is 4 bytes long.
+
+04:15.400 --> 04:23.442
+In the code, the handler reads sepc and saves it in epc: where the program was, the ecall itself.
+
+04:24.042 --> 04:30.341
+If scause is 8, a system call, it adds 4 to epc, to resume after the ecall.
+
+04:31.440 --> 04:38.739
+Then it passes a7, the call's number, and a0, a1 and a2, its arguments, to dispatch,
+
+04:39.339 --> 04:42.912
+and puts the return value back in the trapframe's a0.
+
+04:43.512 --> 04:50.321
+On the way out, in usertrapret, epc goes into sepc: sret will jump there.
+
+04:51.440 --> 04:56.241
+This version of usertrap leaves out the line that adds 4 to epc.
+
+04:56.841 --> 05:01.735
+The program's first system call is its write: number 16 in a7.
+
+05:02.335 --> 05:08.617
+It prints the 21-byte string to the console, file descriptor 1, and returns 21.
+
+05:09.720 --> 05:13.091
+What happens after the kernel handles that write, and why?
+
+05:14.591 --> 05:18.110
+epc still holds the address of the ecall itself,
+
+05:18.710 --> 05:22.005
+so sret resumes the program on the same ecall.
+
+05:24.020 --> 05:32.273
+a7 is still 16, so it is a write again, but a0 now holds the first call's answer, 21, not 1.
+
+05:32.873 --> 05:35.048
+The handler, usertrap, put it there.
+
+05:35.648 --> 05:40.042
+So this write goes to fd 21, and fails the fd check.
+
+05:42.060 --> 05:50.013
+It returns -1, and every call after that is a write to fd -1, which returns -1, too.
+
+05:51.513 --> 05:59.842
+The program prints hello from user mode once, then traps on the same ecall forever, and never gets to getpid or exit.
+
+06:01.960 --> 06:06.715
+Part (c). A page that user mode may touch must have PTE_U set.
+
+06:07.315 --> 06:15.309
+Without it, a fetch, read or write from user mode traps with a page fault: scause 12, for an instruction fetch.
+
+06:16.440 --> 06:24.901
+The code page is at USER_CODE, 0x0, where the program starts running, and the stack page at USER_STACK, 0x1000.
+
+06:25.501 --> 06:32.197
+A call to map_user_pages maps the code with PTE_R, PTE_X and PTE_U,
+
+06:32.797 --> 06:37.511
+and the stack with PTE_R, PTE_W and PTE_U.
+
+06:38.640 --> 06:45.381
+The function proc_pagetable maps the two trap pages into the same table, without PTE_U:
+
+06:45.981 --> 06:50.218
+TRAMPOLINE, the trap code, and TRAPFRAME, the saved registers.
+
+06:50.818 --> 06:55.933
+And in usertrap, when the program does something illegal, the else branch ends it.
+
+06:57.040 --> 07:06.395
+Part (i). This version of map_user_pages maps the code page with PTE_R and PTE_X, leaving out PTE_U.
+
+07:06.995 --> 07:10.151
+What happens when the kernel starts the program, and why?
+
+07:10.751 --> 07:17.736
+Part (ii). Why does proc_pagetable map the TRAMPOLINE and TRAPFRAME pages without PTE_U?
+
+07:19.740 --> 07:25.831
+Part (i). The program starts at USER_CODE, 0, but that page has no PTE_U.
+
+07:27.331 --> 07:31.628
+So its very first instruction fetch faults, with scause 12.
+
+07:32.760 --> 07:40.705
+A fetch from a page without PTE_U is illegal in user mode, so usertrap's else branch ends the program.
+
+07:41.705 --> 07:47.118
+The program never runs an instruction: it makes no system call, and prints nothing.
+
+07:49.140 --> 07:51.962
+Part (ii). So the program can't touch them.
+
+07:53.462 --> 07:59.028
+The trapframe holds the saved registers; the trampoline is the kernel's trap code.
+
+08:00.028 --> 08:06.571
+If the program could change the trapframe, it could break out of user mode. Only the kernel uses them.
+
+08:08.080 --> 08:09.435
+That's Problem 1.
+
+08:10.035 --> 08:15.592
+Part (a): the number in a7 picks the handler; unknown numbers get -1.
+
+08:16.192 --> 08:22.355
+Part (b): without adding 4 to epc, sret resumes on the same ecall, forever.
+
+08:22.955 --> 08:27.227
+Part (c): without PTE_U, the program can't touch a page.

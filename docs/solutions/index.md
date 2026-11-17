@@ -44,6 +44,14 @@ that works the key on the set's own pages.
 boot order, traps and interrupts. The set, its key, and a video for each
 problem that works the key on the set's own pages.
 
+**[OSlings Practice 45k-47k](../assignments/oslings-practice.md#45k-47k)**:
+console input, the shell and file commands. The set, its key, and a video for
+each problem that works the key on the set's own pages.
+
+**[OSlings Practice 48k](../assignments/oslings-practice.md#48k)**: user mode
+and system calls. The set, its key, and a video that works the key on the
+set's own pages.
+
 ## Exams
 
 **[Midterm 1](../assignments/midterm-1-solutions.md)**, Thursday, October 15:
