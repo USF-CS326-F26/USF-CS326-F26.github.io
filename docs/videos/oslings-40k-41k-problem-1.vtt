@@ -1,0 +1,250 @@
+WEBVTT
+
+00:00.000 --> 00:05.064
+OSlings Practice 40k-41k, Problem 1: Filesystem.
+
+00:05.664 --> 00:11.453
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.053 --> 00:15.945
+A script reveals it, and this explainer was built with Claude.
+
+00:16.480 --> 00:25.367
+Problem 1 draws on one OSlings exercise: 40k_filesystem, from week 11, on Thursday, November 5.
+
+00:25.967 --> 00:29.022
+You wrote two functions there, dirlookup and write.
+
+00:29.622 --> 00:36.447
+Everything else came with the exercise: the types, init, alloc, read, dircreate, and the test.
+
+00:37.960 --> 00:44.580
+Problem 1: in 40k, a directory is an inode whose entries map names to inode numbers.
+
+00:45.180 --> 00:50.053
+There are 64 inodes, and up to 16 entries in each directory.
+
+00:50.653 --> 00:54.130
+And ROOT is 1: inode 1 is the root directory.
+
+00:55.240 --> 00:57.659
+An inode's kind is Free, File or Dir,
+
+00:58.259 --> 01:01.457
+and every error is one of these FsError values.
+
+01:02.057 --> 01:10.266
+A directory entry holds a name of up to 14 bytes, the name's length, an inode number, and whether the entry is used.
+
+01:11.400 --> 01:15.517
+A call to alloc scans from ROOT up, for the first Free inode.
+
+01:16.117 --> 01:21.054
+It makes that inode fresh, sets its kind, and returns Ok with its number.
+
+01:21.654 --> 01:25.173
+If the scan finds none, it returns NoFreeInode.
+
+01:26.680 --> 01:31.095
+A call to dirlookup first checks that the inode it was given is a Dir.
+
+01:31.695 --> 01:35.365
+If not, it returns NotADirectory, and reads no entry.
+
+01:35.965 --> 01:39.880
+Then it scans the directory's entries, for one with this name.
+
+01:41.000 --> 01:43.014
+An entry matches when it is used,
+
+01:43.614 --> 01:45.575
+its length equals the name's length,
+
+01:46.175 --> 01:48.758
+and its bytes, up to that length, are the name.
+
+01:49.358 --> 01:55.755
+Then it returns Ok with the entry's inode number. If none matches, it returns NotFound.
+
+01:56.880 --> 02:03.875
+A call to dircreate checks the length first: for a name longer than NAMELEN, it returns NameTooLong.
+
+02:04.475 --> 02:09.534
+Then it calls dirlookup, to reject duplicates, and matches on what comes back.
+
+02:10.640 --> 02:15.620
+An Ok means the name is already there: it returns AlreadyExists.
+
+02:16.220 --> 02:19.132
+NotFound means it is not there yet: go ahead.
+
+02:19.732 --> 02:23.901
+Any other error is passed up: the call returns that same error.
+
+02:25.000 --> 02:28.391
+Next it finds a free entry, or returns DirFull.
+
+02:28.991 --> 02:33.684
+It calls alloc for the inode, and the question mark passes up its error.
+
+02:34.284 --> 02:40.459
+It pads the name with zeros, writes the entry, and returns Ok with the new inode number.
+
+02:41.960 --> 02:48.882
+Part (a). Right after init, inode 1 is the empty root directory, and every other inode is Free.
+
+02:49.482 --> 02:54.163
+Fill in what each call returns, in order. The first row is done for you.
+
+02:55.280 --> 03:00.947
+Row 1 creates the file "hello" in the root, and the example under the table works it.
+
+03:01.547 --> 03:08.117
+"hello" isn't in the root yet, so the lookup returns Err(NotFound), and the create goes ahead.
+
+03:09.240 --> 03:12.290
+A call to alloc scans from ROOT, which is 1.
+
+03:12.890 --> 03:17.135
+Inode 1 is the root, a Dir, so the first Free inode is 2.
+
+03:17.735 --> 03:24.493
+Row 1 returns Ok(2), and the root now holds an entry for "hello", naming inode 2.
+
+03:25.000 --> 03:27.345
+Row 2 creates "sub", a directory.
+
+03:27.945 --> 03:30.898
+The name isn't there yet, so the create goes ahead.
+
+03:31.498 --> 03:36.575
+The scan from ROOT passes inode 1, the root, and inode 2, now a File.
+
+03:37.575 --> 03:40.848
+So the first Free inode is 3: Ok(3).
+
+03:41.360 --> 03:44.528
+Row 3 tries to create "hello" in the root again.
+
+03:45.128 --> 03:49.000
+This time the name is there: the lookup returns Ok(2).
+
+03:50.000 --> 03:54.735
+So the call returns Err(AlreadyExists), and alloc is never called.
+
+03:55.240 --> 03:57.827
+Under the table, the key gives its reasons.
+
+03:58.827 --> 04:01.237
+Row 2: the next Free inode is 3.
+
+04:01.837 --> 04:04.213
+Row 3: "hello" is already in the root,
+
+04:05.713 --> 04:10.362
+so the lookup returns Ok and the create returns AlreadyExists.
+
+04:11.480 --> 04:13.560
+Row 4 looks up "sub" in the root.
+
+04:14.160 --> 04:16.923
+The first entry, "hello", is a different name.
+
+04:17.923 --> 04:20.589
+The next entry is "sub": Ok(3).
+
+04:21.589 --> 04:24.404
+In the key's words: the entry made in row 2.
+
+04:25.520 --> 04:29.038
+Row 5 tries to create "x" inside inode 2.
+
+04:29.638 --> 04:32.975
+Inode 2 is the File that row 1 made for "hello".
+
+04:33.975 --> 04:36.876
+So the call returns Err(NotADirectory).
+
+04:38.900 --> 04:42.227
+In the key's words: inode 2 is /hello, a File.
+
+04:42.827 --> 04:45.823
+A lookup in inode 2 fails with NotADirectory,
+
+04:46.423 --> 04:49.248
+and the match in dircreate passes that error up.
+
+04:50.360 --> 04:53.057
+Row 6 looks up "notes" in inode 3.
+
+04:53.657 --> 04:59.428
+Inode 3 is the directory that row 2 made for "sub", and nothing was created in it.
+
+05:00.428 --> 05:03.050
+So the call returns Err(NotFound).
+
+05:05.060 --> 05:11.655
+In the key's words: inode 3, /sub, is a directory with no entries yet, so NotFound.
+
+05:12.255 --> 05:13.726
+That fills in the table.
+
+05:15.840 --> 05:19.975
+Part (b). In this version, the length check is dropped from dirlookup.
+
+05:20.575 --> 05:24.352
+The comment shows the old condition, with the length check in it.
+
+05:25.480 --> 05:27.749
+Now an entry matches when it is used,
+
+05:28.349 --> 05:33.138
+and the first bytes of its stored name, as many as the name has, are the name.
+
+05:34.240 --> 05:40.923
+With "hello" in the root, from row 1, what does a call to dirlookup return now for "hell", and why?
+
+05:41.523 --> 05:44.883
+And what does a call to dircreate then return for "hell"?
+
+05:46.000 --> 05:49.167
+The root's first entry is "hello", and it is used.
+
+05:49.767 --> 05:56.007
+The comparison takes as many bytes of the stored name as "hell" has, and compares them with "hell".
+
+05:57.507 --> 05:59.723
+So the call returns Ok(2).
+
+06:01.740 --> 06:09.215
+In the key's words: the first 4 bytes of the stored name "hello" are "hell", so the comparison matches a prefix.
+
+06:10.215 --> 06:14.704
+And the lookup returns /hello's inode, for a name that isn't there.
+
+06:16.200 --> 06:18.631
+So the create sees an Ok from the lookup,
+
+06:20.131 --> 06:22.433
+and returns Err(AlreadyExists).
+
+06:23.433 --> 06:28.243
+A file named "hell" can't be created in the root at all, while "hello" is there.
+
+06:30.260 --> 06:35.565
+The check that was dropped, the entry's length equals the name's length, makes the match exact:
+
+06:36.165 --> 06:37.839
+same length, same bytes.
+
+06:38.439 --> 06:41.984
+With it, "hell" and "hello" differ in length, and they don't match.
+
+06:43.680 --> 06:45.035
+That's Problem 1.
+
+06:45.635 --> 06:52.195
+Part (a): a create acts on what its lookup returns, and takes a Free inode only when it goes ahead.
+
+06:52.795 --> 07:00.278
+Part (b): without the length check, "hell" matches "hello", so creating "hell" in the root returns AlreadyExists.

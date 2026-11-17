@@ -53,9 +53,18 @@ turning on translation), and its answer key.
 problems on `40k_filesystem` and `41k_devices`, and their answer key.
 Problem 2 (41k) is optional extra credit.
 
+**Solution videos**, one per problem, each working the answer key on the set's
+own pages: [Problem 1 · Filesystem](../videos/oslings-40k-41k-problem-1.md)
+(7:02) · [Problem 2 · Devices](../videos/oslings-40k-41k-problem-2.md) (6:23).
+
 ## 42k-44k: Boot Order, Traps, Interrupts { #42k-44k }
 
 **[OSlings Practice 42k-44k](oslings-42k-44k.pdf)** (PDF, 6 pages) ·
 **[Solutions](oslings-42k-44k-solutions.pdf)** (PDF, 6 pages): three
 problems on `42k_boot_to_life`, `43k_traps` and `44k_interrupts`, and their
 answer key.
+
+**Solution videos**, one per problem, each working the answer key on the set's
+own pages: [Problem 1 · Boot Order](../videos/oslings-42k-44k-problem-1.md)
+(4:58) · [Problem 2 · Traps](../videos/oslings-42k-44k-problem-2.md) (5:23) ·
+[Problem 3 · Interrupts](../videos/oslings-42k-44k-problem-3.md) (5:34).

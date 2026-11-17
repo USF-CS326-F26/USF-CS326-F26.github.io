@@ -1,0 +1,229 @@
+WEBVTT
+
+00:00.000 --> 00:05.074
+OSlings Practice 40k-41k, Problem 2: Devices.
+
+00:05.674 --> 00:11.463
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.063 --> 00:15.955
+A script reveals it, and this explainer was built with Claude.
+
+00:16.480 --> 00:25.360
+Problem 2 draws on one OSlings exercise: 41k_devices, from week 11, on Thursday, November 5.
+
+00:25.960 --> 00:29.764
+You wrote tx_ready, rx_ready, putc and getc.
+
+00:30.364 --> 00:37.797
+The rest came with the exercise: the register constants, reg_read and reg_write, init, and the loopback test.
+
+00:38.920 --> 00:45.221
+Problem 2. The UART driver from 41k talks to the serial chip through its registers,
+
+00:45.821 --> 00:49.013
+one byte each, at UART0 plus an offset.
+
+00:49.613 --> 00:54.752
+UART0 is 0x1000_0000, where the registers start.
+
+00:55.880 --> 01:02.013
+RBR, the Receive Buffer Register, holds the byte received. It is offset 0.
+
+01:02.613 --> 01:09.026
+THR, the Transmit Holding Register, takes a byte to send. It is offset 0 too.
+
+01:09.626 --> 01:13.316
+LSR, the Line Status Register, is offset 5.
+
+01:14.440 --> 01:17.083
+LSR holds the chip's status flags.
+
+01:17.683 --> 01:23.489
+DR, Data Ready, is bit 0: a received byte is waiting in RBR.
+
+01:24.089 --> 01:29.801
+THRE, THR Empty, is bit 5: the chip can take another byte.
+
+01:30.920 --> 01:37.342
+The function reg_read reads the register at UART0 plus an offset, with read_volatile.
+
+01:37.942 --> 01:41.301
+The function reg_write writes one, with write_volatile.
+
+01:41.901 --> 01:44.513
+Each is one volatile access to the chip.
+
+01:45.640 --> 01:48.401
+A call to tx_ready reads LSR.
+
+01:49.001 --> 01:52.744
+It tests the THRE bit: true when that bit is set.
+
+01:53.344 --> 01:57.119
+A call to rx_ready tests the DR bit the same way.
+
+01:58.240 --> 02:01.439
+A call to putc waits until tx_ready is true,
+
+02:02.039 --> 02:04.245
+then writes the byte to THR.
+
+02:05.360 --> 02:07.716
+A call to getc checks rx_ready.
+
+02:08.316 --> 02:13.175
+If it is true, the call reads RBR, and returns Some, holding the byte.
+
+02:13.775 --> 02:16.382
+If not, it returns None: nothing yet.
+
+02:17.480 --> 02:22.779
+Part (a). For each value read from LSR, what do these functions return?
+
+02:23.379 --> 02:24.829
+The first row is done.
+
+02:25.429 --> 02:30.576
+The hint: write the value in binary, then look at the two bits the driver tests.
+
+02:31.680 --> 02:36.131
+The bits of LSR run from 7, on the left, down to 0.
+
+02:36.731 --> 02:42.309
+Bit 5 is THRE: 1 shifted left by 5, which is 0x20.
+
+02:42.909 --> 02:45.297
+Bit 0 is DR: 0x01.
+
+02:45.897 --> 02:47.282
+Ignore the other bits.
+
+02:48.800 --> 02:51.177
+The first row is worked below the table.
+
+02:51.777 --> 02:57.261
+0x60 is 0110_0000 in binary.
+
+02:57.861 --> 03:02.027
+Bit 5, THRE, is 1, so tx_ready is true.
+
+03:02.627 --> 03:09.090
+Bit 0, DR, is 0, so rx_ready is false, and a call to getc returns None.
+
+03:10.200 --> 03:15.095
+That is the UART right after start-up: ready to send, and nothing received.
+
+03:15.695 --> 03:19.491
+Now the two rows to fill: 0x61 and 0x01.
+
+03:20.000 --> 03:21.972
+The next row is 0x61.
+
+03:23.472 --> 03:32.016
+In binary, 0x61 is 0110_0001: bit 5 and bit 0 are both 1.
+
+03:33.016 --> 03:34.626
+So tx_ready is true,
+
+03:35.626 --> 03:37.353
+and rx_ready is true.
+
+03:38.880 --> 03:44.789
+A byte is waiting, so a call to getc returns Some, holding the byte in RBR.
+
+03:46.289 --> 03:50.443
+The key sums up the row: ready to send, and a byte is waiting.
+
+03:50.960 --> 03:57.550
+The last row is 0x01: in binary, 0000_0001.
+
+03:59.050 --> 04:01.962
+Bit 5 is 0: the chip is still sending.
+
+04:02.562 --> 04:05.316
+And bit 0 is 1: a byte is waiting.
+
+04:06.840 --> 04:08.524
+So tx_ready is false,
+
+04:09.524 --> 04:10.952
+rx_ready is true,
+
+04:11.952 --> 04:18.051
+and a call to getc returns Some, holding the byte in RBR, as in the row above.
+
+04:19.160 --> 04:20.674
+And a call to putc?
+
+04:21.274 --> 04:28.441
+Its while loop waits on tx_ready, so it would spin until bit 5 is set: until the chip can take the byte.
+
+04:29.560 --> 04:36.235
+Part (b). Part (i): RBR and THR are both offset 0, the same address.
+
+04:36.835 --> 04:43.661
+When the driver uses offset 0, what decides whether it reads the received byte, or sends a byte?
+
+04:44.261 --> 04:45.499
+Point to the code.
+
+04:47.500 --> 04:49.757
+The kind of access, read or write.
+
+04:50.357 --> 04:54.568
+Inside getc, the call to reg_read with RBR is a read,
+
+04:55.168 --> 04:56.608
+through read_volatile.
+
+04:58.620 --> 05:02.492
+The chip answers a read of offset 0 with the received byte.
+
+05:03.092 --> 05:07.431
+Inside putc, the call to reg_write with THR is a write,
+
+05:08.031 --> 05:09.460
+through write_volatile.
+
+05:11.460 --> 05:15.033
+The chip takes a write to offset 0 as a byte to send.
+
+05:15.633 --> 05:20.625
+The names RBR and THR are only for us: both are 0.
+
+05:21.625 --> 05:25.656
+The chip just sees the address, and whether it is a read or a write.
+
+05:26.760 --> 05:32.022
+Part (ii). A call to putc waits for tx_ready before writing THR.
+
+05:32.622 --> 05:36.057
+What could go wrong on a real UART if it wrote right away?
+
+05:38.060 --> 05:42.709
+If THRE is 0, the chip is still sending earlier bytes.
+
+05:43.309 --> 05:47.787
+A new byte written then could overwrite one not yet sent, or be dropped.
+
+05:49.287 --> 05:51.909
+The result: lost or garbled characters.
+
+05:53.040 --> 05:56.356
+Waiting for THRE guarantees there is room.
+
+05:56.956 --> 05:59.398
+That is the job of the while loop in putc:
+
+05:59.998 --> 06:02.505
+it waits until the chip can take a byte.
+
+06:03.000 --> 06:04.449
+That's Problem 2.
+
+06:05.049 --> 06:12.031
+Part (a): the driver tests THRE, bit 5, to send, and DR, bit 0, to receive.
+
+06:12.631 --> 06:20.893
+Part (b): at offset 0, a read receives and a write sends, and waiting for THRE guarantees there is room.

@@ -1,0 +1,187 @@
+WEBVTT
+
+00:00.000 --> 00:05.448
+OSlings Practice 42k-44k, Problem 3: Interrupts.
+
+00:06.048 --> 00:11.837
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.437 --> 00:16.329
+A script reveals it, and this explainer was built with Claude.
+
+00:16.840 --> 00:25.248
+Problem 3 draws on the OSlings exercise 44k_interrupts, from week 11, on Friday, November 6.
+
+00:25.848 --> 00:29.463
+You wrote intr_on and the interrupt branch of kerneltrap.
+
+00:30.063 --> 00:37.015
+The rest was given: the top-bit test, the breakpoint case from 43k, timervec, and the test.
+
+00:38.120 --> 00:44.464
+Problem 3. 44k adds a timer that ticks about every 0.1 seconds.
+
+00:45.064 --> 00:51.077
+Each tick arrives through the same trap path as a breakpoint: kernelvec, then kerneltrap.
+
+00:52.200 --> 00:58.868
+While a tick waits to be handled, it is pending: bit 1 of the sip register, SSIP, is set.
+
+00:59.468 --> 01:06.583
+And the CPU takes a pending, enabled interrupt as soon as it can, including right after sret.
+
+01:07.680 --> 01:13.902
+First, two counters: TICKS, the timer ticks handled so far, and TRAP_COUNT, the breakpoints.
+
+01:14.502 --> 01:16.868
+A call to intr_on lets interrupts in.
+
+01:17.468 --> 01:25.003
+It sets SSIE, which allows this interrupt source, and SIE, which turns interrupts on, globally.
+
+01:26.120 --> 01:31.500
+The function kerneltrap reads scause, the cause register, and sepc.
+
+01:32.100 --> 01:35.629
+If the top bit of scause is 1, it is an interrupt.
+
+01:36.229 --> 01:42.471
+If the code is 1, a timer tick, the handler clears SSIP, and adds 1 to TICKS.
+
+01:43.600 --> 01:46.592
+Otherwise, the top bit is 0: an exception.
+
+01:47.192 --> 01:51.787
+If scause is 3, a breakpoint, the handler adds 1 to TRAP_COUNT,
+
+01:52.387 --> 01:57.847
+and adds 4 to sepc, so sret resumes just past the breakpoint.
+
+01:59.360 --> 02:08.121
+Part (a). Fill in the row for a timer tick, which arrives with scause 0x8000_0000_0000_0001.
+
+02:08.721 --> 02:18.415
+The hint: scause shifted right by 63 is the top bit, bit 63, and scause masked with 0xff is the low 8 bits.
+
+02:18.920 --> 02:22.593
+The first row is done: a breakpoint, scause 0x3.
+
+02:23.193 --> 02:27.141
+Its top bit is 0: an exception. And its code is 3.
+
+02:27.741 --> 02:32.263
+So the handler adds 1 to TRAP_COUNT, and 4 to sepc.
+
+02:32.760 --> 02:33.869
+Now the tick.
+
+02:34.469 --> 02:39.621
+Its top hex digit is 8, and that digit's highest bit is bit 63.
+
+02:40.621 --> 02:44.612
+The digit 8 has only that bit set, so the top bit is 1.
+
+02:45.612 --> 02:47.840
+A top bit of 1 means an interrupt.
+
+02:48.960 --> 02:53.971
+Masked with 0xff, the value keeps only its last two hex digits.
+
+02:54.971 --> 02:56.326
+So the code is 1.
+
+02:57.326 --> 03:06.267
+With the top bit 1 and the code 1, the handler takes the timer-tick branch: it clears SSIP, and adds 1 to TICKS.
+
+03:06.800 --> 03:09.314
+Under the table, the key shows its working.
+
+03:10.814 --> 03:14.499
+In this value, only bit 63 and bit 0 are set.
+
+03:15.099 --> 03:17.313
+So the top bit is 1, an interrupt,
+
+03:18.813 --> 03:21.723
+and the low 8 bits come to 1: the timer.
+
+03:22.840 --> 03:27.170
+With the top bit 1, code 1 is a supervisor software interrupt.
+
+03:27.770 --> 03:31.469
+In 44k, the timer speaks only to machine mode,
+
+03:32.069 --> 03:40.253
+so a given handler there, timervec, passes each tick on by raising SSIP, and the kernel sees code 1.
+
+03:41.360 --> 03:46.545
+Unlike the breakpoint case, the timer-tick branch leaves sepc alone.
+
+03:47.145 --> 03:54.002
+For an interrupt, sepc holds the address of the interrupted instruction, which has not run yet.
+
+03:54.602 --> 03:58.985
+So sret resumes the interrupted code exactly where it was.
+
+04:00.080 --> 04:02.019
+Part (b), with the code above it.
+
+04:02.619 --> 04:10.235
+This version counts the tick, but leaves out the csrw sip line, so SSIP is never cleared.
+
+04:10.835 --> 04:13.049
+What happens after sret, and why?
+
+04:15.060 --> 04:18.601
+SSIP is still set, so the tick is still pending.
+
+04:19.201 --> 04:21.621
+And once sret returns, interrupts are on:
+
+04:22.221 --> 04:28.540
+SSIE stays set, and sret turns SIE back on, as it was before the trap.
+
+04:29.040 --> 04:31.920
+The moment sret returns, the CPU takes
+
+04:32.920 --> 04:34.498
+the same interrupt again.
+
+04:35.498 --> 04:36.957
+Into kerneltrap again,
+
+04:37.957 --> 04:38.949
+then sret,
+
+04:39.949 --> 04:41.229
+and again, forever.
+
+04:41.760 --> 04:42.540
+Why?
+
+04:43.140 --> 04:47.736
+Right after sret, the tick is still pending, and the interrupt is enabled.
+
+04:48.336 --> 04:55.223
+The CPU takes a pending, enabled interrupt as soon as it can, including right after sret.
+
+04:55.823 --> 04:59.309
+So it traps again before the interrupted instruction runs.
+
+05:01.340 --> 05:03.331
+The result: an interrupt storm.
+
+05:03.931 --> 05:09.327
+Each pass through the handler adds 1 to TICKS, so the count in TICKS races upward.
+
+05:09.927 --> 05:14.225
+And the interrupted code never gets to run, so the kernel locks up.
+
+05:14.720 --> 05:16.191
+That's Problem 3.
+
+05:16.791 --> 05:23.322
+Part (a): the top bit of scause says interrupt or exception, and the low 8 bits give the code.
+
+05:23.922 --> 05:32.143
+Part (b): if the handler never clears SSIP, the same interrupt is taken again the moment sret returns.

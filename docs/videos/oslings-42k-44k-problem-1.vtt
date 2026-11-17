@@ -1,0 +1,175 @@
+WEBVTT
+
+00:00.000 --> 00:05.448
+OSlings Practice 42k-44k, Problem 1: Boot Order.
+
+00:06.048 --> 00:11.837
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.437 --> 00:16.329
+A script reveals it, and this explainer was built with Claude.
+
+00:16.840 --> 00:24.681
+Problem 1 draws on one exercise: 42k_boot_to_life, from week 11, on Friday, November 6.
+
+00:25.281 --> 00:28.778
+You wrote kinit: the four init calls, in order.
+
+00:29.378 --> 00:36.594
+The rest was given: the modules carried from 30k to 41k, kmain, and the boot self-check.
+
+00:37.720 --> 00:46.678
+Problem 1, boot order. In 42k you wrote kinit, which brings the kernel up one subsystem at a time, in this order.
+
+00:47.278 --> 00:50.301
+Step 1, the console, so the kernel can print.
+
+00:50.901 --> 00:52.986
+Step 2, the page allocator.
+
+00:54.120 --> 00:58.333
+Step 3: a call to kvmmake builds the kernel page table,
+
+00:58.933 --> 01:03.116
+and the function kvminithart hands it to the MMU.
+
+01:03.716 --> 01:05.727
+Step 4, the process table.
+
+01:06.840 --> 01:11.799
+Below kinit are the page allocator's functions, from 32k.
+
+01:12.399 --> 01:14.233
+The free list starts empty.
+
+01:14.833 --> 01:21.829
+A call to kalloc::init puts every free page of RAM on it, from the end of the kernel up to PHYSTOP.
+
+01:22.960 --> 01:26.233
+The function free_range calls kfree on each page,
+
+01:26.833 --> 01:28.923
+which pushes it onto the free list.
+
+01:29.523 --> 01:35.729
+A call to kalloc pops one off: it takes the head, and moves the head on to the next page.
+
+01:36.840 --> 01:40.759
+Last, the start of kvmmake, from 39k.
+
+01:41.359 --> 01:45.848
+Its first line takes a page from kalloc, for the root page table,
+
+01:46.448 --> 01:48.001
+and the next line checks it.
+
+01:48.601 --> 01:54.065
+Then come more pages, for the lower-level tables, and finally it returns the root.
+
+01:55.200 --> 02:00.839
+Part (a). This version of kinit builds the page table before kalloc::init:
+
+02:01.439 --> 02:02.695
+the console first,
+
+02:03.295 --> 02:04.511
+then the page table,
+
+02:05.111 --> 02:06.518
+then the page allocator,
+
+02:07.118 --> 02:08.993
+and the process table last.
+
+02:10.120 --> 02:13.521
+Part (i): what does kvmmake return, and why?
+
+02:14.121 --> 02:19.485
+Part (ii): fix the order, and say in one sentence why that step has to come first.
+
+02:20.000 --> 02:21.077
+Part (i).
+
+02:22.577 --> 02:25.189
+The call to kvmmake returns null.
+
+02:26.689 --> 02:33.535
+At that point, nothing has called kalloc::init yet, so the free list is still empty, as it started.
+
+02:34.640 --> 02:37.411
+kvmmake's first line calls kalloc,
+
+02:38.011 --> 02:40.335
+which reads the head of the list: null.
+
+02:40.935 --> 02:42.193
+So it skips the pop,
+
+02:42.793 --> 02:46.375
+and returns null: null if empty, as its comment says.
+
+02:48.380 --> 02:55.923
+So the call to kvmmake returns null, at its first check: the root is null, so it returns right there.
+
+02:56.923 --> 03:04.253
+And the function kvminithart is then handed no page table at all: the root it gets is null.
+
+03:04.760 --> 03:06.577
+Part (ii): fix the order.
+
+03:08.077 --> 03:11.235
+Move kalloc::init before the page-table line,
+
+03:11.835 --> 03:13.806
+the order shown above in kinit:
+
+03:14.406 --> 03:19.099
+the console, then the allocator, then the page table, then the process table.
+
+03:19.600 --> 03:21.839
+Why does that step have to come first?
+
+03:23.339 --> 03:27.542
+The function kvmmake gets its pages from kalloc,
+
+03:28.142 --> 03:35.639
+and a call to kalloc only has pages to hand out once the call to kalloc::init has filled the free list.
+
+03:37.360 --> 03:40.067
+Part (b). Why does uart::init come first?
+
+03:41.567 --> 03:48.008
+The console comes first, so that every later step can print, including a message if something fails.
+
+03:49.008 --> 03:51.633
+Before it, the console is not set up yet.
+
+03:52.760 --> 03:55.398
+After booting, the kernel idles like this.
+
+03:55.998 --> 04:04.012
+In a plain cargo run, the given kmain ends in this loop, with wfi, wait for interrupt, inside it.
+
+04:04.612 --> 04:08.729
+Why wfi inside the loop, instead of an empty loop?
+
+04:10.740 --> 04:16.562
+The wfi instruction puts the CPU to sleep until an interrupt arrives.
+
+04:17.562 --> 04:22.073
+An empty loop spins instead, burning CPU time and power.
+
+04:24.100 --> 04:34.702
+The empty loop does nothing. Either way the kernel idles. But with wfi, the CPU wakes up when there is work, a timer tick, for example.
+
+04:35.302 --> 04:37.682
+Then the loop runs wfi again.
+
+04:38.800 --> 04:40.155
+That's Problem 1.
+
+04:40.755 --> 04:46.625
+Part (a): the page table's pages come from kalloc, so fill the free list first.
+
+04:47.225 --> 04:55.865
+Part (b): the console comes first, so later steps can print, and the wfi instruction sleeps where an empty loop spins.

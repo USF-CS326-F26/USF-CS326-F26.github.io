@@ -1,0 +1,175 @@
+WEBVTT
+
+00:00.000 --> 00:05.169
+OSlings Practice 42k-44k, Problem 2: Traps.
+
+00:05.769 --> 00:11.559
+We'll work it out on the practice set's own pages, as the answer key's handwriting appears.
+
+00:12.159 --> 00:16.051
+A script reveals it, and this explainer was built with Claude.
+
+00:16.560 --> 00:25.036
+Problem 2 draws on one OSlings exercise: 43k_traps, from week 11, on Friday, November 6.
+
+00:25.636 --> 00:27.683
+You wrote init and kerneltrap.
+
+00:28.283 --> 00:35.531
+The rest came with the exercise: the trap vector kernelvec, the counter TRAP_COUNT, vector_addr, and the test.
+
+00:36.640 --> 00:44.855
+Problem 2. When the running code hits a breakpoint, an ebreak, a 4-byte instruction, the hardware traps into the kernel.
+
+00:45.455 --> 00:48.267
+On a trap, it does three things that matter here.
+
+00:48.800 --> 00:52.265
+It writes why into scause: 3 means a breakpoint.
+
+00:52.865 --> 00:56.726
+It writes the trapping instruction's address into sepc.
+
+00:57.326 --> 00:59.821
+And it jumps to the address in stvec.
+
+01:00.920 --> 01:03.255
+The counter TRAP_COUNT starts at 0.
+
+01:03.855 --> 01:11.389
+A call to init, once at boot, writes the address of kernelvec into stvec, with csrw.
+
+01:11.989 --> 01:14.880
+From then on, every trap jumps to kernelvec.
+
+01:16.000 --> 01:19.785
+Every trap lands in kernelvec, the assembly trap vector.
+
+01:20.385 --> 01:27.541
+It moves sp down by 128, and saves the 16 caller-saved registers on the stack:
+
+01:28.141 --> 01:32.201
+ra, t0 to t6, and a0 to a7.
+
+01:32.801 --> 01:35.381
+Then it calls kerneltrap, the Rust handler.
+
+01:36.480 --> 01:44.937
+When the handler returns, the vector restores the same 16 registers, and moves sp back up by 128.
+
+01:45.537 --> 01:49.457
+Last, sret: the return to the address in sepc.
+
+01:50.560 --> 01:58.023
+The handler, kerneltrap, reads scause and sepc with csrr: why it trapped, and where.
+
+01:58.623 --> 02:01.423
+If scause is 3, a breakpoint, it counts it,
+
+02:02.023 --> 02:10.459
+then writes sepc plus 4 back into sepc, with csrw, to resume after the ebreak.
+
+02:11.560 --> 02:18.646
+Part (a). After the call to init, an ebreak at address 0x8000_0568 runs,
+
+02:19.246 --> 02:23.394
+and kernelvec is at 0x8000_0af0.
+
+02:23.994 --> 02:31.276
+Fill in the table. The first row is done for you: scause, when kerneltrap starts, is 3, a breakpoint.
+
+02:31.800 --> 02:34.973
+Next: sepc when kerneltrap starts.
+
+02:36.473 --> 02:40.973
+It is 0x8000_0568, the ebreak itself.
+
+02:41.573 --> 02:45.583
+The trap wrote the trapping instruction's address into sepc,
+
+02:46.183 --> 02:51.794
+and the vector saves registers and calls the handler, without touching sepc.
+
+02:52.320 --> 02:55.615
+Then: the address the CPU jumps to on the trap.
+
+02:57.115 --> 03:02.285
+It is 0x8000_0af0: kernelvec, from stvec.
+
+03:02.885 --> 03:07.323
+At boot, the call to init wrote kernelvec's address into stvec,
+
+03:07.923 --> 03:11.826
+and on a trap, the hardware jumps to the address in stvec.
+
+03:12.960 --> 03:16.134
+Now, sepc when kerneltrap returns.
+
+03:17.634 --> 03:20.845
+It is 0x8000_056c.
+
+03:21.445 --> 03:24.879
+scause was 3, a breakpoint, so the handler counted it,
+
+03:25.479 --> 03:29.563
+then wrote sepc plus 4 back into sepc.
+
+03:30.080 --> 03:32.531
+Last: the address where sret resumes.
+
+03:34.031 --> 03:39.513
+It is 0x8000_056c, the instruction after the ebreak.
+
+03:40.113 --> 03:45.178
+The handler returns to the vector, which restores the registers and runs sret,
+
+03:45.778 --> 03:48.903
+and sret returns to the address in sepc.
+
+03:50.900 --> 03:57.425
+Under the table, the key says why: the handler adds 4 because the ebreak is 4 bytes long.
+
+03:58.025 --> 04:04.818
+0x8000_0568 plus 4 is 0x8000_056c.
+
+04:06.820 --> 04:09.835
+sret jumps to whatever sepc holds,
+
+04:10.435 --> 04:17.112
+so the code carries on just past the breakpoint, with its general registers as they were before the trap.
+
+04:18.240 --> 04:26.241
+Part (b). This version of kerneltrap counts the breakpoint, but forgets the csrw sepc line.
+
+04:26.841 --> 04:29.055
+What happens after sret, and why?
+
+04:31.060 --> 04:37.417
+sepc still holds the ebreak's own address, so sret jumps back to the ebreak.
+
+04:38.017 --> 04:45.377
+The trap wrote that address into sepc, and without the csrw line, nothing moves it on.
+
+04:46.880 --> 04:49.332
+It traps again, the handler counts it again,
+
+04:49.932 --> 04:54.144
+sret returns to the same ebreak again, and so on forever.
+
+04:56.140 --> 04:58.331
+The result: an infinite trap loop.
+
+04:58.931 --> 05:03.174
+TRAP_COUNT keeps growing, and the kernel never gets past the breakpoint:
+
+05:04.174 --> 05:05.101
+it hangs.
+
+05:06.800 --> 05:08.249
+That's Problem 2.
+
+05:08.849 --> 05:15.514
+Part (a): the handler moves sepc 4 bytes on, so sret resumes after the ebreak.
+
+05:16.114 --> 05:21.457
+Part (b): without that, sret returns to the ebreak: an infinite trap loop.
