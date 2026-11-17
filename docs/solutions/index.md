@@ -36,6 +36,12 @@ each problem that works the key on the set's own pages.
 memory. The set, its key, and a video that works the key on the set's own
 pages.
 
+**[OSlings Practice 40k-41k](../assignments/oslings-practice.md#40k-41k)**:
+the filesystem and devices. The set and its key.
+
+**[OSlings Practice 42k-44k](../assignments/oslings-practice.md#42k-44k)**:
+boot order, traps and interrupts. The set and its key.
+
 ## Exams
 
 **[Midterm 1](../assignments/midterm-1-solutions.md)**, Thursday, October 15:

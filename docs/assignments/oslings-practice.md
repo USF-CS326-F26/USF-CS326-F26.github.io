@@ -48,15 +48,14 @@ turning on translation), and its answer key.
 
 ## 40k-41k: Filesystem, Devices { #40k-41k }
 
-**[OSlings Practice 40k-41k](oslings-40k-41k.pdf)** (PDF, 4 pages): two
-problems on `40k_filesystem` and `41k_devices`. Problem 2 (41k) is optional
-extra credit.
-
-*Answer key to come.*
+**[OSlings Practice 40k-41k](oslings-40k-41k.pdf)** (PDF, 4 pages) ·
+**[Solutions](oslings-40k-41k-solutions.pdf)** (PDF, 4 pages): two
+problems on `40k_filesystem` and `41k_devices`, and their answer key.
+Problem 2 (41k) is optional extra credit.
 
 ## 42k-44k: Boot Order, Traps, Interrupts { #42k-44k }
 
-**[OSlings Practice 42k-44k](oslings-42k-44k.pdf)** (PDF, 6 pages): three
-problems on `42k_boot_to_life`, `43k_traps` and `44k_interrupts`.
-
-*Answer key to come.*
+**[OSlings Practice 42k-44k](oslings-42k-44k.pdf)** (PDF, 6 pages) ·
+**[Solutions](oslings-42k-44k-solutions.pdf)** (PDF, 6 pages): three
+problems on `42k_boot_to_life`, `43k_traps` and `44k_interrupts`, and their
+answer key.
