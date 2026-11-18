@@ -1,0 +1,709 @@
+#!/usr/bin/env bash
+# oslings-boot: boot one OSlings kernel exercise's reference solution in QEMU,
+# or write it out as a standalone rv6 tree to edit and debug with gdb.
+#
+# Either way the kernel is assembled from the repo's rv6/ crate files plus
+# exercises/<ex>/solution/, so the repo itself is never modified.
+set -euo pipefail
+
+DEFAULT_ROOT="$HOME/oslings"
+prog=$(basename "$0")
+
+usage() {
+  cat <<EOF
+Usage: $prog [--harness] <exercise>
+       $prog --tree [--into DIR] <exercise>
+       $prog --refresh DIR
+       $prog --list
+
+Boot the reference solution of an OSlings kernel exercise in QEMU, built in a
+temporary copy of rv6/ so the repo is never modified. Any kernel exercise whose
+reference solution has been released works (see --list).
+
+<exercise> is any unique prefix of a kernel exercise name: 33k, 46k_shell, 54.
+
+Options:
+  -H, --harness   build with --features harness: the graded self-check, which
+                  prints OSLINGS:PASS and powers off. Only changes anything
+                  from 42k on; earlier kernels always run their self-test.
+  -t, --tree      don't boot: write the exercise as a standalone rv6 tree,
+                  ./rv6-<exercise> in the current directory, ready to edit,
+                  build, and debug with gdb. Never overwrites an existing tree.
+      --into DIR  with --tree: write the tree to DIR instead (implies --tree)
+      --refresh DIR
+                  rewrite the generated helpers (qemu-gdb, gdb-attach,
+                  gdb-tui.py) in an existing tree to this version of the
+                  script. Never touches its src/ or gdbinit.
+  -l, --list      list the kernel exercises
+  -h, --help      show this help
+
+From 42k on, a plain boot is the interactive rv6. Quit QEMU with Ctrl-A then X.
+30k is build-only: it is compiled, not booted.
+
+Debugging with gdb:
+  $prog --tree 46k     # writes ./rv6-46k_shell
+  cd rv6-46k_shell
+  ./qemu-gdb           # terminal 1: build, boot QEMU halted, wait for gdb
+  ./gdb-attach         # terminal 2: connect gdb, stop at kmain; then 'c'
+  ./gdb-attach --tui   # the same in a TUI: source | asm, registers | decoded
+                       # CSRs (layouts rv6, rv6-asm, rv6-small; see gdb-tui.py)
+Edit gdbinit for your own breakpoints. ./qemu-gdb passes its arguments to
+cargo build (e.g. --features harness); GDB_PORT changes the port (1234).
+
+This needs a RISC-V gdb (RISCV_GDB names another binary):
+  macOS:          brew install riscv64-elf-gdb
+  Ubuntu / WSL2:  sudo apt install gdb-multiarch
+
+The repo is \$OSLINGS_ROOT if set, else the nearest directory at or above the
+current one that holds info.toml and rv6/, else $DEFAULT_ROOT.
+EOF
+}
+
+die()  { printf '%s: %s\n' "$prog" "$*" >&2; exit 1; }
+note() { printf '%s\n' "$*" >&2; }
+
+is_repo() { [[ -f "$1/info.toml" && -f "$1/rv6/Cargo.toml" && -d "$1/exercises" ]]; }
+
+find_root() {
+  if [[ -n "${OSLINGS_ROOT:-}" ]]; then
+    printf '%s\n' "$OSLINGS_ROOT"
+    return
+  fi
+  local d=$PWD
+  while [[ "$d" != "/" ]]; do
+    if is_repo "$d"; then
+      printf '%s\n' "$d"
+      return
+    fi
+    d=$(dirname "$d")
+  done
+  printf '%s\n' "$DEFAULT_ROOT"
+}
+
+# Kernel exercises that have a reference solution, in course order.
+kernel_exercises() {
+  local d
+  for d in "$root"/exercises/[0-9][0-9]k_*/; do
+    if [[ -d "$d/solution" ]]; then basename "$d"; fi
+  done
+  return 0
+}
+
+# The value of <key> in <exercise>'s [[exercises]] block of info.toml.
+field() {
+  awk -v ex="$1" -v key="$2" '
+    /^\[\[exercises\]\]/       { inex = 0 }
+    $0 == "name = \"" ex "\"" { inex = 1 }
+    inex && $1 == key         { sub(/^[^=]*= */, ""); print; exit }
+  ' "$root/info.toml"
+}
+
+# Assemble a buildable rv6 crate for $ex in <dir>, which must exist: the crate
+# shell (target, QEMU runner, linker script, pinned toolchain) from rv6/, and
+# the exercise's reference sources as src/.
+materialize() {
+  local dir=$1
+  cp -R "$root/rv6/.cargo" "$dir/"
+  cp "$root/rv6/Cargo.toml" "$root/rv6/kernel.ld" "$root/rv6/rust-toolchain.toml" "$dir/"
+  if [[ -f "$root/rv6/Cargo.lock" ]]; then cp "$root/rv6/Cargo.lock" "$dir/"; fi
+  mkdir "$dir/src"
+  cp -R "$root/exercises/$ex/solution/." "$dir/src/"
+
+  # 53k and 54k embed the Part 1 commands. The reference userbin.rs is empty,
+  # so use the copies `oslings ship` generated in the repo's rv6/src instead.
+  if [[ "$prepare" == *ship-all* ]]; then
+    local bins
+    shopt -s nullglob
+    bins=("$root"/rv6/src/userbin/*.bin)
+    shopt -u nullglob
+    if (( ${#bins[@]} )) && [[ -f "$root/rv6/src/userbin.rs" ]]; then
+      cp "$root/rv6/src/userbin.rs" "$dir/src/"
+      mkdir -p "$dir/src/userbin"
+      cp "${bins[@]}" "$dir/src/userbin/"
+    else
+      note "note: no shipped commands in $root/rv6/src/userbin; run \`oslings ship\` in the repo to embed them"
+    fi
+  fi
+}
+
+# The generated gdb helpers that --tree adds next to the crate, and that
+# --refresh rewrites: qemu-gdb, gdb-attach, gdb-tui.py. Never gdbinit, which
+# is the user's to edit (see write_gdbinit).
+write_gdb_scripts() {
+  local dir=$1
+
+  cat >"$dir/qemu-gdb" <<'EOF'
+#!/usr/bin/env bash
+# Build this rv6 tree, then boot it in QEMU halted at the reset vector until
+# gdb connects (run ./gdb-attach in another terminal).
+#
+# Arguments go to `cargo build`, e.g. ./qemu-gdb --features harness
+# GDB_PORT sets the gdb port (default 1234). Quit QEMU with Ctrl-A then X.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+for a in "$@"; do
+  case "$a" in
+    -r|--release)
+      echo "qemu-gdb: debug builds only (the release profile has no debug info)" >&2
+      exit 1
+      ;;
+  esac
+done
+
+port=${GDB_PORT:-1234}
+cargo build "$@"
+
+# The same machine as the cargo runner in .cargo/config.toml, plus -S (start
+# halted) and a gdb server.
+echo "qemu-gdb: halted, waiting for gdb on localhost:$port; run ./gdb-attach in another terminal (quit QEMU: Ctrl-A then X)" >&2
+exec qemu-system-riscv64 \
+  -machine virt \
+  -bios none \
+  -m 128M \
+  -smp 1 \
+  -nographic \
+  -serial mon:stdio \
+  -S -gdb "tcp::$port" \
+  -kernel target/riscv64gc-unknown-none-elf/debug/rv6
+EOF
+
+  cat >"$dir/gdb-attach" <<'EOF'
+#!/usr/bin/env bash
+# Connect gdb to the QEMU that ./qemu-gdb started, then run ./gdbinit.
+#
+#   ./gdb-attach          plain gdb
+#   ./gdb-attach --tui    the rv6 TUI from ./gdb-tui.py: source | assembly,
+#                         general registers | decoded CSRs, command line
+#
+# Other arguments go to gdb. GDB_PORT sets the port (default 1234). RISCV_GDB
+# picks the gdb binary; otherwise the first found of riscv64-elf-gdb (macOS),
+# riscv64-unknown-elf-gdb, gdb-multiarch (Ubuntu, WSL2). Uses rust-gdb when
+# available, for Rust pretty printers and stepping into core's source.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+tui=0
+gdb_args=()
+for a in "$@"; do
+  case "$a" in
+    -t|--tui|-tui) tui=1 ;;
+    *) gdb_args+=("$a") ;;
+  esac
+done
+
+port=${GDB_PORT:-1234}
+elf=target/riscv64gc-unknown-none-elf/debug/rv6
+
+gdb=${RISCV_GDB:-}
+if [[ -z "$gdb" ]]; then
+  for g in riscv64-elf-gdb riscv64-unknown-elf-gdb gdb-multiarch; do
+    if command -v "$g" >/dev/null; then
+      gdb=$g
+      break
+    fi
+  done
+fi
+if [[ -z "$gdb" ]] || ! command -v "$gdb" >/dev/null; then
+  if [[ -n "${RISCV_GDB:-}" ]]; then
+    echo "gdb-attach: RISCV_GDB=$RISCV_GDB not found" >&2
+  else
+    echo "gdb-attach: no RISC-V gdb found. Install one:" >&2
+    echo "  macOS:          brew install riscv64-elf-gdb" >&2
+    echo "  Ubuntu / WSL2:  sudo apt install gdb-multiarch" >&2
+  fi
+  exit 1
+fi
+if [[ ! -f "$elf" ]]; then
+  echo "gdb-attach: no kernel at $elf; start ./qemu-gdb first" >&2
+  exit 1
+fi
+
+args=(-q -ex "target remote localhost:$port" -x gdbinit)
+if (( tui )); then
+  if [[ ! -f gdb-tui.py ]]; then
+    echo "gdb-attach: no gdb-tui.py here; run: oslings-boot --refresh $PWD" >&2
+    exit 1
+  fi
+  args+=(-x gdb-tui.py)
+fi
+args+=(${gdb_args[@]+"${gdb_args[@]}"} "$elf")
+
+if command -v rust-gdb >/dev/null; then
+  # rust-gdb puts the Rust printers on PYTHONPATH, but they only auto-load via
+  # a section rustc emits for a normal `main`; rv6 is #![no_main], so load
+  # them by hand.
+  RUST_GDB=$gdb exec rust-gdb -ex "python import gdb_load_rust_pretty_printers" "${args[@]}"
+fi
+exec "$gdb" "${args[@]}"
+EOF
+
+  cat >"$dir/gdb-tui.py" <<'PYEOF'
+# gdb-tui.py: TUI layouts for debugging rv6, loaded by ./gdb-attach --tui.
+#
+# Layouts (switch with `layout NAME`; Ctrl-X A turns the TUI off and on):
+#   rv6        source | assembly, registers | CSRs, command line
+#   rv6-asm    assembly | CSRs, registers: for _entry, trap vectors, swtch,
+#              and the trampoline, which have no Rust source
+#   rv6-small  source | CSRs, for a normal-sized terminal
+# gdb's own layouts still work: layout src, asm, split.
+#
+# Two windows are defined here, both redrawn at every stop, with values that
+# changed since the previous stop in bold:
+#   gregs  pc and the general registers, by ABI name (gdb's own `regs`
+#          window stays blank against QEMU with this gdb, so it is not used)
+#   csrs   the privilege mode and the trap and paging CSRs, decoded
+# Scroll a short window with `focus csrs` (or gregs) and the arrow keys, then
+# `focus cmd`. `winheight cmd N` resizes the command window.
+#
+# GENERATED by oslings-boot: `oslings-boot --refresh <tree>` rewrites this
+# file. Put your own commands in gdbinit instead.
+
+import gdb
+
+MASK = (1 << 64) - 1
+BOLD, RESET = "\x1b[1m", "\x1b[0m"
+CMD_HEIGHT = 8
+
+PRIV = {0: "U", 1: "S", 3: "M"}
+
+EXCEPTIONS = {
+    0: "instruction misaligned (or none yet)",
+    1: "instruction access fault",
+    2: "illegal instruction",
+    3: "breakpoint",
+    4: "load misaligned",
+    5: "load access fault",
+    6: "store misaligned",
+    7: "store access fault",
+    8: "ecall from U",
+    9: "ecall from S",
+    11: "ecall from M",
+    12: "instruction page fault",
+    13: "load page fault",
+    15: "store page fault",
+}
+
+INTERRUPTS = {
+    1: "S software",
+    3: "M software",
+    5: "S timer",
+    7: "M timer",
+    9: "S external",
+    11: "M external",
+}
+
+# Interrupt bits shared by sie/sip, mie/mip and mideleg.
+INT_BITS = [(1, "SS"), (3, "MS"), (5, "ST"), (7, "MT"), (9, "SE"), (11, "ME")]
+
+
+def flags(v, names):
+    on = [n for b, n in names if v >> b & 1]
+    return " ".join(on) if on else "-"
+
+
+def where(v):
+    """The symbol at address v as <name+off>, named as in the asm window
+    (rv6::usermode::usertrap+4, timervec), or "" if there is none."""
+    try:
+        out = gdb.execute("output/a %#x" % v, to_string=True).strip()
+    except gdb.error:
+        return ""
+    start = out.find(" <")
+    return out[start + 1 :] if start >= 0 and out.endswith(">") else ""
+
+
+def d_priv(v):
+    return PRIV.get(v, "?")
+
+
+def d_satp(v):
+    mode = v >> 60
+    if mode == 0:
+        return "Bare (paging off)"
+    name = {8: "Sv39", 9: "Sv48", 10: "Sv57"}.get(mode, "mode %d" % mode)
+    root = (v & ((1 << 44) - 1)) << 12
+    return "%s root=%#x asid=%d" % (name, root, (v >> 44) & 0xFFFF)
+
+
+def d_sstatus(v):
+    spp = "S" if v >> 8 & 1 else "U"
+    return "SPP=%s %s" % (spp, flags(v, [(1, "SIE"), (5, "SPIE"), (18, "SUM"), (19, "MXR")]))
+
+
+def d_mstatus(v):
+    mpp = PRIV.get(v >> 11 & 3, "?")
+    spp = "S" if v >> 8 & 1 else "U"
+    bits = [(1, "SIE"), (3, "MIE"), (5, "SPIE"), (7, "MPIE"), (17, "MPRV"), (18, "SUM")]
+    return "MPP=%s SPP=%s %s" % (mpp, spp, flags(v, bits))
+
+
+def d_cause(v):
+    code = v & ((1 << 63) - 1)
+    if v >> 63:
+        return "interrupt: " + INTERRUPTS.get(code, "#%d" % code)
+    return EXCEPTIONS.get(code, "exception #%d" % code)
+
+
+def d_tvec(v):
+    return ("vectored " if v & 3 == 1 else "") + where(v & ~3)
+
+
+def d_int(suffix):
+    return lambda v: flags(v, [(b, n + "I" + suffix) for b, n in INT_BITS])
+
+
+# CSR rows: (register, decoder or None); None draws a blank separator line.
+CSRS = [
+    ("priv", d_priv),
+    ("satp", d_satp),
+    ("sstatus", d_sstatus),
+    ("stvec", d_tvec),
+    ("sepc", where),
+    ("scause", d_cause),
+    ("stval", None),
+    ("sscratch", None),
+    ("sie", d_int("E")),
+    ("sip", d_int("P")),
+    None,
+    ("mstatus", d_mstatus),
+    ("mepc", where),
+    ("mcause", d_cause),
+    ("mtval", None),
+    ("mtvec", d_tvec),
+    ("mie", d_int("E")),
+    ("mip", d_int("P")),
+    ("medeleg", None),
+    ("mideleg", d_int("")),
+]
+
+# General registers by ABI name, in groups that read well column by column:
+# pc and the fixed-role registers, the arguments, the saved registers, the
+# rest of the temporaries. (label, gdb register name): gdb calls s0 "fp".
+GREGS = (
+    [("pc", "pc"), ("ra", "ra"), ("sp", "sp"), ("gp", "gp"), ("tp", "tp"),
+     ("t0", "t0"), ("t1", "t1"), ("t2", "t2")]
+    + [("a%d" % i, "a%d" % i) for i in range(8)]
+    + [("s0", "fp")] + [("s%d" % i, "s%d" % i) for i in range(1, 8)]
+    + [("s8", "s8"), ("s9", "s9"), ("s10", "s10"), ("s11", "s11"),
+       ("t3", "t3"), ("t4", "t4"), ("t5", "t5"), ("t6", "t6")]
+)
+
+
+def read(names):
+    """{name: value or None}, or None when there is no live target."""
+    try:
+        frame = gdb.newest_frame()
+    except gdb.error:
+        return None
+    vals = {}
+    for name in names:
+        try:
+            vals[name] = int(frame.read_register(name)) & MASK
+        except (gdb.error, ValueError):
+            vals[name] = None  # not exported by this QEMU
+    return vals
+
+
+class RegWindow:
+    """A window of register values, bold where they changed since the last stop."""
+
+    title = ""
+
+    def __init__(self, tui):
+        self.tui = tui
+        self.top = 0
+        self.nlines = 0
+        self.shown = {}  # values on screen now
+        self.base = {}   # values at the previous stop
+        tui.title = self.title
+        gdb.events.stop.connect(self.on_stop)
+        gdb.events.before_prompt.connect(self.render)
+
+    def close(self):
+        gdb.events.stop.disconnect(self.on_stop)
+        gdb.events.before_prompt.disconnect(self.render)
+
+    def on_stop(self, _event):
+        # What is on screen is what the registers held before this stop.
+        self.base = dict(self.shown)
+
+    def changed(self, name, v):
+        return name in self.base and self.base[name] != v
+
+    def vscroll(self, num):
+        self.top = max(0, min(self.top + num, self.nlines - 1))
+        self.render()
+
+    def render(self):
+        if not self.tui.is_valid():
+            return
+        lines = self.lines()
+        if lines is None:
+            lines = ["(no target)"]
+        self.nlines = len(lines)
+        text = "\n".join(lines[self.top : self.top + self.tui.height])
+        try:
+            self.tui.write(text, True)  # replace the whole window (GDB 14+)
+        except TypeError:
+            self.tui.erase()
+            self.tui.write(text)
+
+
+class CsrWindow(RegWindow):
+    title = "CSRs (bold = changed)"
+
+    def lines(self):
+        vals = read([row[0] for row in CSRS if row is not None])
+        if vals is None:
+            return None
+        self.shown = vals
+        width = self.tui.width
+        out = []
+        for row in CSRS:
+            if row is None:
+                out.append("")
+                continue
+            name, decode = row
+            v = vals[name]
+            head = "%-9s" % name
+            if v is None:
+                out.append((head + "-")[:width])
+                continue
+            if name == "priv":
+                val, rest = decode(v), ""
+            else:
+                val = "%#018x" % v
+                rest = "  " + decode(v) if decode else ""
+            if len(head) + len(val) > width:
+                out.append((head + val)[:width])
+                continue
+            rest = rest[: width - len(head) - len(val)]
+            if self.changed(name, v):
+                val = BOLD + val + RESET
+            out.append(head + val + rest)
+        return out
+
+
+class GregWindow(RegWindow):
+    title = "registers (bold = changed)"
+    CELL = 24  # "s10 0x0000000080001234" plus a gap
+
+    def lines(self):
+        vals = read([reg for _, reg in GREGS])
+        if vals is None:
+            return None
+        self.shown = vals
+        width = self.tui.width
+        cols = max(1, width // self.CELL)
+        rows = -(-len(GREGS) // cols)
+        out = []
+        for r in range(rows):
+            cells = []
+            for c in range(cols):
+                i = c * rows + r  # column-major, so each group stays together
+                if i >= len(GREGS):
+                    break
+                label, reg = GREGS[i]
+                v = vals[reg]
+                val = "-" if v is None else "%#018x" % v
+                if v is not None and self.changed(reg, v):
+                    val = BOLD + val + RESET
+                cells.append("%-4s%s" % (label, val))
+            out.append("  ".join(cells))
+        # Where pc and ra point, below the grid.
+        syms = []
+        for reg in ("pc", "ra"):
+            sym = where(vals[reg]) if vals.get(reg) else ""
+            if sym:
+                syms.append("%s %s" % (reg, sym))
+        if syms:
+            out.append("")
+            out.append("   ".join(syms)[:width])
+        return out
+
+
+gdb.register_window_type("csrs", CsrWindow)
+gdb.register_window_type("gregs", GregWindow)
+for spec in (
+    "rv6 {-horizontal src 1 asm 1} 1 {-horizontal gregs 1 csrs 1} 1 status 0 cmd 1",
+    "rv6-asm {-horizontal asm 3 csrs 2} 2 gregs 1 status 0 cmd 1",
+    "rv6-small {-horizontal src 2 csrs 1} 3 status 0 cmd 1",
+):
+    gdb.execute("tui new-layout " + spec)
+gdb.execute("set tui compact-source on")
+gdb.execute("layout rv6")
+# gdb keeps the command window's height across layouts; pin it so the other
+# windows get the rest. Then keep the arrow keys on command history rather
+# than scrolling the source.
+gdb.execute("winheight cmd %d" % CMD_HEIGHT)
+gdb.execute("focus cmd")
+PYEOF
+
+  chmod +x "$dir/qemu-gdb" "$dir/gdb-attach"
+}
+
+# The tree's gdbinit: the user's own gdb commands, written once and never
+# rewritten.
+write_gdbinit() {
+  local dir=$1
+  local stop="break kmain"
+  if ! grep -q 'fn kmain' "$dir/src/main.rs"; then
+    stop="# break kmain        (this exercise has no kmain)"
+  fi
+  cat >"$dir/gdbinit" <<EOF
+# gdb commands for this rv6 tree. ./gdb-attach connects to QEMU first, then
+# runs this file. QEMU starts halted at the reset vector (0x1000), which jumps
+# to _entry at 0x8000_0000. Edit freely.
+
+set confirm off
+set pagination off
+
+$stop
+
+# Other useful starting points:
+#   break _entry        # the first kernel instruction, at 0x8000_0000
+#   break start         # M-mode setup, from 43k on
+#   info registers      # or: p/x \$pc, p/x \$satp, x/8i \$pc
+#
+# With ./gdb-attach --tui (see gdb-tui.py):
+#   layout rv6          # source | asm, registers | decoded CSRs (the default)
+#   layout rv6-asm      # asm | CSRs, registers: for _entry, trap vectors, swtch
+#   layout rv6-small    # source | CSRs, for a smaller terminal
+#   layout src|asm|split|regs   # gdb's own layouts
+#   focus src / focus cmd       # which window the arrow keys scroll
+#   Ctrl-X A            # turn the TUI off and on
+EOF
+}
+
+harness=0
+list=0
+tree=0
+into=""
+refresh=""
+query=""
+while (( $# )); do
+  case "$1" in
+    -H|--harness) harness=1 ;;
+    -t|--tree)    tree=1 ;;
+    --into)
+      (( $# >= 2 )) || die "--into needs a directory"
+      tree=1; into=$2; shift
+      ;;
+    --into=*)     tree=1; into=${1#--into=} ;;
+    --refresh)
+      (( $# >= 2 )) || die "--refresh needs a tree directory"
+      refresh=$2; shift
+      ;;
+    --refresh=*)  refresh=${1#--refresh=} ;;
+    -l|--list)    list=1 ;;
+    -h|--help)    usage; exit 0 ;;
+    -*)           die "unknown option: $1 (see --help)" ;;
+    *)
+      [[ -z "$query" ]] || die "one exercise at a time (got '$query' and '$1')"
+      query=$1
+      ;;
+  esac
+  shift
+done
+
+# --refresh needs no repo: it only regenerates a tree's helper scripts.
+if [[ -n "$refresh" ]]; then
+  [[ -z "$query" ]] || die "--refresh takes a tree directory, not an exercise"
+  # gdb-attach marks a tree made by --tree, which keeps this away from the
+  # repo's own rv6/ (also a crate with src/).
+  if [[ ! -f "$refresh/Cargo.toml" || ! -d "$refresh/src" || ! -f "$refresh/gdb-attach" ]]; then
+    die "$refresh is not a tree made by --tree (no Cargo.toml, src/ and gdb-attach)"
+  fi
+  refresh=$(cd "$refresh" && pwd)
+  write_gdb_scripts "$refresh"
+  if [[ ! -f "$refresh/gdbinit" ]]; then write_gdbinit "$refresh"; fi
+  note "== refreshed qemu-gdb, gdb-attach and gdb-tui.py in $refresh (src/ and gdbinit untouched)"
+  exit 0
+fi
+
+root=$(find_root)
+is_repo "$root" || die "no OSlings repo at $root: run this inside your oslings repo, or set OSLINGS_ROOT"
+
+if (( list )); then
+  kernel_exercises
+  exit 0
+fi
+[[ -n "$query" ]] || { usage >&2; exit 2; }
+if (( tree && harness )); then
+  die "--harness is a build option; in the tree use ./qemu-gdb --features harness or cargo run --features harness"
+fi
+
+# Resolve the prefix the way `oslings` does: an exact name wins, otherwise
+# the prefix must match exactly one exercise.
+matches=()
+while IFS= read -r name; do
+  if [[ "$name" == "$query" ]]; then
+    matches=("$name")
+    break
+  fi
+  if [[ "$name" == "$query"* ]]; then matches+=("$name"); fi
+done < <(kernel_exercises)
+
+case ${#matches[@]} in
+  0) die "no released kernel solution matches '$query' (try --list; \`oslings update\` brings new ones)" ;;
+  1) ex=${matches[0]} ;;
+  *) die "'$query' is ambiguous: ${matches[*]}" ;;
+esac
+
+mode=$(field "$ex" mode)
+prepare=$(field "$ex" prepare)
+
+if (( tree )); then
+  dest=${into:-$PWD/rv6-$ex}
+  # Never overwrite: the tree may hold edits made while debugging.
+  if [[ -e "$dest" ]]; then
+    die "$dest already exists; remove it first to recreate it"
+  fi
+  mkdir -p "$dest"
+  dest=$(cd "$dest" && pwd)
+  trap 'rm -rf "$dest"' EXIT   # no half-written tree if anything fails
+  materialize "$dest"
+  write_gdb_scripts "$dest"
+  write_gdbinit "$dest"
+  trap - EXIT
+
+  note "== wrote $ex (reference solution) to $dest"
+  if [[ "$mode" == *build* ]]; then
+    note "   $ex is build-only: cargo build works, but there is nothing to boot or debug."
+    exit 0
+  fi
+  note ""
+  note "   cd $dest"
+  note "   cargo run                         # boot it (add --features harness for the self-check)"
+  note "   ./qemu-gdb                        # terminal 1: build and boot halted, waiting for gdb"
+  note "   ./gdb-attach                      # terminal 2: connect, stop at kmain, then 'c'"
+  note "   ./gdb-attach --tui                #   ... or the same with source, asm, registers and CSRs"
+  exit 0
+fi
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/oslings-boot.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+trap 'exit 130' INT TERM
+materialize "$work"
+
+cargo_args=()
+if (( harness )); then cargo_args=(--features harness); fi
+
+cd "$work"
+if [[ "$mode" == *build* ]]; then
+  note "== $ex is build-only: compiling the reference solution (nothing to boot)"
+  cargo build ${cargo_args[@]+"${cargo_args[@]}"}
+  note "== $ex compiles for riscv64gc-unknown-none-elf"
+  exit 0
+fi
+
+if (( harness )); then
+  note "== $ex (reference solution): graded self-check"
+elif [[ "$(field "$ex" features)" != *harness* ]]; then
+  # Before 42k there is no interactive OS: the kernel is its own self-test.
+  note "== $ex (reference solution): self-test, powers off when done"
+else
+  note "== $ex (reference solution): quit QEMU with Ctrl-A then X"
+fi
+cargo run ${cargo_args[@]+"${cargo_args[@]}"}

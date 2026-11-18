@@ -464,3 +464,4 @@ usually faster and always trustworthy.
 - [rv6 Architecture](rv6-architecture.md) — a symptom-to-source table for logic bugs, once you know *where* it broke
 - [Dev Setup](dev-setup.md) — installing QEMU and the toolchain
 - [Using OSlings](oslings-usage.md) — what the harness runs, and how to reproduce it by hand
+- [Booting the Reference Kernels](oslings-boot.md) — `oslings-boot`, which sets up this two-terminal loop for a released reference solution

@@ -150,6 +150,7 @@ nav:
       - Memory Map: guides/memory-map.md
       - Sv39 Paging: guides/sv39-paging.md
       - QEMU and GDB: guides/qemu-gdb.md
+      - Booting the Reference Kernels: guides/oslings-boot.md
       - rv6 Architecture: guides/rv6-architecture.md
       - ulib and Commands: guides/ulib-and-commands.md
       - Cheatsheet: guides/cheatsheet.md

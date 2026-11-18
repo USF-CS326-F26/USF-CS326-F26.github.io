@@ -118,6 +118,8 @@ that, `oslings solution 33k_paging` says "not released yet". If you have not
 passed the exercise it nudges you first, then shows it anyway — the point is to
 compare it against your own attempt. See the
 [Integrity Policy](integrity-policy.md) and [Solutions](../solutions/index.md).
+To boot a released kernel solution in QEMU, or step through it in gdb, see
+[Booting the Reference Kernels](oslings-boot.md).
 
 `progress --export` prints a CSV with one row per exercise, including the
 difficulty you solved it at, hints used, elapsed time, and how many harness runs
