@@ -1,0 +1,349 @@
+WEBVTT
+
+00:00.000 --> 00:04.903
+Midterm 2 Practice Exam, Problem 4: Console Input and the Shell.
+
+00:05.503 --> 00:10.941
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.541 --> 00:15.433
+A script reveals it, and this explainer was built with Claude.
+
+00:15.960 --> 00:22.743
+Problem 4 draws on two OSlings exercises, from week 12, Thursday, November 12.
+
+00:23.343 --> 00:29.741
+In 45k_console, you wrote one step of intr: draining the UART into the ring buffer.
+
+00:30.341 --> 00:34.932
+The buffer, push, uart::getc, the claim and the completion were given.
+
+00:35.440 --> 00:38.405
+Then 46k_shell, from the same session.
+
+00:39.005 --> 00:41.595
+You wrote exec, the shell's evaluate step.
+
+00:42.195 --> 00:45.840
+The read loop, the command handlers and the Out trait were given.
+
+00:47.360 --> 00:53.065
+Problem 4: console input and the shell, from 45k and 46k.
+
+00:53.665 --> 00:57.332
+When a key is pressed, the UART raises a device interrupt,
+
+00:57.932 --> 01:00.352
+and the trap handler calls console::intr.
+
+01:01.480 --> 01:04.710
+The UART keeps each received byte until it is read,
+
+01:05.310 --> 01:09.325
+and keeps its interrupt raised as long as a byte sits unread in it.
+
+01:10.440 --> 01:14.470
+In 45k, the received bytes go into a ring buffer.
+
+01:15.070 --> 01:17.735
+BUF holds 256 bytes.
+
+01:18.335 --> 01:20.808
+HEAD is the next index for the reader to read,
+
+01:21.408 --> 01:24.297
+and TAIL is the next index for intr to write.
+
+01:25.400 --> 01:30.571
+A call to push stores a byte in BUF, at TAIL modulo 256,
+
+01:31.171 --> 01:32.738
+then adds 1 to TAIL.
+
+01:33.338 --> 01:35.785
+If the buffer is full, it drops the byte.
+
+01:36.920 --> 01:43.533
+A call to uart::getc returns Some, holding a byte, if the UART has a received byte waiting.
+
+01:44.133 --> 01:46.392
+Reading it removes it from the UART.
+
+01:46.992 --> 01:50.204
+Once the UART is empty, the call returns None.
+
+01:51.320 --> 01:54.825
+Then intr. Its claim asks which device interrupted.
+
+01:55.425 --> 02:01.451
+For the UART, the while let loop reads every byte it holds, and pushes each into the ring buffer.
+
+02:02.051 --> 02:06.251
+Last, the completion tells the interrupt controller the handler is done.
+
+02:07.760 --> 02:10.159
+Part (a). HEAD and TAIL start at 0.
+
+02:10.759 --> 02:18.089
+The keys 'l', 's' and Enter are typed. All three bytes wait in the UART when the handler, intr, is called.
+
+02:18.689 --> 02:21.750
+Then it is called a second time, with no new key.
+
+02:22.880 --> 02:25.289
+Each row is the state right after that call:
+
+02:25.889 --> 02:28.095
+the number of times the loop body runs,
+
+02:28.695 --> 02:30.293
+the TAIL value afterwards,
+
+02:30.893 --> 02:32.950
+and the bytes remaining in the UART.
+
+02:33.480 --> 02:34.623
+The first call.
+
+02:35.223 --> 02:41.161
+The while let loop runs its body once for each byte a call to uart::getc returns.
+
+02:42.161 --> 02:47.923
+Three bytes are waiting, so the body runs 3 times: for 'l', for 's', and for Enter.
+
+02:49.440 --> 02:52.415
+Each push adds 1 to TAIL, so TAIL is 3.
+
+02:53.415 --> 02:56.807
+And none remain in the UART: the loop took all three.
+
+02:57.320 --> 02:59.411
+The second call, with no new key.
+
+03:00.411 --> 03:02.362
+The body runs 0 times.
+
+03:03.362 --> 03:05.254
+TAIL is still 3, unchanged,
+
+03:06.254 --> 03:08.001
+and none remain in the UART.
+
+03:10.020 --> 03:16.342
+Under the table, the key explains. The loop reads until a call to uart::getc returns None:
+
+03:16.942 --> 03:18.886
+three bytes, so 3 times.
+
+03:19.486 --> 03:23.260
+They fill BUF from slot 0: 'l', 's', and Enter's byte.
+
+03:25.260 --> 03:27.937
+The second time, the UART is already empty,
+
+03:28.537 --> 03:34.475
+so any call to uart::getc returns None at once, and the body runs 0 times.
+
+03:36.000 --> 03:42.684
+In 46k, exec splits one command line into words, and calls the matching command handler.
+
+03:43.284 --> 03:46.697
+The four handlers are given: exec just calls them.
+
+03:47.800 --> 03:53.867
+A call to cmd_pwd prints the current directory, for example "/".
+
+03:54.467 --> 03:58.005
+A call to cmd_ls lists the current directory,
+
+03:58.605 --> 04:02.786
+and a call to cmd_cd changes directory to arg.
+
+04:03.920 --> 04:07.313
+A call to cmd_mkdir makes directory arg.
+
+04:07.913 --> 04:12.869
+But if arg is empty, it prints "mkdir: missing operand", and returns.
+
+04:14.000 --> 04:19.597
+Then exec. Its words come from split_whitespace: any run of spaces separates them.
+
+04:20.197 --> 04:25.625
+Each call to next gives the next word inside a Some, or a None when the words run out.
+
+04:26.720 --> 04:28.617
+cmd is the first word.
+
+04:29.217 --> 04:33.184
+On a blank line, the None arm returns, and exec does nothing.
+
+04:33.784 --> 04:37.902
+arg is the 2nd word, or the empty string if there isn't one.
+
+04:39.000 --> 04:41.494
+Then a match on cmd picks the handler.
+
+04:42.094 --> 04:48.556
+pwd and ls are called with just out; cd and mkdir also get arg.
+
+04:49.156 --> 04:54.423
+Any other word takes the last arm: it prints the word, and then command not found.
+
+04:55.920 --> 05:03.797
+Part (b). For each line passed to exec, give the value of cmd, the value of arg, and what exec does with the line.
+
+05:04.397 --> 05:06.263
+The first row is done for you.
+
+05:06.760 --> 05:10.827
+The first row passes cd, a run of spaces, then dot dot.
+
+05:11.427 --> 05:14.892
+So cmd is "cd", and arg is "..".
+
+05:15.492 --> 05:19.128
+And exec calls cmd_cd, with "..".
+
+05:19.640 --> 05:21.459
+Next, "mkdir a b".
+
+05:22.459 --> 05:25.059
+cmd is "mkdir", the first word.
+
+05:26.059 --> 05:27.711
+arg is "a", the second.
+
+05:28.711 --> 05:31.687
+So exec calls cmd_mkdir, with "a".
+
+05:32.287 --> 05:36.212
+And "b" is ignored: exec never asks for another word.
+
+05:36.720 --> 05:38.693
+Then "pwd extra".
+
+05:39.693 --> 05:41.719
+cmd is "pwd",
+
+05:42.719 --> 05:44.129
+and arg is "extra".
+
+05:45.129 --> 05:54.087
+So exec calls cmd_pwd, with just out, which prints the current directory: the key writes "/", the root.
+
+05:55.087 --> 05:56.589
+And arg is unused.
+
+05:57.120 --> 05:59.293
+Last, "LS", in capitals.
+
+06:00.293 --> 06:01.787
+cmd is "LS",
+
+06:02.787 --> 06:04.599
+and arg is the empty string.
+
+06:05.599 --> 06:12.501
+No arm of the match is "LS", in capitals, so the last arm prints "LS: command not found".
+
+06:13.501 --> 06:15.313
+The match is case-sensitive.
+
+06:17.340 --> 06:22.251
+Under the table, the key adds: exec only ever reads the first two words,
+
+06:22.851 --> 06:30.271
+and each arm of the match compares the exact text: "LS", in capitals, is not "ls", in lower case.
+
+06:32.400 --> 06:38.763
+Part (c). This version of exec uses split, at a single space, in place of split_whitespace.
+
+06:39.363 --> 06:41.422
+The rest of exec is as above.
+
+06:42.520 --> 06:44.503
+It splits at every single space:
+
+06:45.103 --> 06:48.269
+two spaces in a row give an empty word between them,
+
+06:48.869 --> 06:51.352
+a leading space gives an empty first word,
+
+06:51.952 --> 06:55.676
+and a line with no spaces gives one word, the whole line.
+
+06:56.800 --> 06:59.211
+What does this version print for each line?
+
+06:59.811 --> 07:04.493
+The table also asks for the value of cmd, and the value of arg.
+
+07:05.000 --> 07:07.759
+The first line is two spaces, then ls.
+
+07:08.759 --> 07:13.803
+cmd is the empty string: the leading space gives an empty first word.
+
+07:14.803 --> 07:19.484
+arg is the empty string too, the empty word between the two spaces.
+
+07:21.000 --> 07:26.727
+The empty string matches no arm, so the last arm prints ": command not found".
+
+07:27.327 --> 07:30.867
+Nothing comes before the colon: cmd is empty.
+
+07:31.400 --> 07:34.151
+Next, "mkdir docs", with two spaces.
+
+07:35.151 --> 07:36.901
+cmd is "mkdir".
+
+07:37.901 --> 07:42.283
+arg is the empty string, the empty word between the two spaces.
+
+07:43.283 --> 07:50.724
+So exec calls cmd_mkdir with the empty string, and its check prints "mkdir: missing operand".
+
+07:51.240 --> 07:52.771
+Last, the empty line.
+
+07:53.771 --> 08:01.297
+With no spaces, the split gives one word, the whole line, even an empty one: cmd is the empty string.
+
+08:02.297 --> 08:07.490
+arg is the empty string too, from the unwrap_or call: there is no 2nd word.
+
+08:09.000 --> 08:12.541
+So the empty line prints ": command not found" too.
+
+08:13.141 --> 08:21.015
+The key adds: "not ignored any more." In the exec above, the None arm returns on a blank line, and exec does nothing.
+
+08:23.020 --> 08:27.302
+Under the table, the key explains: the empty words reach the match.
+
+08:27.902 --> 08:30.077
+The empty string matches no command,
+
+08:31.577 --> 08:35.672
+and as mkdir's argument, it trips the missing-operand check.
+
+08:36.800 --> 08:40.020
+A call to split_whitespace skips every run of spaces,
+
+08:40.620 --> 08:43.839
+so none of this happens in the 46k version.
+
+08:45.560 --> 08:47.010
+That's Problem 4.
+
+08:47.610 --> 08:52.098
+Part (a): the loop drains the UART, so a second call finds it empty.
+
+08:52.698 --> 08:57.065
+Part (b): exec reads only two words, and the match is case-sensitive.
+
+08:57.665 --> 09:01.844
+Part (c): a single-space split lets empty words reach the match.

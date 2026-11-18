@@ -3,6 +3,18 @@
 **Handed out Tuesday, November 10 · Solutions posted Tuesday, November 17 ·
 Preparation for [Midterm 2](midterm-2.md), Thursday, November 19.**
 
+**[Midterm 2 Practice Exam](midterm-2-practice.pdf)** (PDF, 17 pages) ·
+**[Solutions](midterm-2-practice-solutions.pdf)** (PDF, 17 pages): a practice
+exam in the midterm's format, six problems on `34k_processes` through
+`48k_user_mode`, and its answer key. Each problem prints the code and the
+facts it uses, so nothing in it has to be memorized. Try the problems before
+you open the key.
+{ #practice-exam }
+
+**Solution videos**, one per problem, each working the answer key on the exam's
+own pages: [Problem 1 · Processes and Scheduling](../videos/midterm-2-practice-problem-1.md) (9:17) · [Problem 2 · Virtual Memory](../videos/midterm-2-practice-problem-2.md) (7:59) · [Problem 3 · Filesystem](../videos/midterm-2-practice-problem-3.md) (7:36) · [Problem 4 · Console Input and the Shell](../videos/midterm-2-practice-problem-4.md) (9:04) · [Problem 5 · User Mode and System Calls](../videos/midterm-2-practice-problem-5.md) (7:44) · [Problem 6 · Devices and File Commands](../videos/midterm-2-practice-problem-6.md) (8:13).
+{ #solution-videos }
+
 This set is **ungraded**, and it is the one piece of work in this course you do
 outside of class. The November 17 lecture doubles as the review: attempt these
 before it and arrive with specific questions.

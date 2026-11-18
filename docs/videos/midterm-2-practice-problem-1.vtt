@@ -1,0 +1,337 @@
+WEBVTT
+
+00:00.000 --> 00:04.656
+Midterm 2 Practice Exam, Problem 1: Processes and Scheduling.
+
+00:05.256 --> 00:10.694
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.294 --> 00:15.186
+A script reveals it, and this explainer was built with Claude.
+
+00:15.720 --> 00:21.212
+Problem 1 draws on two OSlings exercises, here in the order you met them.
+
+00:21.812 --> 00:27.240
+34k_processes, from week 9, on Thursday, October 22.
+
+00:27.840 --> 00:31.743
+You wrote allocproc and freeproc, for parts (a) and (b).
+
+00:32.240 --> 00:37.388
+36k_scheduling, from week 9, on Friday, October 23.
+
+00:37.988 --> 00:41.897
+You wrote pick_next, the round-robin policy, for part (c).
+
+00:42.497 --> 00:49.140
+The helpers in 34k, and the scheduler loop in 36k, came with the exercises.
+
+00:50.240 --> 00:56.170
+Problem 1 opens with the process table, PROCS: a fixed array of NPROC slots.
+
+00:56.770 --> 00:58.973
+In this problem, NPROC is 4.
+
+00:59.573 --> 01:03.944
+Each slot holds a Proc: its state, its pid and its page table.
+
+01:05.040 --> 01:08.761
+Every slot starts Unused, and NEXTPID starts at 1.
+
+01:09.361 --> 01:13.542
+A call to alloc_pid hands out NEXTPID, then adds 1 to it.
+
+01:14.142 --> 01:17.023
+As its comment says, it never goes back down.
+
+01:18.120 --> 01:20.840
+The page table helpers are only declared.
+
+01:21.440 --> 01:29.023
+A call to create_pagetable takes one zeroed page from kalloc, or returns null if memory is out.
+
+01:29.623 --> 01:32.727
+A call to free_pagetable gives that page back.
+
+01:33.840 --> 01:38.042
+Here is allocproc. It scans the slots in order, from 0.
+
+01:38.642 --> 01:43.878
+At the first Unused one, it sets the pid, from alloc_pid, and the state, Runnable,
+
+01:44.478 --> 01:47.717
+then makes the page table, which the process owns.
+
+01:48.840 --> 01:52.583
+If that page table is null, it returns null right there.
+
+01:53.183 --> 01:55.192
+If not, it returns the slot.
+
+01:55.792 --> 02:01.250
+And if no slot is Unused, the loop ends, and it returns null: the table is full.
+
+02:02.360 --> 02:05.602
+The second function, freeproc, gives a slot back.
+
+02:06.202 --> 02:10.093
+It frees the page table, which gives the page back to kalloc,
+
+02:10.693 --> 02:15.481
+then nulls the field, sets the pid to 0, and sets the state to Unused.
+
+02:16.600 --> 02:23.098
+Part (a). Right after the table is initialized, every slot is Unused and NEXTPID is 1.
+
+02:23.698 --> 02:25.809
+The kernel runs these steps in order.
+
+02:26.409 --> 02:31.522
+For each call to allocproc, give the slot it returns, or null, and its pid.
+
+02:32.640 --> 02:34.335
+Step 1 is done for you.
+
+02:34.935 --> 02:38.793
+Every slot is Unused, so the scan stops at slot 0,
+
+02:39.393 --> 02:42.125
+and its call to alloc_pid hands out pid 1.
+
+02:43.640 --> 02:49.313
+Step 2: slot 0 is in use, so the scan goes on to slot 1, with pid 2.
+
+02:50.313 --> 02:52.551
+Step 3: slot 2, with pid 3.
+
+02:53.151 --> 02:56.883
+Each call takes the first Unused slot, and the next pid.
+
+02:57.400 --> 03:00.501
+Step 4 calls freeproc on the first process.
+
+03:01.101 --> 03:04.567
+As the table prints, slot 0 becomes Unused.
+
+03:05.167 --> 03:09.283
+But freeing the slot leaves NEXTPID alone: it only counts up.
+
+03:09.800 --> 03:12.935
+Step 5, d: another call to allocproc.
+
+03:13.935 --> 03:19.573
+It gets slot 0, the first Unused slot, the one step 4 freed, with pid 4.
+
+03:20.173 --> 03:24.520
+The slot is reused, but the pid is new: after 3 comes 4.
+
+03:25.040 --> 03:29.541
+Step 6 frees the process in slot 2, which becomes Unused.
+
+03:30.141 --> 03:31.381
+Step 7, e:
+
+03:32.381 --> 03:34.385
+slot 2 again, with pid 5.
+
+03:34.985 --> 03:41.107
+Slots 0 and 1 are in use, so the first Unused slot is the one step 6 freed.
+
+03:41.640 --> 03:42.828
+Step 8, f:
+
+03:43.828 --> 03:45.627
+slot 3, with pid 6.
+
+03:46.227 --> 03:53.003
+Slots 0, 1 and 2 are all in use, so the scan reaches the last slot, used for the first time.
+
+03:53.603 --> 03:55.309
+And the pid is the next one.
+
+03:55.840 --> 03:57.002
+Step 9, g:
+
+03:58.502 --> 04:01.689
+null. No process: all 4 slots are in use.
+
+04:02.289 --> 04:07.771
+The loop finds no Unused slot, so the call returns null without handing out a pid.
+
+04:09.780 --> 04:17.201
+The key says why. A call to allocproc always takes the first Unused slot, so freed slots are reused:
+
+04:17.801 --> 04:21.501
+slot 0 in step 5, and slot 2 in step 7.
+
+04:23.500 --> 04:29.055
+But NEXTPID only counts up, so a reused slot gets a new pid, never an old one.
+
+04:29.655 --> 04:36.090
+Pids 4 and 5 went to reused slots, and 6 to slot 3. Each of those pids is new.
+
+04:37.200 --> 04:42.703
+Part (b). This version of freeproc leaves out the line that calls free_pagetable.
+
+04:43.303 --> 04:47.248
+It still sets pagetable to null, and the slot to Unused.
+
+04:48.360 --> 04:53.104
+A loop calls allocproc, then freeproc on the result, over and over.
+
+04:53.704 --> 04:58.705
+RAM has about 32,000 free pages for kalloc to hand out.
+
+04:59.840 --> 05:02.186
+What happens to memory on each cycle?
+
+05:02.786 --> 05:07.981
+What does allocproc eventually return, after about how many cycles, and why?
+
+05:09.980 --> 05:17.894
+Each call to allocproc takes a page for the page table: its call to create_pagetable takes one from kalloc.
+
+05:18.494 --> 05:20.669
+And this freeproc never gives it back.
+
+05:22.700 --> 05:24.555
+One page leaks per cycle.
+
+05:25.155 --> 05:29.527
+Nothing points to the page anymore: the field that held it was set to null,
+
+05:30.127 --> 05:33.945
+and kalloc never got it back. So it is lost for good.
+
+05:35.980 --> 05:43.530
+After about 32,000 cycles: one page a cycle, from about 32,000 free pages.
+
+05:44.530 --> 05:50.820
+By then, kalloc has no pages left, so a call to create_pagetable returns null.
+
+05:52.820 --> 05:55.228
+And the call to allocproc returns null,
+
+05:56.228 --> 06:03.370
+and so does every call from then on: no page ever comes back, so no new process can ever be created.
+
+06:04.480 --> 06:10.807
+Part (c). In 36k, the scheduler picks the next process with a round-robin policy.
+
+06:11.407 --> 06:14.441
+It is given a snapshot of the state of every slot.
+
+06:15.560 --> 06:20.103
+RoundRobin keeps one field, next: the slot to start scanning from.
+
+06:20.703 --> 06:27.973
+A call to pick_next starts at that slot, self.next, and takes the slots one by one, wrapping around the end,
+
+06:28.573 --> 06:30.556
+and finds the first Runnable one.
+
+06:31.680 --> 06:38.387
+Then it sets self.next one past that slot, wrapping the same way, and returns the slot's index.
+
+06:38.987 --> 06:41.694
+Next time, the scan starts just after it.
+
+06:42.800 --> 06:46.457
+The table has 5 slots, numbered from 0 in this order:
+
+06:47.057 --> 06:52.663
+A and B are Runnable, C is Sleeping, one slot is Unused, and D is Runnable.
+
+06:53.263 --> 06:55.118
+And self.next is 3.
+
+06:56.240 --> 06:59.791
+Right before pick 3, C wakes up and becomes Runnable.
+
+07:00.391 --> 07:04.059
+Each picked process becomes Runnable again after its turn.
+
+07:04.659 --> 07:12.131
+Fill in the table: the index a call to pick_next returns, the process that runs, and self.next afterwards.
+
+07:12.640 --> 07:14.239
+Pick 1 is done for you.
+
+07:14.839 --> 07:18.296
+The scan starts at 3, the Unused slot, and skips it.
+
+07:18.896 --> 07:22.381
+Slot 4 is Runnable: index 4, and D runs.
+
+07:22.981 --> 07:25.867
+Then self.next wraps around, to 0.
+
+07:27.400 --> 07:32.221
+Pick 2 starts at 0, and slot 0 is Runnable: index 0.
+
+07:33.221 --> 07:35.721
+Slot 0 holds A, so A runs.
+
+07:36.721 --> 07:39.791
+Then self.next moves one past it, to 1.
+
+07:40.920 --> 07:43.437
+Then, right before pick 3, C wakes up.
+
+07:44.037 --> 07:50.573
+Now only the Unused slot is not Runnable: A and D are Runnable again after their turns.
+
+07:52.080 --> 07:56.347
+Pick 3 starts at 1, and slot 1 is Runnable: index 1.
+
+07:57.347 --> 07:59.723
+Slot 1 holds B, so B runs.
+
+08:00.723 --> 08:02.920
+Then self.next moves to 2.
+
+08:04.440 --> 08:08.929
+Pick 4 starts at 2, and slot 2 is Runnable now: index 2.
+
+08:09.929 --> 08:13.251
+Slot 2 holds C, so C runs, its first turn.
+
+08:14.251 --> 08:16.555
+Then self.next moves to 3.
+
+08:18.080 --> 08:25.607
+Pick 5 goes just as pick 1 did: it starts at 3, skips the Unused slot, and returns index 4.
+
+08:26.607 --> 08:29.097
+Slot 4 holds D, so D runs.
+
+08:30.097 --> 08:32.742
+And self.next wraps around to 0.
+
+08:34.740 --> 08:39.262
+Each pick starts at self.next, and wraps from 4 back to 0.
+
+08:39.862 --> 08:43.617
+While C is Sleeping, a scan that reaches its slot skips it.
+
+08:45.120 --> 08:49.555
+Once it is Runnable, C gets its turn when a scan reaches its slot.
+
+08:50.155 --> 08:55.299
+It woke right before pick 3, but that scan started at 1, and B came first.
+
+08:55.899 --> 08:57.617
+So C ran at pick 4.
+
+08:58.120 --> 08:59.475
+That's Problem 1.
+
+09:00.075 --> 09:03.495
+Part (a): freed slots are reused, but pids are not.
+
+09:04.095 --> 09:09.978
+Part (b): a page never given back is lost each cycle, until kalloc runs out.
+
+09:10.578 --> 09:15.195
+Part (c): each pick takes the first Runnable slot from self.next.

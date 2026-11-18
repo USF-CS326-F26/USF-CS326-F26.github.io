@@ -1,0 +1,235 @@
+WEBVTT
+
+00:00.000 --> 00:04.145
+Midterm 2 Practice Exam, Problem 2: Virtual Memory.
+
+00:04.745 --> 00:10.183
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:10.783 --> 00:14.675
+A script reveals it, and this explainer was built with Claude.
+
+00:15.200 --> 00:24.497
+Problem 2 draws on one OSlings exercise: 39k_virtual_memory, from week 10, on Friday, October 30.
+
+00:25.097 --> 00:29.094
+You wrote make_satp, and kvmmake's three mappings.
+
+00:29.694 --> 00:38.102
+The rest came with the exercise: walk and mappages, carried from 33k, kvminithart, and the test.
+
+00:39.200 --> 00:42.409
+Problem 2, from 39k_virtual_memory.
+
+00:43.009 --> 00:46.805
+The function kvmmake builds the kernel's page table,
+
+00:47.405 --> 00:56.001
+and a call to make_satp returns the value for satp, the register that tells the MMU which page table to use.
+
+00:57.120 --> 01:02.856
+Once satp is written, and the kernel runs in supervisor mode, as part (c) assumes,
+
+01:03.456 --> 01:08.563
+the MMU translates every memory access the kernel makes through that table:
+
+01:09.163 --> 01:11.784
+instruction fetches, loads and stores.
+
+01:12.880 --> 01:20.302
+Bits 63 to 60 of satp hold MODE: 8 is Sv39, 3-level page tables.
+
+01:20.902 --> 01:25.616
+Bits 59 to 44 hold the ASID, 0 here.
+
+01:26.216 --> 01:32.614
+Bits 43 to 0 hold the PPN, the physical page number of the root page table.
+
+01:33.720 --> 01:39.256
+SATP_SV39 is 8 shifted left by 60: MODE 8, alone.
+
+01:39.856 --> 01:45.366
+The function make_satp combines it with the root's address, shifted right by 12.
+
+01:46.480 --> 01:52.675
+The flags: V for valid, R for readable, W for writable, and X for executable.
+
+01:53.275 --> 01:59.211
+The function kvmmake takes the root page table from kalloc, and zeroes it.
+
+01:59.811 --> 02:05.280
+Then it maps exactly three regions, each to itself: va equals pa.
+
+02:06.400 --> 02:11.508
+The UART page, at 0x1000_0000, readable and writable.
+
+02:12.108 --> 02:16.077
+The TEST_FINISHER page, at 0x10_0000, the same.
+
+02:16.677 --> 02:26.520
+And all of RAM, from 0x8000_0000 up to 0x8800_0000: readable, writable and executable.
+
+02:27.640 --> 02:31.661
+The function px picks the 9-bit table index at each level:
+
+02:32.261 --> 02:34.382
+2 is the root, 0 the last.
+
+02:34.982 --> 02:40.469
+It shifts va right by 12, plus 9 a level, then keeps the low 9 bits.
+
+02:41.600 --> 02:45.822
+The function translate is the MMU's lookup, written in Rust.
+
+02:46.422 --> 02:53.189
+A call to walk, with alloc false, follows px(2) and px(1) down to the leaf entry.
+
+02:54.320 --> 02:58.627
+If the walk finds an empty entry on the way, that is a page fault.
+
+02:59.227 --> 03:04.437
+Otherwise, the result is the leaf's page plus the offset, the low 12 bits.
+
+03:05.560 --> 03:11.127
+So kvmmake's table maps exactly those three regions, each to itself.
+
+03:11.727 --> 03:16.504
+Nothing else is mapped, so translating any other address is a page fault.
+
+03:17.600 --> 03:28.255
+Part (a). kvmmake's first call to kalloc returns the root page table at physical address 0x87ffd000.
+
+03:28.855 --> 03:32.014
+What value does a call to make_satp return for it?
+
+03:32.614 --> 03:36.802
+Give it in hex, and say what its MODE and PPN fields hold.
+
+03:38.820 --> 03:46.595
+Shifted right by 12, the root's address becomes 0x87ffd: its low 12 bits drop off.
+
+03:47.195 --> 03:53.830
+And 8 shifted left by 60 is MODE 8, alone in the top hex digit, with zeros below it.
+
+03:55.860 --> 04:04.845
+So a call to make_satp, for this root, returns 0x8000_0000_0008_7ffd.
+
+04:06.345 --> 04:15.218
+MODE is 8: Sv39. And the PPN is 0x87ffd, the root table's physical page number.
+
+04:16.720 --> 04:20.953
+That is its address, with the always-zero low 12 bits dropped.
+
+04:21.553 --> 04:27.846
+A page table fills one page, and starts where a page starts, so those bits are always 0.
+
+04:28.960 --> 04:32.981
+Part (b): translate each address with kvmmake's table.
+
+04:33.581 --> 04:40.403
+The first row is done for you: 0x8000_3456, kernel code.
+
+04:41.003 --> 04:45.515
+Shifted right by 12, it is 0x80003.
+
+04:46.640 --> 04:50.193
+Its low 9 bits give px(0), which is 3.
+
+04:50.793 --> 04:56.039
+Shifted by 9 more, its low 9 bits give px(1), which is 0.
+
+04:56.639 --> 05:03.322
+Shifted by 18, it is 2: px(2). And the offset is 0x456.
+
+05:04.440 --> 05:09.403
+It is in RAM, which is mapped to itself, so the physical address is the same.
+
+05:09.920 --> 05:15.610
+The next row, 0x1000_0010, is in the UART page.
+
+05:17.110 --> 05:24.727
+Shifted right by 12, it is 0x10000. Its low 9 bits, px(0), are 0.
+
+05:25.327 --> 05:31.093
+Shifted by 9 more, it is 0x80, which is 128: px(1).
+
+05:31.693 --> 05:33.548
+And px(2) is 0.
+
+05:35.580 --> 05:39.846
+So its indexes are 0, 128 and 0.
+
+05:40.846 --> 05:44.778
+Its offset, the low 12 bits, is 0x010.
+
+05:46.278 --> 05:54.635
+It is in the UART page, which is mapped to itself, so its physical address is 0x1000_0010.
+
+05:55.160 --> 05:58.412
+The last row is 0x2000_0000.
+
+05:59.912 --> 06:03.889
+Its indexes are 0, 256 and 0.
+
+06:04.489 --> 06:13.151
+Shifted right by 12, it is twice the UART row's 0x10000, so its px(1) is twice 128.
+
+06:14.151 --> 06:16.731
+Its offset is 0x000.
+
+06:18.240 --> 06:19.882
+The result: page fault.
+
+06:21.382 --> 06:27.585
+The key's reason: it is in none of the three mapped regions, so translating it is a page fault.
+
+06:28.720 --> 06:36.536
+Its px(2) is 0: root entry 0, which leads to the level-1 table that the UART page uses.
+
+06:37.136 --> 06:40.293
+But there, entry 256 is empty.
+
+06:40.893 --> 06:46.239
+So the call to walk returns null: an empty entry on the way, a page fault.
+
+06:47.360 --> 06:56.915
+Part (c). This version of kvmmake maps all of RAM with PTE_R and PTE_W, leaving out PTE_X.
+
+06:57.515 --> 06:59.723
+The kernel's own code lives in RAM.
+
+07:00.323 --> 07:03.465
+What happens right after satp is written, and why?
+
+07:04.560 --> 07:09.828
+Assume the kernel runs in supervisor mode, as it does from 43k on,
+
+07:10.428 --> 07:14.373
+so the MMU really translates every instruction fetch.
+
+07:16.380 --> 07:21.584
+The very next instruction fetch comes from a RAM page that is not executable:
+
+07:22.184 --> 07:24.765
+its leaf entry has no PTE_X.
+
+07:26.780 --> 07:30.158
+So the fetch causes an instruction page fault, at once:
+
+07:30.758 --> 07:35.842
+its leaf is still there, mapping the page to itself, but a fetch also needs X.
+
+07:36.442 --> 07:38.585
+The kernel's code can't run anymore.
+
+07:39.080 --> 07:40.529
+That's Problem 2.
+
+07:41.129 --> 07:45.159
+Part (a): satp holds the root's page number, not its address.
+
+07:45.759 --> 07:50.386
+Part (b): an address outside the three mapped regions is a page fault.
+
+07:50.986 --> 07:56.844
+Part (c): without PTE_X on RAM, the very next instruction fetch faults.

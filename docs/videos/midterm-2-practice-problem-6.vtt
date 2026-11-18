@@ -1,0 +1,304 @@
+WEBVTT
+
+00:00.000 --> 00:05.093
+Midterm 2 Practice Exam, Problem 6: Devices and File Commands.
+
+00:05.693 --> 00:11.131
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.731 --> 00:15.623
+A script reveals it, and this explainer was built with Claude.
+
+00:16.120 --> 00:19.234
+Problem 6 draws on OSlings exercises.
+
+00:19.834 --> 00:24.605
+41k_devices, from week 11, on Thursday, November 5.
+
+00:25.205 --> 00:29.009
+You wrote tx_ready, rx_ready, putc and getc.
+
+00:29.609 --> 00:33.479
+The register constants and reg_read came with the exercise.
+
+00:34.000 --> 00:39.289
+47k_file_commands, from week 12, on Thursday, November 12.
+
+00:39.889 --> 00:42.104
+You wrote touch, cat and rm there.
+
+00:42.704 --> 00:48.565
+The filesystem and the shell's other commands, mkdir among them, came with that exercise.
+
+00:50.080 --> 00:57.840
+Problem 6, part (a). In 41k, the UART driver talks to the serial chip through its one-byte registers,
+
+00:58.440 --> 01:01.534
+at UART0 plus each register's offset.
+
+01:02.640 --> 01:07.779
+UART0 is 0x1000_0000, where the registers start.
+
+01:08.379 --> 01:14.590
+RBR, the Receive Buffer Register, is offset 0: it holds the byte received.
+
+01:15.190 --> 01:21.790
+LSR, the Line Status Register, is offset 5: it holds the status flags of the chip.
+
+01:22.920 --> 01:29.149
+DR, Data Ready, is bit 0: set when a received byte is waiting in RBR.
+
+01:29.749 --> 01:36.710
+THRE, THR Empty, is bit 5: set when the chip can take another byte to send.
+
+01:37.840 --> 01:41.883
+The function reg_read reads one register, with read_volatile.
+
+01:42.483 --> 01:48.817
+A call to tx_ready reads LSR, and tests whether its THRE bit is set.
+
+01:49.417 --> 01:53.192
+A call to rx_ready tests the DR bit the same way.
+
+01:54.320 --> 01:56.676
+A call to getc checks rx_ready.
+
+01:57.276 --> 02:03.247
+If it says a byte is waiting, the call reads RBR, and returns Some, holding the byte.
+
+02:03.847 --> 02:07.739
+If not, it returns None, as its comment says: nothing yet.
+
+02:08.840 --> 02:13.291
+The bits of LSR run from 7, on the left, down to 0.
+
+02:13.891 --> 02:17.785
+Bit 5 is THRE, and bit 0 is DR.
+
+02:18.385 --> 02:20.827
+The other bits are status bits to ignore.
+
+02:21.960 --> 02:29.574
+In this version, the function rx_ready tests the wrong bit: THRE, the bit that tx_ready tests.
+
+02:30.174 --> 02:37.443
+Right after start-up, no byte has been received, and nothing is being sent, so LSR reads 0x60.
+
+02:38.560 --> 02:45.055
+Reading RBR when no byte has arrived gives a meaningless value: 0 on this chip.
+
+02:45.655 --> 02:49.965
+What do this version's rx_ready and getc return now, and why?
+
+02:50.565 --> 02:52.804
+And what does the correct getc return?
+
+02:54.320 --> 03:00.984
+First, the value in binary: 0x60 is 0110_0000.
+
+03:01.584 --> 03:03.775
+Bit 5, THRE, is 1,
+
+03:04.375 --> 03:06.527
+and bit 0, DR, is 0.
+
+03:08.540 --> 03:11.324
+This version's rx_ready tests bit 5.
+
+03:11.924 --> 03:14.035
+That bit is only about the transmitter:
+
+03:14.635 --> 03:20.127
+it says the chip can take another byte to send. It says nothing about a byte received.
+
+03:22.140 --> 03:26.183
+Bit 5 is 1, so this version's rx_ready returns true.
+
+03:27.183 --> 03:30.221
+So the call to getc goes on to read RBR,
+
+03:31.221 --> 03:33.215
+and returns Some, holding 0.
+
+03:34.720 --> 03:37.406
+The key calls it a byte that was never received.
+
+03:38.006 --> 03:43.029
+No byte has arrived: the 0 is just the meaningless value this chip gives.
+
+03:44.560 --> 03:49.509
+The correct rx_ready tests bit 0, DR, and DR is 0.
+
+03:50.509 --> 03:51.840
+So it returns false,
+
+03:53.340 --> 03:56.507
+and the call to getc returns None: nothing yet.
+
+03:58.040 --> 04:02.561
+Part (b). In 47k, the shell gained touch, cat and rm.
+
+04:03.161 --> 04:06.968
+Each works in the current directory, on the locked filesystem.
+
+04:07.568 --> 04:09.709
+They use these filesystem methods.
+
+04:10.840 --> 04:14.594
+A call to dircreate makes a new entry in a directory.
+
+04:15.194 --> 04:18.551
+If the name is taken, it returns AlreadyExists.
+
+04:19.151 --> 04:22.915
+A call to dirlookup turns a name into an inode number.
+
+04:24.040 --> 04:30.098
+A call to read copies a file's bytes into a buffer, and returns an error for a directory.
+
+04:30.698 --> 04:34.355
+A call to is_dir tells whether an inode is a directory.
+
+04:34.955 --> 04:38.837
+A call to unlink removes an entry, and frees its inode.
+
+04:40.360 --> 04:44.695
+Now the commands. The touch command calls dircreate, for a File.
+
+04:45.295 --> 04:48.611
+If the create succeeds, the touch command does nothing.
+
+04:49.211 --> 04:53.100
+On AlreadyExists, it does nothing either: already there, fine.
+
+04:53.700 --> 04:57.558
+On any other error, it prints touch: cannot create file.
+
+04:58.680 --> 05:02.972
+If the lookup fails, the cat command prints cat: no such file.
+
+05:03.572 --> 05:09.211
+Then it calls read, and with Ok and a count n, prints the first n bytes, as text.
+
+05:09.811 --> 05:12.677
+With an error, it prints cat: is a directory.
+
+05:13.800 --> 05:19.702
+The rm command looks the name up, and prints rm: no such file if that fails.
+
+05:20.302 --> 05:25.675
+If the inode is a directory, it prints rm: is a directory, and returns.
+
+05:26.275 --> 05:28.002
+Otherwise it calls unlink.
+
+05:29.520 --> 05:33.807
+Starting from an empty root, a user types these commands, in order.
+
+05:34.407 --> 05:37.979
+What does each one print? Write "nothing" if it prints nothing.
+
+05:38.579 --> 05:44.133
+Step 1 is done for you: mkdir d creates the directory d, and prints nothing.
+
+05:45.640 --> 05:47.265
+Step 2: touch d.
+
+05:47.865 --> 05:50.446
+d is the directory that step 1 made.
+
+05:51.446 --> 05:52.673
+It prints nothing.
+
+05:53.273 --> 05:56.961
+Why nothing, when d is not a file? We'll come back to that.
+
+05:58.080 --> 05:59.727
+Step 3: cat d.
+
+06:00.327 --> 06:03.664
+The lookup finds d, and the cat command calls read.
+
+06:04.264 --> 06:07.729
+But d is a directory, so the read returns an error.
+
+06:08.729 --> 06:11.620
+The cat command prints cat: is a directory.
+
+06:12.720 --> 06:14.702
+Step 4: rm nothere.
+
+06:15.302 --> 06:19.001
+The root has no entry by that name, so the lookup fails.
+
+06:20.001 --> 06:24.510
+The rm command prints rm: no such file, and returns.
+
+06:25.640 --> 06:27.298
+Step 5: touch f.
+
+06:27.898 --> 06:32.503
+There is no f yet, so the create makes the file f, and returns Ok.
+
+06:33.503 --> 06:36.884
+The touch command does nothing for that: it prints nothing.
+
+06:38.000 --> 06:39.821
+Step 6: rm f.
+
+06:40.421 --> 06:44.111
+The lookup finds f, and f is a file, not a directory.
+
+06:44.711 --> 06:50.545
+So the rm command calls unlink, which removes the entry and frees the inode.
+
+06:51.545 --> 06:52.771
+It prints nothing.
+
+06:53.880 --> 06:55.448
+Step 7: cat f.
+
+06:56.048 --> 06:59.246
+Step 6 removed f, so now the lookup fails.
+
+07:00.246 --> 07:04.094
+The cat command prints cat: no such file, and returns.
+
+07:05.600 --> 07:08.830
+Back to step 2. Under the table, the exam asks:
+
+07:09.430 --> 07:14.316
+step 2 prints nothing, even though d is a directory, not a file. Why?
+
+07:16.340 --> 07:20.457
+When the create checks for a taken name, it looks at the name alone.
+
+07:21.057 --> 07:26.923
+Its comment says so: AlreadyExists if the name is taken, by a file or a directory.
+
+07:27.523 --> 07:30.613
+d is taken, so it returns AlreadyExists.
+
+07:32.620 --> 07:35.819
+And the touch command treats that as already there: fine,
+
+07:36.419 --> 07:38.860
+without checking what kind of inode it is.
+
+07:39.460 --> 07:41.027
+So nothing is printed.
+
+07:42.160 --> 07:48.581
+The key ends with notes on steps 3 and 7. Step 3: the read refuses a directory.
+
+07:49.181 --> 07:52.507
+Step 7: rm removed f, in step 6.
+
+07:53.040 --> 07:54.500
+That's Problem 6.
+
+07:55.100 --> 08:03.961
+Part (a), right after start-up: with THRE tested, a call to getc returns Some, holding 0; with DR, None.
+
+08:04.561 --> 08:11.267
+Part (b): touch d prints nothing: the name d is taken, and touch treats AlreadyExists as fine.

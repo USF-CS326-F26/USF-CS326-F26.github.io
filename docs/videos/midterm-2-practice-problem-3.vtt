@@ -1,0 +1,259 @@
+WEBVTT
+
+00:00.000 --> 00:03.995
+Midterm 2 Practice Exam, Problem 3: Filesystem.
+
+00:04.595 --> 00:10.033
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:10.633 --> 00:14.525
+A script reveals it, and this explainer was built with Claude.
+
+00:15.040 --> 00:23.905
+Problem 3 draws on one OSlings exercise: 40k_filesystem, from week 11, on Thursday, November 5.
+
+00:24.505 --> 00:27.559
+You wrote two functions there, dirlookup and write.
+
+00:28.159 --> 00:34.985
+Everything else came with the exercise: the types, init, alloc, read, dircreate, and the test.
+
+00:36.480 --> 00:43.024
+Problem 3: in 40k, a directory is an inode whose entries map names to inode numbers,
+
+00:43.624 --> 00:47.377
+and a file is an inode holding up to FILESIZE bytes.
+
+00:47.977 --> 00:52.883
+FILESIZE is 128: the most bytes a file can hold.
+
+00:54.000 --> 00:56.419
+An inode's kind is Free, File or Dir,
+
+00:57.019 --> 01:00.217
+and every error is one of these FsError values.
+
+01:00.817 --> 01:05.949
+An inode holds its kind, its size, a data array of FILESIZE bytes,
+
+01:06.549 --> 01:09.928
+and entries: a directory's names and inode numbers.
+
+01:11.040 --> 01:14.356
+A call to write first matches on the inode's kind.
+
+01:14.956 --> 01:18.815
+For a Free inode, it returns NotFound: no such file.
+
+01:19.415 --> 01:25.496
+For a Dir, it returns IsADirectory: it can't write a directory. Only a File goes on.
+
+01:26.600 --> 01:30.620
+For data longer than FILESIZE, it returns FileTooBig.
+
+01:31.220 --> 01:34.750
+Otherwise it copies the bytes into the start of the data array,
+
+01:35.350 --> 01:39.573
+sets size to the data's length, and returns Ok with that length.
+
+01:40.680 --> 01:43.228
+A call to read checks the kind the same way.
+
+01:43.828 --> 01:49.661
+The count n is the smaller of size and the buffer's length: never more than the file holds.
+
+01:50.261 --> 01:54.209
+It copies n bytes into the buffer, and returns Ok(n).
+
+01:55.720 --> 02:00.135
+A call to dirlookup first checks that the inode it was given is a Dir.
+
+02:00.735 --> 02:03.086
+If not, it returns NotADirectory.
+
+02:03.686 --> 02:10.198
+Then it scans the entries, for a used one with this name, and returns Ok with its inode number.
+
+02:11.320 --> 02:13.982
+If none matches, it returns NotFound.
+
+02:14.582 --> 02:20.639
+A call to dircreate checks the name's length, then calls dirlookup, to reject duplicates.
+
+02:21.239 --> 02:25.472
+An Ok means the name is there: it returns AlreadyExists.
+
+02:26.600 --> 02:29.512
+NotFound means it is not there yet: go ahead.
+
+02:30.112 --> 02:31.883
+Any other error is passed up.
+
+02:32.483 --> 02:40.981
+Then it finds a free entry, calls alloc for a new inode, fills in the entry, and returns Ok with the new inode's number.
+
+02:42.480 --> 02:49.903
+Part (a). The root directory holds the empty file notes, inode 2, and the directory docs, inode 3.
+
+02:50.503 --> 02:51.985
+Inode 4 is Free.
+
+02:52.585 --> 02:58.131
+These calls run in order. What does each one return? The first row is done for you.
+
+02:59.240 --> 03:01.747
+Step 1 writes "hello" to inode 2.
+
+03:02.347 --> 03:06.111
+It is a File, and 5 bytes is not more than FILESIZE.
+
+03:06.711 --> 03:12.298
+So the bytes are copied in, size becomes 5, and the call returns Ok(5).
+
+03:12.800 --> 03:15.189
+Step 2 writes "hi" to inode 2.
+
+03:15.789 --> 03:21.024
+It is still a File, and "hi" fits: its bytes are copied over the start of the array,
+
+03:21.624 --> 03:23.553
+and size is set to their count.
+
+03:24.553 --> 03:28.103
+The call returns Ok(2): size is now 2.
+
+03:28.600 --> 03:32.994
+Step 3 reads inode 2 into buf, a 64-byte buffer.
+
+03:33.594 --> 03:39.887
+The read copies as many bytes as the smaller of size and the buffer's length, and size is 2.
+
+03:40.887 --> 03:44.800
+So the call returns Ok(2), and buf starts with "hi".
+
+03:45.320 --> 03:49.777
+Step 4 writes the byte "x" to inode 3, the directory docs.
+
+03:50.377 --> 03:53.107
+The write's match sends a Dir to its second arm.
+
+03:54.107 --> 03:58.661
+The call returns Err(IsADirectory): it can't write a directory.
+
+03:59.160 --> 04:03.111
+Step 5 writes the byte "x" to inode 4, which is Free.
+
+04:03.711 --> 04:06.429
+A Free inode takes the match's first arm.
+
+04:07.429 --> 04:10.980
+The call returns Err(NotFound): no such file.
+
+04:11.480 --> 04:15.267
+Step 6 writes 200 bytes of zeros to inode 2.
+
+04:15.867 --> 04:20.057
+Inode 2 is a File, but 200 is more than FILESIZE.
+
+04:21.057 --> 04:25.291
+So the call returns Err(FileTooBig), and nothing is copied.
+
+04:26.800 --> 04:34.814
+Under the table: after step 2, bytes 2 to 4 of inode 2's data array still hold llo, from step 1.
+
+04:35.414 --> 04:37.845
+Why doesn't step 3's read return them?
+
+04:39.860 --> 04:42.856
+In the key's words: step 2 set size to 2.
+
+04:43.456 --> 04:51.168
+The read copies only as many bytes as the smaller of size and the buffer's length: 2 bytes. So buf gets "hi".
+
+04:52.680 --> 04:54.803
+It never looks past the file's length.
+
+04:55.403 --> 05:00.481
+The old "llo" is still in the array, but it is no longer part of the file.
+
+05:02.000 --> 05:05.838
+The key's next line gives the reasons for steps 4 to 6.
+
+05:06.438 --> 05:11.104
+Step 4: inode 3 is a Dir. Step 5: inode 4 is Free.
+
+05:11.704 --> 05:18.831
+Step 6: 200 is more than FILESIZE, which is 128. That completes part (a).
+
+05:20.960 --> 05:27.364
+Part (b). In this version, the first line of dirlookup is left out: the InodeKind::Dir check.
+
+05:27.964 --> 05:29.319
+This line is gone.
+
+05:29.919 --> 05:37.308
+Now the kernel calls dircreate on inode 2, for a File named "x", where inode 2 is the file notes.
+
+05:38.440 --> 05:40.669
+What does dircreate return, and why?
+
+05:41.269 --> 05:44.352
+What does the correct dirlookup make it return instead?
+
+05:44.952 --> 05:47.564
+And why is this version's result a problem?
+
+05:48.680 --> 05:53.074
+A call to dircreate checks the name's length first, and "x" is short.
+
+05:53.674 --> 05:56.243
+Then it calls dirlookup, on inode 2.
+
+05:57.743 --> 06:02.041
+With no kind check, the lookup scans inode 2's entries anyway.
+
+06:03.160 --> 06:06.689
+Inode 2 is a file, and none of its entries is used.
+
+06:07.689 --> 06:10.131
+So the lookup returns Err(NotFound),
+
+06:10.731 --> 06:13.941
+and the create takes that as "not there yet: go ahead".
+
+06:15.940 --> 06:19.417
+So the create goes ahead, and returns Ok(4).
+
+06:20.017 --> 06:24.004
+A call to alloc hands out the first Free inode from the root up.
+
+06:24.604 --> 06:29.237
+Past the root, notes and docs, that's inode 4, Free since part (a).
+
+06:31.260 --> 06:36.344
+In the key's words: a new inode, with an entry for "x" written inside the file.
+
+06:36.944 --> 06:42.964
+The create wrote that entry into inode 2's entries, as if inode 2 were a directory.
+
+06:44.980 --> 06:51.732
+The correct dirlookup returns Err(NotADirectory) at its first line, and the create passes it up.
+
+06:53.232 --> 06:57.936
+So the call returns Err(NotADirectory), and nothing is created.
+
+06:59.940 --> 07:08.288
+The problem: this version corrupts the tree. A file now "contains" an entry, and inode 4 is allocated under a file.
+
+07:09.288 --> 07:15.878
+The only entry naming inode 4 is inside a file, so no directory listing will ever show it.
+
+07:17.600 --> 07:19.071
+That's Problem 3.
+
+07:19.671 --> 07:25.109
+Part (a): a write that succeeds sets the file's length, and a read never looks past it.
+
+07:25.709 --> 07:33.971
+Part (b): without the kind check, the create writes an entry inside a file; with it, the create returns NotADirectory.

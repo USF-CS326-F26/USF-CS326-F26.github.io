@@ -52,6 +52,10 @@ each problem that works the key on the set's own pages.
 and system calls. The set, its key, and a video that works the key on the
 set's own pages.
 
+**[Midterm 2 Practice Exam](../assignments/practice-set-02.md#practice-exam)**:
+six problems in the midterm's format, on `34k` through `48k`. The exam, its
+key, and a video for each problem that works the key on the exam's own pages.
+
 ## Exams
 
 **[Midterm 1](../assignments/midterm-1-solutions.md)**, Thursday, October 15:
