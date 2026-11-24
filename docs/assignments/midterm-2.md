@@ -3,6 +3,9 @@
 **Thursday, November 19 — in class, full period.** No exercise session on
 Friday, November 20.
 
+**Solutions:** both sections' exams and keys, with a video for each problem,
+are on [Midterm 2 Solutions](midterm-2-solutions.md).
+
 ## Format
 
 Pencil and paper, closed book. One permitted reference: the

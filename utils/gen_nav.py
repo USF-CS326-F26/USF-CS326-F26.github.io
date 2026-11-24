@@ -31,6 +31,7 @@ ASSIGNMENT_ORDER = [
     ("midterm-1-solutions.md", "Midterm 1 Solutions"),
     ("practice-set-02.md", "Practice Set 2"),
     ("midterm-2.md", "Midterm 2"),
+    ("midterm-2-solutions.md", "Midterm 2 Solutions"),
     ("practice-set-03.md", "Practice Set 3"),
     ("final.md", "Final Exam"),
     ("extra-credit.md", "Extra Credit"),

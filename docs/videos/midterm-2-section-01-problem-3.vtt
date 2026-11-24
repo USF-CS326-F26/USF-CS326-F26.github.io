@@ -1,0 +1,451 @@
+WEBVTT
+
+00:00.000 --> 00:05.258
+Midterm 2, Section 01, Problem 3: Inodes and Directories.
+
+00:05.858 --> 00:11.296
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.896 --> 00:15.788
+A script reveals it, and this explainer was built with Claude.
+
+00:16.320 --> 00:25.185
+Problem 3 draws on one OSlings exercise: 40k_filesystem, from week 11, on Thursday, November 5.
+
+00:25.785 --> 00:28.839
+You wrote two functions there, dirlookup and write.
+
+00:29.439 --> 00:36.265
+Everything else came with the exercise: the types, init, alloc, read, dircreate, and the test.
+
+00:37.760 --> 00:43.987
+Problem 3: 40k has no disk, so the filesystem is an array of inodes in memory.
+
+00:44.587 --> 00:48.441
+Each inode is Free, which means unused, a File or a Dir,
+
+00:49.041 --> 00:52.388
+and a directory's entries map names to inode numbers.
+
+00:53.520 --> 00:59.109
+There are 64 inodes in the table, and up to 16 entries in a directory.
+
+00:59.709 --> 01:02.877
+A name is at most NAMELEN bytes: 14.
+
+01:03.477 --> 01:06.953
+And ROOT is 1: inode 1 is the root directory.
+
+01:08.080 --> 01:15.956
+A directory entry holds a name field of NAMELEN bytes, the name's length, an inode number, and whether it is used.
+
+01:16.556 --> 01:22.216
+An inode holds its kind, its size and data, for a File, and entries, for a Dir.
+
+01:23.720 --> 01:29.457
+A call to init resets every inode to Free, then makes ROOT a Dir: the empty root.
+
+01:30.057 --> 01:33.969
+A call to alloc scans from ROOT up, for the first Free inode,
+
+01:34.569 --> 01:37.789
+sets its kind, and returns Ok with its number.
+
+01:38.920 --> 01:43.335
+A call to dirlookup first checks that the inode it was given is a Dir.
+
+01:43.935 --> 01:47.605
+If not, it returns NotADirectory, and reads no entry.
+
+01:48.205 --> 01:52.120
+Then it scans the directory's entries, for one with this name.
+
+01:53.240 --> 01:55.254
+An entry matches when it is used,
+
+01:55.854 --> 01:57.815
+its length equals the name's length,
+
+01:58.415 --> 02:00.998
+and its bytes, up to that length, are the name.
+
+02:01.598 --> 02:07.995
+Then it returns Ok with the entry's inode number. If none matches, it returns NotFound.
+
+02:09.120 --> 02:16.115
+A call to dircreate checks the length first: for a name longer than NAMELEN, it returns NameTooLong.
+
+02:16.715 --> 02:21.625
+Then it calls dirlookup, to catch a duplicate, and matches on what comes back.
+
+02:22.720 --> 02:27.700
+An Ok means the name is already there: it returns AlreadyExists.
+
+02:28.300 --> 02:31.158
+NotFound means it is not there yet: go on.
+
+02:31.758 --> 02:35.927
+Any other error is passed up: the call returns that same error.
+
+02:37.040 --> 02:42.699
+Next it finds a free entry, or returns DirFull, and calls alloc for the new inode.
+
+02:43.299 --> 02:45.237
+It stores the name, then zeros,
+
+02:45.837 --> 02:49.941
+writes the entry, and returns Ok with the new inode's number.
+
+02:51.440 --> 02:58.362
+Part (a). Right after init, inode 1 is the empty root directory, and every other inode is Free.
+
+02:58.962 --> 03:03.995
+The kernel then makes these calls, in order. Give the value each call returns.
+
+03:05.120 --> 03:10.401
+Step 1 is done for you: "bin" is not in the root yet, so the create goes on.
+
+03:11.001 --> 03:15.277
+A call to alloc returns 2, the first Free inode from ROOT up.
+
+03:15.877 --> 03:18.789
+Now the root holds "bin", naming inode 2.
+
+03:20.320 --> 03:25.877
+Step 2 creates the file "cat" inside inode 2, the Dir that step 1 made.
+
+03:26.477 --> 03:30.231
+It holds no entries yet, so the lookup returns NotFound,
+
+03:30.831 --> 03:32.323
+and the create goes on.
+
+03:33.440 --> 03:39.030
+A call to alloc scans from ROOT, past the root and inode 2, the Dir from step 1.
+
+03:40.030 --> 03:44.083
+So step 2 returns Ok(3): the first Free inode.
+
+03:44.683 --> 03:47.926
+Inode 2 now holds "cat", naming inode 3.
+
+03:48.440 --> 03:51.628
+Step 3 creates "cat" again, this time in the root.
+
+03:52.228 --> 03:57.134
+The root holds only "bin": the "cat" from step 2 is in another directory.
+
+03:57.734 --> 04:01.437
+So the lookup returns NotFound, and the create goes on.
+
+04:02.560 --> 04:07.385
+The scan passes the root, inode 2 and inode 3, all in use now.
+
+04:08.385 --> 04:10.763
+So step 3 returns Ok(4).
+
+04:11.763 --> 04:13.907
+The key's note: another directory.
+
+04:14.507 --> 04:17.385
+The root and inode 2 each hold their own "cat".
+
+04:17.880 --> 04:20.845
+Step 4 creates "cat" in inode 2 again.
+
+04:21.445 --> 04:25.571
+Step 2 put it there, so the lookup returns Ok with its number.
+
+04:26.571 --> 04:32.042
+The match turns that Ok into Err(AlreadyExists), and alloc is never called.
+
+04:33.042 --> 04:35.025
+The key's note: step 2 made it.
+
+04:35.560 --> 04:38.599
+Step 5 creates "hat" inside inode 3.
+
+04:39.199 --> 04:44.115
+Inode 3 is the File from step 2, and the lookup first checks for a Dir.
+
+04:45.115 --> 04:49.763
+So the call returns Err(NotADirectory), passed up by the match.
+
+04:50.763 --> 04:52.799
+The key's note: 3 is a File.
+
+04:53.320 --> 04:57.650
+Step 6 looks up "bi" in the root, which holds "bin" and "cat".
+
+04:58.250 --> 05:00.042
+"bi" is the start of "bin",
+
+05:00.642 --> 05:06.987
+but an entry matches only when its length equals the name's length, and "bi" is shorter than both.
+
+05:08.520 --> 05:11.335
+So step 6 returns Err(NotFound).
+
+05:12.335 --> 05:15.646
+The key's note: bi is 2 bytes, and bin is 3.
+
+05:16.246 --> 05:18.835
+The lengths differ, so no entry matches.
+
+05:19.360 --> 05:23.562
+Steps 7 and 8 look up "cat", in inode 2 and then in the root.
+
+05:24.562 --> 05:27.965
+Step 2 made the one in inode 2: Ok(3).
+
+05:28.965 --> 05:32.121
+Step 3 made the one in the root: Ok(4).
+
+05:32.640 --> 05:39.363
+Step 9 creates the directory "tmp" in the root. It is not there, so the create goes on.
+
+05:39.963 --> 05:44.025
+The scan passes the root and inodes 2 to 4, all in use.
+
+05:45.025 --> 05:48.449
+So the first Free inode is 5: Ok(5).
+
+05:49.960 --> 05:53.192
+The key's note: steps 4, 5 never reach alloc.
+
+05:53.792 --> 05:58.661
+Each returned from the match, before alloc was called, so neither took an inode.
+
+05:59.261 --> 06:00.733
+That fills in the table.
+
+06:02.840 --> 06:11.144
+Part (b) continues from part (a). f is the inode number of the file /bin/cat, made in part (a).
+
+06:11.744 --> 06:14.643
+It has never been written, so its size is 0.
+
+06:15.243 --> 06:18.561
+Part (i) asks for each value with Ok or Err.
+
+06:19.080 --> 06:22.695
+The kernel makes buf, a buffer of 16 zero bytes.
+
+06:23.295 --> 06:27.215
+r1 is the value of writing "kitten", 6 bytes, to f.
+
+06:27.815 --> 06:31.023
+r2 is the value of writing "cat", 3 bytes.
+
+06:31.623 --> 06:34.086
+And r3, of reading f into buf.
+
+06:35.200 --> 06:43.809
+A call to write first matches on the inode's kind: a Free inode or a Dir returns an error, and only a File goes on.
+
+06:44.409 --> 06:48.429
+For data longer than FILESIZE, it returns FileTooBig.
+
+06:49.560 --> 06:53.090
+Otherwise it copies the bytes into the start of the data array,
+
+06:53.690 --> 06:55.118
+sets size to their count,
+
+06:55.718 --> 06:57.764
+and returns Ok with that count.
+
+06:58.880 --> 07:03.860
+The first write: f is a File, and 6 bytes is not more than FILESIZE.
+
+07:04.460 --> 07:10.027
+So "kitten" goes into bytes 0 to 5 of data, and size is set to its length.
+
+07:11.027 --> 07:14.481
+r1 is Ok(6): size is now 6.
+
+07:15.600 --> 07:20.546
+The second write: "cat", 3 bytes, copied over bytes 0 to 2 of data.
+
+07:21.146 --> 07:23.651
+size is set again, to this write's length.
+
+07:24.651 --> 07:26.433
+r2 is Ok(3).
+
+07:28.760 --> 07:32.460
+Then the read. A call to read checks the kind the same way.
+
+07:33.060 --> 07:36.866
+It copies n bytes, the smaller of size and the buffer's length,
+
+07:37.466 --> 07:39.141
+and returns Ok(n).
+
+07:40.240 --> 07:45.391
+The second write set size, and buf is 16 bytes long, longer than size.
+
+07:45.991 --> 07:48.506
+So n, the smaller of the two, is size.
+
+07:49.506 --> 07:51.319
+r3 is Ok(3).
+
+07:52.440 --> 07:55.955
+Part (ii). The size of inode f after the second write:
+
+07:56.955 --> 07:58.901
+3 bytes, set by that write.
+
+07:59.501 --> 08:01.655
+And the text the read copies into buf:
+
+08:02.655 --> 08:04.890
+cat, the first 3 bytes of data.
+
+08:06.000 --> 08:13.354
+Part (iii). The first write put "kitten" in bytes 0 to 5, and the second put "cat" in bytes 0 to 2.
+
+08:13.954 --> 08:17.281
+What is true of the "ten" that was in bytes 3 to 5?
+
+08:18.400 --> 08:25.141
+The second write copied only its own 3 bytes, over bytes 0 to 2, and wrote nothing past them.
+
+08:25.741 --> 08:31.723
+It also set size to 3, and a read copies the smaller of size and the buffer's length.
+
+08:33.740 --> 08:40.434
+So (B): it is still in data, but the second write set size, and read copies only size bytes.
+
+08:41.034 --> 08:45.343
+Here buf is longer than size, so size is what stops the read.
+
+08:45.840 --> 08:50.429
+Not (A): a write copies only its own bytes, and writes no zeros.
+
+08:51.029 --> 08:56.146
+Not (C): buf is 16 bytes long, so its length is not what stops the read.
+
+08:56.746 --> 08:59.955
+Not (D): buf begins with "cat", not "catten".
+
+09:02.480 --> 09:07.837
+Part (c). In this version, the lookup compares all NAMELEN bytes of the stored name.
+
+09:08.437 --> 09:12.308
+40k compared the stored name only up to the entry's length.
+
+09:12.908 --> 09:14.783
+This line takes the whole field.
+
+09:15.880 --> 09:18.311
+The rest of the code is as in 40k,
+
+09:18.911 --> 09:24.125
+and two byte slices are equal only when they have the same length and the same bytes.
+
+09:24.725 --> 09:28.085
+Right after init, the kernel makes these calls, in order.
+
+09:29.200 --> 09:34.767
+Step 1 is done for you: it creates the file "log" in the root, and gets inode 2.
+
+09:35.367 --> 09:40.913
+A call to dircreate stores the name, then zeros, in a field NAMELEN bytes long,
+
+09:41.513 --> 09:43.176
+and saves the name's length.
+
+09:44.680 --> 09:49.287
+Step 2 creates "old" inside inode 2, the File from step 1.
+
+09:49.887 --> 09:53.480
+The lookup checks the kind first, before it compares any name,
+
+09:54.080 --> 09:56.457
+and this version did not change that check.
+
+09:57.560 --> 10:03.625
+Inode 2 is a File, so the lookup stops at that check, and never reaches the changed line.
+
+10:04.625 --> 10:09.274
+So the call returns Err(NotADirectory), passed up by the match.
+
+10:10.274 --> 10:12.172
+The key's note: 2 is a File.
+
+10:13.680 --> 10:15.844
+Step 3 looks up "log" in the root.
+
+10:16.444 --> 10:20.869
+The entry for "log" is used, and its length equals the name's length.
+
+10:21.469 --> 10:27.792
+Then this version compares the whole name field, "log" and its zeros, with the name "log" alone.
+
+10:28.920 --> 10:34.135
+The field is all NAMELEN bytes long, and the name is only as long as "log".
+
+10:34.735 --> 10:37.635
+Slices of different lengths are never equal.
+
+10:38.635 --> 10:42.721
+So step 3 returns Err(NotFound), though "log" is there.
+
+10:44.240 --> 10:47.226
+The key's note: all 14 bytes against 3.
+
+10:47.826 --> 10:53.058
+The whole field is 14 bytes, "log" and then zeros, while the name is 3.
+
+10:53.658 --> 10:57.368
+They can never be equal, so the lookup never finds "log".
+
+10:57.880 --> 11:00.408
+Step 4 creates "log" in the root again.
+
+11:01.008 --> 11:04.870
+The lookup misses it, as in step 3, so the create goes on.
+
+11:05.470 --> 11:09.649
+A call to alloc passes the root and inode 2, both in use.
+
+11:10.649 --> 11:13.017
+So step 4 returns Ok(3).
+
+11:14.520 --> 11:16.522
+The key's note: a second log.
+
+11:17.122 --> 11:23.691
+The root now holds two entries named "log": one naming inode 2, and one naming inode 3.
+
+11:25.800 --> 11:27.806
+What goes wrong because of this line?
+
+11:28.406 --> 11:33.013
+Think back to step 4: the lookup missed "log", and the create went on.
+
+11:34.513 --> 11:39.855
+So (C): dircreate adds a second entry for a name the directory already holds.
+
+11:40.360 --> 11:43.273
+Not (A): this lookup finds no "log" at all.
+
+11:43.873 --> 11:48.815
+Not (B): the field is exactly NAMELEN bytes, so nothing runs past it.
+
+11:49.415 --> 11:53.029
+Not (D): step 2 shows the check for a Dir still works.
+
+11:54.560 --> 11:56.031
+That's Problem 3.
+
+11:56.631 --> 12:00.311
+Part (a): only a create that goes on takes a Free inode.
+
+12:00.911 --> 12:03.841
+Part (b): a read never copies past size.
+
+12:04.441 --> 12:08.930
+Part (c): the lookup misses "log", so the create adds a second "log".

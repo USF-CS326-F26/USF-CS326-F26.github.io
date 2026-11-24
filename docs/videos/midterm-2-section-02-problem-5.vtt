@@ -1,0 +1,442 @@
+WEBVTT
+
+00:00.000 --> 00:05.675
+Midterm 2, Section 02, Problem 5: User Mode and System Calls.
+
+00:06.275 --> 00:11.713
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:12.313 --> 00:16.205
+A script reveals it, and this explainer was built with Claude.
+
+00:16.720 --> 00:26.034
+Problem 5 draws on one OSlings exercise: 48k_user_mode, from week 12, on Friday, November 13.
+
+00:26.634 --> 00:31.176
+You wrote map_user_pages, usertrap's ecall branch, and dispatch.
+
+00:31.776 --> 00:39.891
+The rest came with the exercise, including the handlers, copyin, the trampoline, usertrapret, and proc_pagetable.
+
+00:41.000 --> 00:45.351
+Problem 5: user mode and system calls, from 48k.
+
+00:45.951 --> 00:49.674
+A user program asks the kernel for help with a system call.
+
+00:50.274 --> 00:57.100
+It puts the call's number in a7, and up to three arguments in a0, a1 and a2.
+
+00:58.200 --> 01:04.618
+Then ecall traps into the kernel, in supervisor mode, and the answer comes back in a0.
+
+01:05.218 --> 01:14.091
+In the code from 48k, the code page is at USER_CODE, 0x0, and the stack page at USER_STACK, 0x1000.
+
+01:15.200 --> 01:24.515
+At the top, the page TRAMPOLINE holds the kernel's trap code, and TRAPFRAME, the page under it, holds the program's saved registers.
+
+01:25.115 --> 01:31.536
+The function proc_pagetable maps both into the program's page table, without PTE_U.
+
+01:32.640 --> 01:36.350
+PTE_U marks a page that user mode may touch.
+
+01:36.950 --> 01:42.469
+And for a page without it, a call to walkaddr returns 0: not a user page.
+
+01:43.600 --> 01:46.239
+On the left, the program, with a new message.
+
+01:46.839 --> 01:53.762
+Its ecall at 0x0e writes the 18-byte message, and the one at 0x14 is getpid.
+
+01:54.362 --> 01:59.905
+Then it adds 41 to the pid, and exits with that, with the ecall at 0x1e.
+
+02:01.040 --> 02:04.930
+On the right, the kernel routes each call with dispatch, by its number:
+
+02:05.530 --> 02:08.967
+exit is 2, getpid is 11, and write is 16.
+
+02:09.567 --> 02:13.930
+Any other number reaches the last arm, which returns -1.
+
+02:15.040 --> 02:19.881
+The handler sys_exit ends the program with its status, and never returns.
+
+02:20.481 --> 02:23.552
+A call to sys_getpid returns the caller's pid.
+
+02:24.680 --> 02:31.637
+A call to sys_write checks fd first: if it isn't 1, the console, the call returns -1.
+
+02:32.237 --> 02:39.027
+Otherwise it copies buf in pieces, with copyin, prints each piece, and returns len, all len bytes.
+
+02:40.160 --> 02:45.845
+The function copyin fails if the call to walkaddr gives 0 for a page of buf.
+
+02:46.445 --> 02:50.774
+Then the call to sys_write returns -1, for a bad pointer.
+
+02:51.880 --> 03:00.949
+Part (a). For each set of register values at an ecall: which handler does dispatch call, and what does the program get back in a0?
+
+03:01.549 --> 03:05.707
+Each row is an ecall by pid 2, the second run since boot.
+
+03:06.840 --> 03:08.397
+Row 1 is done for you.
+
+03:08.997 --> 03:16.569
+a7 holds 16, the number for write, so dispatch's match calls sys_write, with 1, 0x24 and 7.
+
+03:17.169 --> 03:22.721
+It prints the message's first 7 bytes, the word running, and the program gets back 7.
+
+03:23.240 --> 03:27.471
+Row 2: a7 holds 16, and a0 holds 5.
+
+03:28.471 --> 03:33.916
+So dispatch's match calls sys_write again, with 5, 0x24 and 18.
+
+03:35.416 --> 03:43.315
+The program gets back -1: fd 5 is not the console, so the handler's first check returns -1.
+
+03:43.840 --> 03:46.206
+Row 3: a7 holds 11.
+
+03:47.206 --> 03:52.187
+11 is the number for getpid, so dispatch's match calls sys_getpid.
+
+03:53.187 --> 03:59.159
+The program gets back 2: the call returns the caller's pid, and this process has pid 2.
+
+03:59.680 --> 04:09.395
+Row 4: a7 holds 16, a0 holds 1, a1 holds 0x3F_FFFF_F000, and a2 holds 4.
+
+04:10.395 --> 04:13.030
+So dispatch's match calls sys_write again.
+
+04:13.630 --> 04:18.733
+fd is 1, so the handler goes on, and tries to copy buf with copyin.
+
+04:19.840 --> 04:25.971
+Back at the top of the page: that address, 0x3F_FFFF_F000, is TRAMPOLINE,
+
+04:26.571 --> 04:30.582
+which the function proc_pagetable maps without PTE_U.
+
+04:31.182 --> 04:36.617
+So for it, the call to walkaddr returns 0, and the call to copyin fails.
+
+04:37.120 --> 04:38.890
+Back in the table, row 4.
+
+04:40.390 --> 04:42.790
+So the program gets back -1.
+
+04:43.390 --> 04:49.499
+The key: copyin fails, and nothing is printed. The handler returns before it prints a byte.
+
+04:50.000 --> 04:52.685
+Row 5: a7 holds 100.
+
+04:54.185 --> 05:01.591
+No handler: 100 is none of dispatch's numbers, so the last arm, the catch-all, returns -1.
+
+05:02.591 --> 05:04.906
+And the program gets back -1.
+
+05:05.440 --> 05:09.456
+Row 6: a7 holds 2, and a0 holds 6.
+
+05:10.456 --> 05:15.451
+2 is the number for exit, so dispatch's match calls sys_exit, with 6.
+
+05:16.951 --> 05:23.839
+What the program gets back: none. The handler never returns, and the program ends with exit status 6.
+
+05:25.360 --> 05:31.465
+Part (b): trace the write call, the ecall at 0x0e, in the process with pid 2.
+
+05:32.065 --> 05:39.765
+On the right, from the previous page: at 0x0c, the program puts 16 in a7, the number for write.
+
+05:40.880 --> 05:50.319
+An ecall switches the CPU to supervisor mode, sets scause, and puts the address of the ecall itself in sepc.
+
+05:50.919 --> 05:58.763
+An ecall is 4 bytes long, and sret jumps to sepc, in user mode if SPP is 0.
+
+05:59.880 --> 06:09.992
+The handler, usertrap, reads scause and sepc, and saves sepc in the trapframe's epc: where the program was.
+
+06:10.592 --> 06:15.605
+If scause is 8, an ecall from user mode, it adds 4 to epc.
+
+06:16.720 --> 06:24.130
+Then it calls dispatch with a7, the call's number, and with a0, a1 and a2, its arguments.
+
+06:24.730 --> 06:30.020
+It puts the return value in the trapframe's a0, for the program's a0.
+
+06:31.120 --> 06:32.698
+An interrupt is handled.
+
+06:33.298 --> 06:38.661
+Anything else is illegal: the else branch ends the program, and the kernel goes on.
+
+06:39.760 --> 06:43.905
+On the way back, in usertrapret, SPP is set to 0.
+
+06:44.505 --> 06:48.930
+Then epc goes into sepc, where sret will jump,
+
+06:49.530 --> 06:53.903
+and the program's a0 is loaded from the trapframe's a0.
+
+06:54.400 --> 06:56.511
+Part (i), when the trap is taken.
+
+06:57.511 --> 07:02.225
+sepc is 0x0e: the address of the ecall itself.
+
+07:03.225 --> 07:07.234
+And scause is 8, which marks an ecall from user mode.
+
+07:07.760 --> 07:09.445
+After the ecall branch.
+
+07:10.045 --> 07:17.335
+epc starts as sepc, 0x0e, and the branch adds 4, the length of the ecall.
+
+07:18.335 --> 07:23.774
+So the trapframe's epc is 0x12: the address of the next instruction.
+
+07:24.880 --> 07:29.701
+The call to dispatch passes a7, which holds 16, the number for write,
+
+07:30.301 --> 07:35.596
+and a0, a1 and a2, which hold 1, 0x24 and 18.
+
+07:36.196 --> 07:41.715
+So it is a write of 18 bytes from 0x24, to fd 1, the console.
+
+07:42.840 --> 07:46.204
+On the previous page, dispatch's match calls sys_write.
+
+07:46.804 --> 07:49.970
+fd is 1, so the handler passes its first check,
+
+07:50.570 --> 07:53.799
+prints the message, and returns len, all len bytes.
+
+07:54.320 --> 07:55.706
+Back in usertrap.
+
+07:56.706 --> 08:02.720
+So the trapframe's a0 is 18, the length: the branch writes the return value there.
+
+08:03.840 --> 08:11.779
+After sret: on the way back, epc goes into sepc, and sret jumps to sepc.
+
+08:12.779 --> 08:15.145
+So it runs the instruction at 0x12,
+
+08:15.745 --> 08:21.124
+the li right after the ecall, which puts 11 in a7, for getpid.
+
+08:22.240 --> 08:26.373
+And in which mode? On the way back, SPP was set to 0.
+
+08:27.873 --> 08:33.141
+So the mode is user: sret goes to user mode when SPP is 0.
+
+08:33.640 --> 08:43.423
+Part (ii): suppose the handler, usertrap, left out the line that adds 4 to epc, every time the ecall at 0x0e traps.
+
+08:44.023 --> 08:50.101
+For the ones at 0x14 and 0x1e, it still adds 4. What happens from then on?
+
+08:51.200 --> 08:57.934
+The first time, the write runs as in part (i), and the branch puts its answer, 18, in a0.
+
+08:58.534 --> 09:02.660
+But epc keeps the ecall's own address, 0x0e,
+
+09:03.260 --> 09:06.000
+so sret jumps back to that same ecall.
+
+09:07.120 --> 09:10.639
+a7 still holds 16, so it is a write again.
+
+09:11.239 --> 09:16.632
+But a0, its fd, now holds the first write's answer, 18, not 1.
+
+09:17.232 --> 09:20.069
+So the handler's first check returns -1.
+
+09:20.600 --> 09:25.225
+Back in usertrap, that answer goes into a0, as the next fd,
+
+09:25.825 --> 09:27.928
+so the fd is never 1 again.
+
+09:29.428 --> 09:32.623
+So (A): it prints once, then write fails forever.
+
+09:33.720 --> 09:36.321
+Not (D): only the first write prints.
+
+09:36.921 --> 09:40.092
+Not (B): the ecall runs again, with no fault.
+
+09:40.692 --> 09:45.525
+Not (C): it never gets past 0x0e, so it never reaches exit.
+
+09:47.540 --> 09:58.214
+The key's work, under the question. Part (i): sepc is the ecall itself, and epc is 0x0e plus 4, which is 0x12.
+
+09:59.714 --> 10:05.664
+The call to dispatch with 16, 1, 0x24 and 18 prints 18 bytes.
+
+10:07.660 --> 10:11.451
+It returns 18. Then sret, with SPP 0,
+
+10:12.951 --> 10:16.107
+goes to the li at 0x12, in user mode.
+
+10:17.107 --> 10:24.498
+Part (ii): epc stays 0x0e every time: the same ecall, now with 18 in a0.
+
+10:26.500 --> 10:28.451
+So it is a write to fd 18,
+
+10:29.951 --> 10:34.453
+and it returns -1. Then comes a write to fd -1,
+
+10:35.953 --> 10:38.138
+which returns -1, forever.
+
+10:39.640 --> 10:50.621
+Part (c). The first two lines are map_user_pages from 48k: the code page with R, X and U, the stack page with R, W and U.
+
+10:51.221 --> 10:56.349
+This version's code page has R, W and U: W in place of X.
+
+10:57.480 --> 11:01.233
+The kernel starts that program at 0x0, in user mode.
+
+11:01.833 --> 11:06.952
+From user mode, a fetch needs X and U, and a store needs W and U.
+
+11:07.552 --> 11:12.963
+Otherwise it traps, with scause 12, 13 or 15, by the kind of access.
+
+11:13.480 --> 11:16.998
+Part (i): what happens when the kernel starts the program?
+
+11:17.598 --> 11:24.615
+Its first fetch is at 0x0, from a page with no X: W allows a store there, not a fetch.
+
+11:26.115 --> 11:29.539
+So (C): it faults on its first fetch, at 0x0.
+
+11:30.640 --> 11:37.513
+It never runs one instruction, so it never reaches its write, and prints nothing: not (B), and not (D).
+
+11:38.113 --> 11:44.359
+Not (A): usertrap's else branch, from part (b), ends the program, and the kernel goes on.
+
+11:44.880 --> 11:47.779
+Part (ii): the value of scause for that trap.
+
+11:48.779 --> 11:51.524
+It is 12, the statement's number for a fetch.
+
+11:53.024 --> 11:57.705
+The key's note: an instruction page fault, because the page has no X.
+
+11:59.240 --> 12:04.978
+Part (d). The kernel's own page table maps the same trampoline page at TRAMPOLINE.
+
+12:05.578 --> 12:13.508
+Below, from the previous page, is uservec, on the trampoline: where a trap from user mode lands, on the user's table.
+
+12:14.640 --> 12:23.557
+It saves the user registers, then loads three notes from the trapframe: the kernel's stack, usertrap's address, and the kernel's satp.
+
+12:24.157 --> 12:28.071
+Then it switches to the kernel's table, and jumps to usertrap.
+
+12:28.600 --> 12:35.597
+Part (i): why does proc_pagetable map the TRAMPOLINE and TRAPFRAME pages without PTE_U?
+
+12:36.197 --> 12:40.450
+PTE_U is the bit that lets user mode touch a page.
+
+12:41.950 --> 12:44.841
+(A): so user code cannot read or change them.
+
+12:45.960 --> 12:50.941
+The trapframe holds those three notes, and they are loaded in supervisor mode.
+
+12:51.541 --> 12:57.545
+If the program could change the trapframe, it could choose where the last jump of uservec goes.
+
+12:58.680 --> 13:04.877
+Not (B): the function copyin refuses them, as it refused TRAMPOLINE in part (a).
+
+13:05.477 --> 13:11.363
+Not (C): PTE_U decides who may touch a page, not what memory it uses.
+
+13:11.963 --> 13:15.897
+And not (D): the fetch at 0x0 is from the code page.
+
+13:16.400 --> 13:22.341
+Part (ii): why is the trampoline at the same address in the kernel's and every user page table?
+
+13:22.941 --> 13:30.086
+Each fetch goes through the table satp holds at that moment, and a write to satp does not change the pc.
+
+13:31.200 --> 13:35.593
+Follow uservec. It runs at TRAMPOLINE, through the user's table.
+
+13:36.193 --> 13:42.683
+Then csrw satp switches to the kernel's table, and the pc does not change.
+
+13:43.283 --> 13:49.105
+So the next instruction comes from the next address, as always, now through the kernel's table.
+
+13:51.140 --> 13:55.446
+(B): so the code after csrw satp is still there.
+
+13:56.046 --> 14:03.535
+The kernel's table maps the same trampoline page at the same address, so that fetch finds the rest of uservec.
+
+14:04.640 --> 14:09.758
+Not (A): sret returns to the program at sepc, in its own code.
+
+14:10.358 --> 14:13.951
+Not (C): the code does switch satp, on that very line.
+
+14:14.551 --> 14:20.795
+Not (D): with no PTE_U, user code can't run uservec, since a fetch there faults.
+
+14:21.720 --> 14:23.275
+That's Problem 5.
+
+14:23.875 --> 14:27.929
+Part (a): a bad number, fd or pointer gets -1.
+
+14:28.529 --> 14:30.939
+Part (b): resume past the ecall.
+
+14:31.539 --> 14:33.554
+Part (c): fetches need X.
+
+14:34.154 --> 14:41.769
+Part (d): no PTE_U for the trap pages; the code after csrw satp is still there.

@@ -61,3 +61,7 @@ key, and a video for each problem that works the key on the exam's own pages.
 **[Midterm 1](../assignments/midterm-1-solutions.md)**, Thursday, October 15:
 both sections' exams and keys, and a video for each problem that works the key
 on the exam's own pages.
+
+**[Midterm 2](../assignments/midterm-2-solutions.md)**, Thursday, November 19:
+both sections' exams and keys, and a video for each problem that works the key
+on the exam's own pages.

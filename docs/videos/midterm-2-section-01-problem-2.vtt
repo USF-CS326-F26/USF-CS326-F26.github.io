@@ -1,0 +1,400 @@
+WEBVTT
+
+00:00.000 --> 00:04.938
+Midterm 2, Section 01, Problem 2: The Kernel Page Table.
+
+00:05.538 --> 00:10.976
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.576 --> 00:15.468
+A script reveals it, and this explainer was built with Claude.
+
+00:16.000 --> 00:25.297
+Problem 2 draws on one OSlings exercise: 39k_virtual_memory, from week 10, on Friday, October 30.
+
+00:25.897 --> 00:29.894
+You wrote make_satp, and kvmmake's three mappings.
+
+00:30.494 --> 00:38.902
+The rest came with the exercise: walk and mappages, carried from 33k, kvminithart, and the test.
+
+00:40.000 --> 00:42.377
+Problem 2: The Kernel Page Table.
+
+00:42.977 --> 00:47.915
+Exercise 39k builds the kernel's page table with this code.
+
+00:48.515 --> 00:53.890
+Part (a), below it, asks what a call to make_satp returns for the table's root.
+
+00:55.000 --> 01:03.981
+The function kvmmake takes the root page table from kalloc, and zeroes it: all 512 entries empty.
+
+01:04.581 --> 01:07.929
+Then it maps exactly three regions, each to itself:
+
+01:08.529 --> 01:12.060
+the UART page, the TEST_FINISHER page, and all of RAM.
+
+01:13.160 --> 01:17.830
+The register satp tells the MMU which page table to use.
+
+01:18.430 --> 01:23.081
+Bits 63 to 60 hold MODE: 8 is Sv39.
+
+01:23.681 --> 01:28.395
+Bits 59 to 44 hold the ASID, 0 here.
+
+01:29.520 --> 01:35.386
+And bits 43 to 0 hold the PPN, the root table's physical page number.
+
+01:35.986 --> 01:41.522
+SATP_SV39 is 8 shifted left by 60: MODE 8, alone.
+
+01:42.122 --> 01:47.632
+The function make_satp combines it with the root's address, shifted right by 12.
+
+01:48.760 --> 01:58.443
+Part (a). kvmmake's first call to kalloc returns the root page table at physical address 0x87F4_2000.
+
+01:59.043 --> 02:03.277
+Part (i): what does a call to make_satp return for it, in hex?
+
+02:03.877 --> 02:05.722
+The key shows its work below.
+
+02:07.740 --> 02:15.365
+Shifted right by 12, the root's address becomes 0x87F42: its low 12 bits drop off.
+
+02:15.965 --> 02:22.601
+And 8 shifted left by 60 is MODE 8, alone in the top hex digit, with zeros below it.
+
+02:24.620 --> 02:28.874
+Combined, MODE 8 sits on top, the ASID is 0,
+
+02:29.474 --> 02:33.709
+and the PPN, 0x87F42, is at the bottom.
+
+02:35.740 --> 02:44.737
+So a call to make_satp, for this root, returns 0x8000_0000_0008_7F42.
+
+02:45.337 --> 02:49.435
+That is the value the work underlines, and the answer to part (i).
+
+02:49.960 --> 02:55.078
+Part (ii): a call to make_satp drops the low 12 bits of the root's address.
+
+02:55.678 --> 02:58.089
+Why is nothing lost? Circle one.
+
+02:59.600 --> 03:02.727
+(A): the root is page-aligned, so they are all 0.
+
+03:03.327 --> 03:07.223
+A page table fills one page, and starts where a page starts:
+
+03:07.823 --> 03:10.521
+the low 12 bits of its address are 0.
+
+03:11.040 --> 03:18.448
+Not (B) or (C): bits 43 to 0 of satp are all the PPN, the root's page number.
+
+03:19.048 --> 03:24.325
+And not (D): the shift gives a physical page number, not a virtual address.
+
+03:25.440 --> 03:33.344
+Part (b). The MMU translates an address the way the function translate does, with kvmmake's table.
+
+03:33.944 --> 03:40.722
+A call to walk, with alloc false, follows VPN[2] and VPN[1] down to the leaf entry.
+
+03:41.840 --> 03:46.147
+If the walk finds an empty entry on the way, that is a page fault.
+
+03:46.747 --> 03:51.957
+Otherwise, the result is the leaf's page plus the offset, the low 12 bits.
+
+03:53.080 --> 04:03.527
+Translate each virtual address: VPN[2], VPN[1] and VPN[0] in decimal, and the offset and the physical address in hex.
+
+04:04.127 --> 04:10.857
+kvmmake's table maps exactly the UART page, the TEST_FINISHER page and all of RAM.
+
+04:11.457 --> 04:13.599
+Any other address is a page fault.
+
+04:14.720 --> 04:16.863
+Their addresses are on the code page.
+
+04:17.463 --> 04:25.034
+The UART page is at 0x1000_0000, and the TEST_FINISHER page at 0x10_0000.
+
+04:25.634 --> 04:32.575
+And RAM runs from 0x8000_0000 up to 0x8800_0000.
+
+04:33.680 --> 04:36.805
+Row 1 is done for you, and worked under the table.
+
+04:37.405 --> 04:44.843
+Shifted right by 12, 0x8060_5010 is 0x80605.
+
+04:45.443 --> 04:56.023
+Its low 9 bits are VPN[0], 5. The next 9 bits are VPN[1], 3. And shifted by 18, VPN[2] is 2.
+
+04:57.120 --> 04:59.551
+Its offset is 0x010.
+
+05:00.151 --> 05:06.873
+Root entry 2, level-1 entry 3 and level-0 entry 5 are all valid: the RAM mapping.
+
+05:07.473 --> 05:18.769
+The leaf points to page 0x8060_5000, so the physical address is that page plus the offset: 0x8060_5010.
+
+05:19.280 --> 05:26.713
+The next row, 0x8123_4567, is also in RAM.
+
+05:28.213 --> 05:32.249
+By the same steps, its indexes are 2, 9 and 52.
+
+05:32.849 --> 05:36.636
+In RAM, VPN[2] is always 2, as in row 1.
+
+05:38.160 --> 05:42.657
+Its offset, the low 12 bits, is 0x567.
+
+05:43.657 --> 05:51.225
+And its physical address is 0x8123_4567, the same.
+
+05:51.825 --> 05:58.123
+RAM is mapped to itself, so the leaf points to this address's own page, and the offset is kept.
+
+05:58.640 --> 06:01.683
+The next row, 0x0010_0FF8.
+
+06:03.183 --> 06:07.202
+Its indexes are 0, 0 and 256.
+
+06:07.802 --> 06:11.362
+It is in TEST_FINISHER's page, 0x10_0000,
+
+06:11.962 --> 06:21.549
+whose page number, 256, fits in the 9 bits of VPN[0]. So VPN[1] and VPN[2] are 0.
+
+06:23.080 --> 06:26.525
+Its offset, the low 12 bits, is 0xFF8.
+
+06:27.125 --> 06:31.965
+The call to walk follows root entry 0, then level-1 entry 0,
+
+06:32.565 --> 06:39.946
+to entry 256 of a level-0 table: the leaf kvmmake wrote for TEST_FINISHER.
+
+06:41.980 --> 06:45.767
+So the physical address is 0x0010_0FF8.
+
+06:46.367 --> 06:51.041
+The leaf gives the page: TEST_FINISHER's own, 0x10_0000.
+
+06:51.641 --> 06:56.125
+And the offset, 0xFF8, is added to that page unchanged.
+
+06:56.640 --> 07:02.209
+The next row, 0x0010_1000, is the page just past TEST_FINISHER's page.
+
+07:03.709 --> 07:11.345
+Its indexes are 0, 0 and 257: the next entry of that same level-0 table.
+
+07:12.345 --> 07:14.924
+Its offset is 0x000.
+
+07:16.940 --> 07:18.582
+The result: page fault.
+
+07:19.182 --> 07:26.617
+In that level-0 table, only TEST_FINISHER's page is mapped, so entry 257 is empty.
+
+07:27.217 --> 07:32.431
+The call to walk returns that entry, and translate's check finds it not valid.
+
+07:32.960 --> 07:37.777
+The last row, 0xC000_5678.
+
+07:39.277 --> 07:41.866
+Its indexes are 3, 0 and 5.
+
+07:42.866 --> 07:45.567
+Its offset is 0x678.
+
+07:47.580 --> 07:49.222
+The result: page fault.
+
+07:49.822 --> 07:51.689
+Its VPN[2] is 3.
+
+07:52.289 --> 07:59.299
+In kvmmake's table, only root entries 0, for the devices, and 2, for RAM, are filled.
+
+07:59.899 --> 08:05.391
+Root entry 3 is empty, so the call to walk returns null at its first step.
+
+08:06.520 --> 08:13.458
+Part (c). After kvmmake returns, the kernel maps two more device pages, each to itself:
+
+08:14.058 --> 08:19.567
+call 1, the PLIC's first page, at 0x0C00_0000,
+
+08:20.167 --> 08:25.089
+then call 2, its second page, at 0x0C00_1000.
+
+08:26.200 --> 08:32.605
+During each call, does the function walk allocate a new level-1 table? A new level-0 table?
+
+08:33.205 --> 08:40.575
+Each root entry leads to its own level-1 table, and each level-1 entry to its own level-0 table.
+
+08:41.680 --> 08:44.581
+First the indexes, worked as in part (b).
+
+08:46.081 --> 08:49.461
+For call 1, they are 0, 96 and 0.
+
+08:50.961 --> 08:53.991
+For call 2, they are 0, 96 and 1.
+
+08:54.520 --> 08:56.589
+Call 2 maps the next page up.
+
+08:57.189 --> 09:03.256
+So VPN[0] moves on, from 0 to 1, with no carry into VPN[1]:
+
+09:03.856 --> 09:11.733
+VPN[1] stays 96, the same entry of the level-1 table, and VPN[2] stays 0.
+
+09:12.840 --> 09:14.290
+What is there already?
+
+09:14.890 --> 09:23.292
+UART0 and TEST_FINISHER share root entry 0, and so its level-1 table: VPN[2] is 0 for both.
+
+09:23.892 --> 09:32.072
+There, UART0 filled entry 128 and TEST_FINISHER entry 0, each with its own level-0 table.
+
+09:32.600 --> 09:33.774
+Now call 1.
+
+09:34.774 --> 09:36.717
+A new level-1 table: no.
+
+09:37.317 --> 09:42.201
+Its VPN[2] is 0, and root entry 0 is already valid,
+
+09:42.801 --> 09:46.811
+so the call to walk follows it, down to that level-1 table.
+
+09:48.320 --> 09:50.622
+A new level-0 table: yes.
+
+09:51.222 --> 09:59.733
+Call 1 needs entry 96 of that level-1 table, where only the entries for UART0 and TEST_FINISHER are filled.
+
+10:00.333 --> 10:07.307
+Entry 96 is still empty, so walk's else branch calls kalloc for a new level-0 table.
+
+10:07.840 --> 10:09.087
+Now call 2.
+
+10:10.087 --> 10:12.030
+A new level-1 table: no.
+
+10:12.630 --> 10:16.471
+Root entry 0 is still valid, as it was for call 1.
+
+10:18.000 --> 10:20.197
+A new level-0 table: no.
+
+10:20.797 --> 10:24.944
+Call 1 has just filled entry 96 of the level-1 table,
+
+10:25.544 --> 10:32.445
+so this time the call to walk finds it valid, and follows it to the level-0 table call 1 made.
+
+10:33.560 --> 10:39.841
+Part (d). In 39k the kernel runs in machine mode, where satp has no effect.
+
+10:40.441 --> 10:46.395
+Suppose instead that it runs in supervisor mode, as it does from 43k on.
+
+10:47.520 --> 10:55.418
+Once kvminithart writes satp, every instruction fetch, load and store is translated through the table,
+
+10:56.018 --> 10:59.920
+and an access its leaf entry does not allow is a page fault.
+
+11:00.520 --> 11:04.529
+Each missing flag, X, R or W, has its own fault.
+
+11:05.640 --> 11:08.243
+A call to puts calls putc for each byte,
+
+11:08.843 --> 11:14.777
+and a call to putc does one store to 0x1000_0000, which prints the byte.
+
+11:15.377 --> 11:23.386
+This version of kvmmake maps the UART page with PTE_R alone, leaving out PTE_W.
+
+11:24.520 --> 11:33.297
+Part (i): the TEST_FINISHER page's leaf entry is still 0x0004_0007. Circle every flag that is set.
+
+11:34.797 --> 11:36.415
+V, R and W.
+
+11:37.015 --> 11:42.753
+The flags are bits 9 to 0, and only its last hex digit has any of them set.
+
+11:43.880 --> 11:48.068
+That digit is 4 plus 2 plus 1: W, R and V.
+
+11:48.668 --> 11:53.916
+X, which is 8, is clear. The changed line maps only the UART page.
+
+11:55.040 --> 12:02.067
+Part (ii): right after kvminithart returns, the kernel prints a line with uart::puts.
+
+12:02.667 --> 12:06.496
+What happens when that call sends its first byte? Circle one.
+
+12:08.000 --> 12:10.957
+(D): a store page fault, scause 15.
+
+12:11.557 --> 12:18.322
+Sending the byte is the store in putc, to 0x1000_0000, in the UART page.
+
+12:19.440 --> 12:22.627
+This version maps that page with R but no W,
+
+12:23.227 --> 12:28.626
+and a store to a page without W is a store page fault, as the premise says.
+
+12:29.160 --> 12:32.295
+Not (A): sending the byte is a store, not a load.
+
+12:32.895 --> 12:38.678
+Not (B): only the UART mapping changed, and RAM, where the code runs, keeps X.
+
+12:39.278 --> 12:43.446
+And not (C): without W, the leaf does not allow the store.
+
+12:43.960 --> 12:45.409
+That's Problem 2.
+
+12:46.009 --> 12:49.035
+Part (a): satp holds the root's page number.
+
+12:49.635 --> 12:53.153
+Part (b): the leaf gives the page, and the offset is kept.
+
+12:53.753 --> 12:57.177
+Part (c): a new table only where an entry is empty.
+
+12:57.777 --> 13:00.124
+Part (d): a store needs W.

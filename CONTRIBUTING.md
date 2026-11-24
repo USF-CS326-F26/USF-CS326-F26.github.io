@@ -261,12 +261,32 @@ true peak. `aac_at` is Apple's encoder, in macOS builds of ffmpeg; ffmpeg's own
   off. `hide: toc` gives the player the table of contents' column too, which
   the film's small on-screen code needs.
 
+**New MP4s go on the media site.** From Nov 23 this site is near GitHub Pages'
+1 GB (`docs/` was 850 MB), so a new video's MP4 goes in the repository
+USF-CS326-F26/USF-CS326-F26-media, as `videos/NAME.mp4`. That repository is its
+own Pages site with its own 1 GB, deployed from `main` with no build (it has a
+`.nojekyll`), and it is served under this site's domain at
+`https://cs326-f26.cs.usfca.edu/USF-CS326-F26-media/`. So the **cs326** network
+reaches it as it reaches this site, and the player and its captions share an
+origin. The captions and the player page stay here in `docs/videos/`. In the
+page, `<source>` and the Download link use the MP4's full URL,
+`https://cs326-f26.cs.usfca.edu/USF-CS326-F26-media/videos/NAME.mp4`;
+`<track>` and the Captions link stay relative. `--strict` and `check_links.py`
+never fetch an http URL, so nothing here checks that MP4: push the media
+repository first, wait for its Pages build, and confirm each URL serves the
+file (status 200, `video/mp4`, the local bytes) before pushing the page that
+plays it. Keep each copy at SSIM 0.997 or more against its master; a film dense
+with handwriting may need CRF 27 or 26 to reach it. The ten Midterm 2 solution
+films, `videos/midterm-2-section-0S-problem-N`, were the first there. Every video
+posted before them stays in `docs/videos/`.
+
 Link the page from its session row by hand, with `links=` in `sessions()`, as
 **Video · <title>**. A film that works a posted exam or practice-set key goes
 beside that key's link instead: Practice Set 1 links the five Midterm 1 practice
 films, `videos/midterm-1-practice-problem-N`, after its Solutions PDF, and Midterm 1
 Solutions links each section's five, `videos/midterm-1-section-0S-problem-N`, after
-that section's Solutions PDF. OSlings Practice links each set's films,
+that section's Solutions PDF, as Midterm 2 Solutions does with
+`videos/midterm-2-section-0S-problem-N`. OSlings Practice links each set's films,
 `videos/oslings-SET-problem-N`, after that set's Solutions PDF. Escape `&`,
 `<` and `>` in a `.vtt` made from an SRT (`&amp;`, `&lt;`, `&gt;`); WebVTT reads
 them as markup, so a caption like "wc < b.txt" loses the rest of its cue. Remove

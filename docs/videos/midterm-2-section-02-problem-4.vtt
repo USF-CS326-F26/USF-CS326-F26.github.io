@@ -1,0 +1,418 @@
+WEBVTT
+
+00:00.000 --> 00:03.895
+Midterm 2, Section 02, Problem 4: The Shell.
+
+00:04.495 --> 00:09.933
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:10.533 --> 00:14.425
+A script reveals it, and this explainer was built with Claude.
+
+00:14.960 --> 00:23.585
+Problem 4 draws on one OSlings exercise: 46k_shell, from week 12, on Thursday, November 12.
+
+00:24.185 --> 00:26.776
+You wrote exec, the shell's evaluate step.
+
+00:27.376 --> 00:31.021
+The read loop, the command handlers and the Out trait were given.
+
+00:32.520 --> 00:37.757
+Problem 4: in 46k, the shell's loop passes each typed line to exec,
+
+00:38.357 --> 00:42.388
+which splits it into words, and calls the matching command handler.
+
+00:42.988 --> 00:48.237
+This exec runs one typed line in the shell; it is not the exec system call.
+
+00:49.360 --> 00:51.685
+This is the exec from 46k.
+
+00:52.285 --> 00:55.312
+First, the line's words come from split_whitespace.
+
+00:55.912 --> 01:01.521
+Each call to next gives the next word inside a Some, or a None when no word is left.
+
+01:02.640 --> 01:04.804
+cmd comes from the first call.
+
+01:05.404 --> 01:11.448
+If that returns None, the line has no words: the None arm returns, and exec does nothing.
+
+01:12.048 --> 01:17.605
+arg comes from the second call, and the unwrap_or call turns None into the empty string.
+
+01:18.720 --> 01:21.214
+Then a match on cmd picks the handler.
+
+01:21.814 --> 01:28.276
+pwd and ls are called with just out; cd and mkdir also get arg.
+
+01:28.876 --> 01:34.143
+Any other word takes the last arm: it prints the word, and then command not found.
+
+01:35.640 --> 01:43.024
+Part (a). For each line passed to exec, give the values of cmd and arg, and what exec does with the line.
+
+01:43.624 --> 01:46.663
+The print says: write "none" if one is never set.
+
+01:47.263 --> 01:49.128
+The first row is done for you.
+
+01:49.640 --> 01:52.060
+The first row passes "cd src".
+
+01:52.660 --> 01:54.502
+Its words are cd and src,
+
+01:55.102 --> 01:58.311
+so cmd is "cd", and arg is "src".
+
+01:58.911 --> 02:02.172
+And exec calls cmd_cd, with "src".
+
+02:02.680 --> 02:05.543
+Next, "Mkdir src", with a capital M.
+
+02:06.543 --> 02:09.303
+cmd is "Mkdir", with its capital M,
+
+02:10.303 --> 02:11.691
+and arg is "src".
+
+02:12.800 --> 02:17.973
+The arms are all in small letters, and no arm is "Mkdir", with a capital M.
+
+02:18.973 --> 02:23.794
+So the last arm runs: exec prints Mkdir: command not found.
+
+02:24.794 --> 02:29.087
+The key notes: case matters. The match compares the exact text.
+
+02:29.600 --> 02:34.181
+Next, mkdir and bin, with runs of spaces before and between them.
+
+02:35.181 --> 02:37.781
+cmd is "mkdir", the first word.
+
+02:38.781 --> 02:40.717
+arg is "bin", the next one.
+
+02:41.717 --> 02:44.804
+So exec calls cmd_mkdir, with "bin".
+
+02:45.804 --> 02:48.209
+The key notes: the spaces are dropped.
+
+02:48.720 --> 02:50.815
+Next, a line of only spaces.
+
+02:51.815 --> 02:54.395
+cmd is none: it is never set.
+
+02:54.995 --> 03:00.679
+A call to split_whitespace finds no words here, so the first call to next returns None,
+
+03:01.279 --> 03:04.895
+and the None arm returns before cmd gets a value.
+
+03:06.400 --> 03:12.265
+arg is none too: exec has already returned, so the line that sets arg never runs.
+
+03:12.865 --> 03:16.181
+That is why the key writes none, and not the empty string,
+
+03:16.781 --> 03:19.095
+which only the unwrap_or call gives.
+
+03:20.600 --> 03:23.811
+What exec does: it returns at once, and does nothing.
+
+03:24.811 --> 03:26.658
+The key notes: no words.
+
+03:27.258 --> 03:30.116
+No handler is called, and nothing is printed.
+
+03:30.640 --> 03:32.827
+Then "pwd src bin".
+
+03:33.827 --> 03:35.852
+cmd is "pwd",
+
+03:36.852 --> 03:38.239
+and arg is "src".
+
+03:39.239 --> 03:43.451
+So exec calls cmd_pwd, with just out.
+
+03:44.451 --> 03:47.093
+The key notes: arg and bin are not used.
+
+03:47.693 --> 03:52.655
+The pwd arm takes no arg, and exec never asks for bin.
+
+03:53.160 --> 03:55.567
+Last, mkdir, with spaces after it.
+
+03:56.567 --> 03:59.179
+cmd is "mkdir", the only word.
+
+03:59.779 --> 04:04.311
+So cmd is set, and exec goes on to the line that sets arg.
+
+04:05.311 --> 04:07.403
+arg is the empty string, not none.
+
+04:08.520 --> 04:12.592
+The spaces are dropped, so the second call to next returns None,
+
+04:13.192 --> 04:16.285
+and the unwrap_or call turns it into the empty string.
+
+04:17.285 --> 04:21.124
+So exec calls cmd_mkdir, with the empty string.
+
+04:22.124 --> 04:25.477
+The key notes: that prints mkdir: missing operand.
+
+04:27.600 --> 04:35.532
+Part (b). This version of exec is the one from 46k, with one change, in the statement that sets cmd:
+
+04:36.132 --> 04:41.556
+it takes the first word with unwrap, where 46k has a match, with a None arm.
+
+04:42.680 --> 04:45.463
+A call to unwrap gives the word inside a Some.
+
+04:46.063 --> 04:49.072
+Called on None, it panics, and the kernel stops.
+
+04:49.672 --> 04:53.627
+Each line below is the first line typed after the kernel boots.
+
+04:54.760 --> 04:59.259
+Part (i): circle the number of every line that makes this exec panic.
+
+04:59.859 --> 05:03.943
+This version has no None arm: the unwrap takes the first word.
+
+05:04.543 --> 05:09.643
+The line that sets arg is unchanged: it still uses the unwrap_or call.
+
+05:10.160 --> 05:12.037
+Line 1 is "mkdir" alone.
+
+05:12.637 --> 05:17.447
+The first call to next gives mkdir, inside a Some, and the unwrap takes it.
+
+05:18.047 --> 05:24.339
+There is no second word, so the unwrap_or call gives arg the empty string. Nothing panics.
+
+05:24.840 --> 05:29.237
+Line 2 is ls, with a space before it and spaces after it.
+
+05:29.837 --> 05:36.144
+The spaces are dropped, so ls is the first word, and the unwrap takes it. Nothing panics.
+
+05:38.140 --> 05:40.891
+Line 3 is circled: only spaces.
+
+05:41.491 --> 05:47.165
+A call to split_whitespace finds no words, so the first call to next returns None.
+
+05:47.765 --> 05:53.172
+The unwrap is called on None, and it panics. There is no None arm to return first.
+
+05:53.680 --> 05:57.599
+Line 4, "cd src lib", has a first word: cd.
+
+05:58.199 --> 06:00.668
+The unwrap takes it, and nothing panics.
+
+06:01.268 --> 06:05.833
+arg is src, from the unwrap_or call, and exec never asks for lib.
+
+06:07.860 --> 06:10.600
+Line 5 is circled: a single space.
+
+06:11.200 --> 06:15.167
+It has no words either, so the first call to next returns None,
+
+06:15.767 --> 06:18.241
+and the unwrap panics, as on line 3.
+
+06:19.360 --> 06:24.158
+So a line panics here when it has no words at all: lines 3 and 5.
+
+06:24.758 --> 06:30.051
+Any line with a first word gives the unwrap a word, whatever spaces surround it.
+
+06:31.160 --> 06:37.345
+Part (ii): in 46k, what keeps each line that panics in part (i) from panicking?
+
+06:38.845 --> 06:41.181
+The key circles (D): the None arm.
+
+06:41.781 --> 06:48.102
+With no words, the first call to next returns None, and exec returns there, before anything else.
+
+06:49.200 --> 06:52.473
+Not (C): the unwrap_or call is in both versions.
+
+06:53.073 --> 06:58.707
+It gives arg the empty string when there is no second word, as on lines 1 and 2.
+
+06:59.307 --> 07:02.005
+A line with no words never gets that far.
+
+07:03.120 --> 07:08.495
+Not (A): a line of only spaces has no words at all, not one empty word.
+
+07:09.095 --> 07:14.869
+And not (B): the unwrap panics before the match, and a match arm cannot catch a panic.
+
+07:17.000 --> 07:22.451
+Part (c). The kernel boots with an empty root directory, and the shell starts at the root.
+
+07:23.051 --> 07:30.027
+Only mkdir makes entries, and there are no dot or dot dot entries, so every entry is a directory.
+
+07:31.160 --> 07:35.736
+The function for_each_entry visits the entries in the order they were made.
+
+07:36.336 --> 07:40.133
+What does each command print? Write "nothing" if it prints nothing.
+
+07:40.733 --> 07:45.253
+If it prints more than one line, write the lines in order, left to right.
+
+07:46.760 --> 07:52.498
+The shell keeps its current directory as a stack: a path from the root, empty at the root.
+
+07:53.098 --> 07:59.551
+A call to cwd gives the last name's inode number, or ROOT when the stack is empty.
+
+08:00.080 --> 08:02.169
+Steps 1 and 2 are done for you.
+
+08:02.769 --> 08:07.055
+mkdir home makes home in the root, and cd home moves into it.
+
+08:07.655 --> 08:10.972
+Neither prints anything, and the stack now holds home.
+
+08:13.080 --> 08:19.225
+A call to cmd_mkdir with a name makes a directory of that name, in the current directory.
+
+08:19.825 --> 08:23.843
+It prints only when arg is empty, or when the create fails.
+
+08:25.360 --> 08:27.621
+Step 3: mkdir logs, in home.
+
+08:28.621 --> 08:32.971
+It prints nothing: logs is a new name there, so the create succeeds.
+
+08:33.571 --> 08:36.319
+Step 4: mkdir bin, also in home.
+
+08:37.319 --> 08:39.867
+Again it prints nothing, for the same reason.
+
+08:42.000 --> 08:48.655
+A call to cmd_cd with ".." pops one name off the stack: up one directory.
+
+08:49.255 --> 08:53.213
+With a name like bin, it looks the name up in the current directory.
+
+08:53.813 --> 08:57.621
+If it finds a directory there, it pushes it onto the stack.
+
+08:58.120 --> 09:00.456
+Step 5: cd bin, from home.
+
+09:01.056 --> 09:06.241
+The lookup finds bin in home, and it is a directory, so it is pushed onto the stack.
+
+09:07.241 --> 09:10.611
+It prints nothing. The current directory is now bin.
+
+09:11.120 --> 09:13.359
+Step 6: cd tmp.
+
+09:13.959 --> 09:19.589
+Nothing ever made tmp, so the lookup in bin fails, and the error arm runs.
+
+09:20.589 --> 09:23.158
+It prints cd: no such directory.
+
+09:24.158 --> 09:27.709
+The key notes: no tmp in /home/bin.
+
+09:28.309 --> 09:29.908
+The stack is unchanged.
+
+09:32.040 --> 09:40.987
+A call to cmd_pwd prints a slash, then each name on the stack, with a slash between two names, then a newline.
+
+09:41.520 --> 09:43.489
+Step 7: pwd.
+
+09:44.489 --> 09:46.493
+It prints /home/bin.
+
+09:47.093 --> 09:49.278
+The stack still holds home, then bin.
+
+09:50.278 --> 09:53.315
+The key notes: the failed cd changed nothing.
+
+09:55.440 --> 09:58.698
+Step 8: cd .., up one directory.
+
+09:59.298 --> 10:01.846
+The ".." arm pops bin off the stack.
+
+10:02.846 --> 10:04.073
+It prints nothing.
+
+10:05.073 --> 10:07.318
+The key notes: back to /home.
+
+10:09.440 --> 10:18.954
+A call to cmd_ls uses the function for_each_entry, so it visits the entries of the current directory in the order they were made.
+
+10:19.554 --> 10:24.319
+For each, it prints the name, then a slash if it is a directory, then a newline.
+
+10:24.840 --> 10:27.117
+Step 9: ls, back in home.
+
+10:28.617 --> 10:33.294
+It prints logs/, then bin/: two lines, written left to right.
+
+10:33.894 --> 10:37.220
+Each is a directory, so each name ends in a slash.
+
+10:38.320 --> 10:41.539
+logs was made at step 3, and bin at step 4.
+
+10:42.539 --> 10:44.819
+The key notes: in the order they were made.
+
+10:45.920 --> 10:47.370
+That's Problem 4.
+
+10:47.970 --> 10:52.587
+Part (a): on a blank line, exec returns before setting cmd.
+
+10:53.187 --> 10:56.508
+Part (b): with no None arm, a blank line panics.
+
+10:57.108 --> 11:03.122
+Part (c): a failed cd changes nothing, and ls lists in the order entries were made.

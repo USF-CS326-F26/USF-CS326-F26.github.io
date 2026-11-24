@@ -1,0 +1,406 @@
+WEBVTT
+
+00:00.000 --> 00:04.952
+Midterm 2, Section 01, Problem 1: Round-Robin Scheduling.
+
+00:05.552 --> 00:10.990
+We'll work it out on the exam's own pages, as the answer key's handwriting appears.
+
+00:11.590 --> 00:15.482
+A script reveals it, and this explainer was built with Claude.
+
+00:16.000 --> 00:21.599
+Problem 1 draws on these OSlings exercises, here in the order you met them.
+
+00:22.199 --> 00:27.900
+35k_context_switch, from week 9, on Friday, October 23.
+
+00:28.500 --> 00:32.830
+The save half of swtch was given there, and you wrote the restore half.
+
+00:33.360 --> 00:39.657
+36k_scheduling, from the same session, week 9, on Friday, October 23.
+
+00:40.257 --> 00:43.761
+You wrote one method there: pick_next, for RoundRobin.
+
+00:44.361 --> 00:48.083
+The trait, the scheduler loop and task came with the exercise.
+
+00:48.600 --> 00:55.240
+44k_interrupts, from week 11, on Friday, November 6, is named in part (c).
+
+00:55.840 --> 00:58.655
+There you wrote intr_on, which turns interrupts on,
+
+00:59.255 --> 01:02.784
+and the branch of kerneltrap that handles each timer tick.
+
+01:03.880 --> 01:07.933
+Problem 1 opens with the scheduler loop from 36k.
+
+01:08.533 --> 01:12.424
+It asks a policy which slot of the process table to run next,
+
+01:13.024 --> 01:17.023
+and switches into that process with swtch, from 35k.
+
+01:17.520 --> 01:23.119
+A call to swtch saves the caller's registers in old, and loads those saved in new.
+
+01:23.719 --> 01:29.121
+In this problem, NPROC = 6: the table has 6 slots, 0 to 5.
+
+01:29.721 --> 01:32.141
+Then comes the code from 36k.
+
+01:33.240 --> 01:38.525
+Each slot holds one state: Unused, Runnable, Running, Sleeping or Zombie.
+
+01:39.125 --> 01:43.891
+The Scheduler trait names the one method every policy has: pick_next.
+
+01:44.491 --> 01:50.651
+RoundRobin keeps one field, next: where the next scan starts. A new one starts it at 0.
+
+01:51.760 --> 01:56.279
+Here is the pick_next of RoundRobin, where n is the number of slots.
+
+01:56.879 --> 02:02.803
+The offsets count up from 0, each giving a slot: next plus the offset, mod n.
+
+02:03.403 --> 02:06.986
+So the scan starts at next, and wraps around to 0.
+
+02:08.120 --> 02:11.725
+The call to find stops at the first Runnable slot, i.
+
+02:12.325 --> 02:16.623
+Then self.next moves just after it, to (i + 1) % n,
+
+02:17.223 --> 02:23.154
+and the call to pick_next returns Some(i). If no slot is Runnable, it returns None.
+
+02:24.680 --> 02:29.995
+The scheduler loop, run_round_robin, takes a snapshot of the state of every slot,
+
+02:30.595 --> 02:32.323
+and asks pick_next for one.
+
+02:32.923 --> 02:38.057
+It marks that process Running, notes it as the one running now, and switches into it.
+
+02:39.160 --> 02:43.513
+The loop goes on only when that process calls swtch, to switch back.
+
+02:44.113 --> 02:47.377
+If it is still Running, the loop makes it Runnable again.
+
+02:47.977 --> 02:52.449
+And when nothing is Runnable, the call returns None, and the loop returns.
+
+02:53.960 --> 02:57.361
+Part (a): fill in the table for six calls to pick_next.
+
+02:57.961 --> 03:00.286
+Mid-run, self.next is 3.
+
+03:00.886 --> 03:08.621
+In the snapshot for call 1, slots 0 to 5 are Runnable, Unused, Runnable, Sleeping, Runnable and Unused.
+
+03:09.720 --> 03:14.379
+After each turn, the loop makes the process Runnable again, except once.
+
+03:14.979 --> 03:20.525
+The next time slot 2 runs, its process starts a disk read, and makes itself Sleeping.
+
+03:21.125 --> 03:22.616
+Nothing else changes.
+
+03:23.720 --> 03:28.911
+Each row is one call: self.next before it, the slots it looks at, in order,
+
+03:29.511 --> 03:32.692
+the value it returns, and self.next after it.
+
+03:33.292 --> 03:35.403
+Calls 1 and 2 are done for you.
+
+03:35.920 --> 03:40.367
+Call 1 starts at self.next, 3, where slot 3 is Sleeping.
+
+03:40.967 --> 03:44.187
+The scan goes on to slot 4, which is Runnable.
+
+03:44.787 --> 03:49.671
+It returns Some(4), and self.next moves one past it, to 5.
+
+03:50.200 --> 03:54.025
+Call 2 starts at 5, an Unused slot, the last one.
+
+03:54.625 --> 03:58.166
+The scan wraps around to slot 0, which is Runnable.
+
+03:58.766 --> 04:02.605
+It returns Some(0), and self.next moves to 1.
+
+04:04.120 --> 04:08.215
+Call 3 starts where call 2 left self.next: at 1.
+
+04:09.215 --> 04:14.033
+Slot 1 is Unused, and slot 2 is Runnable, so the scan stops there.
+
+04:15.033 --> 04:16.450
+It returns Some(2),
+
+04:17.450 --> 04:19.635
+and self.next moves to 3.
+
+04:20.760 --> 04:23.062
+This is the next time slot 2 runs.
+
+04:23.662 --> 04:27.373
+Its process starts a disk read, and makes itself Sleeping.
+
+04:27.973 --> 04:33.371
+It is not Running, so the loop leaves it Sleeping. From now on, slot 2 is Sleeping.
+
+04:34.880 --> 04:36.661
+Call 4 starts at 3.
+
+04:37.661 --> 04:41.158
+Slot 3 is still Sleeping, and slot 4 is Runnable.
+
+04:42.158 --> 04:44.087
+So the call returns Some(4),
+
+04:45.087 --> 04:47.316
+and self.next moves to 5.
+
+04:48.840 --> 04:50.611
+Call 5 starts at 5.
+
+04:51.611 --> 04:57.333
+Slot 5 is Unused, and the scan wraps around to slot 0, which is Runnable.
+
+04:58.333 --> 05:00.273
+So the call returns Some(0),
+
+05:01.273 --> 05:03.384
+and self.next moves to 1.
+
+05:04.880 --> 05:06.491
+Call 6 starts at 1.
+
+05:07.491 --> 05:14.027
+Slot 1 is Unused, slot 2 is Sleeping now, slot 3 is Sleeping, and slot 4 is Runnable.
+
+05:15.027 --> 05:16.955
+So the call returns Some(4),
+
+05:17.955 --> 05:20.185
+and self.next moves to 5.
+
+05:22.180 --> 05:27.893
+The slots picked by the six calls, in order: 4, 0, 2, 4, 0, 4.
+
+05:29.393 --> 05:31.530
+The key's note: slot 2 sleeps.
+
+05:32.130 --> 05:36.787
+It ran once, at call 3, and the scan of call 6 passes it by.
+
+05:38.520 --> 05:43.202
+Part (b). Every process runs task, with SLICES = 3.
+
+05:43.802 --> 05:45.998
+Each pass of its for loop is one turn,
+
+05:46.598 --> 05:51.471
+and each turn ends with a call to swtch, back to the scheduler loop: a yield.
+
+05:52.600 --> 05:57.351
+On its last turn, the process makes itself a Zombie, before it yields.
+
+05:57.951 --> 06:04.485
+After its first two turns, the loop makes it Runnable again. A Zombie is not Running, so the loop leaves it,
+
+06:05.085 --> 06:06.791
+and it is never picked again.
+
+06:07.920 --> 06:10.553
+This version changes one line of pick_next:
+
+06:11.153 --> 06:18.566
+self.next = (i + 1) % n became self.next = (i + 2) % n.
+
+06:19.166 --> 06:23.283
+So the next scan starts two slots past the one picked, not one.
+
+06:24.400 --> 06:29.093
+The kernel calls run_round_robin, so self.next starts at 0.
+
+06:29.693 --> 06:36.422
+The Runnable processes are in slots 1, 2 and 4, and slots 0, 3 and 5 are Unused.
+
+06:37.022 --> 06:41.403
+Each takes 3 turns, and on its third, it makes itself a Zombie.
+
+06:42.520 --> 06:47.681
+Part (i): the slots of the processes, in the order they take their 9 turns.
+
+06:48.281 --> 06:55.697
+Below part (ii), show your work: for each turn, the slots each call to pick_next looks at, and the slot it picks.
+
+06:57.200 --> 07:02.065
+The first turn: next is 0, and the scan looks at slots 0 and 1.
+
+07:03.565 --> 07:08.603
+Slot 1 is Runnable, so it picks 1, and next jumps 2 past it, to 3.
+
+07:09.203 --> 07:11.421
+The key notes that slot 2 is skipped.
+
+07:12.520 --> 07:18.611
+The second scan starts at 3, and looks at slots 3 and 4: it does not look at slot 2.
+
+07:20.111 --> 07:25.983
+Slot 4 is Runnable, so it picks 4, and 4 plus 2 wraps around the end, to 0.
+
+07:27.980 --> 07:30.827
+These repeat: 1, 4, 1, 4, 1, 4.
+
+07:31.427 --> 07:36.480
+Now slots 1 and 4 have each had their 3 turns, so both are Zombies,
+
+07:37.080 --> 07:39.031
+and slot 2 has not run once.
+
+07:40.560 --> 07:45.231
+Next is back at 0, and the scan looks at slots 0, 1 and 2.
+
+07:46.731 --> 07:52.551
+Slot 1 is a Zombie now, so the call picks slot 2, at last, and next jumps to 4.
+
+07:53.680 --> 07:59.906
+From 4, the scan looks at 4, 5, 0, 1 and 2, and only slot 2 is Runnable.
+
+08:01.406 --> 08:04.565
+It picks 2, and next is 4 again, twice more.
+
+08:05.165 --> 08:07.637
+So slot 2 takes the last 3 turns.
+
+08:09.660 --> 08:14.100
+So part (i) is 1, 4, 1, 4, 1, 4, then 2, 2, 2.
+
+08:14.700 --> 08:20.179
+After that, slot 2 is a Zombie too: nothing is Runnable, and the loop returns.
+
+08:21.280 --> 08:24.715
+Part (ii): in this run, what has the changed line done?
+
+08:26.215 --> 08:30.534
+(B): slot 2 gets no turn until slots 1 and 4 have finished.
+
+08:31.134 --> 08:33.395
+The rotation is no longer fair.
+
+08:34.520 --> 08:37.825
+Not (A): slot 2 does run, the last 3 turns.
+
+08:38.425 --> 08:42.729
+Not (C): slot 2 waits for the others, which is not round-robin.
+
+08:43.329 --> 08:47.745
+And not (D): the % n keeps self.next inside the table.
+
+08:49.440 --> 08:53.309
+Part (c). In 36k, scheduling is cooperative:
+
+08:53.909 --> 09:00.769
+a process gives up the CPU only by calling swtch itself, as task does after each turn.
+
+09:01.880 --> 09:06.519
+This time the policy is the pick_next from 36k, unchanged.
+
+09:07.119 --> 09:12.834
+Three processes are Runnable, in slots 2, 4 and 5, and the rest are Unused.
+
+09:13.434 --> 09:17.080
+Slots 2 and 4 run task, and slot 5 runs spin.
+
+09:18.200 --> 09:22.711
+The body of spin is a loop that computes forever, and never calls swtch.
+
+09:23.311 --> 09:26.529
+Slots 2 and 4 take one turn each, in that order,
+
+09:27.129 --> 09:29.529
+and then the loop switches into slot 5.
+
+09:30.640 --> 09:35.705
+Part (i): from then on, what happens to the processes in slots 2 and 4?
+
+09:37.205 --> 09:41.673
+(D): they never run again. The kernel hangs in the loop of spin, forever.
+
+09:42.800 --> 09:44.069
+Part (ii): why?
+
+09:45.569 --> 09:49.799
+(C): the loop runs again only when the running process calls swtch.
+
+09:50.399 --> 09:52.574
+Nothing takes the CPU away.
+
+09:53.680 --> 09:58.629
+The loop in spin never calls swtch, and nothing else can take the CPU.
+
+09:59.229 --> 10:04.763
+So the scheduler loop never takes another pass, and never picks slot 2 or 4 again.
+
+10:05.880 --> 10:13.035
+Back to part (i). Not (A) or (C): only the scheduler loop gives out turns, and it never runs again.
+
+10:13.635 --> 10:18.485
+Not (B): only the loop in spin runs now, and nothing checks slot 5.
+
+10:19.600 --> 10:27.153
+In part (ii), not (A) or (B): the loop never calls pick_next again, so no later call returns 5, or None.
+
+10:27.753 --> 10:33.043
+Not (D): the switch into slot 5 did save the registers of the scheduler loop.
+
+10:34.160 --> 10:40.857
+Part (iii): which change would let slots 2 and 4 keep taking turns after slot 5 starts spinning?
+
+10:42.357 --> 10:50.419
+(B): a periodic timer interrupt, like the one in 44k, that traps into the kernel and switches back to the loop.
+
+10:51.520 --> 10:52.831
+That is preemption.
+
+10:53.431 --> 10:59.275
+In 36k, a process gives up the CPU only by calling swtch itself.
+
+10:59.875 --> 11:05.080
+A timer interrupt takes the CPU back, whether the process yields or not.
+
+11:06.200 --> 11:12.929
+Not (A): after slot 5 starts spinning, no scan runs at all, from slot 0 or anywhere.
+
+11:13.529 --> 11:21.149
+Not (C) or (D): with slot 5 Runnable, or with more slots, the loop still never gets the CPU back.
+
+11:22.280 --> 11:23.635
+That's Problem 1.
+
+11:24.235 --> 11:28.932
+Part (a): each scan starts at self.next, and skips Sleeping slots.
+
+11:29.532 --> 11:33.985
+Part (b): two past the pick, slot 2 waits until the others finish.
+
+11:34.585 --> 11:40.373
+Part (c): without preemption, a process that never calls swtch keeps the CPU.
